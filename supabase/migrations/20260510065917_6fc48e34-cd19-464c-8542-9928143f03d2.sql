@@ -1,0 +1,3 @@
+ALTER TABLE public.staff
+  ADD COLUMN IF NOT EXISTS pf_number TEXT,
+  ADD COLUMN IF NOT EXISTS esi_number TEXT;
