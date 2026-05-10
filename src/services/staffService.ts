@@ -83,6 +83,8 @@ export const staffService = {
     if (updates.hikeIntervalMonths !== undefined) (dbUpdates as any).hike_interval_months = updates.hikeIntervalMonths;
     if (updates.statutoryDeductions !== undefined) (dbUpdates as any).statutory_deductions = updates.statutoryDeductions;
     if ((updates as any).shiftWindow !== undefined) (dbUpdates as any).shift_window = (updates as any).shiftWindow;
+    if (updates.pfNumber !== undefined) (dbUpdates as any).pf_number = updates.pfNumber || null;
+    if (updates.esiNumber !== undefined) (dbUpdates as any).esi_number = updates.esiNumber || null;
 
     const { data, error } = await supabase
       .from('staff')
@@ -187,6 +189,8 @@ export const staffService = {
       statutoryDeductions: dbStaff.statutory_deductions || {},
       shiftWindow: dbStaff.shift_window || undefined,
       faceMatchThreshold: dbStaff.face_match_threshold ?? undefined,
+      pfNumber: dbStaff.pf_number ?? undefined,
+      esiNumber: dbStaff.esi_number ?? undefined,
     };
   },
 
@@ -223,6 +227,8 @@ export const staffService = {
       hike_interval_months: staff.hikeIntervalMonths || null,
       statutory_deductions: staff.statutoryDeductions || {},
       shift_window: (staff as any).shiftWindow ?? null,
+      pf_number: staff.pfNumber || null,
+      esi_number: staff.esiNumber || null,
     } as any;
   }
 };
