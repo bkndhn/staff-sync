@@ -1,0 +1,12 @@
+# Instructions to clear service worker cache
+
+After deploying, users should:
+
+1. Visit the deployed site
+2. Open DevTools (F12)
+3. Go to Application tab > Service Workers
+4. Click "Unregister" on any registered service workers
+5. Hard refresh the page (Ctrl+Shift+R or Cmd+Shift+R)
+6. Clear browser cache
+
+This will remove the cached broken version.

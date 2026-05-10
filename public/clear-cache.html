@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Service Worker Cache</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover {
+            background: #c82333;
+        }
+        .btn-primary {
+            background: #007bff;
+        }
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        #log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔧 Service Worker Cache Cleaner</h1>
+        <p>This tool will remove all cached service workers and clear site data.</p>
+        
+        <div id="status"></div>
+        
+        <button onclick="clearEverything()">Clear All Cache & Service Workers</button>
+        <button class="btn-primary" onclick="goToSite()">Go to Site</button>
+        
+        <div id="log"></div>
+    </div>
+
+    <script>
+        const log = (message, type = 'info') => {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<div>[${time}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+
+        async function clearEverything() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '<div class="status info">Clearing cache and service workers...</div>';
+            
+            try {
+                // 1. Unregister all service workers
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    log(`Found ${registrations.length} service worker(s)`);
+                    
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                        log(`✓ Unregistered service worker: ${registration.scope}`);
+                    }
+                } else {
+                    log('Service workers not supported in this browser');
+                }
+
+                // 2. Clear all caches
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    log(`Found ${cacheNames.length} cache(s)`);
+                    
+                    for (let name of cacheNames) {
+                        await caches.delete(name);
+                        log(`✓ Deleted cache: ${name}`);
+                    }
+                } else {
+                    log('Cache API not supported in this browser');
+                }
+
+                // 3. Clear localStorage
+                const localStorageSize = localStorage.length;
+                localStorage.clear();
+                log(`✓ Cleared ${localStorageSize} localStorage item(s)`);
+
+                // 4. Clear sessionStorage
+                const sessionStorageSize = sessionStorage.length;
+                sessionStorage.clear();
+                log(`✓ Cleared ${sessionStorageSize} sessionStorage item(s)`);
+
+                statusDiv.innerHTML = `
+                    <div class="status success">
+                        <strong>✓ Success!</strong><br>
+                        All service workers and caches have been cleared.<br>
+                        Click "Go to Site" to visit the app with fresh content.
+                    </div>
+                `;
+                
+            } catch (error) {
+                log(`✗ Error: ${error.message}`, 'error');
+                statusDiv.innerHTML = `
+                    <div class="status error">
+                        <strong>Error:</strong> ${error.message}<br>
+                        Try manually clearing browser data (Ctrl+Shift+Delete)
+                    </div>
+                `;
+            }
+        }
+
+        function goToSite() {
+            window.location.href = 'https://staffmanagmnt.netlify.app';
+        }
+
+        // Auto-run on page load
+        window.addEventListener('load', () => {
+            log('Cache cleaner loaded');
+            log('Click "Clear All Cache" button to proceed');
+        });
+    </script>
+</body>
+</html>
