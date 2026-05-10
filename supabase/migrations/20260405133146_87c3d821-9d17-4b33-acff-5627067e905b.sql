@@ -1,0 +1,1 @@
+DELETE FROM salary_categories WHERE name IN ('basic_salary', 'incentive', 'hra', 'travel_allowance');

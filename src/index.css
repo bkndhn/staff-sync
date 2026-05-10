@@ -1,0 +1,2347 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   PREMIUM UI DESIGN SYSTEM
+   Dark theme with vibrant gradients
+   ============================================ */
+
+/* Root Variables for Premium Dark Theme */
+:root {
+  /* Navigation */
+  --nav-height: 72px;
+  --nav-blur: 20px;
+
+  /* Premium Dark Color Palette */
+  --bg-primary: #0f0f1a;
+  --bg-secondary: #1a1a2e;
+  --bg-tertiary: #16213e;
+  --bg-card: rgba(26, 26, 46, 0.8);
+  --bg-card-hover: rgba(30, 30, 60, 0.9);
+
+  /* Accent Gradients */
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --danger-gradient: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+  --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --purple-gradient: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+
+  /* Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.5);
+
+  /* Glass Effects */
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-bg-strong: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-border-strong: rgba(255, 255, 255, 0.2);
+
+  /* Shadows */
+  --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-strong: 0 12px 48px rgba(0, 0, 0, 0.5);
+  --shadow-glow-primary: 0 0 40px rgba(102, 126, 234, 0.3);
+  --shadow-glow-success: 0 0 40px rgba(56, 239, 125, 0.3);
+
+  /* Transitions */
+  --transition-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Safe Area */
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ============================================
+   LIGHT THEME OVERRIDE
+   ============================================ */
+body.light-theme {
+  --bg-primary: #f5f7fa;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e8ecf1;
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-card-hover: rgba(255, 255, 255, 1);
+
+  /* Text Colors - Dark for light theme */
+  --text-primary: #1a1a2e;
+  --text-secondary: rgba(26, 26, 46, 0.7);
+  --text-muted: rgba(26, 26, 46, 0.5);
+
+  /* Glass Effects - Darker for light theme */
+  --glass-bg: rgba(0, 0, 0, 0.02);
+  --glass-bg-strong: rgba(0, 0, 0, 0.05);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-strong: rgba(0, 0, 0, 0.15);
+
+  /* Shadows - Lighter for light theme */
+  --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.08);
+  --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-strong: 0 12px 48px rgba(0, 0, 0, 0.15);
+  --shadow-glow-primary: 0 0 40px rgba(102, 126, 234, 0.15);
+  --shadow-glow-success: 0 0 40px rgba(56, 239, 125, 0.15);
+}
+
+/* Light theme border overrides */
+body.light-theme .border-white\/10,
+body.light-theme .border-white\/20,
+body.light-theme .border-white\/30 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+body.light-theme .bg-white\/5,
+body.light-theme .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+body.light-theme .text-white\/30,
+body.light-theme .text-white\/20 {
+  color: rgba(26, 26, 46, 0.4) !important;
+}
+
+body.light-theme .divide-white\/10>*+* {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Light theme body background */
+body.light-theme {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+}
+
+body.light-theme::before {
+  background: radial-gradient(ellipse at top left, rgba(102, 126, 234, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, rgba(168, 85, 247, 0.08) 0%, transparent 50%);
+}
+
+/* Light theme text color overrides */
+body.light-theme h1,
+body.light-theme h2,
+body.light-theme h3,
+body.light-theme h4,
+body.light-theme h5,
+body.light-theme h6 {
+  color: #1a1a2e !important;
+}
+
+body.light-theme .text-white {
+  color: #1a1a2e !important;
+}
+
+/* EXCEPTION: Preserve white text inside green WhatsApp/colored bg buttons */
+body.light-theme button.bg-\[\#25D366\],
+body.light-theme button.bg-\[\#25D366\] span,
+body.light-theme button.bg-\[\#25D366\] .text-white {
+  color: #ffffff !important;
+}
+
+/* EXCEPTION: Preserve white text inside gradient headers */
+body.light-theme [class*="bg-gradient"] .text-white,
+body.light-theme [class*="bg-gradient"] h1,
+body.light-theme [class*="bg-gradient"] h2,
+body.light-theme [class*="bg-gradient"] p,
+body.light-theme [class*="bg-gradient"] span,
+body.light-theme [class*="bg-gradient"] button,
+body.light-theme [class*="from-blue"] .text-white,
+body.light-theme [class*="from-blue"] h1,
+body.light-theme [class*="from-blue"] h2,
+body.light-theme [class*="from-purple"] .text-white,
+body.light-theme [class*="from-purple"] h1,
+body.light-theme [class*="from-purple"] h2 {
+  color: #ffffff !important;
+}
+
+body.light-theme [class*="bg-gradient"] svg,
+body.light-theme [class*="from-blue"] svg,
+body.light-theme [class*="from-purple"] svg {
+  color: #ffffff !important;
+  fill: currentColor !important;
+}
+
+body.light-theme .text-white\/50,
+body.light-theme .text-white\/60,
+body.light-theme .text-white\/70,
+body.light-theme .text-white\/40 {
+  color: rgba(26, 26, 46, 0.6) !important;
+}
+
+/* EXCEPTION: Preserve white/opacity text inside gradient headers */
+body.light-theme [class*="bg-gradient"] .text-white\/50,
+body.light-theme [class*="bg-gradient"] .text-white\/60,
+body.light-theme [class*="bg-gradient"] .text-white\/70,
+body.light-theme [class*="bg-gradient"] .text-white\/80 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+body.light-theme p {
+  color: #1a1a2e !important;
+}
+
+body.light-theme label {
+  color: rgba(26, 26, 46, 0.7) !important;
+}
+
+/* Light theme card backgrounds */
+body.light-theme .glass-card,
+body.light-theme .glass-card-static,
+body.light-theme .stat-card {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Light theme inputs */
+body.light-theme .input-premium,
+body.light-theme input[type="text"],
+body.light-theme input[type="number"],
+body.light-theme input[type="date"],
+body.light-theme input[type="email"],
+body.light-theme input[type="password"],
+body.light-theme select,
+body.light-theme textarea {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+  color: #1a1a2e !important;
+}
+
+/* Light theme tables */
+body.light-theme table {
+  color: #1a1a2e !important;
+}
+
+body.light-theme th {
+  background: rgba(102, 126, 234, 0.1) !important;
+  color: #1a1a2e !important;
+}
+
+body.light-theme td {
+  color: #1a1a2e !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-theme tr:hover td {
+  background: rgba(102, 126, 234, 0.05) !important;
+}
+
+/* Light theme navigation */
+body.light-theme nav,
+body.light-theme .nav-premium {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+body.light-theme .nav-item {
+  color: #1a1a2e !important;
+}
+
+/* Light theme buttons */
+body.light-theme .btn-secondary,
+body.light-theme button.bg-gray-600,
+body.light-theme button.bg-gray-700 {
+  background: rgba(0, 0, 0, 0.1) !important;
+  color: #1a1a2e !important;
+}
+
+/* Light theme badge overrides (badges only - with background) */
+body.light-theme .badge-success {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+  color: #047857 !important;
+  border-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+body.light-theme .badge-warning {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  color: #b45309 !important;
+  border-color: rgba(245, 158, 11, 0.2) !important;
+}
+
+body.light-theme .badge-danger {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  color: #b91c1c !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+body.light-theme .badge-info {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  color: #1d4ed8 !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+body.light-theme .badge-purple {
+  background-color: rgba(139, 92, 246, 0.1) !important;
+  color: #6d28d9 !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+}
+
+/* Light theme text color overrides (text only - no background) */
+body.light-theme .text-green-500,
+body.light-theme .text-green-400 { color: #047857 !important; }
+body.light-theme .text-emerald-500,
+body.light-theme .text-emerald-400,
+body.light-theme .text-emerald-600 { color: #047857 !important; }
+body.light-theme .text-yellow-500,
+body.light-theme .text-amber-400,
+body.light-theme .text-amber-500,
+body.light-theme .text-amber-600 { color: #b45309 !important; }
+body.light-theme .text-orange-500,
+body.light-theme .text-orange-600 { color: #c2410c !important; }
+body.light-theme .text-red-500,
+body.light-theme .text-red-400,
+body.light-theme .text-red-600 { color: #b91c1c !important; }
+body.light-theme .text-blue-500,
+body.light-theme .text-blue-400,
+body.light-theme .text-blue-600 { color: #1d4ed8 !important; }
+body.light-theme .text-purple-500,
+body.light-theme .text-purple-400,
+body.light-theme .text-purple-600 { color: #6d28d9 !important; }
+body.light-theme .text-indigo-400,
+body.light-theme .text-indigo-500,
+body.light-theme .text-indigo-600 { color: #4338ca !important; }
+
+/* Preserve white text inside gradient containers */
+body.light-theme [class*="from-indigo-5"] .text-white,
+body.light-theme [class*="from-emerald-5"] .text-white,
+body.light-theme [class*="from-emerald-5"] span,
+body.light-theme [class*="from-indigo-5"] span,
+body.light-theme [class*="from-indigo-5"] p,
+body.light-theme .bg-indigo-600 svg,
+body.light-theme .bg-indigo-600 span,
+body.light-theme .bg-red-600 svg,
+body.light-theme .bg-red-600 span {
+  color: #ffffff !important;
+}
+
+/* Fix for light theme specific text colors in tables/cards */
+body.light-theme .text-gray-400 {
+  color: #6b7280 !important;
+}
+
+body.light-theme .text-white\/60,
+body.light-theme .text-white\/50 {
+  color: #4b5563 !important;
+}
+
+/* Date picker visibility fix */
+body.light-theme input[type="date"] {
+  color-scheme: light;
+  color: #1a1a2e !important;
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Mobile Nav Light Theme Override */
+body.light-theme .mobile-nav {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-top-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+body.light-theme .mobile-nav-item span {
+  color: rgba(26, 26, 46, 0.6) !important;
+}
+
+body.light-theme .mobile-nav-item-active span {
+  color: white !important;
+}
+
+body.light-theme .mobile-nav-item svg {
+  color: rgba(26, 26, 46, 0.6) !important;
+}
+
+body.light-theme .mobile-nav-item-active svg {
+  color: white !important;
+}
+
+/* Fix for light theme specific date picker icon visibility */
+body.light-theme input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none !important;
+  opacity: 1;
+  cursor: pointer;
+}
+
+/* Stronger text overrides for light theme */
+body.light-theme .text-white {
+  color: #1a1a2e !important;
+}
+
+/* EXCEPTION: Green/colored background buttons keep white text */
+body.light-theme .btn-premium.bg-\[\#25D366\],
+body.light-theme .btn-premium.bg-\[\#25D366\] span {
+  color: #ffffff !important;
+}
+
+/* EXCEPTION: Preserve white text on active tabs with gradient backgrounds */
+body.light-theme button[class*="from-indigo-5"][class*="text-white"],
+body.light-theme button[class*="from-emerald-5"][class*="text-white"],
+body.light-theme button[class*="from-purple-6"][class*="text-white"],
+body.light-theme button[class*="from-indigo-5"] span,
+body.light-theme button[class*="from-emerald-5"] span,
+body.light-theme button[class*="from-purple-6"] span,
+body.light-theme button[class*="from-indigo-5"] svg,
+body.light-theme button[class*="from-emerald-5"] svg,
+body.light-theme button[class*="from-purple-6"] svg {
+  color: #ffffff !important;
+}
+
+/* Active nav tabs in light mode - white text */
+body.light-theme .nav-tab-active,
+body.light-theme .nav-tab-active span,
+body.light-theme .nav-tab-active svg {
+  color: #ffffff !important;
+}
+
+body.light-theme .text-white\/80,
+body.light-theme .text-white\/90 {
+  color: rgba(26, 26, 46, 0.9) !important;
+}
+
+/* Base Styles */
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: contain;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* Premium Background Pattern */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at top left, rgba(102, 126, 234, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, rgba(118, 75, 162, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at center, rgba(99, 102, 241, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ============================================
+   MOBILE BOTTOM NAVIGATION SPACING
+   ============================================ */
+@media screen and (max-width: 768px) {
+  body {
+    padding-bottom: calc(var(--nav-height) + var(--safe-area-bottom) + 16px);
+  }
+
+  main {
+    min-height: calc(100vh - var(--nav-height) - 60px);
+  }
+}
+
+/* ============================================
+   PREMIUM GLASSMORPHISM CARDS
+   ============================================ */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-soft);
+  transition: all 0.3s var(--transition-smooth);
+}
+
+.glass-card:hover {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border-strong);
+  box-shadow: var(--shadow-medium);
+  transform: translateY(-2px);
+}
+
+.glass-card-static {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-soft);
+}
+
+/* ============================================
+   PREMIUM BUTTON STYLES
+   ============================================ */
+.btn-premium {
+  background: var(--primary-gradient);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+  transition: all 300ms var(--transition-spring);
+  transform: translateZ(0);
+  will-change: transform, box-shadow;
+  cursor: pointer;
+}
+
+.btn-premium:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.btn-premium:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.btn-premium-success {
+  background: var(--success-gradient);
+  box-shadow: 0 4px 14px rgba(56, 239, 125, 0.4);
+}
+
+.btn-premium-success:hover {
+  box-shadow: 0 6px 20px rgba(56, 239, 125, 0.5);
+}
+
+.btn-premium-danger {
+  background: var(--danger-gradient);
+  box-shadow: 0 4px 14px rgba(255, 65, 108, 0.4);
+}
+
+.btn-premium-danger:hover {
+  box-shadow: 0 6px 20px rgba(255, 65, 108, 0.5);
+}
+
+.btn-ghost {
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 500;
+  transition: all 200ms var(--transition-smooth);
+  cursor: pointer;
+}
+
+.btn-ghost:hover {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border-strong);
+}
+
+/* ============================================
+   PREMIUM INPUT STYLES
+   ============================================ */
+.input-premium {
+  width: 100%;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: var(--text-primary);
+  font-size: 1rem;
+  transition: all 200ms var(--transition-smooth);
+}
+
+.input-premium::placeholder {
+  color: var(--text-muted);
+}
+
+.input-premium:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  background: var(--glass-bg-strong);
+}
+
+.input-premium:hover:not(:focus) {
+  border-color: var(--glass-border-strong);
+}
+
+/* Select styling */
+select.input-premium {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+select.input-premium option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* ============================================
+   PREMIUM TABLE STYLES
+   ============================================ */
+.table-premium {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-premium thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.table-premium th {
+  background: var(--primary-gradient);
+  color: white;
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.table-premium th:first-child {
+  border-radius: 12px 0 0 0;
+}
+
+.table-premium th:last-child {
+  border-radius: 0 12px 0 0;
+}
+
+.table-premium td {
+  background: var(--glass-bg);
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.table-premium tbody tr {
+  transition: all 200ms var(--transition-smooth);
+}
+
+.table-premium tbody tr:hover td {
+  background: var(--glass-bg-strong);
+}
+
+.table-premium tbody tr:last-child td:first-child {
+  border-radius: 0 0 0 12px;
+}
+
+.table-premium tbody tr:last-child td:last-child {
+  border-radius: 0 0 12px 0;
+}
+
+/* ============================================
+   PREMIUM STATUS BADGES
+   ============================================ */
+.badge-premium {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.badge-success {
+  background: rgba(56, 239, 125, 0.15);
+  color: #38ef7d;
+  border: 1px solid rgba(56, 239, 125, 0.3);
+}
+
+.badge-warning {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.badge-danger {
+  background: rgba(255, 65, 108, 0.15);
+  color: #ff416c;
+  border: 1px solid rgba(255, 65, 108, 0.3);
+}
+
+.badge-info {
+  background: rgba(79, 172, 254, 0.15);
+  color: #4facfe;
+  border: 1px solid rgba(79, 172, 254, 0.3);
+}
+
+.badge-purple {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.badge-neutral {
+  background: var(--glass-bg-strong);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+}
+
+/* ============================================
+   PREMIUM STAT CARDS
+   ============================================ */
+.stat-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: all 300ms var(--transition-smooth);
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--primary-gradient);
+  opacity: 0;
+  transition: opacity 300ms var(--transition-smooth);
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-glow-primary);
+  border-color: rgba(102, 126, 234, 0.3);
+}
+
+.stat-card:hover::before {
+  opacity: 1;
+}
+
+.stat-card-success::before {
+  background: var(--success-gradient);
+}
+
+.stat-card-success:hover {
+  box-shadow: var(--shadow-glow-success);
+  border-color: rgba(56, 239, 125, 0.3);
+}
+
+.stat-card-warning::before {
+  background: var(--warning-gradient);
+}
+
+.stat-card-danger::before {
+  background: var(--danger-gradient);
+}
+
+.stat-card-purple::before {
+  background: var(--purple-gradient);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass-bg-strong);
+}
+
+.stat-icon-primary {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+  color: #667eea;
+}
+
+.stat-icon-success {
+  background: linear-gradient(135deg, rgba(17, 153, 142, 0.2) 0%, rgba(56, 239, 125, 0.2) 100%);
+  color: #38ef7d;
+}
+
+.stat-icon-warning {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.2) 100%);
+  color: #fbbf24;
+}
+
+.stat-icon-danger {
+  background: linear-gradient(135deg, rgba(255, 65, 108, 0.2) 0%, rgba(255, 75, 43, 0.2) 100%);
+  color: #ff416c;
+}
+
+.stat-icon-purple {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%);
+  color: #a855f7;
+}
+
+/* ============================================
+   PREMIUM MODAL STYLES
+   ============================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+  animation: fade-in 200ms var(--transition-smooth);
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 28px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-strong);
+  animation: modal-slide-up 300ms var(--transition-spring);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ============================================
+   PREMIUM NAVIGATION STYLES
+   ============================================ */
+.nav-premium {
+  background: rgba(15, 15, 26, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.3);
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 200ms var(--transition-smooth);
+  cursor: pointer;
+}
+
+.nav-tab:hover {
+  color: var(--text-primary);
+  background: var(--glass-bg);
+}
+
+.nav-tab-active {
+  background: var(--primary-gradient);
+  color: white;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+}
+
+.nav-tab-active:hover {
+  background: var(--primary-gradient);
+  color: white;
+}
+
+/* Mobile Bottom Nav */
+.mobile-nav {
+  background: rgba(15, 15, 26, 0.95);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-top: 1px solid var(--glass-border);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 16px;
+  transition: all 300ms var(--transition-spring);
+  flex: 1;
+  min-width: 48px;
+  max-width: 72px;
+}
+
+.mobile-nav-item-active {
+  background: var(--primary-gradient);
+  transform: translateY(-4px);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
+}
+
+/* ============================================
+   PAGE ANIMATIONS
+   ============================================ */
+.page-enter {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms var(--transition-smooth),
+    transform 300ms var(--transition-spring);
+}
+
+.card-animate {
+  animation: card-slide-up 400ms var(--transition-spring) forwards;
+  opacity: 0;
+}
+
+@keyframes card-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Staggered animation delays */
+.card-animate:nth-child(1) {
+  animation-delay: 50ms;
+}
+
+.card-animate:nth-child(2) {
+  animation-delay: 100ms;
+}
+
+.card-animate:nth-child(3) {
+  animation-delay: 150ms;
+}
+
+.card-animate:nth-child(4) {
+  animation-delay: 200ms;
+}
+
+.card-animate:nth-child(5) {
+  animation-delay: 250ms;
+}
+
+.card-animate:nth-child(6) {
+  animation-delay: 300ms;
+}
+
+/* ============================================
+   PREMIUM SCROLLBAR
+   ============================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--glass-border-strong);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================
+   LOCATION COLOR BADGES (Premium)
+   ============================================ */
+.location-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.location-big-shop {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.location-small-shop {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.location-godown {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+/* ============================================
+   PREMIUM LOADING SPINNER
+   ============================================ */
+.premium-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--glass-border);
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================ */
+@media screen and (max-width: 768px) {
+  .container {
+    width: 100%;
+    padding: 4px;
+  }
+
+  /* Header adjustments */
+  .page-header {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .page-title {
+    font-size: 1.5rem !important;
+  }
+
+  /* Form responsive */
+  .form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  /* Table responsive - enable horizontal scrolling and sticky headers */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    margin-bottom: 1rem;
+    position: relative;
+  }
+
+  .table-container table {
+    min-width: 500px;
+  }
+
+  /* Compact table for mobile */
+  .table-premium td,
+  .table-premium th {
+    padding: 8px 6px;
+    font-size: 0.8125rem;
+  }
+
+  .table-premium th {
+    font-size: 0.75rem;
+  }
+
+  /* Stats grid responsive */
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  .section-body {
+    padding: 12px;
+  }
+
+  /* Modal responsive */
+  .modal-content {
+    margin: 8px;
+    max-width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  /* Input responsive */
+  .input-premium {
+    font-size: 16px;
+    padding: 12px 14px;
+  }
+
+  /* Button responsive */
+  .btn-premium,
+  .btn-ghost {
+    width: 100%;
+    justify-content: center;
+    padding: 14px 20px;
+  }
+
+  /* Text responsive */
+  h1 {
+    font-size: 1.75rem !important;
+    font-weight: 700;
+  }
+
+  h2 {
+    font-size: 1.5rem !important;
+    font-weight: 600;
+  }
+
+  h3 {
+    font-size: 1.25rem !important;
+    font-weight: 600;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .page-title {
+    font-size: 1.25rem !important;
+  }
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .modal-content {
+    margin: 0;
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .badge-premium {
+    padding: 4px 8px;
+    font-size: 0.65rem;
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+.text-gradient {
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-success {
+  background: var(--success-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glow-primary {
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.glow-success {
+  box-shadow: var(--shadow-glow-success);
+}
+
+/* ============================================
+   SAFE AREA SUPPORT
+   ============================================ */
+@supports (padding: max(0px)) {
+  .safe-area-padding {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .bottom-nav-safe {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+}
+
+/* ============================================
+   FLOATING ACTION BUTTON
+   ============================================ */
+.fab {
+  position: fixed;
+  bottom: calc(var(--nav-height) + var(--safe-area-bottom) + 24px);
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--primary-gradient);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 24px rgba(102, 126, 234, 0.5);
+  transition: all 300ms var(--transition-spring);
+  z-index: 40;
+  cursor: pointer;
+  border: none;
+}
+
+.fab:hover {
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.6);
+}
+
+.fab:active {
+  transform: scale(0.95);
+}
+
+@media screen and (max-width: 768px) {
+  .fab {
+    bottom: calc(var(--nav-height) + var(--safe-area-bottom) + 16px);
+    right: 16px;
+  }
+}
+
+/* ============================================
+   SECTION CARDS WITH GRADIENT ACCENT
+   ============================================ */
+.section-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.section-header {
+  background: var(--primary-gradient);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.section-header h2,
+.section-header h3 {
+  color: white;
+  margin: 0;
+  font-weight: 600;
+}
+
+.section-body {
+  padding: 20px;
+}
+
+/* ============================================
+   ATTENDANCE STATUS COLORS (Premium)
+   ============================================ */
+.status-present {
+  background: rgba(56, 239, 125, 0.15);
+  color: #38ef7d;
+  border: 1px solid rgba(56, 239, 125, 0.3);
+}
+
+.status-half-day {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.status-absent {
+  background: rgba(255, 65, 108, 0.15);
+  color: #ff416c;
+  border: 1px solid rgba(255, 65, 108, 0.3);
+}
+
+/* ============================================
+   QUICK ACTION BUTTONS
+   ============================================ */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 200ms var(--transition-smooth);
+}
+
+.action-btn-edit {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.action-btn-edit:hover {
+  background: rgba(59, 130, 246, 0.3);
+  transform: scale(1.1);
+}
+
+.action-btn-delete {
+  background: rgba(255, 65, 108, 0.15);
+  color: #ff416c;
+}
+
+.action-btn-delete:hover {
+  background: rgba(255, 65, 108, 0.3);
+  transform: scale(1.1);
+}
+
+.action-btn-success {
+  background: rgba(56, 239, 125, 0.15);
+  color: #38ef7d;
+}
+
+.action-btn-success:hover {
+  background: rgba(56, 239, 125, 0.3);
+  transform: scale(1.1);
+}
+
+/* ============================================
+   GLOBAL DARK THEME TEXT OVERRIDES
+   Force light text on dark backgrounds
+   ============================================ */
+
+/* Override Tailwind dark text classes for tables */
+.table-premium td,
+.table-container td,
+.glass-card-static td,
+table td {
+  color: var(--text-primary) !important;
+}
+
+.table-premium td .text-gray-900,
+.table-premium td .text-gray-800,
+.table-premium td .text-gray-700,
+.table-container td .text-gray-900,
+.table-container td .text-gray-800,
+table td .text-gray-900,
+table td .text-gray-800 {
+  color: var(--text-primary) !important;
+}
+
+/* Force white text in table cells with sticky positioning */
+.table-premium td.sticky,
+.table-premium td[class*="sticky"],
+table td.sticky {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Input text visibility fix */
+input,
+select,
+textarea {
+  color: var(--text-primary) !important;
+  background: var(--glass-bg) !important;
+  border-color: var(--glass-border) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  background: var(--glass-bg-strong) !important;
+  border-color: #667eea !important;
+}
+
+/* Select dropdown options */
+select option {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Override all gray text classes globally */
+.text-gray-900,
+.text-gray-800,
+.text-gray-700,
+.text-gray-600 {
+  color: var(--text-primary) !important;
+}
+
+.text-gray-500 {
+  color: var(--text-secondary) !important;
+}
+
+.text-gray-400 {
+  color: var(--text-muted) !important;
+}
+
+/* Table row hover states - ensure text stays visible */
+table tbody tr:hover td {
+  background: rgba(102, 126, 234, 0.15) !important;
+  color: var(--text-primary) !important;
+}
+
+table tbody tr:hover td * {
+  color: inherit !important;
+}
+
+/* Sticky cells must have solid background on hover */
+table tbody tr:hover td.sticky,
+table tbody tr:hover td[class*="sticky"] {
+  background: var(--bg-secondary) !important;
+}
+
+/* Override bg-white classes on containers */
+.bg-white {
+  background: var(--glass-bg) !important;
+}
+
+/* Override light borders */
+.border-gray-100,
+.border-gray-200,
+.border-gray-300 {
+  border-color: var(--glass-border) !important;
+}
+
+/* Badge text overrides for visibility */
+.bg-green-100 {
+  background: rgba(56, 239, 125, 0.2) !important;
+}
+
+.bg-yellow-100 {
+  background: rgba(251, 191, 36, 0.2) !important;
+}
+
+.bg-red-100 {
+  background: rgba(255, 65, 108, 0.2) !important;
+}
+
+.bg-blue-100 {
+  background: rgba(59, 130, 246, 0.2) !important;
+}
+
+.bg-gray-100 {
+  background: var(--glass-bg-strong) !important;
+}
+
+.text-green-800 {
+  color: #38ef7d !important;
+}
+
+.text-yellow-800 {
+  color: #fbbf24 !important;
+}
+
+.text-red-800 {
+  color: #ff6b8a !important;
+}
+
+.text-gray-800 {
+  color: var(--text-primary) !important;
+}
+
+/* Fix thead background on gray-50 */
+.bg-gray-50,
+thead.bg-gray-50,
+tr.bg-gray-50,
+th.bg-gray-50 {
+  background: var(--bg-tertiary) !important;
+}
+
+/* ============================================
+   INPUT ICON VISIBILITY FIX
+   ============================================ */
+
+/* Login and form input icons */
+.relative .absolute svg,
+.relative>svg,
+input+svg,
+.input-premium~svg,
+div>svg[class*="text-white"],
+div>svg[class*="text-gray"] {
+  color: rgba(255, 255, 255, 0.5) !important;
+  opacity: 1 !important;
+}
+
+/* Ensure icons inside buttons stay visible */
+button svg {
+  color: inherit !important;
+}
+
+/* ============================================
+   HOVER STATE TEXT FIXES FOR ALL PAGES
+   ============================================ */
+
+/* Hover on gray backgrounds */
+.hover\:bg-gray-50:hover,
+.hover\:bg-gray-100:hover,
+.hover\:bg-gray-200:hover {
+  background: var(--glass-bg-strong) !important;
+}
+
+/* Ensure text visibility on all hover states */
+tr:hover .text-gray-900,
+tr:hover .text-gray-800,
+tr:hover .text-gray-700,
+tr:hover .text-gray-600 {
+  color: var(--text-primary) !important;
+}
+
+/* Fix purple/blue gradient hover - override with subtle glass */
+tr.hover\:bg-gray-50:hover td,
+tr[class*="hover"]:hover td {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Purple accent badges */
+.bg-purple-100 {
+  background: rgba(168, 85, 247, 0.2) !important;
+}
+
+.text-purple-800 {
+  color: #c084fc !important;
+}
+
+/* Orange accent badges */
+.bg-orange-100 {
+  background: rgba(251, 146, 60, 0.2) !important;
+}
+
+.text-orange-800 {
+  color: #fb923c !important;
+}
+
+/* Indigo accent badges */
+.bg-indigo-100 {
+  background: rgba(99, 102, 241, 0.2) !important;
+}
+
+.text-indigo-800 {
+  color: #818cf8 !important;
+}
+
+/* Ensure font weight stays on hover */
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+/* ============================================
+   MONTHLY VIEW AND CALENDAR CELL FIXES
+   ============================================ */
+
+/* Monthly view cells with light backgrounds */
+td.bg-white,
+td[class*="bg-white"],
+td[class*="bg-gray-50"],
+td[class*="bg-gray-100"] {
+  background: var(--glass-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Ensure all table cells have visible text */
+table td,
+table th {
+  color: var(--text-primary) !important;
+}
+
+/* Light blue/purple/pink background cells in monthly view */
+td[style*="background"],
+td[class*="bg-blue-50"],
+td[class*="bg-indigo-50"],
+td[class*="bg-purple-50"],
+td[class*="bg-pink-50"],
+td[class*="bg-violet-50"] {
+  color: var(--text-primary) !important;
+}
+
+/* Override any inline white backgrounds */
+[style*="background-color: white"],
+[style*="background-color: #fff"],
+[style*="background-color: rgb(255, 255, 255)"],
+[style*="background: white"],
+[style*="background: #fff"] {
+  background-color: var(--glass-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ============================================
+   LOGIN ICON OVERRIDES (CRITICAL)
+   ============================================ */
+
+/* Force login input icons to be visible - limited to glass cards */
+.glass-card-static svg,
+.glass-card-static .relative svg,
+.glass-card-static input+svg,
+.glass-card-static button svg {
+  color: white !important;
+  opacity: 1 !important;
+  z-index: 10;
+}
+
+/* Do not override button SVGs to white if they have specific colors */
+.btn-premium svg,
+.btn-ghost svg {
+  color: inherit !important;
+}
+
+/* ============================================
+   ATTENDANCE BADGE CELL OVERRIDES
+   ============================================ */
+
+/* All attendance status cells */
+td span[class*="bg-green"],
+td span[class*="bg-red"],
+td span[class*="bg-yellow"],
+td span[class*="bg-blue"] {
+  color: white !important;
+  font-weight: 600 !important;
+}
+
+/* Ensure P, H, A badges are visible */
+.bg-green-500,
+.bg-emerald-500 {
+  background-color: #10b981 !important;
+  color: white !important;
+}
+
+.bg-red-500 {
+  background-color: #ef4444 !important;
+  color: white !important;
+}
+
+.bg-yellow-500,
+.bg-amber-500 {
+  background-color: #f59e0b !important;
+  color: white !important;
+}
+
+/* ============================================
+   MONTHLY VIEW LIGHT BACKGROUND OVERRIDES
+   ============================================ */
+
+/* Override light-50 backgrounds in monthly view summary columns */
+.bg-green-50,
+th.bg-green-50,
+td.bg-green-50 {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+  color: #10b981 !important;
+}
+
+.bg-yellow-50,
+th.bg-yellow-50,
+td.bg-yellow-50 {
+  background-color: rgba(245, 158, 11, 0.2) !important;
+  color: #f59e0b !important;
+}
+
+.bg-red-50,
+th.bg-red-50,
+td.bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  color: #ef4444 !important;
+}
+
+.bg-red-100,
+th.bg-red-100,
+td.bg-red-100 {
+  background-color: rgba(220, 38, 38, 0.25) !important;
+  color: #dc2626 !important;
+}
+
+.bg-blue-50,
+th.bg-blue-50,
+td.bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  color: #3b82f6 !important;
+}
+
+/* Ensure the text colors in monthly summary cells stay visible */
+.text-green-600 {
+  color: #10b981 !important;
+}
+
+.text-yellow-600 {
+  color: #f59e0b !important;
+}
+
+.text-red-600 {
+  color: #ef4444 !important;
+}
+
+.text-red-700 {
+  color: #dc2626 !important;
+}
+
+.text-blue-600 {
+  color: #3b82f6 !important;
+}
+
+/* Make sure table cells with colored backgrounds have proper text */
+td[class*="bg-green"],
+td[class*="bg-yellow"],
+td[class*="bg-red"],
+td[class*="bg-blue"] {
+  color: inherit !important;
+}
+
+/* Orange backgrounds for shifts */
+.bg-orange-50,
+th.bg-orange-50,
+td.bg-orange-50 {
+  background-color: rgba(249, 115, 22, 0.2) !important;
+  color: #f97316 !important;
+}
+
+.text-orange-600 {
+  color: #f97316 !important;
+}
+
+/* Pink backgrounds for shifts */
+.bg-pink-50,
+th.bg-pink-50,
+td.bg-pink-50 {
+  background-color: rgba(236, 72, 153, 0.2) !important;
+  color: #ec4899 !important;
+}
+
+.text-pink-600 {
+  color: #ec4899 !important;
+}
+
+/* Indigo backgrounds */
+.bg-indigo-50,
+th.bg-indigo-50,
+td.bg-indigo-50 {
+  background-color: rgba(99, 102, 241, 0.2) !important;
+  color: #6366f1 !important;
+}
+
+.text-indigo-600 {
+  color: #6366f1 !important;
+}
+
+/* ============================================
+   CRITICAL GLOBAL VISIBILITY OVERRIDES
+   Forces ALL elements to be visible on dark theme
+   ============================================ */
+
+/* Force all text to be visible by default */
+body,
+html,
+#root {
+  color: var(--text-primary) !important;
+}
+
+/* Critical: Force all dark text classes to be light */
+[class*="text-gray-9"],
+[class*="text-gray-8"],
+[class*="text-gray-7"],
+[class*="text-gray-6"] {
+  color: var(--text-primary) !important;
+}
+
+/* Force all inputs to have visible text */
+input,
+textarea,
+select {
+  color: var(--text-primary) !important;
+  background-color: var(--glass-bg) !important;
+  border-color: var(--glass-border-strong) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Force all SVG icons to be visible */
+svg {
+  color: inherit;
+  fill: currentColor;
+}
+
+/* Absolute positioned icons (like in inputs) */
+.relative>svg,
+.relative .absolute svg,
+div[class*="absolute"] svg,
+button svg {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Force visibility for eye icons specifically */
+button[aria-label*="password"] svg,
+button[aria-label*="Password"] svg {
+  color: #818cf8 !important;
+}
+
+/* All table content visibility */
+table,
+thead,
+tbody,
+tfoot,
+tr,
+th,
+td {
+  color: var(--text-primary) !important;
+}
+
+th,
+thead th {
+  color: var(--text-secondary) !important;
+}
+
+/* Remove any white/light backgrounds on containers */
+.bg-white,
+[class*="bg-gray-5"],
+[class*="bg-slate-"] {
+  background-color: var(--glass-bg) !important;
+}
+
+/* Force labels to be visible */
+label {
+  color: var(--text-secondary) !important;
+}
+
+/* Force headings to be visible */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text-primary) !important;
+}
+
+/* Force spans in tables to inherit color */
+td span,
+th span {
+  color: inherit !important;
+}
+
+/* Badge overrides - ensure they're styled correctly */
+span[class*="bg-"][class*="text-"] {
+  /* Allow badges to use their defined colors */
+}
+
+/* Critical: Force modal backgrounds to dark */
+[class*="fixed"][class*="bg-white"],
+[class*="modal"] .bg-white,
+.fixed .bg-white {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* Force card backgrounds to dark */
+[class*="rounded-xl"].bg-white,
+[class*="rounded-lg"].bg-white,
+[class*="shadow"].bg-white {
+  background-color: var(--bg-card) !important;
+  border-color: var(--glass-border) !important;
+}
+
+/* Force dropdown/select options to be visible */
+option {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Remove transparency issues */
+[style*="opacity: 0."] {
+  opacity: 1 !important;
+}
+
+/* Force form elements to be visible */
+.form-control,
+.form-input,
+[type="text"],
+[type="email"],
+[type="password"],
+[type="number"],
+[type="date"],
+[type="time"] {
+  color: var(--text-primary) !important;
+}
+
+/* Force strong visibility on focused inputs */
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #667eea !important;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3) !important;
+}
+
+/* Date picker icon visibility */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* Sticky columns background fix */
+.sticky,
+[class*="sticky"] {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* Hover states must keep text visible */
+*:hover {
+  color: inherit;
+}
+
+/* Action buttons in tables */
+.action-btn,
+button[class*="text-blue"],
+button[class*="text-green"],
+button[class*="text-red"],
+button[class*="text-yellow"] {
+  opacity: 1 !important;
+}
+
+/* Force paragraph text visibility */
+p {
+  color: var(--text-secondary) !important;
+}
+
+/* Divider lines */
+hr,
+[class*="divide-"]>*+* {
+  border-color: var(--glass-border) !important;
+}
+
+/* Remove any remaining light theme artifacts */
+.border-gray-100,
+.border-gray-200,
+.divide-gray-100,
+.divide-gray-200 {
+  border-color: var(--glass-border) !important;
+}
+
+/* ============================================
+   MODAL AND HOVER STATE FIXES
+   ============================================ */
+
+/* Radio button label hover states - prevent text disappearing */
+label:hover,
+label.hover\:bg-yellow-50:hover,
+label.hover\:bg-blue-50:hover,
+label[class*="hover:bg-"]:hover {
+  background-color: var(--glass-bg-strong) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Ensure text in hovered labels stays visible */
+label:hover span,
+label:hover .font-medium,
+label:hover * {
+  color: inherit !important;
+}
+
+/* Modal container backgrounds */
+.fixed.inset-0 .bg-white,
+[class*="modal"] .bg-white,
+.fixed .rounded-xl,
+.fixed .rounded-lg {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Radio button visible on dark theme */
+input[type="radio"] {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--glass-border-strong);
+  border-radius: 50%;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+input[type="radio"]:checked {
+  border-color: #f97316;
+  background-color: #f97316;
+  box-shadow: inset 0 0 0 3px var(--bg-secondary);
+}
+
+/* Modal text visibility */
+.fixed span,
+.fixed .font-medium,
+.fixed h3,
+.fixed p,
+.fixed label {
+  color: var(--text-primary) !important;
+}
+
+/* Modal buttons */
+.fixed button[class*="bg-gray"],
+.fixed button.bg-gray-200 {
+  background-color: var(--glass-bg-strong) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Hover on any interactive element */
+*:hover>span:not([class*="bg-"]),
+*:hover>.font-medium {
+  color: inherit !important;
+}
+
+/* Selected/checked state labels */
+label:has(input:checked) {
+  background-color: rgba(249, 115, 22, 0.2) !important;
+  border-color: #f97316 !important;
+}
+
+label:has(input:checked) span,
+label:has(input:checked) .font-medium {
+  color: #f97316 !important;
+}
+
+/* ============================================
+   STICKY TABLE HEADERS - Freeze on Scroll
+   ============================================ */
+.table-container {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.table-container>.overflow-x-auto,
+.table-container .overflow-x-auto {
+  max-height: calc(100vh - 300px);
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+}
+
+/* Force sticky header on table */
+.table-container .table-premium thead,
+.table-container table thead {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+/* Ensure th has solid background for sticky to work */
+/* ============================================
+   STANDARDIZED TABLE HEADERS (User Request)
+   - Solid background (like Attendance page)
+   - Increased text size
+   ============================================ */
+.table-premium thead th,
+.table-container table thead th,
+.table-container .table-premium th,
+.table-container table th {
+  background: #f9fafb !important;
+  /* gray-50 */
+  color: #6b7280 !important;
+  /* gray-500 */
+  font-size: 14px !important;
+  /* Increased size (text-sm) */
+  font-weight: 500 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #e5e7eb !important;
+  position: sticky !important;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Light theme explicit */
+body.light-theme .table-premium thead th,
+body.light-theme .table-container table thead th,
+body.light-theme .table-container .table-premium th,
+body.light-theme .table-container table th {
+  background: #f9fafb !important;
+  color: #6b7280 !important;
+}
+
+/* Dark theme overrides */
+body:not(.light-theme) .table-premium thead th,
+body:not(.light-theme) .table-container table thead th,
+body:not(.light-theme) .table-container .table-premium th,
+body:not(.light-theme) .table-container table th {
+  background: #1f2937 !important;
+  /* gray-800 */
+  color: #9ca3af !important;
+  border-bottom: 1px solid #374151 !important;
+}
+
+/* Desktop: More table height */
+@media (min-width: 769px) {
+
+  .table-container>.overflow-x-auto,
+  .table-container .overflow-x-auto {
+    max-height: calc(100vh - 260px);
+  }
+}
+
+/* Mobile: Less height for bottom nav */
+@media (max-width: 768px) {
+
+  .table-container>.overflow-x-auto,
+  .table-container .overflow-x-auto {
+    max-height: calc(100vh - 380px);
+  }
+
+  /* Increase mobile header text size a bit too */
+  .table-premium thead th,
+  .table-container table thead th,
+  .table-container .table-premium th,
+  .table-container table th {
+    font-size: 12px !important;
+    /* Increased from 0.65rem (~10px) to 12px */
+  }
+}
+
+/* Utility classes to force text color (override global !important) */
+.text-force-dark {
+  color: #1f2937 !important;
+}
+
+.text-force-medium {
+  color: #374151 !important;
+}
+
+/* Light theme: ensure select option text is visible */
+body.light-theme select option {
+  background: #ffffff !important;
+  color: #1a1a2e !important;
+}
+
+/* Light theme: ensure all badge text stays visible */
+body.light-theme .badge-premium {
+  color: inherit;
+}
+
+/* Light theme: toggle/checkbox label text */
+body.light-theme .text-white\/70,
+body.light-theme .text-white\/60 {
+  color: rgba(26, 26, 46, 0.7) !important;
+}
+
+/* Light theme: stat-card text overrides */
+body.light-theme .stat-card p,
+body.light-theme .stat-card span {
+  color: rgba(26, 26, 46, 0.7) !important;
+}
+
+body.light-theme .stat-card .text-3xl,
+body.light-theme .stat-card [class*="font-bold"] {
+  color: inherit !important;
+}
+
+/* Light theme: months since hike text */
+body.light-theme .text-blue-600 {
+  color: #2563eb !important;
+}
+
+/* Light theme: ensure form labels and placeholders are visible */
+body.light-theme .input-premium::placeholder {
+  color: rgba(26, 26, 46, 0.4) !important;
+}
+
+/* Additional cross-page visibility hardening */
+body:not(.light-theme) .text-gray-900 { color: rgba(255, 255, 255, 0.95) !important; }
+body:not(.light-theme) .text-gray-800 { color: rgba(255, 255, 255, 0.9) !important; }
+body:not(.light-theme) .text-gray-700 { color: rgba(255, 255, 255, 0.82) !important; }
+body:not(.light-theme) .text-gray-600 { color: rgba(255, 255, 255, 0.72) !important; }
+body:not(.light-theme) .text-gray-500 { color: rgba(255, 255, 255, 0.62) !important; }
+
+body.light-theme .bg-white,
+body.light-theme .bg-gray-50,
+body.light-theme .bg-gray-100,
+body.light-theme [class*="bg-slate-"] {
+  background-color: #ffffff !important;
+}
+
+body.light-theme .sticky.bg-white,
+body.light-theme .sticky.bg-gray-50,
+body.light-theme td.sticky,
+body.light-theme th.sticky {
+  background-color: #ffffff !important;
+}
+
+/* Light theme: Make edit/delete icon buttons visible in modals */
+body.light-theme .modal-content .text-blue-400 {
+  color: #2563eb !important;
+}
+
+body.light-theme .modal-content .text-red-400 {
+  color: #dc2626 !important;
+}
+
+body.light-theme .modal-content .text-emerald-400 {
+  color: #059669 !important;
+}
+
+body.light-theme .modal-content .text-purple-400 {
+  color: #7c3aed !important;
+}
+
+body.light-theme .modal-content .text-amber-400 {
+  color: #d97706 !important;
+}
+
+body.light-theme .modal-content .hover\:bg-white\/10:hover {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-theme .modal-content .text-white\/50 {
+  color: rgba(26, 26, 46, 0.5) !important;
+}
+
+body.light-theme .modal-content .text-white\/40 {
+  color: rgba(26, 26, 46, 0.4) !important;
+}
+
+body.light-theme .modal-content .text-white\/60 {
+  color: rgba(26, 26, 46, 0.6) !important;
+}
+
+body.light-theme .modal-content span.font-medium,
+body.light-theme .modal-content span.text-sm {
+  color: #1a1a2e !important;
+}
+
+/* Light theme: glass-card-static in modals */
+body.light-theme .modal-content .glass-card-static {
+  background: rgba(245, 247, 250, 0.95) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Light theme: keep action icons in location/category rows readable */
+body.light-theme .modal-content .glass-card-static button svg,
+body.light-theme .modal-content .glass-card-static button[class*="text-"] svg {
+  color: currentColor !important;
+}
+
+/* Light theme: Built-in badge visibility */
+body.light-theme .bg-blue-500\/20 {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+body.light-theme .bg-red-500\/20 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+
+body.light-theme .bg-emerald-500\/20 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+/* Light theme: dashboard reorder drag items */
+body.light-theme .cursor-grab .text-white\/40 {
+  color: rgba(26, 26, 46, 0.4) !important;
+}
+
+/* ============================================
+   LIGHT THEME: ICON VISIBILITY IN BUTTONS
+   Export Excel, Close, X buttons, action icons
+   ============================================ */
+
+/* Light theme: SVG icons inside non-gradient buttons must be dark */
+body.light-theme button svg {
+  color: currentColor !important;
+}
+
+/* Light theme: close/X buttons with hover:bg-white/20 */
+body.light-theme button[class*="hover:bg-white"] svg {
+  color: #1a1a2e !important;
+}
+
+/* EXCEPTION: Keep white icons inside gradient buttons and colored bg buttons */
+body.light-theme .btn-premium svg,
+body.light-theme .btn-premium-success svg,
+body.light-theme .btn-premium-danger svg,
+body.light-theme [class*="bg-gradient"] button svg,
+body.light-theme button[class*="bg-indigo-6"] svg,
+body.light-theme button[class*="bg-red-6"] svg,
+body.light-theme button[class*="bg-green-6"] svg,
+body.light-theme button[class*="bg-emerald-6"] svg,
+body.light-theme button.bg-\[\#25D366\] svg,
+body.light-theme .nav-tab-active svg,
+body.light-theme .mobile-nav-item-active svg {
+  color: #ffffff !important;
+}
+
+/* Light theme: Export Excel button inside gradient headers - already white bg */
+body.light-theme button[class*="bg-white"][class*="text-orange"] svg {
+  color: #ea580c !important;
+}
+
+/* Light theme: Close/X icons in modal headers and card headers */
+body.light-theme .text-white\/50:hover svg,
+body.light-theme button.text-white\/50 svg {
+  color: rgba(26, 26, 46, 0.5) !important;
+}
+
+/* Light theme: btn-ghost icons */
+body.light-theme .btn-ghost svg {
+  color: #1a1a2e !important;
+}
+
+/* Light theme: Action icons in tables (edit, delete, archive) */
+body.light-theme button[class*="text-blue-6"] svg {
+  color: #2563eb !important;
+}
+
+body.light-theme button[class*="text-red-6"] svg {
+  color: #dc2626 !important;
+}
+
+/* Light theme: Ensure stat-icon SVGs stay their accent color */
+body.light-theme .stat-icon svg {
+  color: inherit !important;
+}
+
+/* Light theme: Download/export button icons */
+body.light-theme button[class*="text-indigo-6"] svg {
+  color: #4338ca !important;
+}
+
+body.light-theme button[class*="text-emerald"] svg {
+  color: #059669 !important;
+}
