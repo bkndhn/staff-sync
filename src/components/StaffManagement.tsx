@@ -1019,8 +1019,18 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-1">IFSC Code</label>
                   <input type="text" value={formData.ifscCode} onChange={(e) => setFormData({ ...formData, ifscCode: e.target.value.toUpperCase() })} className="input-premium" placeholder="e.g. SBIN0001234" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1">PF Number <span className="text-white/30 text-xs">(optional)</span></label>
+                  <input type="text" value={formData.pfNumber} onChange={(e) => setFormData({ ...formData, pfNumber: e.target.value })} className="input-premium" placeholder="e.g. AB/CDE/1234567/000/0000001" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1">ESI Number <span className="text-white/30 text-xs">(optional)</span></label>
+                  <input type="text" value={formData.esiNumber} onChange={(e) => setFormData({ ...formData, esiNumber: e.target.value })} className="input-premium" placeholder="e.g. 1234567890" />
                 </div>
               </div>
+            </div>
             </div>
 
             {/* Hike Scheduling */}
