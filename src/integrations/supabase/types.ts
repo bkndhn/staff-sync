@@ -765,6 +765,7 @@ export type Database = {
           created_at: string | null
           designation: string | null
           display_order: number | null
+          esi_number: string | null
           experience: string
           floor: string | null
           hike_interval_months: number | null
@@ -781,6 +782,7 @@ export type Database = {
           name: string
           next_hike_date: string | null
           payment_mode: string | null
+          pf_number: string | null
           photo_url: string | null
           salary_calculation_days: number | null
           salary_supplements: Json | null
@@ -802,6 +804,7 @@ export type Database = {
           created_at?: string | null
           designation?: string | null
           display_order?: number | null
+          esi_number?: string | null
           experience: string
           floor?: string | null
           hike_interval_months?: number | null
@@ -818,6 +821,7 @@ export type Database = {
           name: string
           next_hike_date?: string | null
           payment_mode?: string | null
+          pf_number?: string | null
           photo_url?: string | null
           salary_calculation_days?: number | null
           salary_supplements?: Json | null
@@ -839,6 +843,7 @@ export type Database = {
           created_at?: string | null
           designation?: string | null
           display_order?: number | null
+          esi_number?: string | null
           experience?: string
           floor?: string | null
           hike_interval_months?: number | null
@@ -855,6 +860,7 @@ export type Database = {
           name?: string
           next_hike_date?: string | null
           payment_mode?: string | null
+          pf_number?: string | null
           photo_url?: string | null
           salary_calculation_days?: number | null
           salary_supplements?: Json | null

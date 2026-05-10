@@ -20,5 +20,9 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": [
+    "src/integrations/supabase/auth-middleware.ts",
+    "src/integrations/supabase/client.server.ts"
+  ]
 }
