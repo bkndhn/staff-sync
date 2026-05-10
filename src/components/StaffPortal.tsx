@@ -347,8 +347,10 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     { id: 'face' as const, label: 'Face ID', icon: Camera },
   ];
 
+  const isWideTab = activeSection === 'attendance' || activeSection === 'yearly';
+
   return (
-    <div className="p-2 md:p-6 pb-24 md:pb-6 space-y-4 max-w-4xl mx-auto">
+    <div className={`p-2 md:p-6 pb-24 md:pb-6 space-y-4 ${isWideTab ? 'w-full' : 'max-w-4xl mx-auto'}`}>
       {/* Section Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         {sections.map(s => (
@@ -452,21 +454,13 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       {/* ATTENDANCE */}
       {activeSection === 'attendance' && (
         <div className="space-y-4">
-          {/* Year-to-date attendance breakdown */}
-          <YearlyAttendanceSummary attendance={attendance} staffId={staff.id} year={selectedYear} />
-
           {/* Summary */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <QuickStat label="Present" value={`${metrics.presentDays}`} icon={CheckCircle} color="emerald" />
             <QuickStat label="Half Days" value={`${metrics.halfDays}`} icon={Clock} color="amber" />
             <QuickStat label="Leaves" value={`${metrics.leaveDays}`} icon={XCircle} color="red" />
             <QuickStat label="Sun. Absent" value={`${metrics.sundayAbsents}`} icon={Calendar} color="orange" />
-            {(() => {
-              const uninformedCount = monthlyAttendance.filter(a => a.isUninformed).length;
-              return uninformedCount > 0 ? (
-                <QuickStat label="Uninformed" value={`${uninformedCount}`} icon={AlertTriangle} color="orange" />
-              ) : null;
-            })()}
+            <QuickStat label="Uninformed" value={`${monthlyAttendance.filter(a => a.isUninformed).length}`} icon={AlertTriangle} color="orange" />
           </div>
           {/* Legend */}
           <div className="flex flex-wrap gap-3 text-[10px] px-1">
@@ -496,6 +490,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                         <th className="px-2 py-2 text-center text-xs font-semibold text-amber-600 bg-amber-500/10">H</th>
                         <th className="px-2 py-2 text-center text-xs font-semibold text-red-600 bg-red-500/10">A</th>
                         <th className="px-2 py-2 text-center text-xs font-semibold text-orange-600 bg-orange-500/10">SUN</th>
+                        <th className="px-2 py-2 text-center text-xs font-semibold text-orange-700 bg-orange-500/10" title="Uninformed Leaves">UI</th>
                         <th className="px-2 py-2 text-center text-xs font-semibold text-blue-600 bg-blue-500/10">TOTAL</th>
                         {days.map(day => {
                           const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -518,6 +513,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                         <td className="px-2 py-3 text-center text-sm font-bold text-amber-600 bg-amber-500/5">{metrics.halfDays}</td>
                         <td className="px-2 py-3 text-center text-sm font-bold text-red-600 bg-red-500/5">{metrics.leaveDays}</td>
                         <td className="px-2 py-3 text-center text-sm font-bold text-orange-600 bg-orange-500/5">{metrics.sundayAbsents}</td>
+                        <td className="px-2 py-3 text-center text-sm font-bold text-orange-700 bg-orange-500/5">{monthlyAttendance.filter(a => a.isUninformed).length}</td>
                         <td className="px-2 py-3 text-center text-sm font-bold text-blue-600 bg-blue-500/5">{total}</td>
                         {days.map(day => {
                           const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
