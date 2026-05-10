@@ -418,6 +418,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               <InfoRow icon={Calendar} label="Joined Date" value={staff.joinedDate} />
               {staff.contactNumber && <InfoRow icon={Phone} label="Contact" value={staff.contactNumber} />}
               {staff.address && <InfoRow icon={Home} label="Address" value={staff.address} />}
+              {staff.pfNumber && <InfoRow icon={CreditCard} label="PF Number" value={staff.pfNumber} />}
+              {staff.esiNumber && <InfoRow icon={CreditCard} label="ESI Number" value={staff.esiNumber} />}
             </div>
           </div>
 
