@@ -159,7 +159,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     paymentMode: 'cash' as 'cash' | 'bank',
     nextHikeDate: '',
     hikeIntervalMonths: 0,
-    statutoryDeductions: {} as Record<string, StatutoryDeduction>
+    statutoryDeductions: {} as Record<string, StatutoryDeduction>,
+    pfNumber: '',
+    esiNumber: ''
   });
 
   // Set default location when locations load
@@ -453,7 +455,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       paymentMode: 'cash',
       nextHikeDate: '',
       hikeIntervalMonths: 0,
-      statutoryDeductions: {}
+      statutoryDeductions: {},
+      pfNumber: '',
+      esiNumber: ''
     });
   };
 
@@ -489,7 +493,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         paymentMode: formData.paymentMode,
         nextHikeDate: formData.nextHikeDate || undefined,
         hikeIntervalMonths: formData.hikeIntervalMonths || undefined,
-        statutoryDeductions: formData.statutoryDeductions
+        statutoryDeductions: formData.statutoryDeductions,
+        pfNumber: formData.pfNumber || undefined,
+        esiNumber: formData.esiNumber || undefined
       });
       setEditingStaff(null);
     } else {
@@ -536,7 +542,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       paymentMode: member.paymentMode || 'cash',
       nextHikeDate: member.nextHikeDate || '',
       hikeIntervalMonths: member.hikeIntervalMonths || 0,
-      statutoryDeductions: member.statutoryDeductions || {}
+      statutoryDeductions: member.statutoryDeductions || {},
+      pfNumber: member.pfNumber || '',
+      esiNumber: member.esiNumber || ''
     });
     setEditingStaff(member);
     setShowAddForm(true);
