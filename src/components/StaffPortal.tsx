@@ -553,6 +553,9 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       {/* YEARLY ATTENDANCE VIEW */}
       {activeSection === 'yearly' && (
         <div className="space-y-4">
+          {/* Year-to-date attendance breakdown card */}
+          <YearlyAttendanceSummary attendance={attendance} staffId={staff.id} year={yearlyViewYear} />
+
           <div className="flex items-center justify-center gap-4 py-2">
             <button onClick={() => setYearlyViewYear(y => y - 1)} className="p-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--glass-border)] hover:border-indigo-400/30 transition-all active:scale-95">
               <ChevronLeft size={20} className="text-[var(--text-primary)]" />
