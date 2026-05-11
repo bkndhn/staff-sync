@@ -556,6 +556,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <div className="glass-card-static p-4 border-l-4 border-purple-500">
                     <p className="text-base font-bold text-purple-400 mb-2">👥 Part-Time: {locationPartTimeData.length}</p>
                     <p className="text-sm text-white/60">{partTimeNames.length > 0 ? partTimeNames.join(', ') : 'None'}</p>
+                    {renderPartTimePunchList(locationPartTimeData)}
                   </div>
                 </div>
               </div>
