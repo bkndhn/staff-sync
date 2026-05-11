@@ -163,8 +163,17 @@ const Dashboard: React.FC<DashboardProps> = ({
     return `${h}:${m} ${ampm}`;
   };
 
+  const [showPunches, setShowPunches] = React.useState<boolean>(true);
+  React.useEffect(() => {
+    appSettingsService.getSetting('show_today_punches').then(v => {
+      // default true; only hide for non-admin if explicitly set to 'false'
+      if (v === 'false' && userRole !== 'admin') setShowPunches(false);
+      else setShowPunches(true);
+    });
+  }, [userRole]);
+
   const renderPunchList = (ids: string[]) => {
-    if (ids.length === 0) return null;
+    if (!showPunches || ids.length === 0) return null;
     return (
       <div className="mt-2 space-y-1">
         {ids.map(id => {
@@ -182,6 +191,24 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           );
         })}
+      </div>
+    );
+  };
+
+  const renderPartTimePunchList = (records: Attendance[]) => {
+    if (!showPunches || records.length === 0) return null;
+    return (
+      <div className="mt-2 space-y-1">
+        {records.map(rec => (
+          <div key={rec.id || `${rec.staffId}-${rec.shift}`} className="flex items-center justify-between gap-2 text-[11px] md:text-xs px-2 py-1 rounded bg-white/5 border border-white/10">
+            <span className="font-semibold text-white/85 truncate">{rec.staffName} <span className="text-purple-300">({rec.shift})</span></span>
+            <span className="font-mono text-white/70 whitespace-nowrap">
+              <span className="text-emerald-300">IN {fmt12h(rec.arrivalTime)}</span>
+              <span className="mx-1 text-white/30">·</span>
+              <span className="text-blue-300">OUT {fmt12h(rec.leavingTime)}</span>
+            </span>
+          </div>
+        ))}
       </div>
     );
   };
