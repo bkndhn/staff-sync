@@ -622,6 +622,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <p className="text-base font-bold text-purple-400 mb-2">👥 Part-Time: {partTimeAttendance.length}</p>
                       <p className="text-xs text-white/40 mb-1">(B: {overallPartTimeBoth.length}, M: {overallPartTimeMorning.length}, E: {overallPartTimeEvening.length})</p>
                       <p className="text-sm text-white/60">{overallPartTimeNames.length > 0 ? overallPartTimeNames.join(', ') : 'None'}</p>
+                      {renderPartTimePunchList(partTimeAttendance)}
                     </div>
                   </div>
                 </div>
