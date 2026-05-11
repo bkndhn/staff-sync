@@ -175,11 +175,17 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
   const activeStaff = staff.filter(member => {
     if (!member.isActive) return false;
-    const query = searchQuery.toLowerCase();
-    return (
-      member.name.toLowerCase().includes(query) ||
-      member.location.toLowerCase().includes(query)
-    );
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    const haystack = [
+      member.name, member.location, member.floor, member.designation,
+      member.experience, member.type, member.staffAccommodation,
+      member.contactNumber, member.bankName, member.bankAccountNumber,
+      member.ifscCode, member.pfNumber, member.esiNumber, member.paymentMode,
+      String(member.basicSalary ?? ''), String(member.incentive ?? ''),
+      String(member.hra ?? ''), String(member.mealAllowance ?? ''), String(member.totalSalary ?? '')
+    ].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(query);
   });
 
   // Filter staff by location and payment mode
@@ -991,7 +997,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       </span>
                     </td>}
                     {salaryVisibleCols.payment !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${(staffMember?.paymentMode || 'cash') === 'bank' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${(staffMember?.paymentMode || 'cash') === 'bank' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'}`}>
                         {(staffMember?.paymentMode || 'cash') === 'bank' ? 'Bank' : 'Cash'}
                       </span>
                     </td>}

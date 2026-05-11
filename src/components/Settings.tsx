@@ -155,6 +155,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
     });
     const [defaultHikeInterval, setDefaultHikeInterval] = useState(12);
     const [hikeSaving, setHikeSaving] = useState(false);
+    const [showTodayPunches, setShowTodayPunches] = useState(true);
+    const [punchesSaving, setPunchesSaving] = useState(false);
+    const [backupBusy, setBackupBusy] = useState(false);
     // Form state
     const [formData, setFormData] = useState({
         email: '',
@@ -169,6 +172,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
     useEffect(() => {
         loadData();
         appSettingsService.getDefaultHikeInterval().then(setDefaultHikeInterval);
+        appSettingsService.getSetting('show_today_punches').then(v => setShowTodayPunches(v !== 'false'));
     }, []);
 
     const loadData = async () => {
@@ -441,6 +445,76 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                     </button>
                 </div>
             </div>
+
+            {/* Show Today's Punches toggle (admin only) */}
+            {userRole === 'admin' && (
+                <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                            <Clock size={20} className="text-cyan-400" />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-[var(--text-primary)] text-sm">Show Today's Punches on Dashboard</h3>
+                            <p className="text-xs text-[var(--text-muted)]">When off, managers/staff won't see IN/OUT times. Admins always see them.</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={showTodayPunches}
+                                disabled={punchesSaving}
+                                onChange={async (e) => {
+                                    const next = e.target.checked;
+                                    setShowTodayPunches(next);
+                                    setPunchesSaving(true);
+                                    await appSettingsService.setSetting('show_today_punches', next ? 'true' : 'false');
+                                    setPunchesSaving(false);
+                                    setSuccess(`Today's punches ${next ? 'visible to all' : 'hidden from non-admins'}`);
+                                    setTimeout(() => setSuccess(''), 3000);
+                                }}
+                                className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                        </label>
+                    </div>
+                </div>
+            )}
+
+            {/* Backup all data (admin only) */}
+            {userRole === 'admin' && (
+                <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                            <Save size={20} className="text-emerald-400" />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-[var(--text-primary)] text-sm">Backup All Data (JSON)</h3>
+                            <p className="text-xs text-[var(--text-muted)]">Download a full snapshot of every table. See <code>BACKUP_AND_MIGRATION.md</code> for restore / DR.</p>
+                        </div>
+                    </div>
+                    <button
+                        disabled={backupBusy}
+                        onClick={async () => {
+                            setBackupBusy(true);
+                            try {
+                                const { exportFullBackup } = await import('../utils/backupExport');
+                                await exportFullBackup();
+                                setSuccess('Backup downloaded');
+                                setTimeout(() => setSuccess(''), 3000);
+                            } catch (err: any) {
+                                setError(err?.message || 'Backup failed');
+                                setTimeout(() => setError(''), 5000);
+                            } finally {
+                                setBackupBusy(false);
+                            }
+                        }}
+                        className="btn-premium px-4 py-2 text-xs"
+                    >
+                        {backupBusy ? 'Exporting...' : 'Download Backup'}
+                    </button>
+                </div>
+            )}
 
             {/* Shift Windows & Auto Half-Day Rules */}
             <ShiftWindowsPanel />

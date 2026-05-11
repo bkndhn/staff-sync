@@ -193,11 +193,18 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     }
     if (floorFilter !== 'All' && (member.floor || '') !== floorFilter) return false;
     if (designationFilter !== 'All' && (member.designation || '') !== designationFilter) return false;
-    const query = searchQuery.toLowerCase();
-    return (
-      member.name.toLowerCase().includes(query) ||
-      member.location.toLowerCase().includes(query)
-    );
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    const haystack = [
+      member.name, member.location, member.floor, member.designation,
+      member.experience, member.type, member.staffAccommodation,
+      member.contactNumber, member.address, member.bankName, member.bankAccountNumber,
+      member.ifscCode, member.pfNumber, member.esiNumber, member.paymentMode,
+      String(member.basicSalary ?? ''), String(member.incentive ?? ''),
+      String(member.hra ?? ''), String(member.mealAllowance ?? ''), String(member.totalSalary ?? ''),
+      member.joinedDate
+    ].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(query);
   }).sort((a, b) => {
     if (experienceSort === 'none') return 0;
     const parseExp = (exp: string) => {
@@ -1420,7 +1427,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                       ) : <span className="text-gray-400 italic">-</span>}
                     </td>}
                     {visibleColumns.payment !== false && <td className="px-3 py-4 text-sm text-center">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${member.paymentMode === 'bank' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${member.paymentMode === 'bank' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'}`}>
                         {member.paymentMode === 'bank' ? 'Bank' : 'Cash'}
                       </span>
                     </td>}
