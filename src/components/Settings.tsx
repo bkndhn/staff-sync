@@ -155,6 +155,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
     });
     const [defaultHikeInterval, setDefaultHikeInterval] = useState(12);
     const [hikeSaving, setHikeSaving] = useState(false);
+    const [showTodayPunches, setShowTodayPunches] = useState(true);
+    const [punchesSaving, setPunchesSaving] = useState(false);
+    const [backupBusy, setBackupBusy] = useState(false);
     // Form state
     const [formData, setFormData] = useState({
         email: '',
@@ -169,6 +172,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
     useEffect(() => {
         loadData();
         appSettingsService.getDefaultHikeInterval().then(setDefaultHikeInterval);
+        appSettingsService.getSetting('show_today_punches').then(v => setShowTodayPunches(v !== 'false'));
     }, []);
 
     const loadData = async () => {
