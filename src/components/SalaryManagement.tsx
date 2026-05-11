@@ -175,11 +175,17 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
   const activeStaff = staff.filter(member => {
     if (!member.isActive) return false;
-    const query = searchQuery.toLowerCase();
-    return (
-      member.name.toLowerCase().includes(query) ||
-      member.location.toLowerCase().includes(query)
-    );
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    const haystack = [
+      member.name, member.location, member.floor, member.designation,
+      member.experience, member.type, member.staffAccommodation,
+      member.contactNumber, member.bankName, member.bankAccountNumber,
+      member.ifscCode, member.pfNumber, member.esiNumber, member.paymentMode,
+      String(member.basicSalary ?? ''), String(member.incentive ?? ''),
+      String(member.hra ?? ''), String(member.mealAllowance ?? ''), String(member.totalSalary ?? '')
+    ].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(query);
   });
 
   // Filter staff by location and payment mode
