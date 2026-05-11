@@ -1427,7 +1427,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                       ) : <span className="text-gray-400 italic">-</span>}
                     </td>}
                     {visibleColumns.payment !== false && <td className="px-3 py-4 text-sm text-center">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${member.paymentMode === 'bank' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${member.paymentMode === 'bank' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'}`}>
                         {member.paymentMode === 'bank' ? 'Bank' : 'Cash'}
                       </span>
                     </td>}
