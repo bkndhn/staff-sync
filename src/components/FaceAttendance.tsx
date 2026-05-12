@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import * as faceapi from '@vladmandic/face-api';
 import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity } from 'lucide-react';
 import { Staff, Attendance } from '../types';
-import { useFaceApi, eyeAspectRatio } from '../hooks/useFaceApi';
-import { faceEmbeddingService, FaceEmbedding, euclideanDistance } from '../services/faceEmbeddingService';
+import { useFaceApi, eyeAspectRatio, textureLivenessScore } from '../hooks/useFaceApi';
+import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
 import { attendanceService } from '../services/attendanceService';
 import { punchEventService } from '../services/punchEventService';
 import { isSunday } from '../utils/salaryCalculations';
@@ -44,15 +45,17 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const lastPunchRef = useRef<Record<string, { ts: number; kind: 'in' | 'out' }>>({});
-  // Liveness tracking: rolling buffer per current candidate
+  // FaceMatcher — rebuilt when embeddings change, gives O(1) lookup
+  const matcherRef = useRef<faceapi.FaceMatcher | null>(null);
+  // Liveness tracking
   const candidateRef = useRef<{
     staffId: string | null;
     frames: number;
     boxes: { x: number; y: number; w: number; h: number }[];
     earSeries: number[];
     blinkSeen: boolean;
-    challengeNeeded: boolean;
-  }>({ staffId: null, frames: 0, boxes: [], earSeries: [], blinkSeen: false, challengeNeeded: false });
+    textureScores: number[];
+  }>({ staffId: null, frames: 0, boxes: [], earSeries: [], blinkSeen: false, textureScores: [] });
 
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -90,6 +93,17 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
   }, [staff]);
 
   const enrolledStaffIds = useMemo(() => new Set(scopedEmbeddings.map(e => e.staffId)), [scopedEmbeddings]);
+
+  // ---- Rebuild FaceMatcher whenever embeddings change ----------------------
+  // Groups all embeddings by staffId into LabeledFaceDescriptors for O(1) match
+  useEffect(() => {
+    if (allEmbeddings.length === 0) { matcherRef.current = null; return; }
+    const groups = faceEmbeddingService.toFloat32Groups(allEmbeddings);
+    const labeled = Array.from(groups.entries()).map(
+      ([id, descs]) => new faceapi.LabeledFaceDescriptors(id, descs)
+    );
+    matcherRef.current = new faceapi.FaceMatcher(labeled, MATCH_THRESHOLD);
+  }, [allEmbeddings]);
 
   // ---- Helpers --------------------------------------------------------------
   const recomputeStatus = (arrival: string, leaving: string, s?: Staff) => {
@@ -160,8 +174,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
   const startCamera = useCallback(async () => {
     setCameraError(null);
     try {
+      // 640×480 is plenty for close-up kiosk — faster inference than 1280×720
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
         audio: false,
       });
       streamRef.current = stream;
@@ -192,17 +207,13 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
-  // ---- Match search ---------------------------------------------------------
-  // Search across ALL embeddings so we can detect "wrong location" attempts.
-  const findBestMatch = useCallback((descriptor: number[]) => {
-    let bestStaffId: string | null = null;
-    let bestDist = Infinity;
-    for (const e of allEmbeddings) {
-      const d = euclideanDistance(descriptor, e.descriptor);
-      if (d < bestDist) { bestDist = d; bestStaffId = e.staffId; }
-    }
-    return { staffId: bestStaffId, distance: bestDist };
-  }, [allEmbeddings]);
+  // ---- Match search via FaceMatcher (O(1) vs O(n) raw loop) ---------------
+  const findBestMatch = useCallback((descriptor: Float32Array) => {
+    if (!matcherRef.current) return { staffId: null as string | null, distance: Infinity };
+    const result = matcherRef.current.findBestMatch(descriptor);
+    if (result.label === 'unknown') return { staffId: null as string | null, distance: result.distance };
+    return { staffId: result.label, distance: result.distance };
+  }, []);
 
   // ---- Smart multi-punch toggle --------------------------------------------
   const punch = useCallback(async (s: Staff, distance: number, livenessScore: number) => {
@@ -272,120 +283,114 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
     }
   }, [attendance, today, onAttendanceUpdated, shiftWindows]);
 
-  // ---- Continuous recognition + liveness loop -------------------------------
+  // ---- Continuous recognition loop (requestAnimationFrame, frame-skipped) ---
   useEffect(() => {
     if (!ready || !cameraOn || allEmbeddings.length === 0) return;
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout>;
+    let rafId = 0;
+    let frameCount = 0;
+    let processing = false; // prevent overlapping async inference
 
     const resetCandidate = () => {
-      candidateRef.current = { staffId: null, frames: 0, boxes: [], earSeries: [], blinkSeen: false, challengeNeeded: false };
+      candidateRef.current = { staffId: null, frames: 0, boxes: [], earSeries: [], blinkSeen: false, textureScores: [] };
     };
 
-    const tick = async () => {
+    const onFrame = async () => {
       if (cancelled) return;
-      if (!videoRef.current || videoRef.current.readyState < 2) {
-        timer = setTimeout(tick, 400); return;
-      }
-      try {
-        const r = await detect(videoRef.current, { inputSize: 416, scoreThreshold: 0.55, withLandmarks: true });
-        if (!r) { setLastMatch(null); resetCandidate(); timer = setTimeout(tick, 250); return; }
+      frameCount++;
+      // Run inference every 3rd frame (~10/s at 30fps) — responsive but not GPU-hammering
+      if (frameCount % 3 === 0 && !processing && videoRef.current && videoRef.current.readyState >= 2) {
+        processing = true;
+        try {
+          // inputSize 224 → ~80-150 ms vs 400-600 ms at 416
+          const r = await detect(videoRef.current, { inputSize: 224, scoreThreshold: 0.4, withLandmarks: true });
 
-        const { staffId, distance } = findBestMatch(r.descriptor);
+          if (!r) {
+            setLastMatch(null);
+            resetCandidate();
+          } else {
+            const desc32 = new Float32Array(r.descriptor);
+            const { staffId, distance } = findBestMatch(desc32);
 
-        // No close match at all
-        if (!staffId || distance >= MATCH_THRESHOLD) {
-          setLastMatch({ name: 'Unknown face', distance, ts: Date.now(), status: 'unknown' });
-          resetCandidate();
-          timer = setTimeout(tick, 350); return;
-        }
+            if (!staffId || distance >= MATCH_THRESHOLD) {
+              setLastMatch({ name: 'Unknown face', distance, ts: Date.now(), status: 'unknown' });
+              resetCandidate();
+            } else if (!allowedStaffIds.has(staffId)) {
+              // Wrong location
+              const wrongStaff = allEmbeddings.find(e => e.staffId === staffId);
+              setLastMatch({ name: wrongStaff?.staffName || 'Other location', distance, ts: Date.now(), status: 'wrong-loc' });
+              setMessage({ kind: 'err', text: `${wrongStaff?.staffName || 'This staff'} does not belong to this location.` });
+              resetCandidate();
+            } else {
+              const s = staffById.get(staffId);
+              if (!s || !s.isActive) {
+                setLastMatch({ name: 'Inactive staff', distance, ts: Date.now(), status: 'unknown' });
+                resetCandidate();
+              } else {
+                // ── Passive liveness tracking ────────────────────────────
+                const cand = candidateRef.current;
+                if (cand.staffId !== staffId) { resetCandidate(); cand.staffId = staffId; }
+                cand.frames++;
+                cand.boxes.push({ x: r.box.x, y: r.box.y, w: r.box.width, h: r.box.height });
+                if (cand.boxes.length > 6) cand.boxes.shift();
 
-        // WRONG LOCATION — face matches DB but staff not in this manager's scope
-        if (!allowedStaffIds.has(staffId)) {
-          const wrongStaff = allEmbeddings.find(e => e.staffId === staffId);
-          setLastMatch({ name: wrongStaff?.staffName || 'Other location', distance, ts: Date.now(), status: 'wrong-loc' });
-          setMessage({ kind: 'err', text: `${wrongStaff?.staffName || 'This staff'} does not belong to this location. Punch blocked.` });
-          resetCandidate();
-          timer = setTimeout(tick, 800); return;
-        }
+                // EAR blink
+                if (r.landmarks) {
+                  const ear = (eyeAspectRatio(r.landmarks.getLeftEye()) + eyeAspectRatio(r.landmarks.getRightEye())) / 2;
+                  cand.earSeries.push(ear);
+                  if (cand.earSeries.length > 12) cand.earSeries.shift();
+                  if (ear < EAR_CLOSED) cand.blinkSeen = true;
+                }
 
-        const s = staffById.get(staffId);
-        if (!s || !s.isActive) {
-          setLastMatch({ name: 'Inactive staff', distance, ts: Date.now(), status: 'unknown' });
-          resetCandidate();
-          timer = setTimeout(tick, 500); return;
-        }
+                // Texture liveness (green-channel local variance — catches photos/screens)
+                const tex = textureLivenessScore(videoRef.current!, r.box);
+                cand.textureScores.push(tex);
+                if (cand.textureScores.length > 6) cand.textureScores.shift();
+                const avgTexture = cand.textureScores.reduce((a, b) => a + b, 0) / cand.textureScores.length;
 
-        // ---- PASSIVE LIVENESS ----
-        // Track over consecutive frames: bbox movement (real face moves) and EAR variance.
-        const cand = candidateRef.current;
-        if (cand.staffId !== staffId) {
-          resetCandidate();
-          cand.staffId = staffId;
-        }
-        cand.frames += 1;
-        cand.boxes.push({ x: r.box.x, y: r.box.y, w: r.box.width, h: r.box.height });
-        if (cand.boxes.length > 6) cand.boxes.shift();
+                // Box movement
+                let boxMovement = 0;
+                for (let i = 1; i < cand.boxes.length; i++) {
+                  boxMovement += Math.abs(cand.boxes[i].x - cand.boxes[i-1].x) + Math.abs(cand.boxes[i].y - cand.boxes[i-1].y);
+                }
 
-        // Eye Aspect Ratio for blink detection
-        if (r.landmarks) {
-          const leftEye = r.landmarks.getLeftEye();
-          const rightEye = r.landmarks.getRightEye();
-          const ear = (eyeAspectRatio(leftEye) + eyeAspectRatio(rightEye)) / 2;
-          cand.earSeries.push(ear);
-          if (cand.earSeries.length > 12) cand.earSeries.shift();
-          if (ear < EAR_CLOSED) cand.blinkSeen = true;
-        }
+                // EAR variance
+                let earVariance = 0;
+                if (cand.earSeries.length >= 4) {
+                  const mean = cand.earSeries.reduce((a, b) => a + b, 0) / cand.earSeries.length;
+                  earVariance = cand.earSeries.reduce((a, b) => a + (b - mean) ** 2, 0) / cand.earSeries.length;
+                }
 
-        // Passive checks
-        const boxMovement = (() => {
-          if (cand.boxes.length < 3) return 0;
-          let m = 0;
-          for (let i = 1; i < cand.boxes.length; i++) {
-            m += Math.abs(cand.boxes[i].x - cand.boxes[i-1].x) + Math.abs(cand.boxes[i].y - cand.boxes[i-1].y);
+                const passiveLive = boxMovement > 2 || earVariance > 0.0008;
+                const livenessScore = Math.min(1, (boxMovement / 30) + earVariance * 200 + (cand.blinkSeen ? 0.4 : 0) + avgTexture * 0.3);
+
+                if (cand.frames < REQUIRED_STABLE_FRAMES) {
+                  setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'matching' });
+                } else if (!passiveLive && !cand.blinkSeen) {
+                  setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'blink-please' });
+                } else if (cand.frames >= 8 && boxMovement < 1 && earVariance < 0.0002 && !cand.blinkSeen && avgTexture < 0.35) {
+                  // Spoof: no movement + no blink + flat texture (photo/screen)
+                  setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'spoof' });
+                  setMessage({ kind: 'err', text: `Liveness failed for ${s.name} — possible photo spoof. Please blink.` });
+                  resetCandidate();
+                } else {
+                  setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'ok' });
+                  await punch(s, distance, livenessScore);
+                  resetCandidate();
+                  // Pause 1.2 s before scanning next person
+                  await new Promise(res => setTimeout(res, 1200));
+                }
+              }
+            }
           }
-          return m;
-        })();
-        const earVariance = (() => {
-          if (cand.earSeries.length < 4) return 0;
-          const mean = cand.earSeries.reduce((a,b) => a+b, 0) / cand.earSeries.length;
-          return cand.earSeries.reduce((a,b) => a + (b-mean)*(b-mean), 0) / cand.earSeries.length;
-        })();
-
-        const stableEnough = cand.frames >= REQUIRED_STABLE_FRAMES;
-        const passiveLive = boxMovement > 2 || earVariance > 0.0008; // micro-movement OR eyelid micro-motion
-        const livenessScore = Math.min(1, (boxMovement / 30) + earVariance * 200 + (cand.blinkSeen ? 0.5 : 0));
-
-        if (!stableEnough) {
-          setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'matching' });
-          timer = setTimeout(tick, 200); return;
-        }
-
-        // If passive liveness is unsure, request a blink (challenge)
-        if (!passiveLive && !cand.blinkSeen) {
-          cand.challengeNeeded = true;
-          setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'blink-please' });
-          timer = setTimeout(tick, 200); return;
-        }
-
-        // Possible spoof: completely flat (printed photo) + no blink + no movement
-        if (cand.frames >= 8 && boxMovement < 1 && earVariance < 0.0002 && !cand.blinkSeen) {
-          setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'spoof' });
-          setMessage({ kind: 'err', text: `Liveness check failed for ${s.name} (possible photo). Please face the camera and blink.` });
-          resetCandidate();
-          timer = setTimeout(tick, 1500); return;
-        }
-
-        setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'ok' });
-        await punch(s, distance, livenessScore);
-        // After a successful punch, hold briefly then reset to allow next person
-        resetCandidate();
-        timer = setTimeout(tick, 1200); return;
-      } catch { /* ignore frame errors */ }
-      if (!cancelled) timer = setTimeout(tick, 350);
+        } catch { /* ignore frame errors */ }
+        processing = false;
+      }
+      if (!cancelled) rafId = requestAnimationFrame(onFrame);
     };
-    tick();
-    return () => { cancelled = true; clearTimeout(timer); };
+
+    rafId = requestAnimationFrame(onFrame);
+    return () => { cancelled = true; cancelAnimationFrame(rafId); };
   }, [ready, cameraOn, allEmbeddings, detect, findBestMatch, staffById, allowedStaffIds, punch]);
 
   const enrolledCount = enrolledStaffIds.size;

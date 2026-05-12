@@ -8,7 +8,9 @@
     "build:dev": "vite build --mode development",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "copy-models": "node -e \"const fs=require('fs');const src='node_modules/@vladmandic/face-api/model';const dst='public/models';if(!fs.existsSync(dst))fs.mkdirSync(dst,{recursive:true});fs.readdirSync(src).forEach(f=>fs.copyFileSync(src+'/'+f,dst+'/'+f));console.log('Models copied.');\"",
+    "postinstall": "npm run copy-models"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",

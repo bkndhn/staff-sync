@@ -52,6 +52,17 @@ export const faceEmbeddingService = {
     return (data || []).map(fromDb);
   },
 
+  /** Return descriptors as Float32Array grouped by staffId for FaceMatcher. */
+  toFloat32Groups(embeddings: FaceEmbedding[]): Map<string, Float32Array[]> {
+    const map = new Map<string, Float32Array[]>();
+    for (const e of embeddings) {
+      if (!e.descriptor || e.descriptor.length === 0) continue;
+      if (!map.has(e.staffId)) map.set(e.staffId, []);
+      map.get(e.staffId)!.push(new Float32Array(e.descriptor));
+    }
+    return map;
+  },
+
   async create(input: {
     staffId: string;
     staffName?: string;

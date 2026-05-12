@@ -1,9 +1,10 @@
 // Enhanced Service Worker for Staff Management System
 // Version 2.0 with better caching and offline support
 
-const CACHE_NAME = 'staff-management-v2';
-const STATIC_CACHE = 'staff-static-v2';
-const DYNAMIC_CACHE = 'staff-dynamic-v2';
+const CACHE_NAME = 'staff-management-v3';
+const STATIC_CACHE = 'staff-static-v3';
+const DYNAMIC_CACHE = 'staff-dynamic-v3';
+const MODELS_CACHE = 'staff-models-v1'; // face-api model binaries — separate cache, long-lived
 
 // Static assets to cache on install
 const STATIC_ASSETS = [
@@ -13,22 +14,31 @@ const STATIC_ASSETS = [
   '/manifest.json'
 ];
 
-// Install event - cache static assets
+// Install event - cache static assets + face-api models
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing Service Worker v2...');
+  console.log('[SW] Installing Service Worker v3...');
   event.waitUntil(
-    caches.open(STATIC_CACHE)
-      .then((cache) => {
-        console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
-      })
-      .then(() => self.skipWaiting())
+    Promise.all([
+      caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)),
+      // Pre-cache face-api model shards so they load from disk (~1s vs ~20s CDN)
+      caches.open(MODELS_CACHE).then((cache) =>
+        cache.addAll([
+          '/models/tiny_face_detector_model-weights_manifest.json',
+          '/models/tiny_face_detector_model-shard1',
+          '/models/face_landmark_68_model-weights_manifest.json',
+          '/models/face_landmark_68_model-shard1',
+          '/models/face_recognition_model-weights_manifest.json',
+          '/models/face_recognition_model-shard1',
+          '/models/face_recognition_model-shard2',
+        ]).catch(() => { /* non-fatal if models not yet copied */ })
+      ),
+    ]).then(() => self.skipWaiting())
   );
 });
 
 // Activate event - clean old caches
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating Service Worker v2...');
+  console.log('[SW] Activating Service Worker v3...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -36,6 +46,7 @@ self.addEventListener('activate', (event) => {
           .filter((cacheName) => {
             return cacheName !== STATIC_CACHE &&
               cacheName !== DYNAMIC_CACHE &&
+              cacheName !== MODELS_CACHE &&
               cacheName.startsWith('staff-');
           })
           .map((cacheName) => {
@@ -46,6 +57,24 @@ self.addEventListener('activate', (event) => {
     }).then(() => self.clients.claim())
   );
 });
+
+// Fetch: serve /models/* from dedicated cache (cache-first, long-lived)
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  if (url.pathname.startsWith('/models/')) {
+    event.respondWith(
+      caches.open(MODELS_CACHE).then(async (cache) => {
+        const cached = await cache.match(event.request);
+        if (cached) return cached;
+        const resp = await fetch(event.request);
+        if (resp.ok) cache.put(event.request, resp.clone());
+        return resp;
+      })
+    );
+    return;
+  }
+});
+
 
 // Fetch event - Network first with cache fallback strategy
 self.addEventListener('fetch', (event) => {
