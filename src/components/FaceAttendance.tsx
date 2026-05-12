@@ -1,23 +1,30 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck } from 'lucide-react';
+import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity } from 'lucide-react';
 import { Staff, Attendance } from '../types';
-import { useFaceApi } from '../hooks/useFaceApi';
+import { useFaceApi, eyeAspectRatio } from '../hooks/useFaceApi';
 import { faceEmbeddingService, FaceEmbedding, euclideanDistance } from '../services/faceEmbeddingService';
 import { attendanceService } from '../services/attendanceService';
+import { punchEventService } from '../services/punchEventService';
 import { isSunday } from '../utils/salaryCalculations';
 import { shiftService, determineStatus, formatTime12h, ShiftWindows } from '../services/shiftService';
 
 interface Props {
-  staff: Staff[];
+  staff: Staff[];                 // already location-scoped by App
   attendance: Attendance[];
   onAttendanceUpdated?: () => void;
   userRole: 'admin' | 'manager';
 }
 
-// Standard face-api euclidean threshold
+// Tighter than the standard face-api 0.6 to reduce false positives
 const MATCH_THRESHOLD = 0.5;
-// Per-staff cooldown to avoid duplicate punches in seconds
-const COOLDOWN_SECONDS = 30;
+// Minimum gap between two punches for the SAME staff (smart toggle IN<->OUT)
+const TOGGLE_MIN_SECONDS = 5 * 60;     // 5 minutes
+// Cooldown for the same kind (prevents double-IN flooding)
+const SAME_KIND_COOLDOWN = 60;         // 1 minute
+// Frames of stable detection required before accepting a match (passive liveness)
+const REQUIRED_STABLE_FRAMES = 3;
+// EAR threshold under which an eye is considered "closed" (blink challenge)
+const EAR_CLOSED = 0.21;
 
 type RecentEvent = {
   staffId: string;
@@ -36,23 +43,29 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
   const { ready, loading, error, detect } = useFaceApi(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const lastPunchRef = useRef<Record<string, number>>({});
+  const lastPunchRef = useRef<Record<string, { ts: number; kind: 'in' | 'out' }>>({});
+  // Liveness tracking: rolling buffer per current candidate
+  const candidateRef = useRef<{
+    staffId: string | null;
+    frames: number;
+    boxes: { x: number; y: number; w: number; h: number }[];
+    earSeries: number[];
+    blinkSeen: boolean;
+    challengeNeeded: boolean;
+  }>({ staffId: null, frames: 0, boxes: [], earSeries: [], blinkSeen: false, challengeNeeded: false });
 
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [embeddings, setEmbeddings] = useState<FaceEmbedding[]>([]);
+  const [allEmbeddings, setAllEmbeddings] = useState<FaceEmbedding[]>([]);
   const [loadingEmbeddings, setLoadingEmbeddings] = useState(true);
   const [shiftWindows, setShiftWindows] = useState<ShiftWindows | null>(null);
-  const [scanning, setScanning] = useState(false);
   const [recent, setRecent] = useState<RecentEvent[]>([]);
-  const [lastMatch, setLastMatch] = useState<{ name: string; distance: number; ts: number } | null>(null);
+  const [lastMatch, setLastMatch] = useState<{ name: string; distance: number; ts: number; status: 'matching' | 'live-check' | 'blink-please' | 'ok' | 'wrong-loc' | 'spoof' | 'unknown' } | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err' | 'warn'; text: string } | null>(null);
   const [editing, setEditing] = useState<Record<string, { arrival: string; leaving: string }>>({});
 
-  // Today's date string
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  // Today's full-time punches for override panel
   const todaysPunches = useMemo(() => {
     return attendance
       .filter(a => a.date === today && !a.isPartTime && (a.arrivalTime || a.leavingTime))
@@ -60,6 +73,25 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
       .sort((a, b) => (a.arrivalTime || '').localeCompare(b.arrivalTime || ''));
   }, [attendance, today, staff]);
 
+  // ---- Location scoping -----------------------------------------------------
+  // staff[] is already location-scoped by App.tsx for managers. Build a quick
+  // lookup of allowed staff IDs and a SEPARATE map of all enrolled embeddings
+  // so we can detect "wrong location" attempts and surface a clear error.
+  const allowedStaffIds = useMemo(() => new Set(staff.map(s => s.id)), [staff]);
+  const scopedEmbeddings = useMemo(
+    () => allEmbeddings.filter(e => allowedStaffIds.has(e.staffId)),
+    [allEmbeddings, allowedStaffIds],
+  );
+
+  const staffById = useMemo(() => {
+    const map = new Map<string, Staff>();
+    staff.forEach(s => map.set(s.id, s));
+    return map;
+  }, [staff]);
+
+  const enrolledStaffIds = useMemo(() => new Set(scopedEmbeddings.map(e => e.staffId)), [scopedEmbeddings]);
+
+  // ---- Helpers --------------------------------------------------------------
   const recomputeStatus = (arrival: string, leaving: string, s?: Staff) => {
     if (!shiftWindows || !s) return { status: 'Present' as const, value: 1 };
     const win = shiftService.resolve(s, shiftWindows);
@@ -74,19 +106,11 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
     const { status, value } = recomputeStatus(edit.arrival, edit.leaving, s);
     try {
       await attendanceService.upsert({
-        staffId: rec.staffId,
-        date: rec.date,
-        status,
-        attendanceValue: value,
-        isSunday: rec.isSunday,
-        isPartTime: false,
-        staffName: rec.staffName,
-        shift: rec.shift,
-        location: rec.location,
-        arrivalTime: edit.arrival || undefined,
-        leavingTime: edit.leaving || undefined,
-        isUninformed: rec.isUninformed,
-        salaryOverride: true,
+        staffId: rec.staffId, date: rec.date, status, attendanceValue: value,
+        isSunday: rec.isSunday, isPartTime: false, staffName: rec.staffName,
+        shift: rec.shift, location: rec.location,
+        arrivalTime: edit.arrival || undefined, leavingTime: edit.leaving || undefined,
+        isUninformed: rec.isUninformed, salaryOverride: true,
       } as any);
       setEditing(p => { const n = { ...p }; delete n[rec.id!]; return n; });
       setMessage({ kind: 'ok', text: `Updated ${rec.staffName} → ${status}` });
@@ -100,18 +124,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
     if (!window.confirm(`Clear today's punches for ${rec.staffName}?`)) return;
     try {
       await attendanceService.upsert({
-        staffId: rec.staffId,
-        date: rec.date,
-        status: 'Absent',
-        attendanceValue: 0,
-        isSunday: rec.isSunday,
-        isPartTime: false,
-        staffName: rec.staffName,
-        shift: rec.shift,
-        location: rec.location,
-        arrivalTime: undefined,
-        leavingTime: undefined,
-        isUninformed: rec.isUninformed,
+        staffId: rec.staffId, date: rec.date, status: 'Absent', attendanceValue: 0,
+        isSunday: rec.isSunday, isPartTime: false, staffName: rec.staffName,
+        shift: rec.shift, location: rec.location,
+        arrivalTime: undefined, leavingTime: undefined, isUninformed: rec.isUninformed,
       } as any);
       setMessage({ kind: 'warn', text: `Cleared punches for ${rec.staffName}` });
       onAttendanceUpdated?.();
@@ -120,7 +136,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
     }
   };
 
-  // Load all approved embeddings once
+  // Load all approved embeddings + shift windows once
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -130,10 +146,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
           faceEmbeddingService.getAllApproved(),
           shiftService.loadGlobal(true),
         ]);
-        if (!cancelled) {
-          setEmbeddings(list);
-          setShiftWindows(sw);
-        }
+        if (!cancelled) { setAllEmbeddings(list); setShiftWindows(sw); }
       } catch (e: any) {
         if (!cancelled) setMessage({ kind: 'err', text: e?.message || 'Failed to load face data' });
       } finally {
@@ -143,19 +156,12 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
     return () => { cancelled = true; };
   }, []);
 
-  const staffById = useMemo(() => {
-    const map = new Map<string, Staff>();
-    staff.forEach(s => map.set(s.id, s));
-    return map;
-  }, [staff]);
-
-  const enrolledStaffIds = useMemo(() => new Set(embeddings.map(e => e.staffId)), [embeddings]);
-
+  // ---- Camera ---------------------------------------------------------------
   const startCamera = useCallback(async () => {
     setCameraError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 540 } },
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
       streamRef.current = stream;
@@ -164,7 +170,6 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
         await videoRef.current.play().catch(() => {});
       }
       setCameraOn(true);
-      setScanning(true);
     } catch (e: any) {
       setCameraError(e?.message || 'Camera access denied');
       setCameraOn(false);
@@ -176,69 +181,90 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     setCameraOn(false);
-    setScanning(false);
   }, []);
+
+  // Auto-start camera as soon as models + embeddings are ready
+  useEffect(() => {
+    if (ready && !loadingEmbeddings && scopedEmbeddings.length > 0 && !cameraOn && !cameraError) {
+      startCamera();
+    }
+  }, [ready, loadingEmbeddings, scopedEmbeddings.length, cameraOn, cameraError, startCamera]);
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
-  // Find best match for a descriptor across all embeddings
+  // ---- Match search ---------------------------------------------------------
+  // Search across ALL embeddings so we can detect "wrong location" attempts.
   const findBestMatch = useCallback((descriptor: number[]) => {
     let bestStaffId: string | null = null;
     let bestDist = Infinity;
-    for (const e of embeddings) {
+    for (const e of allEmbeddings) {
       const d = euclideanDistance(descriptor, e.descriptor);
-      if (d < bestDist) {
-        bestDist = d;
-        bestStaffId = e.staffId;
-      }
+      if (d < bestDist) { bestDist = d; bestStaffId = e.staffId; }
     }
     return { staffId: bestStaffId, distance: bestDist };
-  }, [embeddings]);
+  }, [allEmbeddings]);
 
-  // Punch in / out logic — first detection of the day = IN, subsequent = OUT (updates leaving_time)
-  const punch = useCallback(async (s: Staff, distance: number) => {
-    const existing = attendance.find(a => a.staffId === s.id && a.date === today && !a.isPartTime);
+  // ---- Smart multi-punch toggle --------------------------------------------
+  const punch = useCallback(async (s: Staff, distance: number, livenessScore: number) => {
     const time = formatNow();
-    let kind: 'in' | 'out' = 'in';
+    const last = lastPunchRef.current[s.id];
+    const existing = attendance.find(a => a.staffId === s.id && a.date === today && !a.isPartTime);
+    const sinceLast = last ? (Date.now() - last.ts) / 1000 : Infinity;
 
-    const arrivalTime = existing?.arrivalTime || time;
-    const leavingTime = existing?.arrivalTime ? time : existing?.leavingTime;
+    // Determine kind: toggle if past min gap, else repeat last kind only after same-kind cooldown
+    let kind: 'in' | 'out';
+    if (last) {
+      if (sinceLast >= TOGGLE_MIN_SECONDS) {
+        kind = last.kind === 'in' ? 'out' : 'in';
+      } else if (sinceLast >= SAME_KIND_COOLDOWN) {
+        return; // too soon to toggle, ignore
+      } else {
+        return;
+      }
+    } else {
+      // First punch today (or after server reload) — IN if no existing arrival, else OUT
+      kind = existing?.arrivalTime ? 'out' : 'in';
+    }
 
-    // Auto-determine status from punch times using shift window
+    // Save audit event
+    await punchEventService.insert({
+      staffId: s.id, staffName: s.name, location: s.location,
+      date: today, eventTime: time, kind, source: 'face',
+      matchDistance: distance, livenessScore,
+    });
+
+    // Refresh attendance row using ALL today's events for this staff
+    const events = await punchEventService.listByDate(today, s.id);
+    const summary = punchEventService.summarize(events);
+    const arrivalTime = summary.firstIn || (kind === 'in' ? time : existing?.arrivalTime);
+    const leavingTime = summary.lastOut || (kind === 'out' ? time : existing?.leavingTime);
+
     let autoStatus: 'Present' | 'Half Day' | 'Absent' = 'Present';
     let autoValue = 1;
     if (shiftWindows) {
       const win = shiftService.resolve(s, shiftWindows);
+      // Use total worked minutes from events for richer status
+      const hours = summary.minutes / 60;
       const { status } = determineStatus(arrivalTime, leavingTime, win);
       autoStatus = status;
-      autoValue = status === 'Present' ? 1 : status === 'Half Day' ? 0.5 : 0;
-    }
-
-    const record = {
-      staffId: s.id,
-      date: today,
-      status: autoStatus,
-      attendanceValue: autoValue,
-      isSunday: isSunday(today),
-      isPartTime: false,
-      staffName: s.name,
-      shift: s.shift,
-      location: s.location,
-      arrivalTime,
-      leavingTime,
-      isUninformed: false,
-    };
-
-    if (existing?.arrivalTime) {
-      kind = 'out';
+      // If total worked hours satisfy full-day threshold, lift to Present
+      if (hours >= win.minHoursFull) { autoStatus = 'Present'; autoValue = 1; }
+      else if (hours >= win.minHoursHalf) { autoStatus = autoStatus === 'Absent' ? 'Half Day' : autoStatus; autoValue = autoStatus === 'Present' ? 1 : 0.5; }
+      else { autoValue = autoStatus === 'Present' ? 1 : autoStatus === 'Half Day' ? 0.5 : 0; }
     }
 
     try {
-      await attendanceService.upsert(record);
+      await attendanceService.upsert({
+        staffId: s.id, date: today, status: autoStatus, attendanceValue: autoValue,
+        isSunday: isSunday(today), isPartTime: false, staffName: s.name,
+        shift: s.shift, location: s.location,
+        arrivalTime, leavingTime, isUninformed: false,
+      });
+      lastPunchRef.current[s.id] = { ts: Date.now(), kind };
       setRecent(prev => [{ staffId: s.id, staffName: s.name, kind, time, distance }, ...prev].slice(0, 20));
       setMessage({
         kind: autoStatus === 'Absent' ? 'warn' : 'ok',
-        text: `${kind === 'in' ? 'Punched IN' : 'Punched OUT'}: ${s.name} @ ${formatTime12h(time)} · ${autoStatus}`,
+        text: `${kind === 'in' ? 'Punched IN' : 'Punched OUT'}: ${s.name} @ ${formatTime12h(time)} · ${autoStatus} · ${summary.count} event(s)`,
       });
       onAttendanceUpdated?.();
     } catch (e: any) {
@@ -246,66 +272,166 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
     }
   }, [attendance, today, onAttendanceUpdated, shiftWindows]);
 
-  // Recognition loop
+  // ---- Continuous recognition + liveness loop -------------------------------
   useEffect(() => {
-    if (!scanning || !ready || !cameraOn || embeddings.length === 0) return;
+    if (!ready || !cameraOn || allEmbeddings.length === 0) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
 
+    const resetCandidate = () => {
+      candidateRef.current = { staffId: null, frames: 0, boxes: [], earSeries: [], blinkSeen: false, challengeNeeded: false };
+    };
+
     const tick = async () => {
-      if (cancelled || !videoRef.current || videoRef.current.readyState < 2) {
-        timer = setTimeout(tick, 600);
-        return;
+      if (cancelled) return;
+      if (!videoRef.current || videoRef.current.readyState < 2) {
+        timer = setTimeout(tick, 400); return;
       }
       try {
-        const r = await detect(videoRef.current);
-        if (!cancelled && r) {
-          const { staffId, distance } = findBestMatch(r.descriptor);
-          if (staffId && distance < MATCH_THRESHOLD) {
-            const s = staffById.get(staffId);
-            if (s && s.isActive) {
-              setLastMatch({ name: s.name, distance, ts: Date.now() });
-              const last = lastPunchRef.current[staffId] || 0;
-              if (Date.now() - last > COOLDOWN_SECONDS * 1000) {
-                lastPunchRef.current[staffId] = Date.now();
-                await punch(s, distance);
-              }
-            }
-          } else {
-            setLastMatch({ name: 'Unknown', distance, ts: Date.now() });
-          }
-        } else if (!cancelled) {
-          setLastMatch(null);
+        const r = await detect(videoRef.current, { inputSize: 416, scoreThreshold: 0.55, withLandmarks: true });
+        if (!r) { setLastMatch(null); resetCandidate(); timer = setTimeout(tick, 250); return; }
+
+        const { staffId, distance } = findBestMatch(r.descriptor);
+
+        // No close match at all
+        if (!staffId || distance >= MATCH_THRESHOLD) {
+          setLastMatch({ name: 'Unknown face', distance, ts: Date.now(), status: 'unknown' });
+          resetCandidate();
+          timer = setTimeout(tick, 350); return;
         }
-      } catch { /* ignore */ }
-      if (!cancelled) timer = setTimeout(tick, 800);
+
+        // WRONG LOCATION — face matches DB but staff not in this manager's scope
+        if (!allowedStaffIds.has(staffId)) {
+          const wrongStaff = allEmbeddings.find(e => e.staffId === staffId);
+          setLastMatch({ name: wrongStaff?.staffName || 'Other location', distance, ts: Date.now(), status: 'wrong-loc' });
+          setMessage({ kind: 'err', text: `${wrongStaff?.staffName || 'This staff'} does not belong to this location. Punch blocked.` });
+          resetCandidate();
+          timer = setTimeout(tick, 800); return;
+        }
+
+        const s = staffById.get(staffId);
+        if (!s || !s.isActive) {
+          setLastMatch({ name: 'Inactive staff', distance, ts: Date.now(), status: 'unknown' });
+          resetCandidate();
+          timer = setTimeout(tick, 500); return;
+        }
+
+        // ---- PASSIVE LIVENESS ----
+        // Track over consecutive frames: bbox movement (real face moves) and EAR variance.
+        const cand = candidateRef.current;
+        if (cand.staffId !== staffId) {
+          resetCandidate();
+          cand.staffId = staffId;
+        }
+        cand.frames += 1;
+        cand.boxes.push({ x: r.box.x, y: r.box.y, w: r.box.width, h: r.box.height });
+        if (cand.boxes.length > 6) cand.boxes.shift();
+
+        // Eye Aspect Ratio for blink detection
+        if (r.landmarks) {
+          const leftEye = r.landmarks.getLeftEye();
+          const rightEye = r.landmarks.getRightEye();
+          const ear = (eyeAspectRatio(leftEye) + eyeAspectRatio(rightEye)) / 2;
+          cand.earSeries.push(ear);
+          if (cand.earSeries.length > 12) cand.earSeries.shift();
+          if (ear < EAR_CLOSED) cand.blinkSeen = true;
+        }
+
+        // Passive checks
+        const boxMovement = (() => {
+          if (cand.boxes.length < 3) return 0;
+          let m = 0;
+          for (let i = 1; i < cand.boxes.length; i++) {
+            m += Math.abs(cand.boxes[i].x - cand.boxes[i-1].x) + Math.abs(cand.boxes[i].y - cand.boxes[i-1].y);
+          }
+          return m;
+        })();
+        const earVariance = (() => {
+          if (cand.earSeries.length < 4) return 0;
+          const mean = cand.earSeries.reduce((a,b) => a+b, 0) / cand.earSeries.length;
+          return cand.earSeries.reduce((a,b) => a + (b-mean)*(b-mean), 0) / cand.earSeries.length;
+        })();
+
+        const stableEnough = cand.frames >= REQUIRED_STABLE_FRAMES;
+        const passiveLive = boxMovement > 2 || earVariance > 0.0008; // micro-movement OR eyelid micro-motion
+        const livenessScore = Math.min(1, (boxMovement / 30) + earVariance * 200 + (cand.blinkSeen ? 0.5 : 0));
+
+        if (!stableEnough) {
+          setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'matching' });
+          timer = setTimeout(tick, 200); return;
+        }
+
+        // If passive liveness is unsure, request a blink (challenge)
+        if (!passiveLive && !cand.blinkSeen) {
+          cand.challengeNeeded = true;
+          setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'blink-please' });
+          timer = setTimeout(tick, 200); return;
+        }
+
+        // Possible spoof: completely flat (printed photo) + no blink + no movement
+        if (cand.frames >= 8 && boxMovement < 1 && earVariance < 0.0002 && !cand.blinkSeen) {
+          setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'spoof' });
+          setMessage({ kind: 'err', text: `Liveness check failed for ${s.name} (possible photo). Please face the camera and blink.` });
+          resetCandidate();
+          timer = setTimeout(tick, 1500); return;
+        }
+
+        setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'ok' });
+        await punch(s, distance, livenessScore);
+        // After a successful punch, hold briefly then reset to allow next person
+        resetCandidate();
+        timer = setTimeout(tick, 1200); return;
+      } catch { /* ignore frame errors */ }
+      if (!cancelled) timer = setTimeout(tick, 350);
     };
     tick();
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [scanning, ready, cameraOn, embeddings.length, detect, findBestMatch, staffById, punch]);
+  }, [ready, cameraOn, allEmbeddings, detect, findBestMatch, staffById, allowedStaffIds, punch]);
 
   const enrolledCount = enrolledStaffIds.size;
   const totalActive = staff.filter(s => s.isActive).length;
 
+  const statusBadge = (status: NonNullable<typeof lastMatch>['status']) => {
+    const map: Record<string, string> = {
+      matching: 'bg-blue-500/80',
+      'live-check': 'bg-blue-500/80',
+      'blink-please': 'bg-amber-500/90',
+      ok: 'bg-emerald-500/90',
+      'wrong-loc': 'bg-red-500/90',
+      spoof: 'bg-red-600/90',
+      unknown: 'bg-amber-500/80',
+    };
+    const text: Record<string, string> = {
+      matching: 'Verifying…',
+      'live-check': 'Live check…',
+      'blink-please': 'Please blink',
+      ok: 'Verified',
+      'wrong-loc': 'Wrong location',
+      spoof: 'Spoof detected',
+      unknown: 'Unknown',
+    };
+    return <span className={`px-3 py-1.5 rounded-full font-semibold text-white ${map[status]}`}>{text[status]}</span>;
+  };
+
   return (
-    <div className="space-y-4 max-w-5xl mx-auto py-4">
+    <div className="space-y-4 w-full max-w-6xl mx-auto py-4">
       <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6">
         <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
           <div>
             <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
               <ScanFace size={22} className="text-indigo-400" />
-              Face Attendance
+              Face Attendance · Kiosk mode
             </h2>
             <p className="text-xs text-[var(--text-secondary)] mt-1">
-              Live recognition. First detection of the day = IN, next detections update OUT time.
+              Always-on recognition with liveness check. First match = IN, then auto-toggles IN↔OUT every {TOGGLE_MIN_SECONDS/60} min for lunch/tea/errands.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <span className="text-xs px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-400/30 text-indigo-300">
               {enrolledCount}/{totalActive} enrolled
             </span>
-            <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 text-emerald-300">
-              Threshold {MATCH_THRESHOLD.toFixed(2)}
+            <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 text-emerald-300 flex items-center gap-1">
+              <Activity size={12} /> Liveness on
             </span>
           </div>
         </div>
@@ -318,33 +444,29 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
         {(loading || loadingEmbeddings) && (
           <div className="mb-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 text-sm flex items-center gap-2">
             <Loader2 size={16} className="animate-spin" />
-            {loading ? 'Loading face models…' : `Loading ${embeddings.length} face samples…`}
+            {loading ? 'Loading face models…' : `Loading ${allEmbeddings.length} face samples…`}
           </div>
         )}
-        {!loadingEmbeddings && embeddings.length === 0 && (
+        {!loadingEmbeddings && scopedEmbeddings.length === 0 && (
           <div className="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm flex items-center gap-2">
-            <AlertTriangle size={16} /> No face samples enrolled yet. Register staff in their portal or via Staff Management.
+            <AlertTriangle size={16} /> No face samples enrolled for this location yet. Register staff in their portal or via Staff Management.
           </div>
         )}
 
-        {/* Camera preview */}
-        <div className="relative w-full max-w-2xl mx-auto aspect-[4/3] bg-black/50 rounded-2xl overflow-hidden border border-[var(--glass-border)]">
+        <div className="relative w-full max-w-3xl mx-auto aspect-[4/3] bg-black/50 rounded-2xl overflow-hidden border border-[var(--glass-border)]">
           <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
           {!cameraOn && (
             <div className="absolute inset-0 flex items-center justify-center text-[var(--text-secondary)] text-sm">
-              Camera is off
+              {cameraError ? 'Camera blocked' : 'Starting camera…'}
             </div>
           )}
           {cameraOn && lastMatch && (
             <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-xs">
-              <span className={`px-3 py-1.5 rounded-full font-semibold ${
-                lastMatch.name === 'Unknown' ? 'bg-amber-500/80 text-white' : 'bg-emerald-500/90 text-white'
-              }`}>
-                {lastMatch.name}
-              </span>
-              <span className="px-3 py-1.5 rounded-full bg-black/70 text-white">
-                d {lastMatch.distance.toFixed(2)}
-              </span>
+              <div className="flex items-center gap-2">
+                {statusBadge(lastMatch.status)}
+                <span className="px-3 py-1.5 rounded-full bg-black/70 text-white">{lastMatch.name}</span>
+              </div>
+              <span className="px-3 py-1.5 rounded-full bg-black/70 text-white">d {lastMatch.distance.toFixed(2)}</span>
             </div>
           )}
         </div>
@@ -359,10 +481,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
           {!cameraOn ? (
             <button
               onClick={startCamera}
-              disabled={!ready || embeddings.length === 0}
+              disabled={!ready || scopedEmbeddings.length === 0}
               className="px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white font-semibold flex items-center gap-2"
             >
-              <Camera size={16} /> Start Recognition
+              <Camera size={16} /> Start Camera
             </button>
           ) : (
             <button
@@ -402,7 +524,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
                   <div>
                     <div className="text-sm font-semibold text-[var(--text-primary)]">{r.staffName}</div>
                     <div className="text-[11px] text-[var(--text-secondary)]">
-                      {r.kind === 'in' ? 'Punched IN' : 'Updated OUT'} · d {r.distance.toFixed(2)}
+                      {r.kind === 'in' ? 'Punched IN' : 'Punched OUT'} · d {r.distance.toFixed(2)}
                     </div>
                   </div>
                 </div>
@@ -434,40 +556,28 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
                   <div key={rec.id} className="p-3 rounded-xl bg-black/10 border border-[var(--glass-border)] flex items-center gap-3 flex-wrap">
                     <div className="flex-1 min-w-[160px]">
                       <div className="text-sm font-semibold text-[var(--text-primary)]">{rec.staffName}</div>
-                      <div className="text-[11px] text-[var(--text-secondary)]">
-                        {rec.location} · {rec.status}
-                      </div>
+                      <div className="text-[11px] text-[var(--text-secondary)]">{rec.location} · {rec.status}</div>
                     </div>
                     {isEditing ? (
                       <>
                         <label className="text-[11px] text-[var(--text-secondary)] flex flex-col">
                           IN
-                          <input
-                            type="time"
-                            value={edit.arrival}
+                          <input type="time" value={edit.arrival}
                             onChange={(e) => setEditing(p => ({ ...p, [rec.id!]: { ...edit, arrival: e.target.value } }))}
-                            className="px-2 py-1 rounded-lg bg-black/30 border border-[var(--glass-border)] text-sm text-[var(--text-primary)]"
-                          />
+                            className="px-2 py-1 rounded-lg bg-black/30 border border-[var(--glass-border)] text-sm text-[var(--text-primary)]" />
                         </label>
                         <label className="text-[11px] text-[var(--text-secondary)] flex flex-col">
                           OUT
-                          <input
-                            type="time"
-                            value={edit.leaving}
+                          <input type="time" value={edit.leaving}
                             onChange={(e) => setEditing(p => ({ ...p, [rec.id!]: { ...edit, leaving: e.target.value } }))}
-                            className="px-2 py-1 rounded-lg bg-black/30 border border-[var(--glass-border)] text-sm text-[var(--text-primary)]"
-                          />
+                            className="px-2 py-1 rounded-lg bg-black/30 border border-[var(--glass-border)] text-sm text-[var(--text-primary)]" />
                         </label>
-                        <button
-                          onClick={() => saveOverride(rec)}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center gap-1"
-                        >
+                        <button onClick={() => saveOverride(rec)}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center gap-1">
                           <Save size={12} /> Save
                         </button>
-                        <button
-                          onClick={() => setEditing(p => { const n = { ...p }; delete n[rec.id!]; return n; })}
-                          className="px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs"
-                        >
+                        <button onClick={() => setEditing(p => { const n = { ...p }; delete n[rec.id!]; return n; })}
+                          className="px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs">
                           Cancel
                         </button>
                       </>
@@ -475,16 +585,12 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
                       <>
                         <span className="text-xs font-mono text-emerald-300">IN {formatTime12h(rec.arrivalTime)}</span>
                         <span className="text-xs font-mono text-blue-300">OUT {formatTime12h(rec.leavingTime)}</span>
-                        <button
-                          onClick={() => setEditing(p => ({ ...p, [rec.id!]: { arrival: rec.arrivalTime || '', leaving: rec.leavingTime || '' } }))}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs flex items-center gap-1 hover:bg-indigo-500/30"
-                        >
+                        <button onClick={() => setEditing(p => ({ ...p, [rec.id!]: { arrival: rec.arrivalTime || '', leaving: rec.leavingTime || '' } }))}
+                          className="px-3 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs flex items-center gap-1 hover:bg-indigo-500/30">
                           <Pencil size={12} /> Edit
                         </button>
-                        <button
-                          onClick={() => clearPunches(rec)}
-                          className="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-400/30 text-red-300 text-xs flex items-center gap-1 hover:bg-red-500/30"
-                        >
+                        <button onClick={() => clearPunches(rec)}
+                          className="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-400/30 text-red-300 text-xs flex items-center gap-1 hover:bg-red-500/30">
                           <Trash2 size={12} /> Clear
                         </button>
                       </>
