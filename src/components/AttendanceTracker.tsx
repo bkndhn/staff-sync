@@ -13,7 +13,7 @@ interface AttendanceTrackerProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
   onUpdateAttendance: (staffId: string, date: string, status: 'Present' | 'Half Day' | 'Absent', isPartTime?: boolean, staffName?: string, shift?: 'Morning' | 'Evening' | 'Both', location?: string, salary?: number, salaryOverride?: boolean) => void;
-  onBulkUpdateAttendance: (date: string, status: 'Present' | 'Absent') => void;
+  onBulkUpdateAttendance: (date: string, status: 'Present' | 'Absent' | 'Half Day', shift?: 'Morning' | 'Evening') => void;
   userRole: 'admin' | 'manager';
 }
 
@@ -49,6 +49,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [selectedLocation, setSelectedLocation] = useState<string>('Big Shop');
   const [availableLocations, setAvailableLocations] = useState<string[]>(['Big Shop', 'Small Shop', 'Godown']);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [showBulkHalfDayModal, setShowBulkHalfDayModal] = useState(false);
+  const [bulkHalfDayShift, setBulkHalfDayShift] = useState<'Morning' | 'Evening'>('Morning');
 
   // Load available locations from Supabase via locationService
   React.useEffect(() => {
@@ -730,6 +732,13 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               <span className="hidden xs:inline">All Present</span>
             </button>
             <button
+              onClick={() => setShowBulkHalfDayModal(true)}
+              className="flex items-center gap-1 px-2 md:px-3 py-1.5 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-xs md:text-sm"
+            >
+              <Clock size={14} />
+              <span className="hidden xs:inline">All Half Day</span>
+            </button>
+            <button
               onClick={() => onBulkUpdateAttendance(selectedDate, 'Absent')}
               className="flex items-center gap-1 px-2 md:px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs md:text-sm"
             >
@@ -1110,6 +1119,77 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           }}
           onClose={() => setShowBulkUpload(false)}
         />
+      )}
+
+      {/* Bulk Half Day Modal */}
+      {showBulkHalfDayModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
+          <div className="bg-white rounded-xl p-4 md:p-6 w-full max-w-xs md:max-w-md mx-2">
+            <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
+              <Clock className="text-yellow-600" size={18} />
+              <span>Bulk Half Day — All Staff</span>
+            </h3>
+            <p className="text-sm md:text-base text-gray-600 mb-3 md:mb-4">
+              Mark <strong>all {getFilteredStaff().length} staff</strong> as Half Day for{' '}
+              <strong>{new Date(selectedDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' })}</strong>.
+              Select which half:
+            </p>
+            <div className="space-y-2 md:space-y-3 mb-4 md:mb-6">
+              <label className={`flex items-center p-3 md:p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                bulkHalfDayShift === 'Morning'
+                  ? 'border-yellow-500 bg-yellow-50 shadow-sm'
+                  : 'border-gray-200 hover:border-yellow-300 hover:bg-yellow-50/50'
+              }`}>
+                <input
+                  type="radio"
+                  value="Morning"
+                  checked={bulkHalfDayShift === 'Morning'}
+                  onChange={(e) => setBulkHalfDayShift(e.target.value as 'Morning')}
+                  className="mr-3 w-4 h-4 accent-yellow-600"
+                />
+                <div>
+                  <span className="text-sm md:text-base font-semibold text-gray-800">☀️ Morning Half</span>
+                  <p className="text-xs text-gray-500 mt-0.5">Staff worked morning shift only</p>
+                </div>
+              </label>
+              <label className={`flex items-center p-3 md:p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                bulkHalfDayShift === 'Evening'
+                  ? 'border-yellow-500 bg-yellow-50 shadow-sm'
+                  : 'border-gray-200 hover:border-yellow-300 hover:bg-yellow-50/50'
+              }`}>
+                <input
+                  type="radio"
+                  value="Evening"
+                  checked={bulkHalfDayShift === 'Evening'}
+                  onChange={(e) => setBulkHalfDayShift(e.target.value as 'Evening')}
+                  className="mr-3 w-4 h-4 accent-yellow-600"
+                />
+                <div>
+                  <span className="text-sm md:text-base font-semibold text-gray-800">🌙 Evening Half</span>
+                  <p className="text-xs text-gray-500 mt-0.5">Staff worked evening shift only</p>
+                </div>
+              </label>
+            </div>
+            <div className="flex flex-col md:flex-row gap-2 md:gap-3">
+              <button
+                onClick={() => {
+                  onBulkUpdateAttendance(selectedDate, 'Half Day', bulkHalfDayShift);
+                  setShowBulkHalfDayModal(false);
+                }}
+                className="w-full px-4 py-2.5 md:py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm md:text-base font-semibold flex items-center justify-center gap-2"
+              >
+                <Check size={16} />
+                Mark All Half Day ({bulkHalfDayShift})
+              </button>
+              <button
+                onClick={() => setShowBulkHalfDayModal(false)}
+                className="w-full px-4 py-2.5 md:py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm md:text-base font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
