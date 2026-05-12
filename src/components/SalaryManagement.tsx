@@ -997,7 +997,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       </span>
                     </td>}
                     {salaryVisibleCols.payment !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${(staffMember?.paymentMode || 'cash') === 'bank' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'}`}>
+                      <span className={`badge-premium ${(staffMember?.paymentMode || 'cash') === 'bank' ? 'badge-success' : 'badge-warning'}`}>
                         {(staffMember?.paymentMode || 'cash') === 'bank' ? 'Bank' : 'Cash'}
                       </span>
                     </td>}

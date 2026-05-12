@@ -1427,7 +1427,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                       ) : <span className="text-gray-400 italic">-</span>}
                     </td>}
                     {visibleColumns.payment !== false && <td className="px-3 py-4 text-sm text-center">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${member.paymentMode === 'bank' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'}`}>
+                      <span className={`badge-premium ${member.paymentMode === 'bank' ? 'badge-success' : 'badge-warning'}`}>
                         {member.paymentMode === 'bank' ? 'Bank' : 'Cash'}
                       </span>
                     </td>}
@@ -1471,7 +1471,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                           <img src={member.photo} alt={member.name} className="w-10 h-10 rounded-full object-cover border-2 border-indigo-200 hover:border-indigo-400 hover:scale-110 transition-all mx-auto" />
                         </button>
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 mx-auto">
+                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/50 mx-auto">
                           <Users size={16} />
                         </div>
                       )}
