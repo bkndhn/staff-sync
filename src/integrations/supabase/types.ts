@@ -638,6 +638,51 @@ export type Database = {
         }
         Relationships: []
       }
+      punch_events: {
+        Row: {
+          created_at: string
+          date: string
+          device_label: string | null
+          event_time: string
+          id: string
+          kind: string
+          liveness_score: number | null
+          location: string | null
+          match_distance: number | null
+          source: string
+          staff_id: string
+          staff_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          device_label?: string | null
+          event_time: string
+          id?: string
+          kind: string
+          liveness_score?: number | null
+          location?: string | null
+          match_distance?: number | null
+          source?: string
+          staff_id: string
+          staff_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          device_label?: string | null
+          event_time?: string
+          id?: string
+          kind?: string
+          liveness_score?: number | null
+          location?: string | null
+          match_distance?: number | null
+          source?: string
+          staff_id?: string
+          staff_name?: string | null
+        }
+        Relationships: []
+      }
       salary_categories: {
         Row: {
           created_at: string | null

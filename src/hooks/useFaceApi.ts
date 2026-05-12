@@ -45,15 +45,20 @@ export const useFaceApi = (autoLoad = true) => {
     return () => { mountedRef.current = false; };
   }, [autoLoad]);
 
-  const detect = async (input: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement): Promise<DetectionResult | null> => {
+  const detect = async (
+    input: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
+    opts?: { inputSize?: number; scoreThreshold?: number; withLandmarks?: boolean },
+  ): Promise<(DetectionResult & { landmarks?: any }) | null> => {
     await ensureModelsLoaded();
-    const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+    const options = new faceapi.TinyFaceDetectorOptions({
+      inputSize: opts?.inputSize ?? 416,
+      scoreThreshold: opts?.scoreThreshold ?? 0.5,
+    });
     const results = await faceapi
       .detectAllFaces(input, options)
       .withFaceLandmarks()
       .withFaceDescriptors();
     if (!results || results.length === 0) return null;
-    // Pick the largest face
     const best = results.reduce((a, b) => (a.detection.box.area > b.detection.box.area ? a : b));
     const box = best.detection.box;
     return {
@@ -61,8 +66,21 @@ export const useFaceApi = (autoLoad = true) => {
       qualityScore: best.detection.score,
       faceCount: results.length,
       box: { x: box.x, y: box.y, width: box.width, height: box.height },
+      landmarks: opts?.withLandmarks === false ? undefined : best.landmarks,
     };
   };
 
   return { ready, loading, error, detect };
+};
+
+/** Eye Aspect Ratio — smaller value = closed eye. Used for blink-based liveness. */
+export const eyeAspectRatio = (eye: { x: number; y: number }[]): number => {
+  if (!eye || eye.length < 6) return 1;
+  const dist = (p: { x: number; y: number }, q: { x: number; y: number }) =>
+    Math.hypot(p.x - q.x, p.y - q.y);
+  const v1 = dist(eye[1], eye[5]);
+  const v2 = dist(eye[2], eye[4]);
+  const h = dist(eye[0], eye[3]);
+  if (h === 0) return 1;
+  return (v1 + v2) / (2 * h);
 };
