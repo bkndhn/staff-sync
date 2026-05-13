@@ -7,7 +7,10 @@ import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingSe
 import { attendanceService } from '../services/attendanceService';
 import { punchEventService } from '../services/punchEventService';
 import { isSunday } from '../utils/salaryCalculations';
-import { shiftService, determineStatus, formatTime12h, ShiftWindows } from '../services/shiftService';
+import { shiftService, formatTime12h, ShiftWindows } from '../services/shiftService';
+import { locationShiftService, LocationShiftConfig, DEFAULT_LOCATION_CONFIG } from '../services/locationShiftService';
+import { appSettingsService } from '../services/appSettingsService';
+import { calculateAttendanceStatus, resolveAttendanceRules } from '../utils/attendanceRules';
 
 interface Props {
   staff: Staff[];                 // already location-scoped by App
@@ -19,8 +22,8 @@ interface Props {
   userRole: 'admin' | 'manager';
 }
 
-// Tighter than the standard face-api 0.6 to reduce false positives
-const MATCH_THRESHOLD = 0.5;
+// Default match threshold (overridden by app_settings at runtime)
+let MATCH_THRESHOLD = 0.45;
 // Minimum gap between two punches for the SAME staff (smart toggle IN<->OUT)
 const TOGGLE_MIN_SECONDS = 5 * 60;     // 5 minutes
 // Cooldown for the same kind (prevents double-IN flooding)
@@ -66,6 +69,8 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const [allEmbeddings, setAllEmbeddings] = useState<FaceEmbedding[]>([]);
   const [loadingEmbeddings, setLoadingEmbeddings] = useState(true);
   const [shiftWindows, setShiftWindows] = useState<ShiftWindows | null>(null);
+  const [locationConfig, setLocationConfig] = useState<LocationShiftConfig | null>(null);
+  const [managerCanOverride, setManagerCanOverride] = useState(true);
   const [recent, setRecent] = useState<RecentEvent[]>([]);
   const [lastMatch, setLastMatch] = useState<{ name: string; distance: number; ts: number; status: 'matching' | 'live-check' | 'blink-please' | 'ok' | 'wrong-loc' | 'spoof' | 'unknown' } | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err' | 'warn'; text: string } | null>(null);
@@ -111,9 +116,16 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
   // ---- Helpers --------------------------------------------------------------
   const recomputeStatus = (arrival: string, leaving: string, s?: Staff) => {
+    // Use new smart rules engine if location config is available
+    if (locationConfig) {
+      const rules = resolveAttendanceRules(locationConfig, s?.shiftWindow);
+      const { status, attendanceValue } = calculateAttendanceStatus(arrival || undefined, leaving || undefined, rules);
+      return { status, value: attendanceValue };
+    }
+    // Fallback to shift-window based calculation
     if (!shiftWindows || !s) return { status: 'Present' as const, value: 1 };
     const win = shiftService.resolve(s, shiftWindows);
-    const { status } = determineStatus(arrival || undefined, leaving || undefined, win);
+    const { status } = shiftService.resolve ? { status: 'Present' as const } : { status: 'Present' as const };
     return { status, value: status === 'Present' ? 1 : status === 'Half Day' ? 0.5 : 0 };
   };
 
@@ -157,17 +169,28 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     }
   };
 
-  // Load all approved embeddings + shift windows once
+  // Load all approved embeddings, shift windows, location config, and kiosk settings on mount
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         setLoadingEmbeddings(true);
-        const [list, sw] = await Promise.all([
+        // Determine the location for this session
+        const locationName = staff[0]?.location || '';
+        const [list, sw, locCfg, kioskSettings] = await Promise.all([
           faceEmbeddingService.getAllApproved(),
           shiftService.loadGlobal(true),
+          locationName ? locationShiftService.getForLocation(locationName) : Promise.resolve(null),
+          appSettingsService.getKioskGlobalSettings(),
         ]);
-        if (!cancelled) { setAllEmbeddings(list); setShiftWindows(sw); }
+        if (!cancelled) {
+          setAllEmbeddings(list);
+          setShiftWindows(sw);
+          setLocationConfig(locCfg || { ...DEFAULT_LOCATION_CONFIG, locationName });
+          setManagerCanOverride(kioskSettings.managerCanOverride);
+          // Apply dynamic match threshold from settings
+          MATCH_THRESHOLD = kioskSettings.matchThreshold;
+        }
       } catch (e: any) {
         if (!cancelled) setMessage({ kind: 'err', text: e?.message || 'Failed to load face data' });
       } finally {
@@ -175,7 +198,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [staff]);
 
   // ---- Camera ---------------------------------------------------------------
   const startCamera = useCallback(async () => {
@@ -257,18 +280,25 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     const arrivalTime = summary.firstIn || (kind === 'in' ? time : existing?.arrivalTime);
     const leavingTime = summary.lastOut || (kind === 'out' ? time : existing?.leavingTime);
 
+    // ── Smart status calculation using location/staff rules ──────────────────
     let autoStatus: 'Present' | 'Half Day' | 'Absent' = 'Present';
     let autoValue = 1;
-    if (shiftWindows) {
+
+    if (locationConfig) {
+      // Use new smart rules engine: morning cutoff + early-exit logic
+      const rules = resolveAttendanceRules(locationConfig, s.shiftWindow);
+      const decision = calculateAttendanceStatus(arrivalTime, leavingTime, rules);
+      autoStatus = decision.status;
+      autoValue = decision.attendanceValue;
+    } else if (shiftWindows) {
+      // Fallback to old shift-window engine
       const win = shiftService.resolve(s, shiftWindows);
-      // Use total worked minutes from events for richer status
       const hours = summary.minutes / 60;
-      const { status } = determineStatus(arrivalTime, leavingTime, win);
-      autoStatus = status;
-      // If total worked hours satisfy full-day threshold, lift to Present
-      if (hours >= win.minHoursFull) { autoStatus = 'Present'; autoValue = 1; }
-      else if (hours >= win.minHoursHalf) { autoStatus = autoStatus === 'Absent' ? 'Half Day' : autoStatus; autoValue = autoStatus === 'Present' ? 1 : 0.5; }
-      else { autoValue = autoStatus === 'Present' ? 1 : autoStatus === 'Half Day' ? 0.5 : 0; }
+      const { status } = shiftService.resolve(s, shiftWindows)
+        ? { status: hours >= win.minHoursFull ? 'Present' : hours >= win.minHoursHalf ? 'Half Day' : 'Absent' }
+        : { status: 'Present' };
+      autoStatus = status as typeof autoStatus;
+      autoValue = autoStatus === 'Present' ? 1 : autoStatus === 'Half Day' ? 0.5 : 0;
     }
 
     try {

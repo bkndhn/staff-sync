@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Staff, Attendance, AttendanceFilter } from '../types';
 import { Calendar, Download, Check, X, Filter, MapPin, Clock, Upload, Share2, AlertTriangle } from 'lucide-react';
 import { isSunday } from '../utils/salaryCalculations';
@@ -6,6 +6,7 @@ import { exportAttendancePDF } from '../utils/exportUtils';
 import BulkAttendanceUpload from './BulkAttendanceUpload';
 import { attendanceService } from '../services/attendanceService';
 import YearlyAttendanceSummary from './YearlyAttendanceSummary';
+import { appSettingsService } from '../services/appSettingsService';
 
 interface AttendanceTrackerProps {
   staff: Staff[];
@@ -54,6 +55,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [bulkInTime, setBulkInTime] = useState<string>('');
   const [bulkOutTime, setBulkOutTime] = useState<string>('');
   const [individualTimes, setIndividualTimes] = useState<Record<string, { inTime: string, outTime: string }>>({});
+  const [managerCanOverride, setManagerCanOverride] = useState(true);
 
   const handleIndividualTimeChange = (staffId: string, field: 'inTime' | 'outTime', value: string) => {
     setIndividualTimes(prev => ({
@@ -76,8 +78,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     onUpdateAttendance(staffId, selectedDate, newStatus, false, undefined, shift || currentData.shift, undefined, undefined, undefined, inTime, outTime);
   };
 
-  // Load available locations from Supabase via locationService
-  React.useEffect(() => {
+  // Load available locations and settings
+  useEffect(() => {
     const fetchLocations = async () => {
       const { locationService } = await import('../services/locationService');
       const locs = await locationService.getLocations();
@@ -86,11 +88,16 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       }
     };
     fetchLocations();
+    
+    appSettingsService.getManagerCanOverride().then(setManagerCanOverride);
   }, []);
 
   const activeStaff = staff.filter(member => member.isActive);
   const today = new Date().toISOString().split('T')[0];
-  const canEditDate = userRole === 'admin' || selectedDate === today;
+  
+  // Logic: Admins can always edit. Managers can edit ONLY IF managerCanOverride is true (can edit any date). 
+  // We'll restrict managers from editing AT ALL if managerCanOverride is false.
+  const canEditDate = userRole === 'admin' || managerCanOverride;
 
   const getAttendanceForDate = (staffId: string, date: string) => {
     const record = attendance.find(a => a.staffId === staffId && a.date === date && !a.isPartTime);

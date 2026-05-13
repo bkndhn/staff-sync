@@ -4,6 +4,7 @@ import { userService, AppUser, CreateUserInput, UpdateUserInput } from '../servi
 import { locationService, Location } from '../services/locationService';
 import { appSettingsService } from '../services/appSettingsService';
 import ShiftWindowsPanel from './ShiftWindowsPanel';
+import AttendanceRulesPanel from './AttendanceRulesPanel';
 
 interface SettingsProps {
     userRole: string;
@@ -532,6 +533,20 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
 
             {/* Shift Windows & Auto Half-Day Rules */}
             <ShiftWindowsPanel />
+
+            {/* Attendance Rules (per-location + global kiosk settings) */}
+            <div className="glass-card-static p-4 rounded-xl space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                  <Clock size={20} className="text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)] text-sm">Smart Attendance Rules & Kiosk Settings</h3>
+                  <p className="text-xs text-[var(--text-muted)]">Configure morning cutoff, early-exit time, full/half day rules, anti-spoof level, and per-location overrides.</p>
+                </div>
+              </div>
+              <AttendanceRulesPanel />
+            </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
                 <input

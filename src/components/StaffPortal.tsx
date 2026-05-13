@@ -526,17 +526,25 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
                           return (
                             <td key={day} className={`px-2 py-3 text-center ${isSun ? 'bg-red-500/5' : ''} ${record?.isUninformed ? 'bg-orange-500/10' : ''}`} title={`${status === 'Half Day' ? `Half Day (${record?.shift || 'N/A'})` : status}${record?.isUninformed ? ' - Uninformed' : ''}`}>
-                              <span className={`inline-flex items-center justify-center min-w-[26px] h-6 rounded text-[10px] font-bold ${
-                                record?.isUninformed
-                                  ? 'bg-orange-500 text-white ring-2 ring-orange-300'
-                                  : status === 'Present'
-                                    ? 'bg-emerald-500 text-white'
-                                    : status === 'Half Day'
-                                      ? 'bg-amber-500 text-white'
-                                      : 'bg-red-500 text-white'
-                                }`}>
-                                {record?.isUninformed ? '⚠' : status === 'Present' ? 'P' : status === 'Half Day' ? halfCode : 'A'}
-                              </span>
+                              <div className="flex flex-col items-center justify-center min-h-[48px]">
+                                <span className={`inline-flex items-center justify-center min-w-[26px] h-6 rounded text-[10px] font-bold ${
+                                  record?.isUninformed
+                                    ? 'bg-orange-500 text-white ring-2 ring-orange-300'
+                                    : status === 'Present'
+                                      ? 'bg-emerald-500 text-white'
+                                      : status === 'Half Day'
+                                        ? 'bg-amber-500 text-white'
+                                        : 'bg-red-500 text-white'
+                                  }`}>
+                                  {record?.isUninformed ? '⚠' : status === 'Present' ? 'P' : status === 'Half Day' ? halfCode : 'A'}
+                                </span>
+                                {(record?.arrivalTime || record?.leavingTime) && (
+                                  <div className="mt-1 text-[8px] font-medium leading-tight text-center">
+                                    {record.arrivalTime && <div className="text-emerald-500">IN {record.arrivalTime}</div>}
+                                    {record.leavingTime && <div className="text-orange-500">OUT {record.leavingTime}</div>}
+                                  </div>
+                                )}
+                              </div>
                             </td>
                           );
                         })}
@@ -638,6 +646,12 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                                 }`} title={`${day} ${monthName}: ${status}${isUI ? ' (Uninformed)' : ''}`}>
                                   {isUI ? '!' : status === 'Present' ? 'P' : status === 'Half Day' ? halfCode : 'A'}
                                 </div>
+                                {(record?.arrivalTime || record?.leavingTime) && (
+                                  <div className="mt-0.5 text-[7px] font-medium leading-tight text-center">
+                                    {record.arrivalTime && <div className="text-emerald-500">{record.arrivalTime}</div>}
+                                    {record.leavingTime && <div className="text-orange-500">{record.leavingTime}</div>}
+                                  </div>
+                                )}
                                 <span className={`text-[8px] mt-0.5 font-semibold ${isSun ? 'text-red-600' : 'text-[var(--text-muted)]'}`}>{day}</span>
                               </div>
                             );
