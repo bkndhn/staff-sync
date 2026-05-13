@@ -139,6 +139,51 @@ export const exportSalaryToExcel = async (
   XLSX.writeFile(wb, `salary-report-${monthName}-${year}.xlsx`);
 };
 
+export const exportStatutoryToExcel = (
+  salaryDetails: SalaryDetail[],
+  staff: Staff[],
+  month: number,
+  year: number,
+  type: 'combined' | 'esi' | 'pf'
+) => {
+  const data = salaryDetails.map((detail, index) => {
+    const staffMember = staff.find(s => s.id === detail.staffId);
+    if (!staffMember) return null;
+
+    const row: Record<string, string | number> = {
+      'S.No': index + 1,
+      'Name': staffMember.name,
+    };
+
+    const esiAmt = detail.statutoryBreakdown?.find(b => b.key === 'esi')?.amount || 0;
+    const pfAmt = detail.statutoryBreakdown?.find(b => b.key === 'pf')?.amount || 0;
+
+    if (type === 'combined' || type === 'esi') {
+      row['ESI Number'] = staffMember.esiNumber || '-';
+      row['ESI Amount'] = esiAmt;
+    }
+    if (type === 'combined' || type === 'pf') {
+      row['PF Number'] = staffMember.pfNumber || '-';
+      row['PF Amount'] = pfAmt;
+    }
+
+    // Only include rows where they actually have an amount to pay, or maybe all active?
+    // Usually only include those who have ESI or PF configured/deducted
+    if (type === 'esi' && esiAmt === 0) return null;
+    if (type === 'pf' && pfAmt === 0) return null;
+    if (type === 'combined' && esiAmt === 0 && pfAmt === 0) return null;
+
+    return row;
+  }).filter(Boolean); // Remove nulls
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(data);
+  const monthName = new Date(0, month).toLocaleString('default', { month: 'short' });
+  
+  XLSX.utils.book_append_sheet(wb, ws, `${type.toUpperCase()} Report`);
+  XLSX.writeFile(wb, `statutory-report-${type}-${monthName}-${year}.xlsx`);
+};
+
 export const exportAttendancePDF = (
   staff: Staff[],
   attendance: Attendance[],

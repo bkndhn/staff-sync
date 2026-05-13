@@ -23,12 +23,8 @@ interface NavigationProps {
   onLogout: () => void;
 }
 
-// How many tabs to pin in the bottom bar (rest go in "More" drawer)
-const PINNED_COUNT = 4;
-
 const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, onLogout }) => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [showMoreDrawer, setShowMoreDrawer] = useState(false);
 
   const handleLogoutClick = () => setShowLogoutModal(true);
   const handleLogoutConfirm = () => { setShowLogoutModal(false); onLogout(); };
@@ -64,26 +60,8 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
   };
 
   const tabs = getAvailableTabs();
-  // Keep the active tab always visible: if it's in overflow, swap it into pinned
-  const pinnedTabs = (() => {
-    const pinned = tabs.slice(0, PINNED_COUNT);
-    const overflow = tabs.slice(PINNED_COUNT);
-    const activeInOverflow = overflow.findIndex(t => t.id === activeTab);
-    if (activeInOverflow !== -1) {
-      // Swap last pinned with the active overflow tab
-      const swapped = [...pinned];
-      swapped[PINNED_COUNT - 1] = overflow[activeInOverflow];
-      return swapped;
-    }
-    return pinned;
-  })();
-
-  const overflowTabs = tabs.filter(t => !pinnedTabs.some(p => p.id === t.id));
-  const hasOverflow = overflowTabs.length > 0;
-
   const handleTabSelect = (tab: NavigationTab) => {
     setActiveTab(tab);
-    setShowMoreDrawer(false);
   };
 
   return (
@@ -152,16 +130,17 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
       </nav>
 
       {/* ── Mobile Bottom Navigation ───────────────────────────────────────── */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 mobile-nav safe-area-padding">
-        <div className="flex justify-around items-end px-2 pt-2 pb-2" style={{ minHeight: '68px' }}>
-          {pinnedTabs.map((tab) => {
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 mobile-nav safe-area-padding overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <style>{`.mobile-nav::-webkit-scrollbar { display: none; }`}</style>
+        <div className="flex items-end px-2 pt-2 pb-2 w-max min-w-full justify-around gap-2" style={{ minHeight: '68px' }}>
+          {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => handleTabSelect(tab.id)}
-                className={`mobile-nav-item ${isActive ? 'mobile-nav-item-active' : ''}`}
+                className={`mobile-nav-item flex-shrink-0 min-w-[60px] ${isActive ? 'mobile-nav-item-active' : ''}`}
               >
                 <Icon
                   size={22}
@@ -174,115 +153,8 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
               </button>
             );
           })}
-
-          {/* More button — only shown when overflow tabs exist */}
-          {hasOverflow && (
-            <button
-              onClick={() => setShowMoreDrawer(true)}
-              className={`mobile-nav-item ${overflowTabs.some(t => t.id === activeTab) ? 'mobile-nav-item-active' : ''}`}
-            >
-              <MoreHorizontal
-                size={22}
-                className={`transition-all duration-300 ${overflowTabs.some(t => t.id === activeTab) ? 'text-white' : 'text-white/50'}`}
-                strokeWidth={2}
-              />
-              <span className={`text-[10px] font-semibold mt-1 ${overflowTabs.some(t => t.id === activeTab) ? 'text-white' : 'text-white/50'}`}>
-                More
-              </span>
-            </button>
-          )}
         </div>
       </div>
-
-      {/* ── "More" Slide-up Drawer ─────────────────────────────────────────── */}
-      {showMoreDrawer && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="md:hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowMoreDrawer(false)}
-          />
-          {/* Drawer panel */}
-          <div className="md:hidden fixed bottom-0 left-0 right-0 z-[70] rounded-t-3xl overflow-hidden"
-            style={{
-              background: 'linear-gradient(135deg, rgba(15,15,30,0.98) 0%, rgba(25,25,50,0.98) 100%)',
-              borderTop: '1px solid rgba(255,255,255,0.1)',
-              boxShadow: '0 -20px 60px rgba(0,0,0,0.5)',
-            }}
-          >
-            {/* Drag handle */}
-            <div className="flex justify-center pt-3 pb-1">
-              <div className="w-10 h-1 rounded-full bg-white/20" />
-            </div>
-
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3">
-              <span className="text-sm font-bold text-white/80 uppercase tracking-widest">All Pages</span>
-              <button
-                onClick={() => setShowMoreDrawer(false)}
-                className="p-2 rounded-xl bg-white/10 text-white/60 hover:text-white hover:bg-white/20 transition-all active:scale-90"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Grid of ALL tabs so user can jump to any page */}
-            <div className="grid grid-cols-3 gap-3 px-4 pb-6 pt-2"
-              style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
-            >
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabSelect(tab.id)}
-                    className="flex flex-col items-center gap-2 p-4 rounded-2xl transition-all duration-200 active:scale-95"
-                    style={{
-                      background: isActive
-                        ? 'linear-gradient(135deg, rgba(99,102,241,0.4) 0%, rgba(139,92,246,0.4) 100%)'
-                        : 'rgba(255,255,255,0.05)',
-                      border: isActive ? '1px solid rgba(99,102,241,0.6)' : '1px solid rgba(255,255,255,0.08)',
-                    }}
-                  >
-                    <div
-                      className="w-11 h-11 rounded-2xl flex items-center justify-center"
-                      style={{
-                        background: isActive
-                          ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
-                          : 'rgba(255,255,255,0.08)',
-                      }}
-                    >
-                      <Icon size={20} className={isActive ? 'text-white' : 'text-white/60'} strokeWidth={isActive ? 2.5 : 2} />
-                    </div>
-                    <span className={`text-[11px] font-semibold text-center leading-tight ${isActive ? 'text-white' : 'text-white/60'}`}>
-                      {tab.label}
-                    </span>
-                    {isActive && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                    )}
-                  </button>
-                );
-              })}
-
-              {/* Logout tile inside drawer for quick access */}
-              <button
-                onClick={() => { setShowMoreDrawer(false); handleLogoutClick(); }}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl transition-all duration-200 active:scale-95"
-                style={{
-                  background: 'rgba(239,68,68,0.08)',
-                  border: '1px solid rgba(239,68,68,0.2)',
-                }}
-              >
-                <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-red-500/20">
-                  <LogOut size={20} className="text-red-400" strokeWidth={2} />
-                </div>
-                <span className="text-[11px] font-semibold text-red-400 text-center leading-tight">Logout</span>
-              </button>
-            </div>
-          </div>
-        </>
-      )}
 
       {/* ── Logout Confirmation Modal ───────────────────────────────────────── */}
       {showLogoutModal && (

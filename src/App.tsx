@@ -379,7 +379,7 @@ function App() {
   };
 
   // Bulk update attendance (admin only)
-  const bulkUpdateAttendance = async (date: string, status: 'Present' | 'Absent' | 'Half Day', shift?: 'Morning' | 'Evening') => {
+  const bulkUpdateAttendance = async (date: string, status: 'Present' | 'Absent' | 'Half Day', shift?: 'Morning' | 'Evening', arrivalTime?: string, leavingTime?: string) => {
     // Allow both admin and managers to perform bulk updates
     if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
       alert('Only administrators and managers can perform bulk updates');
@@ -402,6 +402,8 @@ function App() {
       isSunday: isSunday(date),
       isPartTime: false,
       ...(status === 'Half Day' && shift ? { shift } : {}),
+      ...(arrivalTime ? { arrivalTime } : {}),
+      ...(leavingTime ? { leavingTime } : {}),
     }));
 
     try {

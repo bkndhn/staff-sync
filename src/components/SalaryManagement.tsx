@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Staff, Attendance, SalaryDetail, AdvanceDeduction, PartTimeSalaryDetail, SalaryOverride } from '../types';
 import { DollarSign, Download, Users, Calendar, TrendingUp, Edit2, Save, X, FileSpreadsheet, FileText, MessageCircle, Filter, Plus, Trash2 } from 'lucide-react';
 import { calculateAttendanceMetrics, calculateSalary, calculatePartTimeSalary, roundToNearest10 } from '../utils/salaryCalculations';
-import { exportSalaryToExcel, exportSalaryPDF, generateSalarySlipPDF, exportBulkSalarySlipsPDF } from '../utils/exportUtils';
+import { exportSalaryToExcel, exportSalaryPDF, generateSalarySlipPDF, exportBulkSalarySlipsPDF, exportStatutoryToExcel } from '../utils/exportUtils';
 import { salaryCategoryService, type SalaryCategory } from '../services/salaryCategoryService';
 import { salaryOverrideService } from '../services/salaryOverrideService';
 import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryService';
@@ -92,8 +92,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     return {
       location: true, type: true, payment: true, floor: true, designation: true,
       present: true, leave: true, sunAbs: true, oldAdv: true, curAdv: true,
-      deduction: true, basic: true, incentive: true, hra: true, meal: true,
-      sunPenalty: true, statutory: true, gross: true, net: true, newAdv: true
+      sunPenalty: true, statutory: true, esi: true, pf: true, gross: true, net: true, newAdv: true
     };
   });
   const toggleSalaryCol = (col: string) => {
@@ -107,7 +106,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     location: 'Location', type: 'Type', payment: 'Payment', floor: 'Floor', designation: 'Designation',
     present: 'Present', leave: 'Leave', sunAbs: 'Sun Abs', oldAdv: 'Old Adv', curAdv: 'Cur Adv',
     deduction: 'Deduction', basic: 'Basic', incentive: 'Incentive', hra: 'HRA', meal: 'Meal',
-    sunPenalty: 'Sun Penalty', statutory: 'ESI/PF/Statutory', gross: 'Gross', net: 'Net Salary', newAdv: 'New Adv'
+    sunPenalty: 'Sun Penalty', statutory: 'ESI/PF/Statutory', esi: 'ESI', pf: 'PF', gross: 'Gross', net: 'Net Salary', newAdv: 'New Adv'
   };
   const [salaryCategories, setSalaryCategories] = useState<SalaryCategory[]>(() => salaryCategoryService.getCategoriesSync());
   const [showBulkSender, setShowBulkSender] = useState(false);
@@ -606,6 +605,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       let totalDeduction = 0;
       let totalOldAdv = 0;
       let totalCurAdv = 0;
+      let totalESI = 0;
+      let totalPF = 0;
 
       Object.values(tempAdvances).forEach(temp => {
         totalGross += temp.grossSalary || 0;
@@ -616,7 +617,12 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         totalCurAdv += temp.currentAdvance || 0;
       });
 
-      return { totalGross, totalNet, totalNewAdv, totalDeduction, totalOldAdv, totalCurAdv };
+      salaryDetails.forEach(d => {
+        totalESI += d.statutoryBreakdown?.find(b => b.key === 'esi')?.amount || 0;
+        totalPF += d.statutoryBreakdown?.find(b => b.key === 'pf')?.amount || 0;
+      });
+
+      return { totalGross, totalNet, totalNewAdv, totalDeduction, totalOldAdv, totalCurAdv, totalESI, totalPF };
     } else {
       // Calculate from salary details
       const totalGross = salaryDetails.reduce((sum, d) => sum + d.grossSalary, 0);
@@ -625,8 +631,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       const totalDeduction = salaryDetails.reduce((sum, d) => sum + d.deduction, 0);
       const totalOldAdv = salaryDetails.reduce((sum, d) => sum + d.oldAdv, 0);
       const totalCurAdv = salaryDetails.reduce((sum, d) => sum + d.curAdv, 0);
+      const totalESI = salaryDetails.reduce((sum, d) => sum + (d.statutoryBreakdown?.find(b => b.key === 'esi')?.amount || 0), 0);
+      const totalPF = salaryDetails.reduce((sum, d) => sum + (d.statutoryBreakdown?.find(b => b.key === 'pf')?.amount || 0), 0);
 
-      return { totalGross, totalNet, totalNewAdv, totalDeduction, totalOldAdv, totalCurAdv };
+      return { totalGross, totalNet, totalNewAdv, totalDeduction, totalOldAdv, totalCurAdv, totalESI, totalPF };
     }
   };
 
@@ -675,6 +683,21 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               <span className="hidden sm:inline">Export PDF</span>
               <span className="sm:hidden">PDF</span>
             </button>
+            <div className="relative group">
+              <button
+                className="btn-premium whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
+                style={{ background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)' }}
+              >
+                <FileSpreadsheet size={16} />
+                <span className="hidden sm:inline">Statutory Export</span>
+                <span className="sm:hidden">Stat</span>
+              </button>
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden group-hover:block border border-gray-100">
+                <button onClick={() => exportStatutoryToExcel(salaryDetails, activeStaff, selectedMonth, selectedYear, 'combined')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Combined ESI & PF</button>
+                <button onClick={() => exportStatutoryToExcel(salaryDetails, activeStaff, selectedMonth, selectedYear, 'esi')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">ESI Only</button>
+                <button onClick={() => exportStatutoryToExcel(salaryDetails, activeStaff, selectedMonth, selectedYear, 'pf')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">PF Only</button>
+              </div>
+            </div>
             <button
               onClick={handleDownloadAllSlips}
               className="btn-premium whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
@@ -868,6 +891,48 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         </div>
       </div>
 
+      {/* ESI + PF Summary Cards */}
+      {(totals.totalESI > 0 || totals.totalPF > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="glass-card-static p-4 rounded-xl border border-red-500/30 bg-red-500/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-white/50 font-semibold uppercase tracking-wider mb-1">ESI Total</p>
+                <p className="text-2xl font-bold text-red-400">₹{totals.totalESI.toLocaleString()}</p>
+                <p className="text-xs text-white/40 mt-1">{salaryDetails.filter(d => (d.statutoryBreakdown?.find(b => b.key === 'esi')?.amount || 0) > 0).length} staff enrolled</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+                <span className="text-red-400 font-black text-sm">ESI</span>
+              </div>
+            </div>
+          </div>
+          <div className="glass-card-static p-4 rounded-xl border border-orange-500/30 bg-orange-500/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-white/50 font-semibold uppercase tracking-wider mb-1">PF Total</p>
+                <p className="text-2xl font-bold text-orange-400">₹{totals.totalPF.toLocaleString()}</p>
+                <p className="text-xs text-white/40 mt-1">{salaryDetails.filter(d => (d.statutoryBreakdown?.find(b => b.key === 'pf')?.amount || 0) > 0).length} staff enrolled</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
+                <span className="text-orange-400 font-black text-sm">PF</span>
+              </div>
+            </div>
+          </div>
+          <div className="glass-card-static p-4 rounded-xl border border-purple-500/30 bg-purple-500/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-white/50 font-semibold uppercase tracking-wider mb-1">ESI + PF Total</p>
+                <p className="text-2xl font-bold text-purple-400">₹{(totals.totalESI + totals.totalPF).toLocaleString()}</p>
+                <p className="text-xs text-white/40 mt-1">Monthly statutory liability</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <span className="text-purple-400 font-black text-xs">STAT</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Full-Time Salary Details Table */}
       <div className="table-container">
         <div className="p-4 md:p-6 border-b border-white/10">
@@ -958,6 +1023,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 {customCategories.map((cat: SalaryCategory) => (<th key={cat.id} className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{cat.name}</th>))}
                 {salaryVisibleCols.sunPenalty !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sun Penalty</th>}
                 {salaryVisibleCols.statutory !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ESI/PF/Stat</th>}
+                {salaryVisibleCols.esi !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider text-red-500">ESI</th>}
+                {salaryVisibleCols.pf !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider text-red-500">PF</th>}
                 {salaryVisibleCols.gross !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Gross</th>}
                 {salaryVisibleCols.net !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Net Salary</th>}
                 {salaryVisibleCols.newAdv !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">New Adv</th>}
@@ -1111,6 +1178,12 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                         <span className="text-gray-400">-</span>
                       )}
                     </td>}
+                    {salaryVisibleCols.esi !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-red-500 font-medium">
+                      {detail.statutoryBreakdown?.find(b => b.key === 'esi')?.amount > 0 ? `₹${detail.statutoryBreakdown.find(b => b.key === 'esi')?.amount}` : '-'}
+                    </td>}
+                    {salaryVisibleCols.pf !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-red-500 font-medium">
+                      {detail.statutoryBreakdown?.find(b => b.key === 'pf')?.amount > 0 ? `₹${detail.statutoryBreakdown.find(b => b.key === 'pf')?.amount}` : '-'}
+                    </td>}
                     {salaryVisibleCols.gross !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center font-semibold text-green-600">
                       ₹{editMode ? (tempData?.grossSalary || 0) : detail.grossSalary}
                     </td>}
@@ -1144,28 +1217,46 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               })}
               {/* Totals Row */}
               <tr className="bg-gray-100 font-bold text-sm">
-                <td className="px-2 md:px-4 py-3 whitespace-nowrap" colSpan={8}>
+                <td className="px-2 md:px-4 py-3 whitespace-nowrap" colSpan={
+                  2 + // S.No + Name (always)
+                  (salaryVisibleCols.location !== false ? 1 : 0) +
+                  (salaryVisibleCols.type !== false ? 1 : 0) +
+                  (salaryVisibleCols.payment !== false ? 1 : 0) +
+                  (salaryVisibleCols.floor !== false ? 1 : 0) +
+                  (salaryVisibleCols.designation !== false ? 1 : 0) +
+                  (salaryVisibleCols.present !== false ? 1 : 0) +
+                  (salaryVisibleCols.leave !== false ? 1 : 0) +
+                  (salaryVisibleCols.sunAbs !== false ? 1 : 0)
+                }>
                   <span className="text-gray-800">TOTAL</span>
                 </td>
-                <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-blue-600">
+                {salaryVisibleCols.oldAdv !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-blue-600">
                   ₹{totals.totalOldAdv.toLocaleString()}
-                </td>
-                <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-blue-600">
+                </td>}
+                {salaryVisibleCols.curAdv !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-blue-600">
                   ₹{totals.totalCurAdv.toLocaleString()}
-                </td>
-                <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-red-600">
+                </td>}
+                {salaryVisibleCols.deduction !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-red-600">
                   ₹{totals.totalDeduction.toLocaleString()}
-                </td>
-                <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center" colSpan={4 + customCategories.length}></td>
-                <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-green-600">
+                </td>}
+                {salaryVisibleCols.basic !== false && <td></td>}
+                {salaryVisibleCols.incentive !== false && <td></td>}
+                {salaryVisibleCols.hra !== false && <td></td>}
+                {salaryVisibleCols.meal !== false && <td></td>}
+                {customCategories.map(c => <td key={c.id}></td>)}
+                {salaryVisibleCols.sunPenalty !== false && <td></td>}
+                {salaryVisibleCols.statutory !== false && <td></td>}
+                {salaryVisibleCols.esi !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-red-600">₹{totals.totalESI.toLocaleString()}</td>}
+                {salaryVisibleCols.pf !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-red-600">₹{totals.totalPF.toLocaleString()}</td>}
+                {salaryVisibleCols.gross !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-green-600">
                   ₹{totals.totalGross.toLocaleString()}
-                </td>
-                <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-green-700">
+                </td>}
+                {salaryVisibleCols.net !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-green-700">
                   ₹{totals.totalNet.toLocaleString()}
-                </td>
-                <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-blue-600">
+                </td>}
+                {salaryVisibleCols.newAdv !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-blue-600">
                   ₹{totals.totalNewAdv.toLocaleString()}
-                </td>
+                </td>}
               </tr>
             </tbody>
           </table>

@@ -12,8 +12,8 @@ interface AttendanceTrackerProps {
   attendance: Attendance[];
   selectedDate: string;
   onDateChange: (date: string) => void;
-  onUpdateAttendance: (staffId: string, date: string, status: 'Present' | 'Half Day' | 'Absent', isPartTime?: boolean, staffName?: string, shift?: 'Morning' | 'Evening' | 'Both', location?: string, salary?: number, salaryOverride?: boolean) => void;
-  onBulkUpdateAttendance: (date: string, status: 'Present' | 'Absent' | 'Half Day', shift?: 'Morning' | 'Evening') => void;
+  onUpdateAttendance: (staffId: string, date: string, status: 'Present' | 'Half Day' | 'Absent', isPartTime?: boolean, staffName?: string, shift?: 'Morning' | 'Evening' | 'Both', location?: string, salary?: number, salaryOverride?: boolean, arrivalTime?: string, leavingTime?: string) => void;
+  onBulkUpdateAttendance: (date: string, status: 'Present' | 'Absent' | 'Half Day', shift?: 'Morning' | 'Evening', arrivalTime?: string, leavingTime?: string) => void;
   userRole: 'admin' | 'manager';
 }
 
@@ -51,6 +51,30 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showBulkHalfDayModal, setShowBulkHalfDayModal] = useState(false);
   const [bulkHalfDayShift, setBulkHalfDayShift] = useState<'Morning' | 'Evening'>('Morning');
+  const [bulkInTime, setBulkInTime] = useState<string>('');
+  const [bulkOutTime, setBulkOutTime] = useState<string>('');
+  const [individualTimes, setIndividualTimes] = useState<Record<string, { inTime: string, outTime: string }>>({});
+
+  const handleIndividualTimeChange = (staffId: string, field: 'inTime' | 'outTime', value: string) => {
+    setIndividualTimes(prev => ({
+      ...prev,
+      [staffId]: {
+        ...(prev[staffId] || { inTime: '', outTime: '' }),
+        [field]: value
+      }
+    }));
+  };
+
+  const confirmIndividualUpdate = (staffId: string, newStatus: 'Present' | 'Absent' | 'Half Day', currentData: any, shift?: 'Morning' | 'Evening') => {
+    if (currentData.hasRecord && currentData.status !== newStatus) {
+      if (!window.confirm(`This staff already has an attendance record (${currentData.status}). Are you sure you want to override it with ${newStatus}?`)) {
+        return;
+      }
+    }
+    const inTime = individualTimes[staffId]?.inTime || currentData.arrivalTime;
+    const outTime = individualTimes[staffId]?.outTime || currentData.leavingTime;
+    onUpdateAttendance(staffId, selectedDate, newStatus, false, undefined, shift || currentData.shift, undefined, undefined, undefined, inTime, outTime);
+  };
 
   // Load available locations from Supabase via locationService
   React.useEffect(() => {
@@ -114,13 +138,21 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
   const handleHalfDayConfirm = () => {
     if (showHalfDayModal && canEditDate) {
+      const staffId = showHalfDayModal.staffId;
+      const inTime = individualTimes[staffId]?.inTime || undefined;
+      const outTime = individualTimes[staffId]?.outTime || undefined;
       onUpdateAttendance(
-        showHalfDayModal.staffId,
+        staffId,
         selectedDate,
         'Half Day',
         false,
         undefined,
-        selectedShift
+        selectedShift,
+        undefined,
+        undefined,
+        undefined,
+        inTime,
+        outTime
       );
       setShowHalfDayModal(null);
     }
@@ -624,7 +656,10 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       isPartTime: false,
       isUninformed: attendanceRecord?.isUninformed || false,
       originalName: member.name,
-      originalLocation: member.location
+      originalLocation: member.location,
+      arrivalTime: attendanceRecord?.arrivalTime || '',
+      leavingTime: attendanceRecord?.leavingTime || '',
+      hasRecord: !!attendanceRecord,
     });
   });
 
@@ -723,9 +758,31 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1">
+              <label className="text-[10px] uppercase text-gray-500 font-bold">IN</label>
+              <input 
+                type="time" 
+                value={bulkInTime} 
+                onChange={e => setBulkInTime(e.target.value)} 
+                className="text-xs border-none outline-none focus:ring-0 p-0 w-[70px]"
+              />
+            </div>
+            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1">
+              <label className="text-[10px] uppercase text-gray-500 font-bold">OUT</label>
+              <input 
+                type="time" 
+                value={bulkOutTime} 
+                onChange={e => setBulkOutTime(e.target.value)} 
+                className="text-xs border-none outline-none focus:ring-0 p-0 w-[70px]"
+              />
+            </div>
             <button
-              onClick={() => onBulkUpdateAttendance(selectedDate, 'Present')}
+              onClick={() => {
+                if (window.confirm('Are you sure you want to mark ALL filtered staff as Present?')) {
+                  onBulkUpdateAttendance(selectedDate, 'Present', undefined, bulkInTime, bulkOutTime);
+                }
+              }}
               className="flex items-center gap-1 px-2 md:px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs md:text-sm"
             >
               <Check size={14} />
@@ -739,7 +796,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               <span className="hidden xs:inline">All Half Day</span>
             </button>
             <button
-              onClick={() => onBulkUpdateAttendance(selectedDate, 'Absent')}
+              onClick={() => {
+                if (window.confirm('Are you sure you want to mark ALL filtered staff as Absent?')) {
+                  onBulkUpdateAttendance(selectedDate, 'Absent');
+                }
+              }}
               className="flex items-center gap-1 px-2 md:px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs md:text-sm"
             >
               <X size={14} />
@@ -890,9 +951,29 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   {/* Actions Column */}
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {!data.isPartTime && (
-                      <div className="attendance-actions flex gap-1 md:gap-2">
+                      <div className="attendance-actions flex flex-wrap gap-1 md:gap-2 items-center">
+                        <div className="flex flex-col gap-1 mr-2">
+                          <div className="flex items-center gap-1 border border-gray-200 rounded px-1">
+                            <span className="text-[9px] text-gray-500 font-bold">IN</span>
+                            <input 
+                              type="time" 
+                              value={individualTimes[data.id]?.inTime !== undefined ? individualTimes[data.id].inTime : (data.arrivalTime || '')}
+                              onChange={(e) => handleIndividualTimeChange(data.id, 'inTime', e.target.value)}
+                              className="text-[10px] md:text-xs border-none p-0 outline-none focus:ring-0 w-[60px]"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1 border border-gray-200 rounded px-1">
+                            <span className="text-[9px] text-gray-500 font-bold">OUT</span>
+                            <input 
+                              type="time" 
+                              value={individualTimes[data.id]?.outTime !== undefined ? individualTimes[data.id].outTime : (data.leavingTime || '')}
+                              onChange={(e) => handleIndividualTimeChange(data.id, 'outTime', e.target.value)}
+                              className="text-[10px] md:text-xs border-none p-0 outline-none focus:ring-0 w-[60px]"
+                            />
+                          </div>
+                        </div>
                         <button
-                          onClick={() => onUpdateAttendance(data.id, selectedDate, 'Present')}
+                          onClick={() => confirmIndividualUpdate(data.id, 'Present', data)}
                           className={`w-7 h-7 md:w-auto md:px-3 md:py-1 text-xs font-bold rounded shadow-sm flex items-center justify-center ${data.status === 'Present'
                             ? 'bg-green-600 text-white ring-2 ring-green-600 ring-offset-1'
                             : 'bg-green-200 text-green-900 hover:bg-green-300 border border-green-300'
@@ -912,7 +993,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                           H
                         </button>
                         <button
-                          onClick={() => onUpdateAttendance(data.id, selectedDate, 'Absent')}
+                          onClick={() => confirmIndividualUpdate(data.id, 'Absent', data)}
                           className={`w-7 h-7 md:w-auto md:px-3 md:py-1 text-xs font-bold rounded shadow-sm flex items-center justify-center ${data.status === 'Absent'
                             ? 'bg-red-600 text-white ring-2 ring-red-600 ring-offset-1'
                             : 'bg-red-200 text-red-900 hover:bg-red-300 border border-red-300'
@@ -1046,6 +1127,27 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 <span className="text-sm md:text-base font-medium">Evening</span>
               </label>
             </div>
+            {/* IN/OUT time for half day */}
+            <div className="flex gap-3 mb-4">
+              <div className="flex-1">
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">IN Time</label>
+                <input
+                  type="time"
+                  value={individualTimes[showHalfDayModal.staffId]?.inTime || ''}
+                  onChange={(e) => handleIndividualTimeChange(showHalfDayModal.staffId, 'inTime', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">OUT Time</label>
+                <input
+                  type="time"
+                  value={individualTimes[showHalfDayModal.staffId]?.outTime || ''}
+                  onChange={(e) => handleIndividualTimeChange(showHalfDayModal.staffId, 'outTime', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400"
+                />
+              </div>
+            </div>
             <div className="flex flex-col md:flex-row gap-2 md:gap-3">
               <button
                 onClick={handleHalfDayConfirm}
@@ -1173,8 +1275,10 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <div className="flex flex-col md:flex-row gap-2 md:gap-3">
               <button
                 onClick={() => {
-                  onBulkUpdateAttendance(selectedDate, 'Half Day', bulkHalfDayShift);
-                  setShowBulkHalfDayModal(false);
+                  if (window.confirm(`Are you sure you want to mark ALL filtered staff as Half Day (${bulkHalfDayShift})?`)) {
+                    onBulkUpdateAttendance(selectedDate, 'Half Day', bulkHalfDayShift, bulkInTime, bulkOutTime);
+                    setShowBulkHalfDayModal(false);
+                  }
                 }}
                 className="w-full px-4 py-2.5 md:py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm md:text-base font-semibold flex items-center justify-center gap-2"
               >

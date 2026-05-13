@@ -23,7 +23,8 @@ const TOGGLE_MIN_SECONDS = 5 * 60;     // 5 minutes
 // Cooldown for the same kind (prevents double-IN flooding)
 const SAME_KIND_COOLDOWN = 60;         // 1 minute
 // Frames of stable detection required before accepting a match (passive liveness)
-const REQUIRED_STABLE_FRAMES = 3;
+// Set to 1 for millisecond-level recognition
+const REQUIRED_STABLE_FRAMES = 1;
 // EAR threshold under which an eye is considered "closed" (blink challenge)
 const EAR_CLOSED = 0.21;
 
@@ -361,14 +362,16 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
                   earVariance = cand.earSeries.reduce((a, b) => a + (b - mean) ** 2, 0) / cand.earSeries.length;
                 }
 
-                const passiveLive = boxMovement > 2 || earVariance > 0.0008;
+                // Strong AI Texture spoof check: if avgTexture >= 0.65, it's highly textured (real face)
+                const isLiveTexture = avgTexture >= 0.65;
+                const passiveLive = isLiveTexture || boxMovement > 2 || earVariance > 0.0008;
                 const livenessScore = Math.min(1, (boxMovement / 30) + earVariance * 200 + (cand.blinkSeen ? 0.4 : 0) + avgTexture * 0.3);
 
                 if (cand.frames < REQUIRED_STABLE_FRAMES) {
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'matching' });
-                } else if (!passiveLive && !cand.blinkSeen) {
+                } else if (!passiveLive && !cand.blinkSeen && cand.frames < 8) {
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'blink-please' });
-                } else if (cand.frames >= 8 && boxMovement < 1 && earVariance < 0.0002 && !cand.blinkSeen && avgTexture < 0.35) {
+                } else if (!passiveLive && !cand.blinkSeen && cand.frames >= 8) {
                   // Spoof: no movement + no blink + flat texture (photo/screen)
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'spoof' });
                   setMessage({ kind: 'err', text: `Liveness failed for ${s.name} — possible photo spoof. Please blink.` });
@@ -377,8 +380,8 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'ok' });
                   await punch(s, distance, livenessScore);
                   resetCandidate();
-                  // Pause 1.2 s before scanning next person
-                  await new Promise(res => setTimeout(res, 1200));
+                  // Pause 1.5 s before scanning next person
+                  await new Promise(res => setTimeout(res, 1500));
                 }
               }
             }
