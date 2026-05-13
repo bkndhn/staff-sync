@@ -181,9 +181,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const startCamera = useCallback(async () => {
     setCameraError(null);
     try {
-      // 640×480 is plenty for close-up kiosk — faster inference than 1280×720
+      // 1080p for 10m range detection — allows finding small faces far away
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false,
       });
       streamRef.current = stream;
@@ -310,8 +310,8 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       if (frameCount % 3 === 0 && !processing && videoRef.current && videoRef.current.readyState >= 2) {
         processing = true;
         try {
-          // inputSize 224 → ~80-150 ms vs 400-600 ms at 416
-          const r = await detect(videoRef.current, { inputSize: 224, scoreThreshold: 0.4, withLandmarks: true });
+          // inputSize 608 → allows detection of faces up to 10m away
+          const r = await detect(videoRef.current, { inputSize: 608, scoreThreshold: 0.4, withLandmarks: true });
 
           if (!r) {
             setLastMatch(null);
@@ -429,194 +429,212 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   };
 
   return (
-    <div className="space-y-4 w-full max-w-6xl mx-auto py-4">
-      <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6">
-        <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+    <div className="flex flex-col lg:flex-row gap-4 w-full h-[calc(100vh-80px)] py-4 max-w-[1920px] mx-auto">
+      {/* ── Left Side: Full Height Camera Feed ── */}
+      <div className="flex-1 rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
+        {/* HUD Overlay */}
+        <div className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between gap-3 flex-wrap pointer-events-none">
           <div>
-            <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <ScanFace size={22} className="text-indigo-400" />
-              Face Attendance · Kiosk mode
+              Face Attendance · Long-Range Kiosk
             </h2>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">
-              Always-on recognition with liveness check. First match = IN, then auto-toggles IN↔OUT every {TOGGLE_MIN_SECONDS/60} min for lunch/tea/errands.
+            <p className="text-xs text-white/70 mt-1 max-w-md">
+              Stand up to 10m away. Always-on recognition with liveness check. First match = IN, then auto-toggles IN↔OUT every {TOGGLE_MIN_SECONDS/60} min.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <span className="text-xs px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-400/30 text-indigo-300">
+          <div className="flex flex-wrap gap-2 pointer-events-auto">
+            <span className="text-xs px-3 py-1.5 rounded-full bg-black/50 border border-white/20 text-white">
               {enrolledCount}/{totalActive} enrolled
             </span>
-            <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 text-emerald-300 flex items-center gap-1">
+            <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center gap-1">
               <Activity size={12} /> Liveness on
             </span>
           </div>
         </div>
 
-        {error && (
-          <div className="mb-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-center gap-2">
-            <AlertTriangle size={16} /> {error}
-          </div>
-        )}
-        {(loading || loadingEmbeddings) && (
-          <div className="mb-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 text-sm flex items-center gap-2">
-            <Loader2 size={16} className="animate-spin" />
-            {loading ? 'Loading face models…' : `Loading ${allEmbeddings.length} face samples…`}
-          </div>
-        )}
-        {!loadingEmbeddings && scopedEmbeddings.length === 0 && (
-          <div className="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm flex items-center gap-2">
-            <AlertTriangle size={16} /> No face samples enrolled for this location yet. Register staff in their portal or via Staff Management.
-          </div>
-        )}
-
-        <div className="relative w-full max-w-3xl mx-auto aspect-[4/3] bg-black/50 rounded-2xl overflow-hidden border border-[var(--glass-border)]">
-          <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+        {/* Video Feed */}
+        <div className="relative flex-1 bg-black w-full h-full">
+          <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
           {!cameraOn && (
-            <div className="absolute inset-0 flex items-center justify-center text-[var(--text-secondary)] text-sm">
+            <div className="absolute inset-0 flex items-center justify-center text-[var(--text-secondary)] text-sm z-10 bg-black/80">
               {cameraError ? 'Camera blocked' : 'Starting camera…'}
             </div>
           )}
           {cameraOn && lastMatch && (
-            <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
+            <div className="absolute bottom-8 left-0 right-0 flex justify-center z-20 pointer-events-none">
+              <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-black/60 backdrop-blur border border-white/10 shadow-2xl scale-125">
                 {statusBadge(lastMatch.status)}
-                <span className="px-3 py-1.5 rounded-full bg-black/70 text-white">{lastMatch.name}</span>
+                <span className="text-base font-bold text-white tracking-wide">{lastMatch.name}</span>
+                <span className="text-xs font-mono text-white/50 bg-black/40 px-2 py-1 rounded">d {lastMatch.distance.toFixed(2)}</span>
               </div>
-              <span className="px-3 py-1.5 rounded-full bg-black/70 text-white">d {lastMatch.distance.toFixed(2)}</span>
             </div>
           )}
         </div>
 
-        {cameraError && (
-          <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
-            {cameraError}
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2 justify-center mt-4">
-          {!cameraOn ? (
-            <button
-              onClick={startCamera}
-              disabled={!ready || scopedEmbeddings.length === 0}
-              className="px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white font-semibold flex items-center gap-2"
-            >
-              <Camera size={16} /> Start Camera
-            </button>
-          ) : (
-            <button
-              onClick={stopCamera}
-              className="px-5 py-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--glass-border)] text-[var(--text-primary)] font-semibold flex items-center gap-2"
-            >
-              <XCircle size={16} /> Stop
-            </button>
+        {/* Floating Controls Overlay */}
+        <div className="absolute bottom-4 right-4 z-20 flex flex-col items-end gap-2">
+          {error && (
+            <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm flex items-center gap-2 shadow-xl max-w-sm">
+              <AlertTriangle size={16} /> {error}
+            </div>
           )}
-        </div>
+          {(loading || loadingEmbeddings) && (
+            <div className="p-3 rounded-xl bg-blue-500/90 backdrop-blur border border-blue-400/50 text-white text-sm flex items-center gap-2 shadow-xl">
+              <Loader2 size={16} className="animate-spin" />
+              {loading ? 'Loading face models…' : `Loading ${allEmbeddings.length} face samples…`}
+            </div>
+          )}
+          {!loadingEmbeddings && scopedEmbeddings.length === 0 && (
+            <div className="p-3 rounded-xl bg-amber-500/90 backdrop-blur border border-amber-400/50 text-white text-sm flex items-center gap-2 shadow-xl max-w-sm">
+              <AlertTriangle size={16} /> No face samples enrolled for this location.
+            </div>
+          )}
+          {cameraError && (
+            <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm shadow-xl">
+              {cameraError}
+            </div>
+          )}
+          {message && (
+            <div className={`p-3 rounded-xl text-sm font-medium flex items-center gap-2 shadow-xl backdrop-blur max-w-md ${ 
+              message.kind === 'ok' ? 'bg-emerald-500/90 border border-emerald-400/50 text-white' : 
+              message.kind === 'warn' ? 'bg-amber-500/90 border border-amber-400/50 text-white' : 
+              'bg-red-500/90 border border-red-400/50 text-white'
+            }`}>
+              {message.kind === 'ok' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+              {message.text}
+            </div>
+          )}
 
-        {message && (
-          <div className={`mt-3 p-3 rounded-lg text-sm border flex items-center gap-2 ${
-            message.kind === 'ok' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' :
-            message.kind === 'warn' ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' :
-            'bg-red-500/10 border-red-500/30 text-red-300'
-          }`}>
-            {message.kind === 'ok' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-            {message.text}
+          <div className="flex gap-2">
+            {!cameraOn ? (
+              <button
+                onClick={startCamera}
+                disabled={!ready || scopedEmbeddings.length === 0}
+                className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold flex items-center gap-2 shadow-xl"
+              >
+                <Camera size={16} /> Start Camera
+              </button>
+            ) : (
+              <button
+                onClick={stopCamera}
+                className="px-5 py-2.5 rounded-xl bg-black/60 hover:bg-black/80 backdrop-blur border border-white/20 text-white font-semibold flex items-center gap-2 shadow-xl"
+              >
+                <XCircle size={16} /> Stop
+              </button>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Recent events */}
-      <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6">
-        <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Recent punches</h4>
-        {recent.length === 0 ? (
-          <p className="text-sm text-[var(--text-secondary)]">Nothing yet — recognized staff will appear here.</p>
-        ) : (
-          <div className="space-y-2">
-            {recent.map((r, idx) => (
-              <div key={idx} className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-black/10 border border-[var(--glass-border)]">
-                <div className="flex items-center gap-2">
-                  {r.kind === 'in'
-                    ? <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400"><LogIn size={14} /></span>
-                    : <span className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400"><LogOut size={14} /></span>}
-                  <div>
-                    <div className="text-sm font-semibold text-[var(--text-primary)]">{r.staffName}</div>
-                    <div className="text-[11px] text-[var(--text-secondary)]">
-                      {r.kind === 'in' ? 'Punched IN' : 'Punched OUT'} · d {r.distance.toFixed(2)}
+      {/* ── Right Side: Logs & Overrides Sidebar ── */}
+      <div className="w-full lg:w-96 flex flex-col gap-4 overflow-y-auto shrink-0">
+        {/* Recent events */}
+        <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6 shrink-0">
+          <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Recent punches</h4>
+          {recent.length === 0 ? (
+            <p className="text-sm text-[var(--text-secondary)]">Nothing yet — recognized staff will appear here.</p>
+          ) : (
+            <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1 custom-scrollbar">
+              {recent.map((r, idx) => (
+                <div key={idx} className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-black/10 border border-[var(--glass-border)]">
+                  <div className="flex items-center gap-2">
+                    {r.kind === 'in'
+                      ? <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400"><LogIn size={14} /></span>
+                      : <span className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400"><LogOut size={14} /></span>}
+                    <div>
+                      <div className="text-sm font-semibold text-[var(--text-primary)]">{r.staffName}</div>
+                      <div className="text-[11px] text-[var(--text-secondary)]">
+                        {r.kind === 'in' ? 'Punched IN' : 'Punched OUT'} · d {r.distance.toFixed(2)}
+                      </div>
                     </div>
                   </div>
+                  <span className="text-xs font-mono text-[var(--text-secondary)]">{formatTime12h(r.time)}</span>
                 </div>
-                <span className="text-xs font-mono text-[var(--text-secondary)]">{formatTime12h(r.time)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Admin override panel */}
-      {userRole === 'admin' && (
-        <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6">
-          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-            <h4 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-              <ShieldCheck size={16} className="text-emerald-400" />
-              Override panel — today's punches
-            </h4>
-            <span className="text-xs text-[var(--text-secondary)]">{todaysPunches.length} record(s)</span>
-          </div>
-          {todaysPunches.length === 0 ? (
-            <p className="text-sm text-[var(--text-secondary)]">No punches recorded today yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {todaysPunches.map(rec => {
-                const edit = editing[rec.id!];
-                const isEditing = !!edit;
-                return (
-                  <div key={rec.id} className="p-3 rounded-xl bg-black/10 border border-[var(--glass-border)] flex items-center gap-3 flex-wrap">
-                    <div className="flex-1 min-w-[160px]">
-                      <div className="text-sm font-semibold text-[var(--text-primary)]">{rec.staff?.name || rec.staffName || rec.staffId}</div>
-                      <div className="text-[11px] text-[var(--text-secondary)]">{rec.staff?.location || rec.location} · {rec.status}</div>
-                    </div>
-                    {isEditing ? (
-                      <>
-                        <label className="text-[11px] text-[var(--text-secondary)] flex flex-col">
-                          IN
-                          <input type="time" value={edit.arrival}
-                            onChange={(e) => setEditing(p => ({ ...p, [rec.id!]: { ...edit, arrival: e.target.value } }))}
-                            className="px-2 py-1 rounded-lg bg-black/30 border border-[var(--glass-border)] text-sm text-[var(--text-primary)]" />
-                        </label>
-                        <label className="text-[11px] text-[var(--text-secondary)] flex flex-col">
-                          OUT
-                          <input type="time" value={edit.leaving}
-                            onChange={(e) => setEditing(p => ({ ...p, [rec.id!]: { ...edit, leaving: e.target.value } }))}
-                            className="px-2 py-1 rounded-lg bg-black/30 border border-[var(--glass-border)] text-sm text-[var(--text-primary)]" />
-                        </label>
-                        <button onClick={() => saveOverride(rec)}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center gap-1">
-                          <Save size={12} /> Save
-                        </button>
-                        <button onClick={() => setEditing(p => { const n = { ...p }; delete n[rec.id!]; return n; })}
-                          className="px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs">
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-xs font-mono text-emerald-300">IN {formatTime12h(rec.arrivalTime)}</span>
-                        <span className="text-xs font-mono text-blue-300">OUT {formatTime12h(rec.leavingTime)}</span>
-                        <button onClick={() => setEditing(p => ({ ...p, [rec.id!]: { arrival: rec.arrivalTime || '', leaving: rec.leavingTime || '' } }))}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs flex items-center gap-1 hover:bg-indigo-500/30">
-                          <Pencil size={12} /> Edit
-                        </button>
-                        <button onClick={() => clearPunches(rec)}
-                          className="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-400/30 text-red-300 text-xs flex items-center gap-1 hover:bg-red-500/30">
-                          <Trash2 size={12} /> Clear
-                        </button>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
+              ))}
             </div>
           )}
         </div>
-      )}
+
+        {/* Admin override panel */}
+        {userRole === 'admin' && (
+          <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6 flex-1 flex flex-col min-h-[40vh]">
+            <div className="flex items-center justify-between mb-3 gap-2 flex-wrap shrink-0">
+              <h4 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <ShieldCheck size={16} className="text-emerald-400" />
+                Override panel
+              </h4>
+              <span className="text-xs text-[var(--text-secondary)]">{todaysPunches.length} record(s)</span>
+            </div>
+            {todaysPunches.length === 0 ? (
+              <p className="text-sm text-[var(--text-secondary)]">No punches recorded today yet.</p>
+            ) : (
+              <div className="space-y-2 overflow-y-auto pr-1 flex-1 custom-scrollbar">
+                {todaysPunches.map(rec => {
+                  const edit = editing[rec.id!];
+                  const isEditing = !!edit;
+                  return (
+                    <div key={rec.id} className="p-3 rounded-xl bg-black/10 border border-[var(--glass-border)] flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-[var(--text-primary)] truncate">{rec.staff?.name || rec.staffName || rec.staffId}</div>
+                          <div className="text-[11px] text-[var(--text-secondary)]">{rec.staff?.location || rec.location} · {rec.status}</div>
+                        </div>
+                        {!isEditing && (
+                          <div className="flex flex-col items-end">
+                            <span className="text-xs font-mono text-emerald-400/90 font-medium tracking-tight whitespace-nowrap">IN {formatTime12h(rec.arrivalTime)}</span>
+                            <span className="text-xs font-mono text-blue-400/90 font-medium tracking-tight whitespace-nowrap">OUT {formatTime12h(rec.leavingTime)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {isEditing ? (
+                        <div className="flex flex-col gap-2 mt-1">
+                          <div className="flex gap-2">
+                            <label className="text-[11px] text-[var(--text-secondary)] flex-1 flex flex-col">
+                              IN
+                              <input type="time" value={edit.arrival}
+                                onChange={(e) => setEditing(p => ({ ...p, [rec.id!]: { ...edit, arrival: e.target.value } }))}
+                                className="px-2 py-1.5 mt-1 rounded-lg bg-black/30 border border-[var(--glass-border)] text-sm text-[var(--text-primary)] w-full" />
+                            </label>
+                            <label className="text-[11px] text-[var(--text-secondary)] flex-1 flex flex-col">
+                              OUT
+                              <input type="time" value={edit.leaving}
+                                onChange={(e) => setEditing(p => ({ ...p, [rec.id!]: { ...edit, leaving: e.target.value } }))}
+                                className="px-2 py-1.5 mt-1 rounded-lg bg-black/30 border border-[var(--glass-border)] text-sm text-[var(--text-primary)] w-full" />
+                            </label>
+                          </div>
+                          <div className="flex gap-2 mt-2">
+                            <button onClick={() => saveOverride(rec)}
+                              className="flex-1 px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center justify-center gap-1">
+                              <Save size={14} /> Save
+                            </button>
+                            <button onClick={() => setEditing(p => { const n = { ...p }; delete n[rec.id!]; return n; })}
+                              className="flex-1 px-3 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--glass-border)] text-[var(--text-primary)] hover:bg-black/20 text-xs font-medium">
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 pt-2 mt-1 border-t border-[var(--glass-border)]">
+                          <button onClick={() => setEditing(p => ({ ...p, [rec.id!]: { arrival: rec.arrivalTime || '', leaving: rec.leavingTime || '' } }))}
+                            className="flex-1 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs flex items-center justify-center gap-1 hover:bg-indigo-500/20 font-medium">
+                            <Pencil size={12} /> Edit
+                          </button>
+                          <button onClick={() => clearPunches(rec)}
+                            className="flex-1 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center justify-center gap-1 hover:bg-red-500/20 font-medium">
+                            <Trash2 size={12} /> Clear
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

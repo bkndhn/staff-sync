@@ -212,7 +212,7 @@ function App() {
     } else if (user.role === 'staff') {
       setActiveTab('My Portal');
     } else if (user.role === 'manager') {
-      setActiveTab('Attendance');
+      setActiveTab('Face Attendance');
     } else {
       setActiveTab('Dashboard');
     }
