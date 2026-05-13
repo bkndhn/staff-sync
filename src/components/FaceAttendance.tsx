@@ -12,6 +12,9 @@ import { shiftService, determineStatus, formatTime12h, ShiftWindows } from '../s
 interface Props {
   staff: Staff[];                 // already location-scoped by App
   attendance: Attendance[];
+  /** Instant zero-latency patch — surgically updates a single record in App state */
+  onAttendancePatch?: (updated: Attendance) => void;
+  /** Full reload callback (used only for background cache invalidation, not UI) */
   onAttendanceUpdated?: () => void;
   userRole: 'admin' | 'manager';
 }
@@ -41,7 +44,7 @@ const formatNow = () => {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 };
 
-const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdated, userRole }) => {
+const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole }) => {
   const { ready, loading, error, detect } = useFaceApi(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -120,32 +123,35 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
     const s = staff.find(x => x.id === rec.staffId);
     const { status, value } = recomputeStatus(edit.arrival, edit.leaving, s);
     try {
-      await attendanceService.upsert({
+      const saved = await attendanceService.upsert({
         staffId: rec.staffId, date: rec.date, status, attendanceValue: value,
         isSunday: rec.isSunday, isPartTime: false, staffName: rec.staffName,
         shift: rec.shift, location: rec.location,
         arrivalTime: edit.arrival || undefined, leavingTime: edit.leaving || undefined,
         isUninformed: rec.isUninformed, salaryOverride: true,
       } as any);
+      // ── Instant zero-latency patch into App state ──
+      onAttendancePatch?.(saved);
       setEditing(p => { const n = { ...p }; delete n[rec.id!]; return n; });
-      setMessage({ kind: 'ok', text: `Updated ${rec.staffName} → ${status}` });
-      onAttendanceUpdated?.();
+      setMessage({ kind: 'ok', text: `Updated ${s?.name || rec.staffName} → ${status}` });
     } catch (e: any) {
       setMessage({ kind: 'err', text: `Save failed: ${e?.message || e}` });
     }
   };
 
   const clearPunches = async (rec: Attendance) => {
-    if (!window.confirm(`Clear today's punches for ${rec.staffName}?`)) return;
+    const staffName = staff.find(x => x.id === rec.staffId)?.name || rec.staffName;
+    if (!window.confirm(`Clear today's punches for ${staffName}?`)) return;
     try {
-      await attendanceService.upsert({
+      const saved = await attendanceService.upsert({
         staffId: rec.staffId, date: rec.date, status: 'Absent', attendanceValue: 0,
         isSunday: rec.isSunday, isPartTime: false, staffName: rec.staffName,
         shift: rec.shift, location: rec.location,
         arrivalTime: undefined, leavingTime: undefined, isUninformed: rec.isUninformed,
       } as any);
-      setMessage({ kind: 'warn', text: `Cleared punches for ${rec.staffName}` });
-      onAttendanceUpdated?.();
+      // ── Instant zero-latency patch into App state ──
+      onAttendancePatch?.(saved);
+      setMessage({ kind: 'warn', text: `Cleared punches for ${staffName}` });
     } catch (e: any) {
       setMessage({ kind: 'err', text: `Clear failed: ${e?.message || e}` });
     }
@@ -266,23 +272,24 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
     }
 
     try {
-      await attendanceService.upsert({
+      const saved = await attendanceService.upsert({
         staffId: s.id, date: today, status: autoStatus, attendanceValue: autoValue,
         isSunday: isSunday(today), isPartTime: false, staffName: s.name,
         shift: s.shift, location: s.location,
         arrivalTime, leavingTime, isUninformed: false,
       });
+      // ── Instant zero-latency patch into App state ──
+      onAttendancePatch?.(saved);
       lastPunchRef.current[s.id] = { ts: Date.now(), kind };
       setRecent(prev => [{ staffId: s.id, staffName: s.name, kind, time, distance }, ...prev].slice(0, 20));
       setMessage({
         kind: autoStatus === 'Absent' ? 'warn' : 'ok',
         text: `${kind === 'in' ? 'Punched IN' : 'Punched OUT'}: ${s.name} @ ${formatTime12h(time)} · ${autoStatus} · ${summary.count} event(s)`,
       });
-      onAttendanceUpdated?.();
     } catch (e: any) {
       setMessage({ kind: 'err', text: `Failed to punch ${s.name}: ${e?.message || e}` });
     }
-  }, [attendance, today, onAttendanceUpdated, shiftWindows]);
+  }, [attendance, today, onAttendancePatch, shiftWindows]);
 
   // ---- Continuous recognition loop (requestAnimationFrame, frame-skipped) ---
   useEffect(() => {

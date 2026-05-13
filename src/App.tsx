@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
 import Navigation from './components/Navigation';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -12,32 +12,57 @@ import { oldStaffService } from './services/oldStaffService';
 import { salaryHikeService } from './services/salaryHikeService';
 import { isSunday } from './utils/salaryCalculations';
 import { isSupabaseConfigured } from './lib/supabase';
-import { cacheService, cachedFetch, CACHE_KEYS, CACHE_TTL } from './lib/cacheService';
+import { cacheService, CACHE_KEYS, CACHE_TTL } from './lib/cacheService';
 import { AuditLogViewer } from './components/AuditLogViewer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { auditLogService } from './services/auditLogService';
 import { offlineSyncService } from './services/offlineSyncService';
 
-// Lazy load heavy components for faster initial load
-const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
-const SalaryManagement = React.lazy(() => import('./components/SalaryManagement'));
-const PartTimeStaff = React.lazy(() => import('./components/PartTimeStaff'));
-const OldStaffRecords = React.lazy(() => import('./components/OldStaffRecords'));
-const Settings = React.lazy(() => import('./components/Settings'));
-const StaffPortal = React.lazy(() => import('./components/StaffPortal'));
-const LeaveManagement = React.lazy(() => import('./components/LeaveManagement'));
-const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 
-// Loading fallback for lazy-loaded components
-const ComponentLoader = () => (
-  <div className="flex items-center justify-center p-8">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+// ─── Prefetch all lazy chunks in the background after login ───────────────────
+// Makes every tab switch instant — JS chunks are cached before the user clicks.
+const prefetchAllComponents = () => {
+  import('./components/StaffManagement');
+  import('./components/SalaryManagement');
+  import('./components/PartTimeStaff');
+  import('./components/OldStaffRecords');
+  import('./components/Settings');
+  import('./components/StaffPortal');
+  import('./components/LeaveManagement');
+  import('./components/FaceAttendance');
+};
+
+// ─── Skeleton shimmer ─────────────────────────────────────────────────────────
+const SkeletonLoader = () => (
+  <div className="p-4 md:p-6 space-y-4 animate-pulse">
+    {[1, 2, 3].map(i => (
+      <div key={i} className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+        <div className="h-4 bg-white/10 rounded w-1/3" />
+        <div className="h-3 bg-white/8 rounded w-2/3" />
+        <div className="h-3 bg-white/8 rounded w-1/2" />
+      </div>
+    ))}
   </div>
 );
 
+// Minimal inline loader for lazy-loaded component JS chunks
+const ComponentLoader = () => <SkeletonLoader />;
+
 
 function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    // ── Synchronous session restore — no async useEffect needed ──────────────
+    try {
+      const saved = localStorage.getItem('staffManagementLogin');
+      if (!saved) return null;
+      const d = JSON.parse(saved);
+      if (d?.user?.email && d?.user?.role) {
+        if (d.expiresAt && Date.now() > d.expiresAt) { localStorage.removeItem('staffManagementLogin'); return null; }
+        return d.user as User;
+      }
+    } catch {}
+    return null;
+  });
   const [activeTab, setActiveTabState] = useState<NavigationTab>(() => {
     const saved = localStorage.getItem('activeTab');
     return (saved as NavigationTab) || 'Dashboard';
@@ -46,15 +71,20 @@ function App() {
     setActiveTabState(tab);
     try { localStorage.setItem('activeTab', tab); } catch {}
   };
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [attendance, setAttendance] = useState<Attendance[]>([]);
-  const [advances, setAdvances] = useState<AdvanceDeduction[]>([]);
-  const [oldStaffRecords, setOldStaffRecords] = useState<OldStaffRecord[]>([]);
-  const [salaryHikes, setSalaryHikes] = useState<SalaryHike[]>([]);
+
+  // ── Pre-hydrate from localStorage cache — instant first render ───────────
+  // Data is already in state when first paint happens; Supabase refreshes in bg.
+  const [staff, setStaff] = useState<Staff[]>(() => cacheService.get<Staff[]>(CACHE_KEYS.STAFF) ?? []);
+  const [attendance, setAttendance] = useState<Attendance[]>(() => cacheService.get<Attendance[]>(CACHE_KEYS.ATTENDANCE) ?? []);
+  const [advances, setAdvances] = useState<AdvanceDeduction[]>(() => cacheService.get<AdvanceDeduction[]>(CACHE_KEYS.ADVANCES) ?? []);
+  const [oldStaffRecords, setOldStaffRecords] = useState<OldStaffRecord[]>(() => cacheService.get<OldStaffRecord[]>(CACHE_KEYS.OLD_STAFF) ?? []);
+  const [salaryHikes, setSalaryHikes] = useState<SalaryHike[]>(() => cacheService.get<SalaryHike[]>(CACHE_KEYS.SALARY_HIKES) ?? []);
+  // isFirstLoad: true only when there is literally NO cached data at all
+  const firstLoadDone = useRef(false);
+  const [isFirstLoad, setIsFirstLoad] = useState(() => !cacheService.get(CACHE_KEYS.STAFF));
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
-  const [loading, setLoading] = useState(true);
   const [salaryHikeModal, setSalaryHikeModal] = useState<{
     isOpen: boolean;
     staffId: string;
@@ -156,41 +186,14 @@ function App() {
     setIsDarkTheme(!isDarkTheme);
   };
 
-  // Restore session from localStorage on app start - runs only once
-  useEffect(() => {
-    const restoreSession = () => {
-      const savedLogin = localStorage.getItem('staffManagementLogin');
-      if (!savedLogin) return;
-
-      try {
-        const loginData = JSON.parse(savedLogin);
-
-        // Simple validation: just check user data exists
-        if (loginData?.user?.email && loginData?.user?.role) {
-          // Check if expired (if expiresAt exists)
-          if (loginData.expiresAt && Date.now() > loginData.expiresAt) {
-            localStorage.removeItem('staffManagementLogin');
-            return;
-          }
-
-          // Restore user
-          setUser(loginData.user);
-        } else {
-          // Invalid session data
-          localStorage.removeItem('staffManagementLogin');
-        }
-      } catch (error) {
-        console.error('Session parse error:', error);
-        localStorage.removeItem('staffManagementLogin');
-      }
-    };
-
-    restoreSession();
-  }, []);
+  // ── Session is now restored synchronously in useState — no useEffect needed ─
 
   useEffect(() => {
     if (user) {
-      loadAllData();
+      // Fire background refresh — never blocks UI
+      silentRefresh();
+      // Prefetch all component chunks so every tab switch is instant
+      prefetchAllComponents();
     }
   }, [user]);
 
@@ -198,7 +201,6 @@ function App() {
   useEffect(() => {
     if (!user) return;
     const saved = localStorage.getItem('activeTab') as NavigationTab | null;
-    // Validate saved tab is appropriate for user role
     const validForRole = (tab: NavigationTab | null): boolean => {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
@@ -216,38 +218,71 @@ function App() {
     }
   }, [user]);
 
-  // Optimized data loading with caching to reduce Supabase API calls
-  const loadAllData = async () => {
+  // ─── Stale-while-revalidate: always-fresh, never-blocking ─────────────────
+  // Fetches fresh data from Supabase in the background without setting any
+  // loading gate. State is updated when the response arrives, causing a
+  // silent re-render with fresh data. UI stays visible throughout.
+  const silentRefresh = useCallback(async () => {
     try {
-      setLoading(true);
-
-      // Use cached fetch to reduce Supabase API calls
       const [staffData, attendanceData, advanceData, oldStaffData, salaryHikeData] = await Promise.all([
-        cachedFetch(CACHE_KEYS.STAFF, () => staffService.getAll(), CACHE_TTL.MEDIUM),
-        cachedFetch(CACHE_KEYS.ATTENDANCE, () => attendanceService.getAll(), CACHE_TTL.SHORT),
-        cachedFetch(CACHE_KEYS.ADVANCES, () => advanceService.getAll(), CACHE_TTL.MEDIUM),
-        cachedFetch(CACHE_KEYS.OLD_STAFF, () => oldStaffService.getAll(), CACHE_TTL.LONG),
-        cachedFetch(CACHE_KEYS.SALARY_HIKES, () => salaryHikeService.getAll(), CACHE_TTL.LONG)
+        staffService.getAll(),
+        attendanceService.getAll(),
+        advanceService.getAll(),
+        oldStaffService.getAll(),
+        salaryHikeService.getAll(),
       ]);
-
-      // Merge salary supplements
+      // Update cache
+      cacheService.set(CACHE_KEYS.STAFF, staffData, CACHE_TTL.MEDIUM);
+      cacheService.set(CACHE_KEYS.ATTENDANCE, attendanceData, CACHE_TTL.SHORT);
+      cacheService.set(CACHE_KEYS.ADVANCES, advanceData, CACHE_TTL.MEDIUM);
+      cacheService.set(CACHE_KEYS.OLD_STAFF, oldStaffData, CACHE_TTL.LONG);
+      cacheService.set(CACHE_KEYS.SALARY_HIKES, salaryHikeData, CACHE_TTL.LONG);
+      // Update UI state silently
       setStaff(staffData);
       setAttendance(attendanceData);
       setAdvances(advanceData);
       setOldStaffRecords(oldStaffData);
       setSalaryHikes(salaryHikeData);
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch (err) {
+      console.error('Background refresh error:', err);
     } finally {
-      setLoading(false);
+      firstLoadDone.current = true;
+      setIsFirstLoad(false);
     }
-  };
+  }, []);
 
-  // Force refresh data (bypasses cache)
+  // loadAllData alias kept for compatibility (forceRefresh, offline sync, etc.)
+  const loadAllData = silentRefresh;
+
+  // Force refresh data (clears cache, then re-fetches)
   const forceRefreshData = async () => {
     cacheService.clearAll();
-    await loadAllData();
+    await silentRefresh();
   };
+
+  /**
+   * Zero-latency surgical attendance patch.
+   * Merges one record into the attendance[] array immediately (no network wait),
+   * and invalidates the attendance cache so the next full load gets fresh data.
+   * This is the primary mutation path used by FaceAttendance and AttendanceTracker.
+   */
+  const patchAttendance = useCallback((updated: Attendance) => {
+    setAttendance(prev => {
+      const idx = prev.findIndex(a =>
+        a.staffId === updated.staffId &&
+        a.date === updated.date &&
+        !!a.isPartTime === !!updated.isPartTime
+      );
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = updated;
+        return next;
+      }
+      return [...prev, updated];
+    });
+    // Invalidate cache so next cold load fetches fresh data from Supabase
+    cacheService.invalidate(CACHE_KEYS.ATTENDANCE);
+  }, []);
 
   const handleLogin = (userData: { email: string; role: string; location?: string; staffId?: string; staffName?: string }) => {
     setUser(userData as User);
@@ -408,21 +443,8 @@ function App() {
         performedBy: user?.email || 'manager'
       });
 
-      setAttendance(prev => {
-        const existingIndex = prev.findIndex(a =>
-          a.staffId === staffId &&
-          a.date === date &&
-          a.isPartTime === !!isPartTime
-        );
-
-        if (existingIndex >= 0) {
-          const updated = [...prev];
-          updated[existingIndex] = savedAttendance;
-          return updated;
-        } else {
-          return [...prev, savedAttendance];
-        }
-      });
+      // Zero-latency optimistic update — no network wait
+      patchAttendance(savedAttendance);
     } catch (error) {
       console.error('Error updating attendance:', error);
     }
@@ -815,54 +837,11 @@ function App() {
   };
 
   const renderContent = () => {
-    if (loading) {
-      return (
-        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-          <div className="text-center">
-            <div
-              className="mx-auto mb-6"
-              style={{
-                width: '56px',
-                height: '56px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                padding: '3px',
-                animation: 'spin 1s linear infinite'
-              }}
-            >
-              <div
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: '50%',
-                  background: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <div
-                  style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    border: '3px solid transparent',
-                    borderTopColor: '#667eea',
-                    animation: 'spin 0.8s linear infinite reverse'
-                  }}
-                />
-              </div>
-            </div>
-            <p className="text-gray-600 font-medium">Loading...</p>
-            <p className="text-gray-400 text-sm mt-1">Fetching data from database</p>
-          </div>
-          <style>{`
-            @keyframes spin {
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
-        </div>
-      );
+    // Only block with skeleton when there is NO cached data at all AND first
+    // Supabase response hasn't arrived yet. On revisits, cached data is already
+    // in state so this branch never triggers.
+    if (isFirstLoad && user) {
+      return <SkeletonLoader />;
     }
 
     const filteredStaffData = filteredStaff;
@@ -986,7 +965,11 @@ function App() {
             <FaceAttendance
               staff={filteredStaffData}
               attendance={filteredAttendanceData}
-              onAttendanceUpdated={() => loadAllData()}
+              onAttendancePatch={patchAttendance}
+              onAttendanceUpdated={() => {
+                // Only invalidate cache — UI is already updated via onAttendancePatch
+                cacheService.invalidate(CACHE_KEYS.ATTENDANCE);
+              }}
               userRole={user?.role as 'admin' | 'manager'}
             />
           </Suspense>
