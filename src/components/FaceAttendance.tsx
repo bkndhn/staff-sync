@@ -563,8 +563,8 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendanceUpdate
                 return (
                   <div key={rec.id} className="p-3 rounded-xl bg-black/10 border border-[var(--glass-border)] flex items-center gap-3 flex-wrap">
                     <div className="flex-1 min-w-[160px]">
-                      <div className="text-sm font-semibold text-[var(--text-primary)]">{rec.staffName}</div>
-                      <div className="text-[11px] text-[var(--text-secondary)]">{rec.location} · {rec.status}</div>
+                      <div className="text-sm font-semibold text-[var(--text-primary)]">{rec.staff?.name || rec.staffName || rec.staffId}</div>
+                      <div className="text-[11px] text-[var(--text-secondary)]">{rec.staff?.location || rec.location} · {rec.status}</div>
                     </div>
                     {isEditing ? (
                       <>

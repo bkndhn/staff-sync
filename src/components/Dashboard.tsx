@@ -530,12 +530,32 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div className="glass-card-static p-4 border-l-4 border-emerald-500">
                     <p className="text-base font-bold text-emerald-400 mb-2">✅ Present: {assignedPresent.length}/{locationTotalFullTimeStaff}</p>
-                    <p className="text-sm text-white/60">{assignedPresent.length > 0 ? assignedPresent.join(', ') : 'None'}</p>
+                    {(() => {
+                      // Only show names as plain text for staff who have NO time data
+                      // (staff with times appear in individual punch rows below)
+                      const noTimeIds = assignedPresentIds.filter(id => {
+                        const rec = fullTimeAttendance.find(a => a.staffId === id);
+                        return !rec?.arrivalTime && !rec?.leavingTime;
+                      });
+                      const noTimeNames = sortStaffIdsByOrder(noTimeIds).map(id => formatStaffName(id, false));
+                      return noTimeNames.length > 0 ? (
+                        <p className="text-sm text-white/60">{noTimeNames.join(', ')}</p>
+                      ) : null;
+                    })()}
                     {renderPunchList(assignedPresentIds)}
                   </div>
                   <div className="glass-card-static p-4 border-l-4 border-amber-500">
                     <p className="text-base font-bold text-amber-400 mb-2">🕒 Half-day: {assignedHalfDay.length}</p>
-                    <p className="text-sm text-white/60">{assignedHalfDay.length > 0 ? assignedHalfDay.join(', ') : 'None'}</p>
+                    {(() => {
+                      const noTimeIds = assignedHalfDayIds.filter(id => {
+                        const rec = fullTimeAttendance.find(a => a.staffId === id);
+                        return !rec?.arrivalTime && !rec?.leavingTime;
+                      });
+                      const noTimeNames = sortStaffIdsByOrder(noTimeIds).map(id => formatStaffName(id, false));
+                      return noTimeNames.length > 0 ? (
+                        <p className="text-sm text-white/60">{noTimeNames.join(', ')}</p>
+                      ) : null;
+                    })()}
                     {renderPunchList(assignedHalfDayIds)}
                   </div>
                   <div className="glass-card-static p-4 border-l-4 border-red-500">

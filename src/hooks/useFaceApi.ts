@@ -3,10 +3,12 @@ import * as faceapi from '@vladmandic/face-api';
 
 // ─── Local model path & Deployment Versioning ─────────────────────────────────
 // Models are bundled in /public/models to avoid CDN round-trips.
-// Explicit versioning parameters ensure browser/SW caches do not serve stale
-// weights across enterprise software upgrades.
-const DEPLOYMENT_VERSION = 'v1.0.1';
-const MODEL_URL = `/models?v=${DEPLOYMENT_VERSION}`;
+// NOTE: The version tag MUST NOT be part of the directory path — face-api
+// constructs URLs by appending '/filename.json' directly to the base path.
+// '/models?v=...' becomes '/models?v=.../filename.json' (404).
+// Instead, we use the plain '/models' path and rely on SW cache versioning.
+const DEPLOYMENT_VERSION = 'v1.0.1'; // Bump this to bust SW model cache
+const MODEL_URL = '/models';
 
 // Singleton promise — models are loaded once for the whole app lifetime.
 let modelsLoadingPromise: Promise<void> | null = null;
