@@ -17,6 +17,14 @@ import { AuditLogViewer } from './components/AuditLogViewer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { auditLogService } from './services/auditLogService';
 import { offlineSyncService } from './services/offlineSyncService';
+const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
+const SalaryManagement = React.lazy(() => import('./components/SalaryManagement'));
+const PartTimeStaff = React.lazy(() => import('./components/PartTimeStaff'));
+const OldStaffRecords = React.lazy(() => import('./components/OldStaffRecords'));
+const Settings = React.lazy(() => import('./components/Settings'));
+const StaffPortal = React.lazy(() => import('./components/StaffPortal'));
+const LeaveManagement = React.lazy(() => import('./components/LeaveManagement'));
+const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 
 
 // ─── Prefetch all lazy chunks in the background after login ───────────────────
