@@ -14,6 +14,7 @@ import {
   ScanFace,
   MoreHorizontal,
   X,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface NavigationProps {
@@ -46,6 +47,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
         { id: 'Part-Time Staff' as NavigationTab, label: 'Part-Time', icon: Clock },
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
         { id: 'Old Staff Records' as NavigationTab, label: 'Archive', icon: Archive },
+        { id: 'Audit Log' as NavigationTab, label: 'Audit Log', icon: ShieldAlert },
         { id: 'Settings' as NavigationTab, label: 'Settings', icon: SettingsIcon },
       ];
     }

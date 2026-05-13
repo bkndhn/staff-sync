@@ -18,6 +18,7 @@ interface CredentialsModalProps {
 // Credentials Modal Component
 const CredentialsModal: React.FC<CredentialsModalProps> = ({ credentials, locationName, onClose }) => {
     const [copiedField, setCopiedField] = useState<string | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
 
     const copyToClipboard = async (text: string, field: string) => {
         try {
@@ -48,6 +49,7 @@ const CredentialsModal: React.FC<CredentialsModalProps> = ({ credentials, locati
                             <button
                                 onClick={() => copyToClipboard(credentials.email, 'email')}
                                 className={`p-2 rounded-lg transition-colors flex-shrink-0 ml-2 ${copiedField === 'email' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
+                                title="Copy Email"
                             >
                                 {copiedField === 'email' ? <Check size={16} /> : <Copy size={16} />}
                             </button>
@@ -57,13 +59,25 @@ const CredentialsModal: React.FC<CredentialsModalProps> = ({ credentials, locati
                     <div className="glass-card-static p-4 rounded-xl">
                         <label className="block text-xs font-medium text-white/50 mb-1">Password</label>
                         <div className="flex items-center justify-between">
-                            <span className="text-white font-mono">{credentials.password}</span>
-                            <button
-                                onClick={() => copyToClipboard(credentials.password, 'password')}
-                                className={`p-2 rounded-lg transition-colors flex-shrink-0 ml-2 ${copiedField === 'password' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
-                            >
-                                {copiedField === 'password' ? <Check size={16} /> : <Copy size={16} />}
-                            </button>
+                            <span className="text-white font-mono tracking-wider">
+                                {showPassword ? credentials.password : '••••••••••••'}
+                            </span>
+                            <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                                <button
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="p-2 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 transition-colors"
+                                    title={showPassword ? "Mask Password" : "Reveal Password"}
+                                >
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                                <button
+                                    onClick={() => copyToClipboard(credentials.password, 'password')}
+                                    className={`p-2 rounded-lg transition-colors ${copiedField === 'password' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
+                                    title="Copy Password"
+                                >
+                                    {copiedField === 'password' ? <Check size={16} /> : <Copy size={16} />}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

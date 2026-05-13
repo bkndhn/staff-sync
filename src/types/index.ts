@@ -209,7 +209,7 @@ export interface SalaryOverride {
   salarySupplementsOverride?: Record<string, number>;
 }
 
-export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Salary Management' | 'Part-Time Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance';
+export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Salary Management' | 'Part-Time Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Audit Log';
 
 // Re-export AppUser from userService
 export type { AppUser } from '../services/userService';
@@ -251,4 +251,14 @@ export interface PartTimeSettlement {
   settledBy?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AuditLog {
+  id: string;
+  action: 'attendance_override' | 'salary_edit' | 'staff_update' | 'bulk_update';
+  staffId?: string;
+  staffName?: string;
+  details: string;
+  performedBy: string;
+  timestamp: string;
 }

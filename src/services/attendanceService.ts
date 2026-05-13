@@ -2,9 +2,12 @@ import { supabase } from '../lib/supabase';
 import { Attendance } from '../types';
 import type { DatabaseAttendance } from '../lib/supabase';
 import { isSunday } from '../utils/salaryCalculations';
+import { offlineSyncService } from './offlineSyncService';
 
 export const attendanceService = {
   async getAll(): Promise<Attendance[]> {
+    // If offline, we can attempt to fetch cached network response or return empty/cached state,
+    // but typically cachedFetch in App.tsx handles the static view layer caching.
     const { data, error } = await supabase
       .from('attendance')
       .select('*')
@@ -34,9 +37,59 @@ export const attendanceService = {
     return data.map((d: any) => this.mapFromDatabase(d));
   },
 
+  /** Upsert attendance record with automatic Offline Queue fallback */
   async upsert(attendance: Omit<Attendance, 'id'>): Promise<Attendance> {
+    // Check network connectivity upfront
+    if (!navigator.onLine) {
+      console.warn('[AttendanceService] Offline detected. Queuing punch locally.');
+      const queued = await offlineSyncService.enqueuePunch(attendance);
+      // Return a temporarily constructed local attendance record so UI optimistic updates succeed instantly
+      return {
+        ...attendance,
+        id: queued.id,
+        attendanceValue: attendance.attendanceValue ?? (attendance.status === 'Present' ? 1 : attendance.status === 'Half Day' ? 0.5 : 0)
+      };
+    }
+
     const dbAttendance = this.mapToDatabase(attendance);
 
+    try {
+      const { data, error } = await supabase
+        .from('attendance')
+        .upsert([dbAttendance as any], {
+          onConflict: 'staff_id,date,is_part_time'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      // Try triggering flush in background in case there were pending offline punches
+      setTimeout(() => {
+        offlineSyncService.flushQueue((punch) => {
+          // Exclude internal offline fields when flushing to remote
+          const { id, queuedAt, ...punchPayload } = punch;
+          return this.upsertRemoteOnly(punchPayload);
+        });
+      }, 1000);
+
+      return this.mapFromDatabase(data as any);
+    } catch (error) {
+      console.error('[AttendanceService] Remote upsert failed. Enqueuing locally as fallback:', error);
+      const queued = await offlineSyncService.enqueuePunch(attendance);
+      return {
+        ...attendance,
+        id: queued.id,
+        attendanceValue: attendance.attendanceValue ?? (attendance.status === 'Present' ? 1 : attendance.status === 'Half Day' ? 0.5 : 0)
+      };
+    }
+  },
+
+  /** Dedicated remote upsert invoked during background queue flushing to prevent infinite loops */
+  async upsertRemoteOnly(attendance: Omit<Attendance, 'id'>): Promise<Attendance> {
+    const dbAttendance = this.mapToDatabase(attendance);
     const { data, error } = await supabase
       .from('attendance')
       .upsert([dbAttendance as any], {
@@ -45,33 +98,59 @@ export const attendanceService = {
       .select()
       .single();
 
-    if (error) {
-      console.error('Error upserting attendance:', error);
-      throw error;
-    }
-
+    if (error) throw error;
     return this.mapFromDatabase(data as any);
   },
 
   async bulkUpsert(attendanceRecords: Omit<Attendance, 'id'>[]): Promise<Attendance[]> {
-    const dbRecords = attendanceRecords.map(this.mapToDatabase);
-
-    const { data, error } = await supabase
-      .from('attendance')
-      .upsert(dbRecords as any[], {
-        onConflict: 'staff_id,date,is_part_time'
-      })
-      .select();
-
-    if (error) {
-      console.error('Error bulk upserting attendance:', error);
-      throw error;
+    if (!navigator.onLine) {
+      console.warn('[AttendanceService] Bulk Offline detected. Queuing all records locally.');
+      const localResults: Attendance[] = [];
+      for (const rec of attendanceRecords) {
+        const queued = await offlineSyncService.enqueuePunch(rec);
+        localResults.push({
+          ...rec,
+          id: queued.id,
+          attendanceValue: rec.attendanceValue ?? (rec.status === 'Present' ? 1 : rec.status === 'Half Day' ? 0.5 : 0)
+        });
+      }
+      return localResults;
     }
 
-    return data.map((d: any) => this.mapFromDatabase(d));
+    const dbRecords = attendanceRecords.map(this.mapToDatabase);
+
+    try {
+      const { data, error } = await supabase
+        .from('attendance')
+        .upsert(dbRecords as any[], {
+          onConflict: 'staff_id,date,is_part_time'
+        })
+        .select();
+
+      if (error) throw error;
+      return data.map((d: any) => this.mapFromDatabase(d));
+    } catch (error) {
+      console.error('[AttendanceService] Bulk remote upsert failed. Enqueuing locally:', error);
+      const localResults: Attendance[] = [];
+      for (const rec of attendanceRecords) {
+        const queued = await offlineSyncService.enqueuePunch(rec);
+        localResults.push({
+          ...rec,
+          id: queued.id,
+          attendanceValue: rec.attendanceValue ?? (rec.status === 'Present' ? 1 : rec.status === 'Half Day' ? 0.5 : 0)
+        });
+      }
+      return localResults;
+    }
   },
 
   async delete(id: string): Promise<{ error: any }> {
+    // If it's a locally queued ID, just remove from IndexedDB queue
+    if (id.startsWith('offline_')) {
+      await offlineSyncService.removePunch(id);
+      return { error: null };
+    }
+
     const { error } = await supabase
       .from('attendance')
       .delete()

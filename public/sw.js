@@ -153,11 +153,24 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Background sync for offline data (if supported)
+// Background sync for offline data
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-attendance') {
-    console.log('[SW] Syncing attendance data...');
-    // Handle background sync for attendance
+    console.log('[SW] Background sync triggered for attendance data.');
+    event.waitUntil(
+      self.clients.matchAll({ includeUncontrolled: true, type: 'window' }).then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: 'FLUSH_OFFLINE_QUEUE' });
+        });
+      })
+    );
+  }
+});
+
+// Listen for messages from web application clients
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
 });
 
