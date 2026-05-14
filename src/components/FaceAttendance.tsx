@@ -23,7 +23,7 @@ interface Props {
 }
 
 // Default match threshold (overridden by app_settings at runtime)
-let MATCH_THRESHOLD = 0.45;
+let MATCH_THRESHOLD = 0.55;
 // Minimum gap between two punches for the SAME staff (smart toggle IN<->OUT)
 const TOGGLE_MIN_SECONDS = 5 * 60;     // 5 minutes
 // Cooldown for the same kind (prevents double-IN flooding)
@@ -459,9 +459,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 w-full h-[calc(100vh-80px)] py-4 max-w-[1920px] mx-auto">
+    <div className="flex flex-col lg:flex-row gap-4 w-full h-auto lg:h-[calc(100vh-80px)] py-4 max-w-[1920px] mx-auto">
       {/* ── Left Side: Full Height Camera Feed ── */}
-      <div className="flex-1 rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
+      <div className="flex-1 min-h-[60vh] lg:min-h-0 rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
         {/* HUD Overlay */}
         <div className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between gap-3 flex-wrap pointer-events-none">
           <div>

@@ -112,7 +112,7 @@ export const appSettingsService = {
       morningCutoff: map.get('kiosk_morning_cutoff') || '12:00',
       earlyExitTime: map.get('kiosk_early_exit_time') || '16:00',
       fullDayRequiresMorning: map.get('kiosk_full_day_requires_morning') !== 'false',
-      matchThreshold: parseFloat(map.get('kiosk_match_threshold') || '0.45'),
+      matchThreshold: parseFloat(map.get('kiosk_match_threshold') || '0.55'),
       antiSpoofLevel: (antiSpoof === 'standard' || antiSpoof === 'strict' || antiSpoof === 'max')
         ? antiSpoof : 'strict',
       managerCanOverride: map.get('manager_can_override') !== 'false',

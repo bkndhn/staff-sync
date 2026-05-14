@@ -14,7 +14,7 @@ const GlobalKioskSettings: React.FC = () => {
     morningCutoff: '12:00',
     earlyExitTime: '16:00',
     fullDayRequiresMorning: true,
-    matchThreshold: 0.45,
+    matchThreshold: 0.55,
     antiSpoofLevel: 'strict' as 'standard' | 'strict' | 'max',
     managerCanOverride: true,
   });
