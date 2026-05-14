@@ -277,8 +277,12 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         const record = getAttendanceForDate(memberId, date);
         const status = record?.status || 'Absent';
 
-        if (status === 'Present') {
+        if (status === 'Present' || status === 'Pending Full Day') {
           present++;
+        } else if (status === 'Manual Override') {
+          if (record.attendanceValue === 1) present++;
+          else if (record.attendanceValue === 0.5) halfDay++;
+          else absent++;
         } else if (status === 'Half Day') {
           halfDay++;
         } else if (status === 'Absent') {
@@ -419,10 +423,12 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                               isUninformed
                                 ? 'bg-orange-500 text-white ring-2 ring-orange-300'
                                 : status === 'Present' ? 'bg-green-500 text-white' :
+                                  status === 'Pending Full Day' ? 'bg-indigo-500 text-white' :
+                                  status === 'Manual Override' ? 'bg-purple-500 text-white' :
                                   status === 'Half Day' ? 'bg-yellow-500 text-white' :
                                     status === 'Absent' ? (isDateSunday ? 'bg-red-700 text-white' : 'bg-red-500 text-white') : 'bg-gray-200 text-gray-500'
                               }`}>
-                              {isUninformed ? '⚠' : status === 'Present' ? 'P' : status === 'Half Day' ? halfCode : 'A'}
+                              {isUninformed ? '⚠' : status === 'Present' ? 'P' : status === 'Pending Full Day' ? 'P?' : status === 'Manual Override' ? 'MO' : status === 'Half Day' ? halfCode : 'A'}
                             </span>
                           </td>
                         );
@@ -439,6 +445,14 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           <div className="flex items-center gap-2">
             <span className="w-4 h-4 bg-green-500 rounded"></span>
             <span>Present (P)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 bg-indigo-500 rounded"></span>
+            <span>Pending Full Day (P?)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 bg-purple-500 rounded"></span>
+            <span>Override (MO)</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-4 h-4 bg-yellow-500 rounded"></span>

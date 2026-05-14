@@ -2044,6 +2044,8 @@ label:has(input:checked) .font-medium {
   border: 1px solid var(--glass-border);
   border-radius: 16px;
   overflow: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 .table-container>.overflow-x-auto,

@@ -49,9 +49,11 @@ export interface AttendanceRules {
    * eligible for Full Day. Arrival after cutoff → Half Day.
    */
   fullDayRequiresMorning: boolean;
+  /** Evening threshold to finalize Pending Full Day to Full Day */
+  eveningVerificationTime: string;
 }
 
-export type AttendanceStatus = 'Present' | 'Half Day' | 'Absent';
+export type AttendanceStatus = 'Present' | 'Half Day' | 'Absent' | 'Pending Full Day' | 'Manual Override';
 
 export interface AttendanceDecision {
   status: AttendanceStatus;
@@ -84,23 +86,37 @@ export const calculateAttendanceStatus = (
   const earlyExitMins = rules.earlyExitTime ? parseHHMM(rules.earlyExitTime) : null;
   const leavMins = leavingTime ? parseHHMM(leavingTime) : null;
 
+  const eveningVerificationMins = rules.eveningVerificationTime ? parseHHMM(rules.eveningVerificationTime) : null;
+
   let status: AttendanceStatus;
 
   // ── Rule 2: Morning arrival (before cutoff) ───────────────────────────────
   if (arrMins < cutoffMins) {
-    // Default: Full Day (optimistic — morning is here)
-    status = 'Present';
-
     if (leavMins !== null) {
       if (earlyExitMins !== null && leavMins < earlyExitMins) {
         // LEFT before earlyExitTime → downgrade to Half Day
         const earlyBy = earlyExitMins - leavMins;
         status = 'Half Day';
         reasons.push(`Left ${earlyBy} min before early-exit threshold (${rules.earlyExitTime})`);
+      } else {
+        // Stayed past earlyExitTime
+        status = 'Present';
       }
-      // else: stayed past earlyExitTime → stay Full Day
+    } else {
+      // No OUT punch yet
+      const now = new Date();
+      const currentMins = now.getHours() * 60 + now.getMinutes();
+      
+      if (eveningVerificationMins !== null && currentMins >= eveningVerificationMins) {
+        // Evening threshold reached and no OUT punch found
+        status = 'Present';
+        reasons.push(`Evening verification threshold (${rules.eveningVerificationTime}) reached without OUT punch`);
+      } else {
+        // Still before evening threshold, hold as pending
+        status = 'Pending Full Day';
+        reasons.push(`Awaiting evening verification threshold (${rules.eveningVerificationTime})`);
+      }
     }
-    // No OUT punch yet: stay Full Day (staff may still be present or left without punching)
 
   } else {
     // ── Rule 3: Evening-only arrival (after cutoff) → Half Day ───────────────
@@ -109,7 +125,18 @@ export const calculateAttendanceStatus = (
       reasons.push(`Arrived after morning cutoff (${rules.morningCutoff}) — counted as Half Day`);
     } else {
       // Location doesn't require morning entry for Full Day; fall through to hours check
-      status = 'Present';
+      // For now, if they don't have an OUT punch, treat as Pending Full Day if before evening
+      if (leavMins === null) {
+        const now = new Date();
+        const currentMins = now.getHours() * 60 + now.getMinutes();
+        if (eveningVerificationMins !== null && currentMins >= eveningVerificationMins) {
+          status = 'Present';
+        } else {
+          status = 'Pending Full Day';
+        }
+      } else {
+        status = 'Present';
+      }
     }
   }
 
@@ -127,7 +154,7 @@ export const calculateAttendanceStatus = (
     }
   }
 
-  const attendanceValue = status === 'Present' ? 1 : status === 'Half Day' ? 0.5 : 0;
+  const attendanceValue = status === 'Present' ? 1 : status === 'Half Day' ? 0.5 : status === 'Pending Full Day' ? 1 : 0;
   return { status, attendanceValue, reasons };
 };
 
@@ -145,6 +172,7 @@ export const resolveAttendanceRules = (
     minHoursHalf: number;
     morningCutoff: string;
     earlyExitTime: string;
+    eveningVerificationTime: string;
     fullDayRequiresMorning: boolean;
   },
   staffOverride?: {
@@ -165,5 +193,6 @@ export const resolveAttendanceRules = (
   // Morning/evening cutoffs are location-level only (not per-staff)
   morningCutoff: locationConfig.morningCutoff,
   earlyExitTime: locationConfig.earlyExitTime,
+  eveningVerificationTime: locationConfig.eveningVerificationTime,
   fullDayRequiresMorning: locationConfig.fullDayRequiresMorning,
 });

@@ -68,7 +68,7 @@ export interface Attendance {
   id: string;
   staffId: string;
   date: string;
-  status: 'Present' | 'Half Day' | 'Absent';
+  status: 'Present' | 'Half Day' | 'Absent' | 'Pending Full Day' | 'Manual Override';
   attendanceValue: number;
   isSunday?: boolean;
   shift?: 'Morning' | 'Evening' | 'Both';

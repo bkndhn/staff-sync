@@ -87,6 +87,7 @@ export const appSettingsService = {
   async getKioskGlobalSettings(): Promise<{
     morningCutoff: string;
     earlyExitTime: string;
+    eveningVerificationTime: string;
     fullDayRequiresMorning: boolean;
     matchThreshold: number;
     antiSpoofLevel: 'standard' | 'strict' | 'max';
@@ -98,6 +99,7 @@ export const appSettingsService = {
       .in('key', [
         'kiosk_morning_cutoff',
         'kiosk_early_exit_time',
+        'kiosk_evening_verification_time',
         'kiosk_full_day_requires_morning',
         'kiosk_match_threshold',
         'anti_spoof_level',
@@ -111,6 +113,7 @@ export const appSettingsService = {
     return {
       morningCutoff: map.get('kiosk_morning_cutoff') || '12:00',
       earlyExitTime: map.get('kiosk_early_exit_time') || '16:00',
+      eveningVerificationTime: map.get('kiosk_evening_verification_time') || '18:00',
       fullDayRequiresMorning: map.get('kiosk_full_day_requires_morning') !== 'false',
       matchThreshold: parseFloat(map.get('kiosk_match_threshold') || '0.55'),
       antiSpoofLevel: (antiSpoof === 'standard' || antiSpoof === 'strict' || antiSpoof === 'max')

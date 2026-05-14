@@ -22,6 +22,8 @@ export interface LocationShiftConfig {
   morningCutoff: string;
   /** If OUT is recorded BEFORE this time, override Full Day → Half Day */
   earlyExitTime: string;
+  /** Evening threshold to finalize Pending Full Day to Full Day */
+  eveningVerificationTime: string;
   /** If true, staff must arrive before morningCutoff to qualify for Full Day */
   fullDayRequiresMorning: boolean;
   /** Whether the manager for this location can override attendance */
@@ -37,6 +39,7 @@ export const DEFAULT_LOCATION_CONFIG: Omit<LocationShiftConfig, 'locationName'> 
   minHoursHalf: 4,
   morningCutoff: '12:00',
   earlyExitTime: '16:00',
+  eveningVerificationTime: '18:00',
   fullDayRequiresMorning: true,
   allowManagerOverride: true,
 };
@@ -55,6 +58,7 @@ const toConfig = (row: any): LocationShiftConfig => ({
   minHoursHalf: Number(row.min_hours_half ?? 4),
   morningCutoff: row.morning_cutoff ?? '12:00',
   earlyExitTime: row.early_exit_time ?? '16:00',
+  eveningVerificationTime: row.evening_verification_time ?? '18:00',
   fullDayRequiresMorning: row.full_day_requires_morning ?? true,
   allowManagerOverride: row.allow_manager_override ?? true,
 });
@@ -62,18 +66,20 @@ const toConfig = (row: any): LocationShiftConfig => ({
 // ─── Global defaults cache ────────────────────────────────────────────────────
 // We also read global fallback values from app_settings (admin can set them).
 
-let globalCache: { morningCutoff: string; earlyExitTime: string; fullDayRequiresMorning: boolean } | null = null;
+let globalCache: { morningCutoff: string; earlyExitTime: string; eveningVerificationTime: string; fullDayRequiresMorning: boolean } | null = null;
 
 const loadGlobalDefaults = async () => {
   if (globalCache) return globalCache;
-  const [mc, ee, fd] = await Promise.all([
+  const [mc, ee, ev, fd] = await Promise.all([
     appSettingsService.getSetting('kiosk_morning_cutoff'),
     appSettingsService.getSetting('kiosk_early_exit_time'),
+    appSettingsService.getSetting('kiosk_evening_verification_time'),
     appSettingsService.getSetting('kiosk_full_day_requires_morning'),
   ]);
   globalCache = {
     morningCutoff: mc || '12:00',
     earlyExitTime: ee || '16:00',
+    eveningVerificationTime: ev || '18:00',
     fullDayRequiresMorning: fd !== 'false',
   };
   return globalCache;
@@ -124,6 +130,7 @@ export const locationShiftService = {
       locationName,
       morningCutoff: globalDefs.morningCutoff,
       earlyExitTime: globalDefs.earlyExitTime,
+      eveningVerificationTime: globalDefs.eveningVerificationTime,
       fullDayRequiresMorning: globalDefs.fullDayRequiresMorning,
     };
   },
@@ -140,6 +147,7 @@ export const locationShiftService = {
       min_hours_half: config.minHoursHalf,
       morning_cutoff: config.morningCutoff,
       early_exit_time: config.earlyExitTime,
+      evening_verification_time: config.eveningVerificationTime,
       full_day_requires_morning: config.fullDayRequiresMorning,
       allow_manager_override: config.allowManagerOverride,
     };

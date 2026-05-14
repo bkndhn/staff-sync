@@ -13,6 +13,7 @@ const GlobalKioskSettings: React.FC = () => {
   const [settings, setSettings] = useState({
     morningCutoff: '12:00',
     earlyExitTime: '16:00',
+    eveningVerificationTime: '18:00',
     fullDayRequiresMorning: true,
     matchThreshold: 0.55,
     antiSpoofLevel: 'strict' as 'standard' | 'strict' | 'max',
@@ -33,6 +34,7 @@ const GlobalKioskSettings: React.FC = () => {
     await Promise.all([
       appSettingsService.setSetting('kiosk_morning_cutoff', settings.morningCutoff),
       appSettingsService.setSetting('kiosk_early_exit_time', settings.earlyExitTime),
+      appSettingsService.setSetting('kiosk_evening_verification_time', settings.eveningVerificationTime),
       appSettingsService.setSetting('kiosk_full_day_requires_morning', String(settings.fullDayRequiresMorning)),
       appSettingsService.setSetting('kiosk_match_threshold', String(settings.matchThreshold)),
       appSettingsService.setSetting('anti_spoof_level', settings.antiSpoofLevel),
@@ -77,6 +79,18 @@ const GlobalKioskSettings: React.FC = () => {
               type="time"
               value={settings.earlyExitTime}
               onChange={e => setSettings(p => ({ ...p, earlyExitTime: e.target.value }))}
+              className="input-premium px-3 py-2 text-sm w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-white/60 mb-1.5">
+              Evening Verification Time
+              <span className="block text-[10px] text-white/40 mt-0.5">Pending morning staffs resolve to Full Day if no OUT punch</span>
+            </label>
+            <input
+              type="time"
+              value={settings.eveningVerificationTime}
+              onChange={e => setSettings(p => ({ ...p, eveningVerificationTime: e.target.value }))}
               className="input-premium px-3 py-2 text-sm w-full"
             />
           </div>
@@ -227,12 +241,13 @@ const LocationConfigRow: React.FC<LocationRowProps> = ({ locationName, config, o
       {expanded && (
         <div className="border-t border-white/10 p-4 space-y-4">
           {/* Shift Times */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[
               { key: 'shiftStart', label: 'Shift Start', type: 'time' },
               { key: 'shiftEnd', label: 'Shift End', type: 'time' },
               { key: 'morningCutoff', label: 'Morning Cutoff', type: 'time' },
               { key: 'earlyExitTime', label: 'Early Exit Time', type: 'time' },
+              { key: 'eveningVerificationTime', label: 'Evening Verification', type: 'time' },
             ].map(({ key, label, type }) => (
               <div key={key}>
                 <label className="block text-[10px] font-medium text-white/50 mb-1">{label}</label>
