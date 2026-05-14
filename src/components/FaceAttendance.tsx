@@ -188,8 +188,8 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           setShiftWindows(sw);
           setLocationConfig(locCfg || { ...DEFAULT_LOCATION_CONFIG, locationName });
           setManagerCanOverride(kioskSettings.managerCanOverride);
-          // Apply dynamic match threshold from settings
-          MATCH_THRESHOLD = kioskSettings.matchThreshold;
+          // Apply dynamic match threshold from settings (clamp to min 0.55 so it's not overly strict)
+          MATCH_THRESHOLD = Math.max(0.55, kioskSettings.matchThreshold || 0.55);
         }
       } catch (e: any) {
         if (!cancelled) setMessage({ kind: 'err', text: e?.message || 'Failed to load face data' });
@@ -459,9 +459,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 w-full h-auto lg:h-[calc(100vh-80px)] py-4 max-w-[1920px] mx-auto">
+    <div className="flex flex-col lg:flex-row gap-4 w-full min-h-[calc(100vh-80px)] py-4 max-w-[1920px] mx-auto">
       {/* ── Left Side: Full Height Camera Feed ── */}
-      <div className="flex-1 min-h-[60vh] lg:min-h-0 rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
+      <div className="flex-1 min-h-[65vh] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
         {/* HUD Overlay */}
         <div className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between gap-3 flex-wrap pointer-events-none">
           <div>
