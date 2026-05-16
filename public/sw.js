@@ -1,10 +1,10 @@
 // Enhanced Service Worker for Staff Management System
 // Version 2.0 with better caching and offline support
 
-const CACHE_NAME = 'staff-management-v3';
-const STATIC_CACHE = 'staff-static-v3';
-const DYNAMIC_CACHE = 'staff-dynamic-v3';
-const MODELS_CACHE = 'staff-models-v1'; // face-api model binaries — separate cache, long-lived
+const CACHE_NAME = 'staff-management-v4';
+const STATIC_CACHE = 'staff-static-v4';
+const DYNAMIC_CACHE = 'staff-dynamic-v4';
+const MODELS_CACHE = 'staff-models-v2'; // Upgraded: SSD MobileNetV1 + ONNX models
 
 // Static assets to cache on install
 const STATIC_ASSETS = [
@@ -23,14 +23,15 @@ self.addEventListener('install', (event) => {
       // Pre-cache face-api model shards so they load from disk (~1s vs ~20s CDN)
       caches.open(MODELS_CACHE).then((cache) =>
         cache.addAll([
-          '/models/tiny_face_detector_model-weights_manifest.json',
-          '/models/tiny_face_detector_model-shard1',
+          // SSD MobileNetV1 (upgraded from TinyFaceDetector)
+          '/models/ssd_mobilenetv1_model-weights_manifest.json',
+          // Face landmark (68 points — for EAR blink liveness)
           '/models/face_landmark_68_model-weights_manifest.json',
-          '/models/face_landmark_68_model-shard1',
+          // Face recognition (ResNet-34 descriptor)
           '/models/face_recognition_model-weights_manifest.json',
-          '/models/face_recognition_model-shard1',
-          '/models/face_recognition_model-shard2',
-        ]).catch(() => { /* non-fatal if models not yet copied */ })
+          // ONNX Ultra-Light face detector
+          '/models-v2/face_detector.onnx',
+        ]).catch(() => { /* non-fatal if models not yet available */ })
       ),
     ]).then(() => self.skipWaiting())
   );
@@ -61,7 +62,7 @@ self.addEventListener('activate', (event) => {
 // Fetch: serve /models/* from dedicated cache (cache-first, long-lived)
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  if (url.pathname.startsWith('/models/')) {
+  if (url.pathname.startsWith('/models/') || url.pathname.startsWith('/models-v2/')) {
     event.respondWith(
       caches.open(MODELS_CACHE).then(async (cache) => {
         const cached = await cache.match(event.request);

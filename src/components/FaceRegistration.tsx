@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Camera, Trash2, CheckCircle2, XCircle, RefreshCw, AlertTriangle, Loader2, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Camera, Trash2, CheckCircle2, XCircle, RefreshCw, AlertTriangle, Loader2, ShieldCheck, ShieldOff, Zap } from 'lucide-react';
 import { Staff } from '../types';
-import { useFaceApi } from '../hooks/useFaceApi';
-import { faceEmbeddingService, FaceEmbedding, euclideanDistance } from '../services/faceEmbeddingService';
+import { useFaceEngine } from '../hooks/useFaceEngine';
+import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
+import { cosineDistance, computeCentroid } from '../lib/embeddingMatcher';
 
 interface Props {
   staff: Staff;
@@ -20,11 +21,11 @@ const ANGLES = [
   { id: 'low-light', label: 'Low light', hint: 'Slightly dimmer area' },
 ];
 
-// face-api recommends ~0.6 euclidean as match threshold; use tighter for duplicate dedup
-const DUP_THRESHOLD = 0.35;
+// Cosine duplicate deduplication threshold: < 0.25 = very similar (reject)
+const DUP_THRESHOLD_COSINE = 0.25;
 
 const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy }) => {
-  const { ready: modelsReady, loading: modelsLoading, error: modelsError, detect } = useFaceApi(true);
+  const { ready: modelsReady, loading: modelsLoading, error: modelsError, detect } = useFaceEngine(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -130,11 +131,11 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         return;
       }
 
-      // Duplicate check against own existing samples for this angle
+      // Cosine duplicate deduplication against own existing samples
       const sameAngleDupes = samples.filter(s => s.angleLabel === activeAngle);
       for (const s of sameAngleDupes) {
-        const d = euclideanDistance(result.descriptor, s.descriptor);
-        if (d < DUP_THRESHOLD) {
+        const d = cosineDistance(result.descriptor, s.descriptor);
+        if (d < DUP_THRESHOLD_COSINE) {
           setMessage({ kind: 'warn', text: `Very similar to an existing "${activeAngle}" sample. Try a different angle or expression.` });
           return;
         }

@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import * as faceapi from '@vladmandic/face-api';
-import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity } from 'lucide-react';
+import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity, Zap } from 'lucide-react';
 import { Staff, Attendance } from '../types';
-import { useFaceApi, eyeAspectRatio, textureLivenessScore } from '../hooks/useFaceApi';
+import { useFaceEngine } from '../hooks/useFaceEngine';
 import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
 import { attendanceService } from '../services/attendanceService';
 import { punchEventService } from '../services/punchEventService';
@@ -11,6 +10,8 @@ import { shiftService, formatTime12h, ShiftWindows, minutesBetween } from '../se
 import { locationShiftService, LocationShiftConfig, DEFAULT_LOCATION_CONFIG } from '../services/locationShiftService';
 import { appSettingsService } from '../services/appSettingsService';
 import { calculateAttendanceStatus, resolveAttendanceRules } from '../utils/attendanceRules';
+import { buildCentroidIndex, findBestMatch as findCosineMatch, type StaffEmbedding } from '../lib/embeddingMatcher';
+import { createLivenessState, updateLiveness, evaluateLiveness, type LivenessState } from '../lib/livenessEngine';
 
 interface Props {
   staff: Staff[];                 // already location-scoped by App
@@ -22,17 +23,13 @@ interface Props {
   userRole: 'admin' | 'manager';
 }
 
-// Default match threshold (overridden by app_settings at runtime)
-let MATCH_THRESHOLD = 0.60;
+// Cosine distance threshold for ArcFace-style embeddings
+// Lower = stricter. 0.38 = good balance for 40 staff.
+let COSINE_THRESHOLD = 0.38;
 // Minimum gap between two punches for the SAME staff (smart toggle IN<->OUT)
 const TOGGLE_MIN_SECONDS = 5 * 60;     // 5 minutes
 // Cooldown for the same kind (prevents double-IN flooding)
 const SAME_KIND_COOLDOWN = 60;         // 1 minute
-// Frames of stable detection required before accepting a match (passive liveness)
-// Set to 1 for millisecond-level recognition
-const REQUIRED_STABLE_FRAMES = 1;
-// EAR threshold under which an eye is considered "closed" (blink challenge)
-const EAR_CLOSED = 0.21;
 
 type RecentEvent = {
   staffId: string;
@@ -48,21 +45,17 @@ const formatNow = () => {
 };
 
 const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole }) => {
-  const { ready, loading, error, detect } = useFaceApi(true);
+  const { ready, loading, error, detect } = useFaceEngine(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const lastPunchRef = useRef<Record<string, { ts: number; kind: 'in' | 'out' }>>({});
-  // FaceMatcher — rebuilt when embeddings change, gives O(1) lookup
-  const matcherRef = useRef<faceapi.FaceMatcher | null>(null);
-  // Liveness tracking
-  const candidateRef = useRef<{
-    staffId: string | null;
-    frames: number;
-    boxes: { x: number; y: number; w: number; h: number }[];
-    earSeries: number[];
-    blinkSeen: boolean;
-    textureScores: number[];
-  }>({ staffId: null, frames: 0, boxes: [], earSeries: [], blinkSeen: false, textureScores: [] });
+  // Centroid index — rebuilt when embeddings change (cosine similarity matcher)
+  const centroidIndexRef = useRef<Map<string, StaffEmbedding>>(new Map());
+  // Per-candidate liveness state (new multi-layer engine)
+  const livenessRef = useRef<{ staffId: string | null; state: LivenessState }>({
+    staffId: null,
+    state: createLivenessState(),
+  });
 
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -103,15 +96,11 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
   const enrolledStaffIds = useMemo(() => new Set(scopedEmbeddings.map(e => e.staffId)), [scopedEmbeddings]);
 
-  // ---- Rebuild FaceMatcher whenever embeddings change ----------------------
-  // Groups all embeddings by staffId into LabeledFaceDescriptors for O(1) match
+  // ---- Rebuild centroid index whenever embeddings change -------------------
+  // Computes centroid (averaged embedding) per staff for cosine matching
   useEffect(() => {
-    if (allEmbeddings.length === 0) { matcherRef.current = null; return; }
-    const groups = faceEmbeddingService.toFloat32Groups(allEmbeddings);
-    const labeled = Array.from(groups.entries()).map(
-      ([id, descs]) => new faceapi.LabeledFaceDescriptors(id, descs)
-    );
-    matcherRef.current = new faceapi.FaceMatcher(labeled, MATCH_THRESHOLD);
+    if (allEmbeddings.length === 0) { centroidIndexRef.current = new Map(); return; }
+    centroidIndexRef.current = buildCentroidIndex(allEmbeddings);
   }, [allEmbeddings]);
 
   // ---- Helpers --------------------------------------------------------------
@@ -188,8 +177,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           setShiftWindows(sw);
           setLocationConfig(locCfg || { ...DEFAULT_LOCATION_CONFIG, locationName });
           setManagerCanOverride(kioskSettings.managerCanOverride);
-          // Apply dynamic match threshold from settings (clamp to min 0.60 so it's not overly strict)
-          MATCH_THRESHOLD = Math.max(0.60, kioskSettings.matchThreshold || 0.60);
+          // Cosine threshold: settings value is in Euclidean space (0.6), convert roughly
+          // Cosine ~0.38 ≈ Euclidean ~0.60 for 128-dim ResNet embeddings
+          const rawThreshold = kioskSettings.matchThreshold || 0.60;
+          COSINE_THRESHOLD = rawThreshold <= 1.0 ? Math.min(0.50, rawThreshold * 0.63) : 0.38;
         }
       } catch (e: any) {
         if (!cancelled) setMessage({ kind: 'err', text: e?.message || 'Failed to load face data' });
@@ -237,12 +228,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
-  // ---- Match search via FaceMatcher (O(1) vs O(n) raw loop) ---------------
+  // ---- Match search via cosine centroid index ------------------------------
   const findBestMatch = useCallback((descriptor: Float32Array) => {
-    if (!matcherRef.current) return { staffId: null as string | null, distance: Infinity };
-    const result = matcherRef.current.findBestMatch(descriptor);
-    if (result.label === 'unknown') return { staffId: null as string | null, distance: result.distance };
-    return { staffId: result.label, distance: result.distance };
+    const result = findCosineMatch(descriptor, centroidIndexRef.current, COSINE_THRESHOLD);
+    return { staffId: result.staffId, distance: result.distance };
   }, []);
 
   // ---- Smart multi-punch toggle --------------------------------------------
@@ -335,98 +324,69 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     let cancelled = false;
     let rafId = 0;
     let frameCount = 0;
-    let processing = false; // prevent overlapping async inference
+    let processing = false;
 
-    const resetCandidate = () => {
-      candidateRef.current = { staffId: null, frames: 0, boxes: [], earSeries: [], blinkSeen: false, textureScores: [] };
+    const resetLiveness = (staffId: string | null = null) => {
+      livenessRef.current = { staffId, state: createLivenessState() };
     };
 
     const onFrame = async () => {
       if (cancelled) return;
       frameCount++;
-      // Run inference every 3rd frame (~10/s at 30fps) — responsive but not GPU-hammering
-      if (frameCount % 3 === 0 && !processing && videoRef.current && videoRef.current.readyState >= 2) {
+      // Every 4th frame (~7.5 fps at 30fps) — fast enough, less CPU heat
+      if (frameCount % 4 === 0 && !processing && videoRef.current && videoRef.current.readyState >= 2) {
         processing = true;
         try {
-          // inputSize 608 → allows detection of faces up to 10m away
-          const r = await detect(videoRef.current, { inputSize: 608, scoreThreshold: 0.4, withLandmarks: true });
+          const r = await detect(videoRef.current, { scoreThreshold: 0.35, withLandmarks: true });
 
           if (!r) {
             setLastMatch(null);
-            resetCandidate();
+            resetLiveness();
           } else {
             const desc32 = new Float32Array(r.descriptor);
             const { staffId, distance } = findBestMatch(desc32);
 
-            if (!staffId || distance >= MATCH_THRESHOLD) {
+            if (!staffId) {
               setLastMatch({ name: 'Unknown face', distance, ts: Date.now(), status: 'unknown' });
-              resetCandidate();
+              resetLiveness();
             } else if (!allowedStaffIds.has(staffId)) {
-              // Wrong location
               const wrongStaff = allEmbeddings.find(e => e.staffId === staffId);
               setLastMatch({ name: wrongStaff?.staffName || 'Other location', distance, ts: Date.now(), status: 'wrong-loc' });
               setMessage({ kind: 'err', text: `${wrongStaff?.staffName || 'This staff'} does not belong to this location.` });
-              resetCandidate();
+              resetLiveness();
             } else {
               const s = staffById.get(staffId);
               if (!s || !s.isActive) {
                 setLastMatch({ name: 'Inactive staff', distance, ts: Date.now(), status: 'unknown' });
-                resetCandidate();
+                resetLiveness();
               } else {
-                // ── Passive liveness tracking ────────────────────────────
-                const cand = candidateRef.current;
-                if (cand.staffId !== staffId) { resetCandidate(); cand.staffId = staffId; }
-                cand.frames++;
-                cand.boxes.push({ x: r.box.x, y: r.box.y, w: r.box.width, h: r.box.height });
-                if (cand.boxes.length > 6) cand.boxes.shift();
+                // Reset if different person detected
+                if (livenessRef.current.staffId !== staffId) resetLiveness(staffId);
 
-                // EAR blink
-                if (r.landmarks) {
-                  const ear = (eyeAspectRatio(r.landmarks.getLeftEye()) + eyeAspectRatio(r.landmarks.getRightEye())) / 2;
-                  cand.earSeries.push(ear);
-                  if (cand.earSeries.length > 12) cand.earSeries.shift();
-                  if (ear < EAR_CLOSED) cand.blinkSeen = true;
-                }
+                // ── Update multi-layer liveness engine ─────────────────────
+                livenessRef.current.state = updateLiveness(
+                  livenessRef.current.state,
+                  videoRef.current!,
+                  r.box,
+                  r.landmarks,
+                );
 
-                // Texture liveness (green-channel local variance — catches photos/screens)
-                const tex = textureLivenessScore(videoRef.current!, r.box);
-                cand.textureScores.push(tex);
-                if (cand.textureScores.length > 6) cand.textureScores.shift();
-                const avgTexture = cand.textureScores.reduce((a, b) => a + b, 0) / cand.textureScores.length;
+                const liveness = evaluateLiveness(livenessRef.current.state, videoRef.current!, r.box);
 
-                // Box movement
-                let boxMovement = 0;
-                for (let i = 1; i < cand.boxes.length; i++) {
-                  boxMovement += Math.abs(cand.boxes[i].x - cand.boxes[i-1].x) + Math.abs(cand.boxes[i].y - cand.boxes[i-1].y);
-                }
-
-                // EAR variance
-                let earVariance = 0;
-                if (cand.earSeries.length >= 4) {
-                  const mean = cand.earSeries.reduce((a, b) => a + b, 0) / cand.earSeries.length;
-                  earVariance = cand.earSeries.reduce((a, b) => a + (b - mean) ** 2, 0) / cand.earSeries.length;
-                }
-
-                // Strong AI Texture spoof check: if avgTexture >= 0.65, it's highly textured (real face)
-                const isLiveTexture = avgTexture >= 0.65;
-                const passiveLive = isLiveTexture || boxMovement > 2 || earVariance > 0.0008;
-                const livenessScore = Math.min(1, (boxMovement / 30) + earVariance * 200 + (cand.blinkSeen ? 0.4 : 0) + avgTexture * 0.3);
-
-                if (cand.frames < REQUIRED_STABLE_FRAMES) {
+                if (liveness.reason === 'checking') {
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'matching' });
-                } else if (!passiveLive && !cand.blinkSeen && cand.frames < 8) {
+                } else if (liveness.reason === 'no-blink') {
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'blink-please' });
-                } else if (!passiveLive && !cand.blinkSeen && cand.frames >= 8) {
-                  // Spoof: no movement + no blink + flat texture (photo/screen)
+                } else if (liveness.reason === 'spoof') {
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'spoof' });
-                  setMessage({ kind: 'err', text: `Liveness failed for ${s.name} — possible photo spoof. Please blink.` });
-                  resetCandidate();
-                } else {
+                  setMessage({ kind: 'err', text: `Spoof detected for ${s.name}. Blink naturally and try again.` });
+                  resetLiveness();
+                } else if (liveness.isLive) {
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'ok' });
-                  await punch(s, distance, livenessScore);
-                  resetCandidate();
-                  // Pause 1.5 s before scanning next person
-                  await new Promise(res => setTimeout(res, 1500));
+                  await punch(s, distance, liveness.score);
+                  resetLiveness();
+                  // Brief pause so the success animation shows
+                  await new Promise(res => setTimeout(res, 1800));
                 }
               }
             }
@@ -486,7 +446,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
               {enrolledCount}/{totalActive} enrolled
             </span>
             <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center gap-1">
-              <Activity size={12} /> Liveness on
+              <Activity size={12} /> Liveness v2
+            </span>
+            <span className="text-xs px-3 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 flex items-center gap-1">
+              <Zap size={12} /> Cosine match
             </span>
           </div>
         </div>
