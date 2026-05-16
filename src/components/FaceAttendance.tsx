@@ -12,6 +12,7 @@ import { appSettingsService } from '../services/appSettingsService';
 import { calculateAttendanceStatus, resolveAttendanceRules } from '../utils/attendanceRules';
 import { buildCentroidIndex, findBestMatch as findCosineMatch, type StaffEmbedding } from '../lib/embeddingMatcher';
 import { createLivenessState, updateLiveness, evaluateLiveness, type LivenessState } from '../lib/livenessEngine';
+import { db } from '../lib/db';
 
 interface Props {
   staff: Staff[];                 // already location-scoped by App
@@ -166,14 +167,21 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         setLoadingEmbeddings(true);
         // Determine the location for this session
         const locationName = staff[0]?.location || '';
-        const [list, sw, locCfg, kioskSettings] = await Promise.all([
-          faceEmbeddingService.getAllApproved(),
-          shiftService.loadGlobal(true),
-          locationName ? locationShiftService.getForLocation(locationName) : Promise.resolve(null),
+        
+        // Fetch all offline-cached data from Dexie
+        const [list, sw, locCfgArr, kioskSettings] = await Promise.all([
+          db.faceEmbeddings.toArray(),
+          shiftService.loadGlobal(true), // TODO: shiftService could also use Dexie, but keeping for now as config
+          db.locationShiftConfig.where('locationName').equals(locationName).toArray(),
           appSettingsService.getKioskGlobalSettings(),
         ]);
+        
+        // Ensure format matches expected
+        const filteredList = list.filter(e => e.approved !== false);
+        const locCfg = locCfgArr.length > 0 ? locCfgArr[0] : null;
+
         if (!cancelled) {
-          setAllEmbeddings(list);
+          setAllEmbeddings(filteredList);
           setShiftWindows(sw);
           setLocationConfig(locCfg || { ...DEFAULT_LOCATION_CONFIG, locationName });
           setManagerCanOverride(kioskSettings.managerCanOverride);

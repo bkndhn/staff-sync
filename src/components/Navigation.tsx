@@ -16,6 +16,7 @@ import {
   X,
   ShieldAlert,
 } from 'lucide-react';
+import { SyncBadge } from './SyncBadge';
 
 interface NavigationProps {
   activeTab: NavigationTab;
@@ -91,6 +92,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
             </nav>
           </div>
           <div className="flex items-center gap-4">
+            <SyncBadge />
             <div className="text-right">
               <div className="text-sm font-medium text-white">
                 {user.role === 'admin' ? 'Administrator' : user.role === 'staff' ? (user.staffName || 'Staff') : `${user.location} Manager`}
@@ -113,7 +115,8 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
         <div className="flex items-center justify-between">
           <h1 className="text-base font-bold text-gradient truncate max-w-[140px]">Staff Management</h1>
           <div className="flex items-center gap-2">
-            <div className="text-right">
+            <SyncBadge />
+            <div className="text-right hidden sm:block">
               <div className="text-[10px] font-bold text-white/40 uppercase tracking-tight">
                 {user.role === 'admin' ? 'Role' : user.role === 'staff' ? 'Staff' : 'Location'}
               </div>

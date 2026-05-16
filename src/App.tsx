@@ -102,28 +102,8 @@ function App() {
     onConfirm: (isHike: boolean, reason?: string, hikeDate?: string) => void;
   } | null>(null);
 
-  // Offline and Sync states
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [pendingSyncCount, setPendingSyncCount] = useState(0);
-
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOffline(false);
-      // Automatically flush queue when network recovers
-      offlineSyncService.flushQueue((punch) => {
-        const { id, queuedAt, ...payload } = punch;
-        return attendanceService.upsertRemoteOnly(payload);
-      });
-    };
-    const handleOffline = () => setIsOffline(true);
-
-    const updatePendingCount = async () => {
-      const pending = await offlineSyncService.getPendingPunches();
-      setPendingSyncCount(pending.length);
-    };
-
     const handleSyncComplete = (e: any) => {
-      updatePendingCount();
       if (e.detail?.synced) {
         // Refresh view data to stay aligned
         loadAllData();
@@ -141,20 +121,12 @@ function App() {
       }
     };
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
     window.addEventListener('offline-sync-complete', handleSyncComplete);
     navigator.serviceWorker?.addEventListener('message', handleMessage);
-    
-    updatePendingCount();
-    const interval = setInterval(updatePendingCount, 5000);
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
       window.removeEventListener('offline-sync-complete', handleSyncComplete);
       navigator.serviceWorker?.removeEventListener('message', handleMessage);
-      clearInterval(interval);
     };
   }, []);
 
@@ -1049,22 +1021,6 @@ function App() {
         user={user}
         onLogout={handleLogout}
       />
-
-      {/* Offline Indicator / Sync Banner */}
-      {(isOffline || pendingSyncCount > 0) && (
-        <div className={`px-4 py-2 text-xs font-semibold text-center flex items-center justify-center gap-2 transition-all ${isOffline ? 'bg-amber-500/20 text-amber-300 border-b border-amber-500/30' : 'bg-blue-500/20 text-blue-300 border-b border-blue-500/30'}`}>
-          <span className="relative flex h-2 w-2">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isOffline ? 'bg-amber-400' : 'bg-blue-400'}`}></span>
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${isOffline ? 'bg-amber-500' : 'bg-blue-500'}`}></span>
-          </span>
-          {isOffline ? (
-            <span>Offline Mode active. Actions are saved locally ({pendingSyncCount} pending sync)</span>
-          ) : (
-            <span>Connection restored. Synchronizing {pendingSyncCount} local actions to cloud...</span>
-          )}
-        </div>
-      )}
-
       <main className="w-full px-4 sm:px-6 lg:px-8 flex-1">
         <ErrorBoundary moduleName={activeTab}>
           {renderContent()}

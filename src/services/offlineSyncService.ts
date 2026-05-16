@@ -1,9 +1,4 @@
-// Offline Synchronization Service using Native IndexedDB
-// Robust queuing for attendance punches and overrides when internet drops.
-
-const DB_NAME = 'StaffSyncOfflineDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'pending_punches';
+import { db } from '../lib/db';
 
 export interface QueuedPunch {
   id: string; // unique local uuid/timestamp-based id
@@ -24,75 +19,24 @@ export interface QueuedPunch {
 }
 
 export const offlineSyncService = {
-  /** Initialize and return the IndexedDB database instance */
-  getDB(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-      request.onerror = () => {
-        console.error('[OfflineSync] Failed to open IndexedDB:', request.error);
-        reject(request.error);
-      };
-
-      request.onsuccess = () => {
-        resolve(request.result);
-      };
-
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-          console.log('[OfflineSync] Object store created.');
-        }
-      };
-    });
-  },
-
   /** Enqueue an unsynced punch into the local store */
   async enqueuePunch(punchData: Omit<QueuedPunch, 'id' | 'queuedAt'>): Promise<QueuedPunch> {
-    const db = await this.getDB();
     const queuedPunch: QueuedPunch = {
       ...punchData,
       id: `offline_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       queuedAt: Date.now()
     };
 
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.put(queuedPunch);
-
-      request.onsuccess = () => {
-        console.log(`[OfflineSync] Enqueued punch locally for staff: ${queuedPunch.staffId}`);
-        resolve(queuedPunch);
-      };
-
-      request.onerror = () => {
-        console.error('[OfflineSync] Failed to enqueue punch:', request.error);
-        reject(request.error);
-      };
-    });
+    await db.pendingPunches.put(queuedPunch);
+    console.log(`[OfflineSync] Enqueued punch locally for staff: ${queuedPunch.staffId}`);
+    return queuedPunch;
   },
 
   /** Retrieve all pending unsynced punches ordered by queuedAt */
   async getPendingPunches(): Promise<QueuedPunch[]> {
     try {
-      const db = await this.getDB();
-      return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.getAll();
-
-        request.onsuccess = () => {
-          // Sort chronologically by queued timestamp
-          const results = (request.result as QueuedPunch[]).sort((a, b) => a.queuedAt - b.queuedAt);
-          resolve(results);
-        };
-
-        request.onerror = () => {
-          reject(request.error);
-        };
-      });
+      const results = await db.pendingPunches.orderBy('queuedAt').toArray();
+      return results;
     } catch (err) {
       console.warn('[OfflineSync] Could not fetch pending punches (IDB blocked/unsupported):', err);
       return [];
@@ -101,28 +45,12 @@ export const offlineSyncService = {
 
   /** Remove a specific punch from the queue once successfully synced */
   async removePunch(id: string): Promise<void> {
-    const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.delete(id);
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    await db.pendingPunches.delete(id);
   },
 
   /** Clear the entire offline queue */
   async clearQueue(): Promise<void> {
-    const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.clear();
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    await db.pendingPunches.clear();
   },
 
   /** Attempt to flush all queued punches using the provided network sync function */

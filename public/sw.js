@@ -1,9 +1,9 @@
 // Enhanced Service Worker for Staff Management System
 // Version 2.0 with better caching and offline support
 
-const CACHE_NAME = 'staff-management-v4';
-const STATIC_CACHE = 'staff-static-v4';
-const DYNAMIC_CACHE = 'staff-dynamic-v4';
+const CACHE_NAME = 'staff-management-v5';
+const STATIC_CACHE = 'staff-static-v5';
+const DYNAMIC_CACHE = 'staff-dynamic-v5';
 const MODELS_CACHE = 'staff-models-v2'; // Upgraded: SSD MobileNetV1 + ONNX models
 
 // Static assets to cache on install
@@ -88,24 +88,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For navigation requests, use network first
+  // For navigation requests, use Stale-While-Revalidate for 1ms instant launch
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Clone and cache the response
-          const responseClone = response.clone();
-          caches.open(DYNAMIC_CACHE).then((cache) => {
-            cache.put(request, responseClone);
+      caches.match(request).then((cachedResponse) => {
+        const fetchPromise = fetch(request)
+          .then((networkResponse) => {
+            caches.open(DYNAMIC_CACHE).then((cache) => {
+              cache.put(request, networkResponse.clone());
+            });
+            return networkResponse;
+          })
+          .catch(() => {
+            return caches.match('/'); // Fallback to index if offline
           });
-          return response;
-        })
-        .catch(() => {
-          // Fallback to cache
-          return caches.match(request).then((cachedResponse) => {
-            return cachedResponse || caches.match('/');
-          });
-        })
+          
+        return cachedResponse || fetchPromise;
+      }).catch(() => {
+        return caches.match('/');
+      })
     );
     return;
   }

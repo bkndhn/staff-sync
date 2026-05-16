@@ -1323,7 +1323,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             )}
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full max-w-full pb-4">
           <table className="table-premium">
             <thead>
               <tr>
