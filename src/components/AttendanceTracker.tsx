@@ -171,7 +171,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       onUpdateAttendance(
         showLocationModal.staffId,
         selectedDate,
-        attendanceRecord?.status || 'Present',
+        (attendanceRecord?.status as 'Present' | 'Half Day' | 'Absent') || 'Present',
         false,
         undefined,
         attendanceRecord?.shift,
@@ -280,8 +280,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         if (status === 'Present' || status === 'Pending Full Day') {
           present++;
         } else if (status === 'Manual Override') {
-          if (record.attendanceValue === 1) present++;
-          else if (record.attendanceValue === 0.5) halfDay++;
+          if (record?.attendanceValue === 1) present++;
+          else if (record?.attendanceValue === 0.5) halfDay++;
           else absent++;
         } else if (status === 'Half Day') {
           halfDay++;

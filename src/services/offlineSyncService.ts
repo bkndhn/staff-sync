@@ -4,7 +4,7 @@ export interface QueuedPunch {
   id: string; // unique local uuid/timestamp-based id
   staffId: string;
   date: string;
-  status: 'Present' | 'Half Day' | 'Absent';
+  status: 'Present' | 'Half Day' | 'Absent' | 'Pending Full Day' | 'Manual Override';
   attendanceValue: number;
   isSunday?: boolean;
   isPartTime?: boolean;

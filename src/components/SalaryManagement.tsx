@@ -1179,10 +1179,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       )}
                     </td>}
                     {salaryVisibleCols.esi !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-red-500 font-medium">
-                      {detail.statutoryBreakdown?.find(b => b.key === 'esi')?.amount > 0 ? `₹${detail.statutoryBreakdown.find(b => b.key === 'esi')?.amount}` : '-'}
+                      {(detail.statutoryBreakdown?.find(b => b.key === 'esi')?.amount ?? 0) > 0 ? `₹${detail.statutoryBreakdown?.find(b => b.key === 'esi')?.amount}` : '-'}
                     </td>}
                     {salaryVisibleCols.pf !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-red-500 font-medium">
-                      {detail.statutoryBreakdown?.find(b => b.key === 'pf')?.amount > 0 ? `₹${detail.statutoryBreakdown.find(b => b.key === 'pf')?.amount}` : '-'}
+                      {(detail.statutoryBreakdown?.find(b => b.key === 'pf')?.amount ?? 0) > 0 ? `₹${detail.statutoryBreakdown?.find(b => b.key === 'pf')?.amount}` : '-'}
                     </td>}
                     {salaryVisibleCols.gross !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center font-semibold text-green-600">
                       ₹{editMode ? (tempData?.grossSalary || 0) : detail.grossSalary}

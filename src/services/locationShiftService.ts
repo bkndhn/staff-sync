@@ -147,7 +147,6 @@ export const locationShiftService = {
       min_hours_half: config.minHoursHalf,
       morning_cutoff: config.morningCutoff,
       early_exit_time: config.earlyExitTime,
-      evening_verification_time: config.eveningVerificationTime,
       full_day_requires_morning: config.fullDayRequiresMorning,
       allow_manager_override: config.allowManagerOverride,
     };

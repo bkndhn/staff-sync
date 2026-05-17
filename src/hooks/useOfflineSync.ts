@@ -55,7 +55,7 @@ export function useOfflineSync() {
       await offlineSyncService.flushQueue(async (punch) => {
         // Strip offline-only fields before pushing
         const { id, queuedAt, ...punchData } = punch;
-        await punchEventService.createPunchEvent(punchData);
+        await punchEventService.insert(punchData as any);
       });
       await updatePendingCount();
 
@@ -64,21 +64,21 @@ export function useOfflineSync() {
       const { data: staffData } = await supabase.from('staff').select('*');
       if (staffData) {
         await db.staff.clear();
-        await db.staff.bulkPut(staffData);
+        await db.staff.bulkPut(staffData as any);
       }
 
       // Pull Face Embeddings
       const { data: faceData } = await supabase.from('face_embeddings').select('*');
       if (faceData) {
         await db.faceEmbeddings.clear();
-        await db.faceEmbeddings.bulkPut(faceData);
+        await db.faceEmbeddings.bulkPut(faceData as any);
       }
 
       // Pull Shift Configs
       const { data: shiftConfigData } = await supabase.from('location_shift_config').select('*');
       if (shiftConfigData) {
         await db.locationShiftConfig.clear();
-        await db.locationShiftConfig.bulkPut(shiftConfigData);
+        await db.locationShiftConfig.bulkPut(shiftConfigData as any);
       }
 
       // We'll skip pulling locations/categories/floors for now unless explicitly requested
