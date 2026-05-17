@@ -15,6 +15,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
     "@vladmandic/face-api": "^1.7.15",
+    "dexie": "^4.4.2",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.2",
     "lovable-tagger": "^1.1.13",

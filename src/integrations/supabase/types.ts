@@ -452,6 +452,57 @@ export type Database = {
         }
         Relationships: []
       }
+      location_shift_config: {
+        Row: {
+          allow_manager_override: boolean
+          created_at: string
+          early_exit_time: string
+          full_day_requires_morning: boolean
+          grace_early_min: number
+          grace_late_min: number
+          id: string
+          location_name: string
+          min_hours_full: number
+          min_hours_half: number
+          morning_cutoff: string
+          shift_end: string
+          shift_start: string
+          updated_at: string
+        }
+        Insert: {
+          allow_manager_override?: boolean
+          created_at?: string
+          early_exit_time?: string
+          full_day_requires_morning?: boolean
+          grace_early_min?: number
+          grace_late_min?: number
+          id?: string
+          location_name: string
+          min_hours_full?: number
+          min_hours_half?: number
+          morning_cutoff?: string
+          shift_end?: string
+          shift_start?: string
+          updated_at?: string
+        }
+        Update: {
+          allow_manager_override?: boolean
+          created_at?: string
+          early_exit_time?: string
+          full_day_requires_morning?: boolean
+          grace_early_min?: number
+          grace_late_min?: number
+          id?: string
+          location_name?: string
+          min_hours_full?: number
+          min_hours_half?: number
+          morning_cutoff?: string
+          shift_end?: string
+          shift_start?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       locations: {
         Row: {
           created_at: string | null
