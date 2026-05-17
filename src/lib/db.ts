@@ -1,5 +1,7 @@
 import Dexie, { type Table } from 'dexie';
-import type { Staff, ShiftWindows, LocationShiftConfig } from '../types';
+import type { Staff } from '../types';
+import type { ShiftWindows } from '../services/shiftService';
+import type { LocationShiftConfig } from '../services/locationShiftService';
 import type { FaceEmbedding } from '../services/faceEmbeddingService';
 import { type QueuedPunch } from '../services/offlineSyncService';
 import { type SalaryCategory } from '../services/salaryCategoryService';

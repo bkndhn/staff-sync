@@ -114,9 +114,8 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     }
     // Fallback to shift-window based calculation
     if (!shiftWindows || !s) return { status: 'Present' as const, value: 1 };
-    const win = shiftService.resolve(s, shiftWindows);
-    const { status } = shiftService.resolve ? { status: 'Present' as const } : { status: 'Present' as const };
-    return { status, value: status === 'Present' ? 1 : status === 'Half Day' ? 0.5 : 0 };
+    const status: 'Present' | 'Half Day' | 'Absent' = 'Present';
+    return { status, value: status === 'Present' ? 1 : (status as string) === 'Half Day' ? 0.5 : 0 };
   };
 
   const saveOverride = async (rec: Attendance) => {
@@ -177,7 +176,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         ]);
         
         // Ensure format matches expected
-        const filteredList = list.filter(e => e.approved !== false);
+        const filteredList = list.filter(e => e.isApproved !== false);
         const locCfg = locCfgArr.length > 0 ? locCfgArr[0] : null;
 
         if (!cancelled) {

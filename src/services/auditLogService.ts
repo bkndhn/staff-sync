@@ -17,9 +17,9 @@ export const auditLogService = {
     }
 
     // Attempt to fetch remote logs if configured
-    if (isSupabaseConfigured()) {
+    if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('audit_logs')
           .select('*')
           .order('timestamp', { ascending: false })
@@ -69,13 +69,13 @@ export const auditLogService = {
     }
 
     // 2. Attempt push to Supabase if available
-    if (isSupabaseConfigured()) {
+    if (isSupabaseConfigured) {
       try {
-        await supabase.from('audit_logs').insert([{
+        await (supabase as any).from('audit_logs').insert([{
           id: newLog.id,
           action: newLog.action,
           staff_id: newLog.staffId,
-          staff_name: newLog.staffName,
+          staff_name: newLog.staffName ?? null,
           details: newLog.details,
           performed_by: newLog.performedBy,
           timestamp: newLog.timestamp
