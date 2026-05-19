@@ -440,7 +440,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       {/* ── Left Side: Full Height Camera Feed ── */}
       <div className="flex-1 min-h-[500px] md:min-h-[600px] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
         {/* HUD Overlay */}
-        <div className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between gap-3 flex-wrap pointer-events-none">
+        <div className="absolute top-0 left-0 right-0 z-30 p-4 md:p-6 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between gap-3 flex-wrap pointer-events-none">
           <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-2 pointer-events-auto">
               {viewMode === 'camera' ? <ScanFace size={22} className="text-indigo-400" /> : <QrCode size={22} className="text-indigo-400" />}
@@ -513,7 +513,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
         {/* Floating Controls Overlay */}
         {viewMode === 'camera' && (
-          <div className="absolute bottom-4 right-4 z-20 flex flex-col items-end gap-2">
+          <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end gap-2">
             {error && (
               <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm flex items-center gap-2 shadow-xl max-w-sm">
                 <AlertTriangle size={16} /> {error}
