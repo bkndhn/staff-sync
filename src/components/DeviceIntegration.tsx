@@ -438,21 +438,33 @@ const DeviceIntegration: React.FC<DeviceIntegrationProps> = ({ onImportPunches }
             <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs space-y-2 text-[var(--text-secondary)]">
               <p className="font-semibold text-[var(--text-primary)]">Setup Steps:</p>
               <ol className="list-decimal list-inside space-y-1 pl-1">
-                <li>Download the <strong>StaffSync Bridge Agent</strong> (.exe for Windows / .deb for Linux)</li>
-                <li>Paste the configuration above into <code className="bg-black/30 px-1 rounded">config.json</code></li>
-                <li>Run: <code className="bg-black/30 px-1 rounded">staffsync-bridge start</code></li>
+                <li>Configure the IP addresses for each location using the button below.</li>
+                <li>Download the <strong>StaffSync Bridge Agent</strong> (.zip)</li>
+                <li>Run: <code className="bg-black/30 px-1 rounded">npm install</code> then <code className="bg-black/30 px-1 rounded">npm start</code></li>
                 <li>The bridge auto-syncs every 30s and works completely offline</li>
               </ol>
             </div>
 
-            <a
-              href="#"
-              onClick={e => e.preventDefault()}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold flex items-center justify-center gap-2 hover:from-indigo-500 hover:to-purple-500 transition-all text-sm"
-            >
-              <Download size={16} /> Download Bridge Agent (v1.0)
-              <ExternalLink size={12} />
-            </a>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+              <button
+                onClick={() => {
+                  const el = document.querySelector('[data-tab="staff"]');
+                  if (el) (el as HTMLElement).click();
+                }}
+                className="w-full py-3 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-400 font-semibold flex items-center justify-center gap-2 transition-all text-sm"
+              >
+                <MapPin size={16} /> Manage Device Locations
+              </button>
+
+              <a
+                href="/local-bridge-agent.zip"
+                onClick={e => { e.preventDefault(); alert("Bridge agent is set up in your repository's /local-bridge-agent folder. Please run it locally."); }}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold flex items-center justify-center gap-2 hover:from-indigo-500 hover:to-purple-500 transition-all text-sm"
+              >
+                <Download size={16} /> Download Bridge Agent
+                <ExternalLink size={12} />
+              </a>
+            </div>
 
             <p className="text-center text-xs text-[var(--text-muted)]">
               Contact <strong>support@staffsync.app</strong> with your device model for a custom integration guide.

@@ -4,13 +4,16 @@ export interface Location {
     id: string;
     name: string;
     is_active?: boolean;
+    device_ip?: string;
+    device_port?: number;
+    last_sync_time?: string;
 }
 
 export const locationService = {
     async getLocations(): Promise<Location[]> {
         const { data, error } = await supabase
             .from('locations')
-            .select('id, display_name, is_active')
+            .select('id, display_name, is_active, device_ip, device_port, last_sync_time')
             .eq('is_active', true)
             .order('display_name');
 
@@ -22,7 +25,10 @@ export const locationService = {
         return (data || []).map(loc => ({
             id: loc.id,
             name: loc.display_name,
-            is_active: loc.is_active ?? undefined
+            is_active: loc.is_active ?? undefined,
+            device_ip: loc.device_ip || undefined,
+            device_port: loc.device_port || undefined,
+            last_sync_time: loc.last_sync_time || undefined
         }));
     },
 
@@ -41,7 +47,10 @@ export const locationService = {
         const location: Location = {
             id: data.id,
             name: data.display_name,
-            is_active: data.is_active ?? undefined
+            is_active: data.is_active ?? undefined,
+            device_ip: data.device_ip || undefined,
+            device_port: data.device_port || undefined,
+            last_sync_time: data.last_sync_time || undefined
         };
 
         // Auto-create manager user for the new location
@@ -99,6 +108,19 @@ export const locationService = {
             id: data.id,
             name: data.display_name
         };
+    },
+
+    async updateLocationDevice(id: string, ip: string, port: number): Promise<boolean> {
+        const { error } = await supabase
+            .from('locations')
+            .update({ device_ip: ip, device_port: port })
+            .eq('id', id);
+
+        if (error) {
+            console.error('Error updating location device:', error);
+            return false;
+        }
+        return true;
     },
 
     async deleteLocation(id: string): Promise<boolean> {

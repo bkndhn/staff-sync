@@ -9,6 +9,7 @@ import SalaryHikeDueModal from './SalaryHikeDueModal';
 import BulkStaffUpload from './BulkStaffUpload';
 import FaceRegistration from './FaceRegistration';
 import { settingsService } from '../services/settingsService';
+import { locationService, type Location } from '../services/locationService';
 import { salaryCategoryService, type SalaryCategory } from '../services/salaryCategoryService';
 import { floorService, type Floor } from '../services/floorService';
 import { designationService, type Designation } from '../services/designationService';
@@ -83,7 +84,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showFloorManager, setShowFloorManager] = useState(false);
   const [showDesignationManager, setShowDesignationManager] = useState(false);
-  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [salaryCategories, setSalaryCategories] = useState<SalaryCategory[]>(() => salaryCategoryService.getCategoriesSync());
   const [floors, setFloors] = useState<Floor[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
@@ -92,11 +93,13 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const [newFloor, setNewFloor] = useState('');
   const [newFloorLocation, setNewFloorLocation] = useState('');
   const [newDesignation, setNewDesignation] = useState('');
-  const [editingLocation, setEditingLocation] = useState<{ id: string; name: string } | null>(null);
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editingFloor, setEditingFloor] = useState<Floor | null>(null);
   const [editingDesignation, setEditingDesignation] = useState<Designation | null>(null);
   const [editLocationValue, setEditLocationValue] = useState('');
+  const [editLocationIp, setEditLocationIp] = useState('');
+  const [editLocationPort, setEditLocationPort] = useState(4370);
   const [editCategoryValue, setEditCategoryValue] = useState('');
   const [editFloorValue, setEditFloorValue] = useState('');
   const [editDesignationValue, setEditDesignationValue] = useState('');
@@ -250,19 +253,27 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   };
 
   const handleUpdateLocation = async (id: string) => {
-    if (editLocationValue.trim()) {
-      const { locationService } = await import('../services/locationService');
-      const oldLocation = locations.find(l => l.id === id)?.name;
-      const updated = await locationService.updateLocation(id, editLocationValue.trim());
-      if (updated) {
-        setLocations(prev => prev.map(l => l.id === id ? updated : l));
-        setEditingLocation(null);
-        setEditLocationValue('');
-        if (oldLocation && oldLocation !== updated.name && onRefreshStaff) {
-          await onRefreshStaff();
+    if (!editLocationValue.trim()) return;
+    const loc = editingLocation;
+    if (!loc) return;
+    const { locationService } = await import('../services/locationService');
+
+    if (editLocationValue !== loc.name) {
+        const updated = await locationService.updateLocation(id, editLocationValue);
+        if (updated) {
+          setLocations(locations.map(l => l.id === id ? { ...l, name: updated.name } : l));
         }
-      }
     }
+    
+    // Update device IP if changed
+    if (editLocationIp !== (loc.device_ip || '')) {
+        const port = editLocationPort || 4370;
+        await locationService.updateLocationDevice(id, editLocationIp, port);
+        setLocations(prev => prev.map(l => l.id === id ? { ...l, device_ip: editLocationIp, device_port: port } : l));
+    }
+    
+    setEditingLocation(null);
+    setEditLocationValue('');
   };
 
   const handleDeleteLocation = async (id: string) => {
@@ -1547,41 +1558,79 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               </button>
             </div>
 
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
               {locations.map(loc => (
-                <div key={loc.id} className="flex items-center justify-between p-2.5 glass-card-static rounded-lg">
+                <div key={loc.id} className="flex flex-col p-3 glass-card-static rounded-xl border border-white/5 space-y-3">
                   {editingLocation?.id === loc.id ? (
-                    <div className="flex-1 flex gap-2 mr-2">
-                      <input
-                        type="text"
-                        value={editLocationValue}
-                        onChange={(e) => setEditLocationValue(e.target.value)}
-                        className="input-premium flex-1 text-sm py-1"
-                        autoFocus
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateLocation(loc.id); if (e.key === 'Escape') setEditingLocation(null); }}
-                      />
-                      <button onClick={() => handleUpdateLocation(loc.id)} className="p-1 text-emerald-400 hover:text-emerald-300" title="Save"><Check size={16} /></button>
-                      <button onClick={() => setEditingLocation(null)} className="p-1 text-red-400 hover:text-red-300" title="Cancel"><X size={16} /></button>
+                    <div className="flex flex-col gap-2 w-full">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={editLocationValue}
+                          onChange={(e) => setEditLocationValue(e.target.value)}
+                          placeholder="Location Name"
+                          className="input-premium flex-1 text-sm py-1.5"
+                          autoFocus
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateLocation(loc.id); if (e.key === 'Escape') setEditingLocation(null); }}
+                        />
+                        <button onClick={() => handleUpdateLocation(loc.id)} className="p-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-lg" title="Save"><Check size={16} /></button>
+                        <button onClick={() => setEditingLocation(null)} className="p-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg" title="Cancel"><X size={16} /></button>
+                      </div>
+                      
+                      <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg flex flex-col gap-2">
+                        <label className="text-xs font-semibold text-indigo-300">Biometric Device (eSSL/ZKTeco) Settings</label>
+                        <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={editLocationIp}
+                              onChange={(e) => setEditLocationIp(e.target.value)}
+                              placeholder="Device IP (e.g. 192.168.1.100)"
+                              className="input-premium flex-1 text-xs py-1.5"
+                            />
+                            <input
+                              type="number"
+                              value={editLocationPort}
+                              onChange={(e) => setEditLocationPort(Number(e.target.value))}
+                              placeholder="Port (4370)"
+                              className="input-premium w-20 text-xs py-1.5"
+                            />
+                        </div>
+                        <p className="text-[10px] text-white/50">Leave IP blank if this location has no biometric device.</p>
+                      </div>
                     </div>
                   ) : (
                     <>
-                      <span className="text-sm font-medium">{loc.name}</span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => { setEditingLocation(loc); setEditLocationValue(loc.name); }}
-                          className="p-1.5 text-blue-400 hover:bg-white/10 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteLocation(loc.id)}
-                          className="p-1.5 text-red-400 hover:bg-white/10 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                      <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-white">{loc.name}</span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => { setEditingLocation(loc); setEditLocationValue(loc.name); setEditLocationIp(loc.device_ip || ''); setEditLocationPort(loc.device_port || 4370); }}
+                              className="p-1.5 text-blue-400 hover:bg-white/10 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteLocation(loc.id)}
+                              className="p-1.5 text-red-400 hover:bg-white/10 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                       </div>
+                      
+                      {loc.device_ip && (
+                          <div className="flex flex-col gap-1 mt-1 p-2 bg-black/20 rounded-lg border border-white/5">
+                              <div className="flex items-center justify-between text-xs">
+                                  <span className="text-indigo-400 font-mono">TCP {loc.device_ip}:{loc.device_port || 4370}</span>
+                                  <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded-full text-[10px] font-bold tracking-wider">eSSL SYNC ACTIVE</span>
+                              </div>
+                              {loc.last_sync_time && (
+                                  <span className="text-[10px] text-white/40">Last Synced: {new Date(loc.last_sync_time).toLocaleString('en-GB')}</span>
+                              )}
+                          </div>
+                      )}
                     </>
                   )}
                 </div>
