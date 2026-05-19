@@ -451,32 +451,35 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             </p>
           </div>
           <div className="flex flex-wrap gap-2 pointer-events-auto">
-            <span className="text-xs px-3 py-1.5 rounded-full bg-black/50 border border-white/20 text-white">
-              {enrolledCount}/{totalActive} enrolled
-            </span>
-            <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center gap-1">
-              <Activity size={12} /> Liveness v2
-            </span>
-            <span className="text-xs px-3 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 flex items-center gap-1">
-              <Zap size={12} /> Cosine match
-            </span>
-            <div className="bg-black/60 backdrop-blur rounded-full border border-white/20 p-1 flex">
+            {/* Massive Toggle Buttons for Admin to switch between Face/QR easily */}
+            <div className="bg-black/80 backdrop-blur-md rounded-2xl border border-white/20 p-1.5 flex shadow-2xl">
               <button
                 onClick={() => setViewMode('camera')}
-                className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 transition-all ${
-                  viewMode === 'camera' ? 'bg-indigo-500 text-white shadow-lg' : 'text-white/60 hover:text-white'
+                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${
+                  viewMode === 'camera' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] scale-105' : 'text-white/60 hover:text-white'
                 }`}
               >
-                <Camera size={12} /> Camera
+                <Camera size={18} /> Face Scanner
               </button>
               <button
                 onClick={() => { setViewMode('qr'); stopCamera(); }}
-                className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 transition-all ${
-                  viewMode === 'qr' ? 'bg-indigo-500 text-white shadow-lg' : 'text-white/60 hover:text-white'
+                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${
+                  viewMode === 'qr' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)] scale-105' : 'text-white/60 hover:text-white'
                 }`}
               >
-                <QrCode size={12} /> QR Code
+                <QrCode size={18} /> Show QR to Staff
               </button>
+            </div>
+            <div className="hidden xl:flex items-center gap-2 ml-4">
+              <span className="text-xs px-3 py-1.5 rounded-full bg-black/50 border border-white/20 text-white">
+                {enrolledCount}/{totalActive} enrolled
+              </span>
+              <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center gap-1">
+                <Activity size={12} /> Liveness v2
+              </span>
+              <span className="text-xs px-3 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 flex items-center gap-1">
+                <Zap size={12} /> Cosine match
+              </span>
             </div>
           </div>
         </div>

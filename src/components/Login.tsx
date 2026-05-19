@@ -11,99 +11,17 @@ import {
 import { userService } from '../services/userService';
 import { supabase } from '../lib/supabase';
 import { generateDeviceFingerprint } from '../utils/deviceFingerprint';
-import jsQR from 'jsqr';
+import { generateDeviceFingerprint } from '../utils/deviceFingerprint';
 
 interface LoginProps {
   onLogin: (user: { email: string; role: string; location?: string; staffId?: string; staffName?: string }) => void;
 }
 
-// ─── Ultra-fast QR scanner hook for login ────────────────────────────────────
-const useLoginQRScanner = (onDecoded: (text: string) => void, active: boolean) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const rafRef = useRef<number>(0);
-  const activeRef = useRef(active);
-  const [ready, setReady] = useState(false);
-  const [camError, setCamError] = useState<string | null>(null);
 
-  useEffect(() => { activeRef.current = active; }, [active]);
-
-  useEffect(() => {
-    if (!active) return;
-    let detector: any = null;
-
-    const start = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } } });
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-
-        // Try native BarcodeDetector
-        if ('BarcodeDetector' in window) {
-          try {
-            const fmts = await (window as any).BarcodeDetector.getSupportedFormats();
-            if (fmts.includes('qr_code')) detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
-          } catch { /* ignore */ }
-        }
-
-        setReady(true);
-
-        const loop = async () => {
-          if (!activeRef.current) return;
-          const video = videoRef.current;
-          const canvas = canvasRef.current;
-          if (video && canvas && video.readyState >= 2) {
-            try {
-              let decoded: string | null = null;
-              if (detector) {
-                const results = await detector.detect(video);
-                if (results?.length) decoded = results[0].rawValue;
-              } else {
-                const ctx = canvas.getContext('2d', { willReadFrequently: true });
-                if (ctx) {
-                  canvas.width = video.videoWidth;
-                  canvas.height = video.videoHeight;
-                  ctx.drawImage(video, 0, 0);
-                  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                  const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
-                  if (code) decoded = code.data;
-                }
-              }
-              if (decoded) {
-                if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-                cancelAnimationFrame(rafRef.current);
-                onDecoded(decoded);
-                return;
-              }
-            } catch { /* ignore */ }
-          }
-          rafRef.current = requestAnimationFrame(loop);
-        };
-        rafRef.current = requestAnimationFrame(loop);
-      } catch (err: any) {
-        setCamError('Camera access denied. Please allow and retry.');
-      }
-    };
-
-    start();
-    return () => {
-      activeRef.current = false;
-      cancelAnimationFrame(rafRef.current);
-      streamRef.current?.getTracks().forEach(t => t.stop());
-    };
-  }, [active, onDecoded]);
-
-  return { videoRef, canvasRef, ready, camError };
-};
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const staffLoginEnabled = localStorage.getItem('staffLoginEnabled') !== 'false';
   const [loginMode, setLoginMode] = useState<'admin' | 'staff'>(staffLoginEnabled ? 'staff' : 'admin');
-  const [staffInputMode, setStaffInputMode] = useState<'manual' | 'qr'>('manual');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
@@ -111,35 +29,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [qrScanStatus, setQrScanStatus] = useState<'idle' | 'scanning' | 'found' | 'error'>('idle');
-
-  const handleQRDecode = useCallback(async (text: string) => {
-    // Expected QR format for staff login: {"type":"staff_identity","mobile":"XXXXXXXXXX","date":"DDMMYYYY"}
-    try {
-      setQrScanStatus('found');
-      const data = JSON.parse(text);
-      if (data.type !== 'staff_identity' || !data.mobile || !data.date) {
-        setQrScanStatus('error');
-        setError('Invalid staff QR code. Use the QR code from your profile card.');
-        setTimeout(() => { setStaffInputMode('manual'); setQrScanStatus('idle'); setError(''); }, 3000);
-        return;
-      }
-      setMobileNumber(data.mobile);
-      setJoinedDate(data.date);
-      // Auto-submit
-      setStaffInputMode('manual');
-      setQrScanStatus('idle');
-    } catch {
-      setQrScanStatus('error');
-      setError('Unrecognized QR code format.');
-      setTimeout(() => { setStaffInputMode('manual'); setQrScanStatus('idle'); setError(''); }, 2500);
-    }
-  }, []);
-
-  const { videoRef, canvasRef, ready: camReady, camError } = useLoginQRScanner(
-    handleQRDecode,
-    loginMode === 'staff' && staffInputMode === 'qr'
-  );
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -339,7 +228,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <div className="flex gap-2 mb-6 p-1 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)]">
               <button
                 type="button"
-                onClick={() => { setLoginMode('admin'); setError(''); setStaffInputMode('manual'); }}
+                onClick={() => { setLoginMode('admin'); setError(''); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   loginMode === 'admin'
                     ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
@@ -423,87 +312,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           {/* Staff Login Form */}
           {loginMode === 'staff' && (
             <div className="space-y-4">
-              {/* Staff Login Mode Switch */}
-              <div className="flex gap-2 p-1 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)]">
-                <button
-                  type="button"
-                  onClick={() => { setStaffInputMode('manual'); setError(''); }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
-                    staffInputMode === 'manual'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                  }`}
-                >
-                  <Users size={13} /> Enter Details
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setStaffInputMode('qr'); setError(''); }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
-                    staffInputMode === 'qr'
-                      ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                  }`}
-                >
-                  <QrCode size={13} /> Scan QR Card
-                </button>
-              </div>
-
-              {/* QR Scanner View */}
-              {staffInputMode === 'qr' && (
-                <div className="space-y-3">
-                  <div className="relative bg-black rounded-2xl overflow-hidden aspect-square">
-                    <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
-                    <canvas ref={canvasRef} className="hidden" />
-
-                    {/* Target corners */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="w-48 h-48 relative">
-                        {['top-0 left-0 border-t-4 border-l-4 rounded-tl-xl', 'top-0 right-0 border-t-4 border-r-4 rounded-tr-xl', 'bottom-0 left-0 border-b-4 border-l-4 rounded-bl-xl', 'bottom-0 right-0 border-b-4 border-r-4 rounded-br-xl'].map((cls, i) => (
-                          <div key={i} className={`absolute w-8 h-8 border-indigo-400 ${cls}`} />
-                        ))}
-                        {camReady && (
-                          <div className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-indigo-400 to-transparent animate-[scan_1.5s_ease-in-out_infinite]" />
-                        )}
-                      </div>
-                    </div>
-
-                    {!camReady && !camError && (
-                      <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-2">
-                        <Loader2 size={28} className="text-indigo-400 animate-spin" />
-                        <p className="text-white/60 text-sm">Opening camera...</p>
-                      </div>
-                    )}
-
-                    {qrScanStatus === 'found' && (
-                      <div className="absolute inset-0 bg-emerald-900/70 flex items-center justify-center">
-                        <CheckCircle2 size={48} className="text-emerald-400" />
-                      </div>
-                    )}
-
-                    {camError && (
-                      <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-2 p-4 text-center">
-                        <AlertCircle size={28} className="text-red-400" />
-                        <p className="text-white/70 text-sm">{camError}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <p className="text-xs text-center text-[var(--text-muted)]">
-                    Scan the <strong>Staff Identity QR</strong> from your profile card or the one provided by your manager.
-                  </p>
-
-                  {error && (
-                    <div className="flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30">
-                      <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={16} />
-                      <span className="text-red-400 text-sm">{error}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Manual Entry */}
-              {staffInputMode === 'manual' && (
                 <form onSubmit={handleStaffSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Mobile Number</label>
@@ -548,8 +356,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       )}
                     </span>
                   </button>
-                </form>
-              )}
+              </form>
             </div>
           )}
 
