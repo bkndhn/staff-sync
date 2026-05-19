@@ -2,21 +2,32 @@ export const QR_SECRET_KEY = 'staff_sync_qr_attendance_secret_2026';
 export const QR_EXPIRATION_SECONDS = 7;
 
 /**
+ * Fast, synchronous 53-bit hash for QR signatures.
+ * Does not require crypto.subtle, meaning it works on local HTTP networks.
+ */
+function cyrb53(str: string, seed = 0): string {
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0, ch; i < str.length; i++) {
+    ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
+}
+
+/**
  * Generates a payload for the Dynamic QR Code.
  */
 export const generateQRPayload = async (location: string): Promise<string> => {
   const timestamp = Math.floor(Date.now() / 1000); // Current time in seconds
-  // Create a simple hash using Web Crypto API
-  const encoder = new TextEncoder();
-  const data = encoder.encode(`${location}:${timestamp}:${QR_SECRET_KEY}`);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  const sig = cyrb53(`${location}:${timestamp}:${QR_SECRET_KEY}`);
   
   return JSON.stringify({
     loc: location,
     ts: timestamp,
-    sig: hashHex.substring(0, 16) // Short signature is enough for this use case
+    sig: sig.substring(0, 16)
   });
 };
 
@@ -41,11 +52,7 @@ export const validateQRPayload = async (payloadStr: string, staffLocation: strin
     }
 
     // Verify signature
-    const encoder = new TextEncoder();
-    const data = encoder.encode(`${payload.loc}:${payload.ts}:${QR_SECRET_KEY}`);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const expectedSig = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+    const expectedSig = cyrb53(`${payload.loc}:${payload.ts}:${QR_SECRET_KEY}`).substring(0, 16);
 
     if (payload.sig !== expectedSig) {
       return { valid: false, reason: 'Invalid signature. Fake QR code detected.' };

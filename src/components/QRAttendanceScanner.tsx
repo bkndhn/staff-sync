@@ -58,8 +58,13 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
         // jsQR fallback
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if (!ctx) return;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        
+        // Scale down video frame for blazing fast ~1ms jsQR processing
+        const MAX_W = 400;
+        const scale = Math.min(1, MAX_W / video.videoWidth);
+        canvas.width = video.videoWidth * scale;
+        canvas.height = video.videoHeight * scale;
+        
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const code = jsQR(imageData.data, imageData.width, imageData.height, {

@@ -442,13 +442,16 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         {/* HUD Overlay */}
         <div className="absolute top-0 left-0 right-0 z-30 p-4 md:p-6 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between gap-3 flex-wrap pointer-events-none">
           <div>
-            <h2 className="text-xl font-bold text-white flex items-center gap-2 pointer-events-auto">
-              {viewMode === 'camera' ? <ScanFace size={22} className="text-indigo-400" /> : <QrCode size={22} className="text-indigo-400" />}
-              {viewMode === 'camera' ? 'Face Attendance · Long-Range Kiosk' : 'QR Attendance Generator'}
-            </h2>
-            <p className="text-xs text-white/70 mt-1 max-w-md">
-              Stand up to 10m away. Always-on recognition with liveness check. First match = IN, then auto-toggles IN↔OUT every {TOGGLE_MIN_SECONDS/60} min.
-            </p>
+            {viewMode === 'camera' && (
+              <>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2 pointer-events-auto">
+                  <ScanFace size={22} className="text-indigo-400" /> Face Attendance · Long-Range Kiosk
+                </h2>
+                <p className="text-xs text-white/70 mt-1 max-w-md">
+                  Stand up to 10m away. Always-on recognition with liveness check. First match = IN, then auto-toggles IN↔OUT every {TOGGLE_MIN_SECONDS/60} min.
+                </p>
+              </>
+            )}
           </div>
           <div className="flex flex-wrap gap-2 pointer-events-auto">
             {/* Massive Toggle Buttons for Admin to switch between Face/QR easily */}
@@ -505,7 +508,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
               )}
             </>
           ) : (
-            <div className="p-8 w-full h-full flex items-center justify-center bg-[var(--bg-app)]">
+            <div className="p-8 pt-28 w-full h-full flex items-center justify-center bg-[var(--bg-app)] overflow-y-auto">
               <QRAttendanceGenerator location={locationConfig?.locationName || staff[0]?.location || 'Main Branch'} />
             </div>
           )}
