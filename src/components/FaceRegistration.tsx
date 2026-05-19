@@ -101,7 +101,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         return;
       }
       try {
-        const r = await detect(videoRef.current);
+        const r = await detect(videoRef.current, { scoreThreshold: 0.15 });
         if (!cancelled) {
           setLivePreview(r ? { faces: r.faceCount, quality: r.qualityScore } : { faces: 0, quality: 0 });
         }
@@ -117,7 +117,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
     setBusy(true);
     setMessage(null);
     try {
-      const result = await detect(videoRef.current);
+      const result = await detect(videoRef.current, { scoreThreshold: 0.15 });
       if (!result) {
         setMessage({ kind: 'err', text: 'No face detected. Center your face and try again.' });
         return;

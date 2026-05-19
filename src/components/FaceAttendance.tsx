@@ -452,11 +452,11 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           </div>
           <div className="flex flex-wrap gap-2 pointer-events-auto">
             {/* Massive Toggle Buttons for Admin to switch between Face/QR easily */}
-            <div className="bg-black/80 backdrop-blur-md rounded-2xl border border-white/20 p-1.5 flex shadow-2xl">
+            <div className="bg-black/40 backdrop-blur-md rounded-2xl border border-white/20 p-1.5 flex shadow-2xl gap-1">
               <button
                 onClick={() => setViewMode('camera')}
                 className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${
-                  viewMode === 'camera' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] scale-105' : 'text-white/60 hover:text-white'
+                  viewMode === 'camera' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] scale-105 z-10' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
                 }`}
               >
                 <Camera size={18} /> Face Scanner
@@ -464,7 +464,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
               <button
                 onClick={() => { setViewMode('qr'); stopCamera(); }}
                 className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${
-                  viewMode === 'qr' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)] scale-105' : 'text-white/60 hover:text-white'
+                  viewMode === 'qr' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)] scale-105 z-10' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
                 }`}
               >
                 <QrCode size={18} /> Show QR to Staff

@@ -100,7 +100,7 @@ export const useFaceEngine = (autoLoad = true) => {
     await ensureModelsLoaded();
 
     const options = new faceapi.SsdMobilenetv1Options({
-      minConfidence: opts?.scoreThreshold ?? 0.35,
+      minConfidence: opts?.scoreThreshold ?? 0.2, // Lowered from 0.35 to 0.2 for better mobile detection
       maxResults: 10,
     });
 
