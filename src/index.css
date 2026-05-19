@@ -818,6 +818,16 @@ select.input-premium option {
   }
 }
 
+@keyframes scan {
+  0%   { top: 4%; }
+  50%  { top: 94%; }
+  100% { top: 4%; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out forwards;
+}
+
 @keyframes modal-slide-up {
   from {
     opacity: 0;

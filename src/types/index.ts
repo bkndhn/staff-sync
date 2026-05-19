@@ -46,9 +46,10 @@ export interface Staff {
   /** Per-staff face-match confidence override (euclidean distance threshold). */
   faceMatchThreshold?: number;
   /** Statutory PF account number (optional). */
-  pfNumber?: string;
   /** Statutory ESI insurance number (optional). */
   esiNumber?: string;
+  /** Bound physical device ID for anti-buddy punching */
+  deviceId?: string | null;
 }
 
 export type DeductionBase = 'basic' | 'basic_hra' | 'gross' | 'fixed';

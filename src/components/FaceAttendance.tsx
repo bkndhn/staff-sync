@@ -10,6 +10,7 @@ import { shiftService, formatTime12h, ShiftWindows, minutesBetween } from '../se
 import { locationShiftService, LocationShiftConfig, DEFAULT_LOCATION_CONFIG } from '../services/locationShiftService';
 import { appSettingsService } from '../services/appSettingsService';
 import { calculateAttendanceStatus, resolveAttendanceRules } from '../utils/attendanceRules';
+import QRAttendanceGenerator from './QRAttendanceGenerator';
 import { buildCentroidIndex, findBestMatch as findCosineMatch, type StaffEmbedding } from '../lib/embeddingMatcher';
 import { createLivenessState, updateLiveness, evaluateLiveness, type LivenessState } from '../lib/livenessEngine';
 import { db } from '../lib/db';
@@ -69,6 +70,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const [lastMatch, setLastMatch] = useState<{ name: string; distance: number; ts: number; status: 'matching' | 'live-check' | 'blink-please' | 'ok' | 'wrong-loc' | 'spoof' | 'unknown' } | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err' | 'warn'; text: string } | null>(null);
   const [editing, setEditing] = useState<Record<string, { arrival: string; leaving: string }>>({});
+  const [viewMode, setViewMode] = useState<'camera' | 'qr'>('camera');
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -440,9 +442,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         {/* HUD Overlay */}
         <div className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between gap-3 flex-wrap pointer-events-none">
           <div>
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <ScanFace size={22} className="text-indigo-400" />
-              Face Attendance · Long-Range Kiosk
+            <h2 className="text-xl font-bold text-white flex items-center gap-2 pointer-events-auto">
+              {viewMode === 'camera' ? <ScanFace size={22} className="text-indigo-400" /> : <QrCode size={22} className="text-indigo-400" />}
+              {viewMode === 'camera' ? 'Face Attendance · Long-Range Kiosk' : 'QR Attendance Generator'}
             </h2>
             <p className="text-xs text-white/70 mt-1 max-w-md">
               Stand up to 10m away. Always-on recognition with liveness check. First match = IN, then auto-toggles IN↔OUT every {TOGGLE_MIN_SECONDS/60} min.
@@ -458,81 +460,109 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             <span className="text-xs px-3 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 flex items-center gap-1">
               <Zap size={12} /> Cosine match
             </span>
+            <div className="bg-black/60 backdrop-blur rounded-full border border-white/20 p-1 flex">
+              <button
+                onClick={() => setViewMode('camera')}
+                className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 transition-all ${
+                  viewMode === 'camera' ? 'bg-indigo-500 text-white shadow-lg' : 'text-white/60 hover:text-white'
+                }`}
+              >
+                <Camera size={12} /> Camera
+              </button>
+              <button
+                onClick={() => { setViewMode('qr'); stopCamera(); }}
+                className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 transition-all ${
+                  viewMode === 'qr' ? 'bg-indigo-500 text-white shadow-lg' : 'text-white/60 hover:text-white'
+                }`}
+              >
+                <QrCode size={12} /> QR Code
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Video Feed */}
-        <div className="relative flex-1 bg-black w-full h-full">
-          <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
-          {!cameraOn && (
-            <div className="absolute inset-0 flex items-center justify-center text-[var(--text-secondary)] text-sm z-10 bg-black/80">
-              {cameraError ? 'Camera blocked' : 'Starting camera…'}
-            </div>
-          )}
-          {cameraOn && lastMatch && (
-            <div className="absolute bottom-8 left-0 right-0 flex justify-center z-20 pointer-events-none">
-              <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-black/60 backdrop-blur border border-white/10 shadow-2xl scale-125">
-                {statusBadge(lastMatch.status)}
-                <span className="text-base font-bold text-white tracking-wide">{lastMatch.name}</span>
-                <span className="text-xs font-mono text-white/50 bg-black/40 px-2 py-1 rounded">d {lastMatch.distance.toFixed(2)}</span>
-              </div>
+        {/* Video Feed / QR Generator */}
+        <div className="relative flex-1 bg-black w-full h-full flex items-center justify-center">
+          {viewMode === 'camera' ? (
+            <>
+              <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
+              {!cameraOn && (
+                <div className="absolute inset-0 flex items-center justify-center text-[var(--text-secondary)] text-sm z-10 bg-black/80">
+                  {cameraError ? 'Camera blocked' : 'Starting camera…'}
+                </div>
+              )}
+              {cameraOn && lastMatch && (
+                <div className="absolute bottom-8 left-0 right-0 flex justify-center z-20 pointer-events-none">
+                  <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-black/60 backdrop-blur border border-white/10 shadow-2xl scale-125">
+                    {statusBadge(lastMatch.status)}
+                    <span className="text-base font-bold text-white tracking-wide">{lastMatch.name}</span>
+                    <span className="text-xs font-mono text-white/50 bg-black/40 px-2 py-1 rounded">d {lastMatch.distance.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="p-8 w-full h-full flex items-center justify-center bg-[var(--bg-app)]">
+              <QRAttendanceGenerator location={locationConfig?.locationName || staff[0]?.location || 'Main Branch'} />
             </div>
           )}
         </div>
 
         {/* Floating Controls Overlay */}
-        <div className="absolute bottom-4 right-4 z-20 flex flex-col items-end gap-2">
-          {error && (
-            <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm flex items-center gap-2 shadow-xl max-w-sm">
-              <AlertTriangle size={16} /> {error}
-            </div>
-          )}
-          {(loading || loadingEmbeddings) && (
-            <div className="p-3 rounded-xl bg-blue-500/90 backdrop-blur border border-blue-400/50 text-white text-sm flex items-center gap-2 shadow-xl">
-              <Loader2 size={16} className="animate-spin" />
-              {loading ? 'Loading face models…' : `Loading ${allEmbeddings.length} face samples…`}
-            </div>
-          )}
-          {!loadingEmbeddings && scopedEmbeddings.length === 0 && (
-            <div className="p-3 rounded-xl bg-amber-500/90 backdrop-blur border border-amber-400/50 text-white text-sm flex items-center gap-2 shadow-xl max-w-sm">
-              <AlertTriangle size={16} /> No face samples enrolled for this location.
-            </div>
-          )}
-          {cameraError && (
-            <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm shadow-xl">
-              {cameraError}
-            </div>
-          )}
-          {message && (
-            <div className={`p-3 rounded-xl text-sm font-medium flex items-center gap-2 shadow-xl backdrop-blur max-w-md ${ 
-              message.kind === 'ok' ? 'bg-emerald-500/90 border border-emerald-400/50 text-white' : 
-              message.kind === 'warn' ? 'bg-amber-500/90 border border-amber-400/50 text-white' : 
-              'bg-red-500/90 border border-red-400/50 text-white'
-            }`}>
-              {message.kind === 'ok' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-              {message.text}
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            {!cameraOn ? (
-              <button
-                onClick={startCamera}
-                disabled={!ready || scopedEmbeddings.length === 0}
-                className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold flex items-center gap-2 shadow-xl"
-              >
-                <Camera size={16} /> Start Camera
-              </button>
-            ) : (
-              <button
-                onClick={stopCamera}
-                className="px-5 py-2.5 rounded-xl bg-black/60 hover:bg-black/80 backdrop-blur border border-white/20 text-white font-semibold flex items-center gap-2 shadow-xl"
-              >
-                <XCircle size={16} /> Stop
-              </button>
+        {viewMode === 'camera' && (
+          <div className="absolute bottom-4 right-4 z-20 flex flex-col items-end gap-2">
+            {error && (
+              <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm flex items-center gap-2 shadow-xl max-w-sm">
+                <AlertTriangle size={16} /> {error}
+              </div>
             )}
+            {(loading || loadingEmbeddings) && (
+              <div className="p-3 rounded-xl bg-blue-500/90 backdrop-blur border border-blue-400/50 text-white text-sm flex items-center gap-2 shadow-xl">
+                <Loader2 size={16} className="animate-spin" />
+                {loading ? 'Loading face models…' : `Loading ${allEmbeddings.length} face samples…`}
+              </div>
+            )}
+            {!loadingEmbeddings && scopedEmbeddings.length === 0 && (
+              <div className="p-3 rounded-xl bg-amber-500/90 backdrop-blur border border-amber-400/50 text-white text-sm flex items-center gap-2 shadow-xl max-w-sm">
+                <AlertTriangle size={16} /> No face samples enrolled for this location.
+              </div>
+            )}
+            {cameraError && (
+              <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm shadow-xl">
+                {cameraError}
+              </div>
+            )}
+            {message && (
+              <div className={`p-3 rounded-xl text-sm font-medium flex items-center gap-2 shadow-xl backdrop-blur max-w-md ${ 
+                message.kind === 'ok' ? 'bg-emerald-500/90 border border-emerald-400/50 text-white' : 
+                message.kind === 'warn' ? 'bg-amber-500/90 border border-amber-400/50 text-white' : 
+                'bg-red-500/90 border border-red-400/50 text-white'
+              }`}>
+                {message.kind === 'ok' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                {message.text}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              {!cameraOn ? (
+                <button
+                  onClick={startCamera}
+                  disabled={!ready || scopedEmbeddings.length === 0}
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold flex items-center gap-2 shadow-xl"
+                >
+                  <Camera size={16} /> Start Camera
+                </button>
+              ) : (
+                <button
+                  onClick={stopCamera}
+                  className="px-5 py-2.5 rounded-xl bg-black/60 hover:bg-black/80 backdrop-blur border border-white/20 text-white font-semibold flex items-center gap-2 shadow-xl"
+                >
+                  <XCircle size={16} /> Stop
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ── Right Side: Logs & Overrides Sidebar ── */}

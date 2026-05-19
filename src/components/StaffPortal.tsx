@@ -3,7 +3,7 @@ import {
   User, Calendar, DollarSign, TrendingUp, Download, ChevronLeft, ChevronRight,
   CheckCircle, XCircle, Clock, Briefcase, MapPin, Phone, Home, IndianRupee,
   ArrowUpRight, ArrowDownRight, FileText, CreditCard, Send, MessageSquare, AlertTriangle,
-  CalendarDays, Trash2, Plus, Camera
+  CalendarDays, Trash2, Plus, Camera, QrCode
 } from 'lucide-react';
 import { Staff, Attendance, SalaryHike, AdvanceDeduction, SalaryOverride } from '../types';
 import { calculateAttendanceMetrics, calculateSalary, getDaysInMonth, isSunday, roundToNearest10 } from '../utils/salaryCalculations';
@@ -14,6 +14,9 @@ import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryServi
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
 import FaceRegistration from './FaceRegistration';
 import YearlyAttendanceSummary from './YearlyAttendanceSummary';
+import QRAttendanceScanner from './QRAttendanceScanner';
+import { punchEventService } from '../services/punchEventService';
+import { attendanceService } from '../services/attendanceService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -37,6 +40,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   const [leaveForm, setLeaveForm] = useState({ leaveDate: '', leaveEndDate: '', leaveType: 'casual' as const, reason: '' });
   const [leaveSubmitting, setLeaveSubmitting] = useState(false);
   const [advanceEntries, setAdvanceEntries] = useState<AdvanceEntry[]>([]);
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [punchResult, setPunchResult] = useState<{ kind: 'in' | 'out' | 'already-done' | 'error'; message: string } | null>(null);
 
   const monthName = new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long' });
 
@@ -118,6 +123,79 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       setLeaveForm({ leaveDate: '', leaveEndDate: '', leaveType: 'casual', reason: '' });
     }
     setLeaveSubmitting(false);
+  };
+
+  const handleQRScanSuccess = async (payload: any) => {
+    setShowQRScanner(false);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const nowTime = new Date().toTimeString().split(' ')[0]; // HH:MM:SS
+      
+      // Find today's attendance record (non-part-time)
+      const todayRecord = attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
+
+      // ── STRICT SEQUENCE ENFORCEMENT ──────────────────────────────
+      // State: no record → IN available
+      //        has arrival, no leaving → OUT available
+      //        has both → already done for today
+      const hasIn  = !!(todayRecord?.arrivalTime);
+      const hasOut = !!(todayRecord?.leavingTime);
+
+      if (hasIn && hasOut) {
+        // Both punches done → reject
+        setPunchResult({
+          kind: 'already-done',
+          message: `You have already clocked IN (${todayRecord!.arrivalTime?.substring(0,5)}) and OUT (${todayRecord!.leavingTime?.substring(0,5)}) today. See you tomorrow! 👋`
+        });
+        setTimeout(() => setPunchResult(null), 6000);
+        return;
+      }
+
+      const kind: 'in' | 'out' = hasIn ? 'out' : 'in';
+
+      if (kind === 'in') {
+        await attendanceService.upsert({
+          staffId: staff.id,
+          staffName: staff.name,
+          location: staff.location,
+          date: today,
+          status: 'Present' as any,
+          attendanceValue: 1,
+          isSunday: isSunday(today),
+          isPartTime: false,
+          arrivalTime: nowTime
+        } as any);
+      } else {
+        // Check-out — patch existing record
+        await attendanceService.upsert({
+          ...todayRecord!,
+          leavingTime: nowTime
+        } as any);
+      }
+
+      // Record raw punch event log
+      await punchEventService.insert({
+        staffId: staff.id,
+        staffName: staff.name,
+        location: payload.loc || staff.location,
+        date: today,
+        eventTime: nowTime,
+        kind,
+        source: 'qr_scanner',
+        deviceLabel: 'Staff Mobile Device'
+      });
+
+      setPunchResult({
+        kind,
+        message: kind === 'in'
+          ? `✅ Clocked IN at ${nowTime.substring(0,5)}. Have a great day!`
+          : `✅ Clocked OUT at ${nowTime.substring(0,5)}. See you tomorrow!`
+      });
+      setTimeout(() => setPunchResult(null), 5000);
+    } catch (err: any) {
+      setPunchResult({ kind: 'error', message: `Failed to record punch: ${err.message}` });
+      setTimeout(() => setPunchResult(null), 5000);
+    }
   };
 
   // Attendance metrics for selected month
@@ -351,6 +429,18 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
   return (
     <div className={`p-2 md:p-6 pb-24 md:pb-6 space-y-4 ${isWideTab ? 'w-full' : 'max-w-4xl mx-auto'}`}>
+      {/* Punch Result Toast */}
+      {punchResult && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-4 rounded-2xl shadow-2xl backdrop-blur border text-white font-semibold text-sm flex items-center gap-3 max-w-sm w-[90vw] transition-all animate-fade-in ${
+          punchResult.kind === 'in' ? 'bg-emerald-600/95 border-emerald-500/50' :
+          punchResult.kind === 'out' ? 'bg-blue-600/95 border-blue-500/50' :
+          punchResult.kind === 'already-done' ? 'bg-amber-600/95 border-amber-500/50' :
+          'bg-red-600/95 border-red-500/50'
+        }`}>
+          <span className="text-2xl">{punchResult.kind === 'in' ? '✅' : punchResult.kind === 'out' ? '👋' : punchResult.kind === 'already-done' ? '⚠️' : '❌'}</span>
+          <p>{punchResult.message}</p>
+        </div>
+      )}
       {/* Section Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         {sections.map(s => (
@@ -408,7 +498,45 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                 <h2 className="text-xl font-bold text-[var(--text-primary)]">{staff.name}</h2>
                 <p className="text-sm text-[var(--text-muted)]">{staff.type === 'full-time' ? 'Full-Time' : 'Part-Time'} Staff</p>
               </div>
+              {!isLeftStaff && (
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={() => setShowQRScanner(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-95 font-semibold"
+                  >
+                    <QrCode size={18} />
+                    <span className="hidden sm:inline">Scan QR</span>
+                  </button>
+                </div>
+              )}
             </div>
+
+            {/* Today's Punch Status Banner */}
+            {!isLeftStaff && (() => {
+              const today = new Date().toISOString().split('T')[0];
+              const todayRec = attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
+              const hasIn = !!(todayRec?.arrivalTime);
+              const hasOut = !!(todayRec?.leavingTime);
+              return (
+                <div className={`mb-4 p-3 rounded-xl flex items-center gap-3 text-sm font-medium border ${
+                  hasIn && hasOut ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600' :
+                  hasIn ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400' :
+                  'bg-white/5 border-white/10 text-[var(--text-muted)]'
+                }`}>
+                  <span className="text-xl">{hasIn && hasOut ? '✅' : hasIn ? '🟢' : '⚪'}</span>
+                  <div>
+                    <p className="font-semibold">
+                      {hasIn && hasOut ? 'All punched for today!' :
+                       hasIn ? `Clocked IN at ${todayRec!.arrivalTime?.substring(0,5)} — scan QR to clock out` :
+                       'Not clocked in yet — scan QR to clock in'}
+                    </p>
+                    {hasIn && hasOut && (
+                      <p className="text-xs opacity-70">IN {todayRec!.arrivalTime?.substring(0,5)} → OUT {todayRec!.leavingTime?.substring(0,5)}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <InfoRow icon={MapPin} label="Location" value={staff.location} />
@@ -1045,6 +1173,15 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       {/* FACE ID */}
       {activeSection === 'face' && (
         <FaceRegistration staff={staff} capturedBy={staff.name} />
+      )}
+      
+      {/* QR Scanner Modal */}
+      {showQRScanner && (
+        <QRAttendanceScanner 
+          staffLocation={staff.location}
+          onScanSuccess={handleQRScanSuccess}
+          onClose={() => setShowQRScanner(false)}
+        />
       )}
     </div>
   );

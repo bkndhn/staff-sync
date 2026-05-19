@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Camera, Trash2, CheckCircle2, XCircle, RefreshCw, AlertTriangle, Loader2, ShieldCheck, ShieldOff, Zap } from 'lucide-react';
+import { Camera, Trash2, CheckCircle2, XCircle, RefreshCw, AlertTriangle, Loader2, ShieldCheck, ShieldOff, Zap, Upload } from 'lucide-react';
 import { Staff } from '../types';
 import { useFaceEngine } from '../hooks/useFaceEngine';
 import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
@@ -168,6 +168,47 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
     }
   }, [activeAngle, detect, samples, staff.id, staff.name, capturedBy, loadSamples]);
 
+  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setBusy(true);
+    setMessage(null);
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.src = url;
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+      
+      const result = await detect(img);
+      if (!result) {
+        setMessage({ kind: 'err', text: 'No face detected in the uploaded photo. Please try a clearer photo.' });
+        return;
+      }
+      if (result.faceCount > 1) {
+        setMessage({ kind: 'err', text: 'Multiple faces detected. Only one person should be in the photo.' });
+        return;
+      }
+      
+      await faceEmbeddingService.create({
+        staffId: staff.id,
+        staffName: staff.name,
+        angleLabel: activeAngle,
+        descriptor: result.descriptor,
+        qualityScore: result.qualityScore,
+        imageBlob: file,
+        capturedBy,
+      });
+      setMessage({ kind: 'ok', text: `Saved uploaded "${activeAngle}" sample.` });
+      await loadSamples();
+    } catch (err: any) {
+      setMessage({ kind: 'err', text: err?.message || 'Failed to process uploaded photo' });
+    } finally {
+      setBusy(false);
+      e.target.value = ''; // reset input
+    }
+  }, [activeAngle, detect, staff.id, staff.name, capturedBy, loadSamples]);
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this face sample?')) return;
     try {
@@ -277,13 +318,25 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
 
         <div className="flex flex-wrap gap-2 justify-center mt-4">
           {!cameraOn ? (
-            <button
-              onClick={startCamera}
-              disabled={!modelsReady}
-              className="px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white font-semibold flex items-center gap-2"
-            >
-              <Camera size={16} /> Start Camera
-            </button>
+            <>
+              <button
+                onClick={startCamera}
+                disabled={!modelsReady}
+                className="px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white font-semibold flex items-center gap-2"
+              >
+                <Camera size={16} /> Start Camera
+              </button>
+              <label className={`px-5 py-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--glass-border)] text-[var(--text-primary)] font-semibold flex items-center gap-2 ${!modelsReady ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/5 cursor-pointer'}`}>
+                {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Upload Photo
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={handleImageUpload} 
+                  disabled={!modelsReady || busy} 
+                />
+              </label>
+            </>
           ) : (
             <>
               <button

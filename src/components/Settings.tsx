@@ -5,6 +5,7 @@ import { locationService, Location } from '../services/locationService';
 import { appSettingsService } from '../services/appSettingsService';
 import ShiftWindowsPanel from './ShiftWindowsPanel';
 import AttendanceRulesPanel from './AttendanceRulesPanel';
+import DeviceIntegration from './DeviceIntegration';
 
 interface SettingsProps {
     userRole: string;
@@ -395,34 +396,13 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                 </button>
             </div>
 
-            {/* Biometric / Fingerprint Device Integration (placeholder) */}
-            <div className="glass-card-static p-4 rounded-xl">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
-                            <Shield size={20} className="text-cyan-400" />
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-[var(--text-primary)] text-sm">Biometric / Fingerprint Device</h3>
-                            <p className="text-xs text-[var(--text-muted)]">
-                                Connect any fingerprint attendance device (eSSL, ZKTeco, Realtime, Mantra, Matrix etc.)
-                            </p>
-                        </div>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 whitespace-nowrap">
-                        Coming Soon
-                    </span>
-                </div>
-                <div className="mt-3 p-3 rounded-lg bg-white/5 border border-white/10 text-xs text-white/60 space-y-1.5">
-                    <p className="font-semibold text-white/80">Planned integration options:</p>
-                    <ul className="list-disc list-inside space-y-0.5 pl-1">
-                        <li><b>CSV / Excel import</b> — export daily punches from any device and upload here</li>
-                        <li><b>Cloud API push</b> — eSSL eTimeTrack / ZKTeco BioTime / Realtime Cloud</li>
-                        <li><b>Local bridge service</b> — small Windows utility to sync device → app in real time</li>
-                    </ul>
-                    <p className="text-[10px] text-white/40 mt-2">Tell us your device model and we'll prioritise that integration.</p>
-                </div>
-            </div>
+            {/* Hardware Device Integration */}
+            <DeviceIntegration
+                onImportPunches={(records) => {
+                    console.log('[DeviceIntegration] Imported', records.length, 'punch records');
+                    // TODO: wire up to attendanceService to process records
+                }}
+            />
 
             {/* Default Salary Hike Interval */}
             <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">

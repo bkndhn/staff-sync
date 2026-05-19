@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Staff, SalaryHike } from '../types';
-import { Users, Plus, Edit2, Trash2, Archive, Calendar, TrendingUp, MapPin, DollarSign, Check, X, GripVertical, Filter, Copy, AlertCircle, RotateCcw, Layers, Briefcase, Upload, Shield, Camera } from 'lucide-react';
+import { Users, Plus, Edit2, Trash2, Archive, Calendar, TrendingUp, MapPin, DollarSign, Check, X, GripVertical, Filter, Copy, AlertCircle, RotateCcw, Layers, Briefcase, Upload, Shield, Camera, ShieldOff } from 'lucide-react';
 import { calculateExperience } from '../utils/salaryCalculations';
 import { STATUTORY_DEFINITIONS, defaultConfigFor } from '../utils/statutoryDeductions';
 import type { StatutoryDeduction, DeductionBase } from '../types';
@@ -586,6 +586,18 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     return salaryHikes
       .filter(hike => hike.staffId === staffId)
       .sort((a, b) => new Date(b.hikeDate).getTime() - new Date(a.hikeDate).getTime());
+  };
+
+  const handleResetDevice = async (staffId: string, staffName: string) => {
+    if (!window.confirm(`Are you sure you want to reset the device lock for ${staffName}? They will be able to log in from a new device.`)) return;
+    try {
+      const { staffService } = await import('../services/staffService');
+      const savedStaff = await staffService.update(staffId, { deviceId: null });
+      setStaff(prev => prev.map(member => member.id === staffId ? savedStaff : member));
+    } catch (error) {
+      console.error("Error resetting device:", error);
+      alert("Failed to reset device lock.");
+    }
   };
 
   return (
@@ -1484,6 +1496,11 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                         <button onClick={() => setFaceModalStaff(member)} className="text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50" title="Face Samples">
                           <Camera size={16} />
                         </button>
+                        {member.deviceId && (
+                          <button onClick={() => handleResetDevice(member.id, member.name)} className="text-orange-600 hover:text-orange-800 p-1 rounded hover:bg-orange-50" title="Reset Device Lock">
+                            <ShieldOff size={16} />
+                          </button>
+                        )}
                         <button onClick={() => handleDelete(member)} className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50" title="Archive">
                           <Archive size={16} />
                         </button>

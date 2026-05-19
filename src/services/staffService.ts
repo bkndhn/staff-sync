@@ -85,6 +85,7 @@ export const staffService = {
     if ((updates as any).shiftWindow !== undefined) (dbUpdates as any).shift_window = (updates as any).shiftWindow;
     if (updates.pfNumber !== undefined) (dbUpdates as any).pf_number = updates.pfNumber || null;
     if (updates.esiNumber !== undefined) (dbUpdates as any).esi_number = updates.esiNumber || null;
+    if (updates.deviceId !== undefined) (dbUpdates as any).device_id = updates.deviceId || null;
 
     const { data, error } = await supabase
       .from('staff')
@@ -191,6 +192,7 @@ export const staffService = {
       faceMatchThreshold: dbStaff.face_match_threshold ?? undefined,
       pfNumber: dbStaff.pf_number ?? undefined,
       esiNumber: dbStaff.esi_number ?? undefined,
+      deviceId: dbStaff.device_id ?? null,
     };
   },
 
@@ -229,6 +231,7 @@ export const staffService = {
       shift_window: (staff as any).shiftWindow ?? null,
       pf_number: staff.pfNumber || null,
       esi_number: staff.esiNumber || null,
+      device_id: staff.deviceId || null,
     } as any;
   }
 };
