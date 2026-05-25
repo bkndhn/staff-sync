@@ -602,9 +602,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const handleResetDevice = async (staffId: string, staffName: string) => {
     if (!window.confirm(`Are you sure you want to reset the device lock for ${staffName}? They will be able to log in from a new device.`)) return;
     try {
-      const { staffService } = await import('../services/staffService');
-      const savedStaff = await staffService.update(staffId, { deviceId: null });
-      setStaff(prev => prev.map(member => member.id === staffId ? savedStaff : member));
+      onUpdateStaff(staffId, { deviceId: null });
+      await onRefreshStaff?.();
     } catch (error) {
       console.error("Error resetting device:", error);
       alert("Failed to reset device lock.");

@@ -22,14 +22,13 @@ const initNativeDetector = async (): Promise<boolean> => {
   }
 };
 
-// Lazy-load ZXing fallback
-const getZXingReader = async () => {
-  if (zxingReader) return zxingReader;
+// jsqr-based fallback (lazy)
+let jsqrModule: any = null;
+const getJsqr = async () => {
+  if (jsqrModule) return jsqrModule;
   try {
-    // Dynamic import of zxing-wasm (bundled)
-    const { BrowserQRCodeReader } = await import('@zxing/browser');
-    zxingReader = new BrowserQRCodeReader();
-    return zxingReader;
+    jsqrModule = (await import('jsqr')).default;
+    return jsqrModule;
   } catch {
     return null;
   }
@@ -57,7 +56,7 @@ export const scanFrameForQR = async (
     }
   }
 
-  // ZXing fallback (for Firefox/Safari)
+  // jsqr fallback (for Firefox/Safari)
   if (source instanceof HTMLVideoElement) {
     try {
       const canvas = document.createElement('canvas');
@@ -67,13 +66,11 @@ export const scanFrameForQR = async (
       if (!ctx) return null;
       ctx.drawImage(source, 0, 0);
 
-      const reader = await getZXingReader();
-      if (!reader) return null;
+      const jsQR = await getJsqr();
+      if (!jsQR) return null;
 
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      // ZXing browser decode from ImageData
-      const { default: { qrcode } } = await import('jsqr');
-      const code = qrcode(imageData.data, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, canvas.width, canvas.height);
       return code ? code.data : null;
     } catch {
       return null;
