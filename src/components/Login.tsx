@@ -11,7 +11,6 @@ import {
 import { userService } from '../services/userService';
 import { supabase } from '../lib/supabase';
 import { generateDeviceFingerprint } from '../utils/deviceFingerprint';
-import { generateDeviceFingerprint } from '../utils/deviceFingerprint';
 
 interface LoginProps {
   onLogin: (user: { email: string; role: string; location?: string; staffId?: string; staffName?: string }) => void;

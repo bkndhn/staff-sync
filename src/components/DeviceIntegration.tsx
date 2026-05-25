@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import {
   Cpu, Wifi, WifiOff, Upload, Download, FileSpreadsheet, Settings2,
   CheckCircle2, AlertTriangle, Loader2, ChevronDown, ChevronRight,
-  ExternalLink, Copy, Check, RefreshCw, Fingerprint, Server, Globe
+  ExternalLink, Copy, Check, RefreshCw, Fingerprint, Server, Globe, MapPin
 } from 'lucide-react';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
