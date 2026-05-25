@@ -506,25 +506,40 @@ export type Database = {
       locations: {
         Row: {
           created_at: string | null
+          db_connection_string: string | null
+          device_ip: string | null
+          device_port: number | null
+          device_type: string | null
           display_name: string
           id: string
           is_active: boolean | null
+          last_sync_time: string | null
           name: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          db_connection_string?: string | null
+          device_ip?: string | null
+          device_port?: number | null
+          device_type?: string | null
           display_name: string
           id?: string
           is_active?: boolean | null
+          last_sync_time?: string | null
           name: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          db_connection_string?: string | null
+          device_ip?: string | null
+          device_port?: number | null
+          device_type?: string | null
           display_name?: string
           id?: string
           is_active?: boolean | null
+          last_sync_time?: string | null
           name?: string
           updated_at?: string | null
         }
@@ -860,6 +875,7 @@ export type Database = {
           contact_number: string | null
           created_at: string | null
           designation: string | null
+          device_id: string | null
           display_order: number | null
           esi_number: string | null
           experience: string
@@ -899,6 +915,7 @@ export type Database = {
           contact_number?: string | null
           created_at?: string | null
           designation?: string | null
+          device_id?: string | null
           display_order?: number | null
           esi_number?: string | null
           experience: string
@@ -938,6 +955,7 @@ export type Database = {
           contact_number?: string | null
           created_at?: string | null
           designation?: string | null
+          device_id?: string | null
           display_order?: number | null
           esi_number?: string | null
           experience?: string
