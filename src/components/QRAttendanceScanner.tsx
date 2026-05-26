@@ -239,6 +239,24 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
             </div>
           )}
 
+          {/* Confirmation card — shows name + time, auto-dismisses */}
+          {confirmation && (
+            <div className="absolute inset-0 flex items-center justify-center p-4 animate-fade-in">
+              <div className={`w-full max-w-xs rounded-2xl p-5 text-center shadow-2xl border ${
+                confirmation.ok
+                  ? 'bg-emerald-500/95 border-emerald-300/40 text-white'
+                  : 'bg-amber-500/95 border-amber-300/40 text-white'
+              }`}>
+                <CheckCircle2 size={40} className="mx-auto mb-2 drop-shadow" />
+                <p className="text-lg font-bold leading-tight">{confirmation.title}</p>
+                {confirmation.subtitle && (
+                  <p className="text-sm opacity-95 mt-1">{confirmation.subtitle}</p>
+                )}
+                <p className="text-[11px] opacity-80 mt-3">Ready for next staff…</p>
+              </div>
+            </div>
+          )}
+
           {/* Error banner */}
           {error && (
             <div className="absolute bottom-4 left-4 right-4 p-3 rounded-xl bg-red-500/90 backdrop-blur text-white text-sm flex items-start gap-2 shadow-xl animate-fade-in">
