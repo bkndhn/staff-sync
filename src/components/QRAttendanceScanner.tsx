@@ -3,9 +3,16 @@ import { QrCode, XCircle, CheckCircle2, AlertTriangle, Loader2, Zap } from 'luci
 import { validateQRPayload } from '../utils/qrCrypto';
 import jsQR from 'jsqr';
 
+export interface ScanConfirmation {
+  ok: boolean;
+  title: string;     // e.g. "Ravi Kumar"
+  subtitle?: string; // e.g. "Clocked IN at 09:14"
+}
+
 interface Props {
   staffLocation: string;
-  onScanSuccess: (payload: any) => void;
+  /** Return a confirmation object — scanner will display it briefly and resume scanning. */
+  onScanSuccess: (payload: any) => Promise<ScanConfirmation> | ScanConfirmation;
   onClose: () => void;
 }
 
