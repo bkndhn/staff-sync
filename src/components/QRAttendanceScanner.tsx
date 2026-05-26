@@ -38,15 +38,17 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [scanCount, setScanCount] = useState(0); // for animation feedback
+  const [confirmation, setConfirmation] = useState<ScanConfirmation | null>(null);
+  const [scanCount, setScanCount] = useState(0);
   const [useNative, setUseNative] = useState<boolean | null>(null);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
   const processingRef = useRef(false);
   const activeRef = useRef(true);
+  const lastDecodedRef = useRef<{ value: string; at: number } | null>(null);
 
   const processFrame = useCallback(async (detector: any) => {
     if (!activeRef.current || processingRef.current) return;
@@ -82,6 +84,11 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
     } catch { /* ignore per-frame errors */ }
 
     if (decoded && !processingRef.current) {
+      // Debounce duplicate frames of the same QR within 2.5s (continuous-scan mode)
+      const now = Date.now();
+      const last = lastDecodedRef.current;
+      if (last && last.value === decoded && now - last.at < 2500) return;
+
       processingRef.current = true;
       setIsProcessing(true);
       setScanCount(c => c + 1);
@@ -89,10 +96,22 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
       const validation = await validateQRPayload(decoded, staffLocation);
 
       if (validation.valid) {
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(t => t.stop());
+        lastDecodedRef.current = { value: decoded, at: now };
+        try {
+          const result = await onScanSuccess(JSON.parse(decoded));
+          if (!activeRef.current) return;
+          setConfirmation(result);
+        } catch (e: any) {
+          setConfirmation({ ok: false, title: 'Failed to record', subtitle: e?.message || 'Try again.' });
         }
-        onScanSuccess(JSON.parse(decoded));
+        // Hold the confirmation card, then resume scanning automatically
+        setTimeout(() => {
+          if (activeRef.current) {
+            setConfirmation(null);
+            setIsProcessing(false);
+            processingRef.current = false;
+          }
+        }, 2500);
       } else {
         setError(validation.reason || 'Invalid QR Code');
         setTimeout(() => {
