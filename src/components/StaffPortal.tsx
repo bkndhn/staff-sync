@@ -41,7 +41,6 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   const [leaveSubmitting, setLeaveSubmitting] = useState(false);
   const [advanceEntries, setAdvanceEntries] = useState<AdvanceEntry[]>([]);
   const [showQRScanner, setShowQRScanner] = useState(false);
-  const [punchResult, setPunchResult] = useState<{ kind: 'in' | 'out' | 'already-done' | 'error'; message: string } | null>(null);
 
   const monthName = new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long' });
 
@@ -125,30 +124,22 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     setLeaveSubmitting(false);
   };
 
-  const handleQRScanSuccess = async (payload: any) => {
-    setShowQRScanner(false);
+  const handleQRScanSuccess = async (payload: any): Promise<import('./QRAttendanceScanner').ScanConfirmation> => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const nowTime = new Date().toTimeString().split(' ')[0]; // HH:MM:SS
-      
-      // Find today's attendance record (non-part-time)
+      const nowTime = new Date().toTimeString().split(' ')[0];
+
       const todayRecord = attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
 
-      // ── STRICT SEQUENCE ENFORCEMENT ──────────────────────────────
-      // State: no record → IN available
-      //        has arrival, no leaving → OUT available
-      //        has both → already done for today
       const hasIn  = !!(todayRecord?.arrivalTime);
       const hasOut = !!(todayRecord?.leavingTime);
 
       if (hasIn && hasOut) {
-        // Both punches done → reject
-        setPunchResult({
-          kind: 'already-done',
-          message: `You have already clocked IN (${todayRecord!.arrivalTime?.substring(0,5)}) and OUT (${todayRecord!.leavingTime?.substring(0,5)}) today. See you tomorrow! 👋`
-        });
-        setTimeout(() => setPunchResult(null), 6000);
-        return;
+        return {
+          ok: false,
+          title: staff.name,
+          subtitle: `Already IN ${todayRecord!.arrivalTime?.substring(0,5)} & OUT ${todayRecord!.leavingTime?.substring(0,5)} today`
+        };
       }
 
       const kind: 'in' | 'out' = hasIn ? 'out' : 'in';
@@ -166,14 +157,12 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
           arrivalTime: nowTime
         } as any);
       } else {
-        // Check-out — patch existing record
         await attendanceService.upsert({
           ...todayRecord!,
           leavingTime: nowTime
         } as any);
       }
 
-      // Record raw punch event log
       await punchEventService.insert({
         staffId: staff.id,
         staffName: staff.name,
@@ -185,16 +174,15 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         deviceLabel: 'Staff Mobile Device'
       });
 
-      setPunchResult({
-        kind,
-        message: kind === 'in'
-          ? `✅ Clocked IN at ${nowTime.substring(0,5)}. Have a great day!`
-          : `✅ Clocked OUT at ${nowTime.substring(0,5)}. See you tomorrow!`
-      });
-      setTimeout(() => setPunchResult(null), 5000);
+      return {
+        ok: true,
+        title: staff.name,
+        subtitle: kind === 'in'
+          ? `Clocked IN at ${nowTime.substring(0,5)}`
+          : `Clocked OUT at ${nowTime.substring(0,5)}`
+      };
     } catch (err: any) {
-      setPunchResult({ kind: 'error', message: `Failed to record punch: ${err.message}` });
-      setTimeout(() => setPunchResult(null), 5000);
+      return { ok: false, title: 'Failed to record punch', subtitle: err?.message || 'Try again.' };
     }
   };
 
@@ -429,18 +417,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
   return (
     <div className={`p-2 md:p-6 pb-24 md:pb-6 space-y-4 ${isWideTab ? 'w-full' : 'max-w-4xl mx-auto'}`}>
-      {/* Punch Result Toast */}
-      {punchResult && (
-        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-4 rounded-2xl shadow-2xl backdrop-blur border text-white font-semibold text-sm flex items-center gap-3 max-w-sm w-[90vw] transition-all animate-fade-in ${
-          punchResult.kind === 'in' ? 'bg-emerald-600/95 border-emerald-500/50' :
-          punchResult.kind === 'out' ? 'bg-blue-600/95 border-blue-500/50' :
-          punchResult.kind === 'already-done' ? 'bg-amber-600/95 border-amber-500/50' :
-          'bg-red-600/95 border-red-500/50'
-        }`}>
-          <span className="text-2xl">{punchResult.kind === 'in' ? '✅' : punchResult.kind === 'out' ? '👋' : punchResult.kind === 'already-done' ? '⚠️' : '❌'}</span>
-          <p>{punchResult.message}</p>
-        </div>
-      )}
+      {/* Punch confirmation now shown inside the scanner overlay */}
       {/* Section Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         {sections.map(s => (

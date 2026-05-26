@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode } from 'lucide-react';
 import { userService, AppUser, CreateUserInput, UpdateUserInput } from '../services/userService';
 import { locationService, Location } from '../services/locationService';
 import { appSettingsService } from '../services/appSettingsService';
+import { getQRRefreshSeconds, setQRRefreshSeconds } from '../utils/qrCrypto';
 import ShiftWindowsPanel from './ShiftWindowsPanel';
 import AttendanceRulesPanel from './AttendanceRulesPanel';
 import DeviceIntegration from './DeviceIntegration';
@@ -174,6 +175,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
     const [showTodayPunches, setShowTodayPunches] = useState(true);
     const [punchesSaving, setPunchesSaving] = useState(false);
     const [backupBusy, setBackupBusy] = useState(false);
+    const [qrRefresh, setQrRefresh] = useState<number>(getQRRefreshSeconds());
     // Form state
     const [formData, setFormData] = useState({
         email: '',
@@ -403,6 +405,41 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                     // TODO: wire up to attendanceService to process records
                 }}
             />
+
+            {/* QR Refresh Interval */}
+            <div className="glass-card-static p-4 rounded-xl flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                        <QrCode size={20} className="text-indigo-400" />
+                    </div>
+                    <div className="min-w-0">
+                        <h3 className="font-semibold text-[var(--text-primary)] text-sm">Attendance QR Refresh Interval</h3>
+                        <p className="text-xs text-[var(--text-muted)]">How often the tablet QR rotates. Default 7s. Range 3–60s.</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <input
+                        type="number"
+                        value={qrRefresh}
+                        onChange={(e) => setQrRefresh(Number(e.target.value))}
+                        className="input-premium w-20 text-center text-sm"
+                        min={3}
+                        max={60}
+                    />
+                    <span className="text-sm text-[var(--text-muted)]">sec</span>
+                    <button
+                        onClick={() => {
+                            const saved = setQRRefreshSeconds(qrRefresh);
+                            setQrRefresh(saved);
+                            setSuccess(`QR refresh set to ${saved}s`);
+                            setTimeout(() => setSuccess(''), 3000);
+                        }}
+                        className="btn-premium px-3 py-1.5 text-xs"
+                    >
+                        Save
+                    </button>
+                </div>
+            </div>
 
             {/* Default Salary Hike Interval */}
             <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">

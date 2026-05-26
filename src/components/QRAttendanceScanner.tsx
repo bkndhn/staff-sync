@@ -3,9 +3,16 @@ import { QrCode, XCircle, CheckCircle2, AlertTriangle, Loader2, Zap } from 'luci
 import { validateQRPayload } from '../utils/qrCrypto';
 import jsQR from 'jsqr';
 
+export interface ScanConfirmation {
+  ok: boolean;
+  title: string;     // e.g. "Ravi Kumar"
+  subtitle?: string; // e.g. "Clocked IN at 09:14"
+}
+
 interface Props {
   staffLocation: string;
-  onScanSuccess: (payload: any) => void;
+  /** Return a confirmation object — scanner will display it briefly and resume scanning. */
+  onScanSuccess: (payload: any) => Promise<ScanConfirmation> | ScanConfirmation;
   onClose: () => void;
 }
 
@@ -31,15 +38,17 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [scanCount, setScanCount] = useState(0); // for animation feedback
+  const [confirmation, setConfirmation] = useState<ScanConfirmation | null>(null);
+  const [scanCount, setScanCount] = useState(0);
   const [useNative, setUseNative] = useState<boolean | null>(null);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
   const processingRef = useRef(false);
   const activeRef = useRef(true);
+  const lastDecodedRef = useRef<{ value: string; at: number } | null>(null);
 
   const processFrame = useCallback(async (detector: any) => {
     if (!activeRef.current || processingRef.current) return;
@@ -75,6 +84,11 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
     } catch { /* ignore per-frame errors */ }
 
     if (decoded && !processingRef.current) {
+      // Debounce duplicate frames of the same QR within 2.5s (continuous-scan mode)
+      const now = Date.now();
+      const last = lastDecodedRef.current;
+      if (last && last.value === decoded && now - last.at < 2500) return;
+
       processingRef.current = true;
       setIsProcessing(true);
       setScanCount(c => c + 1);
@@ -82,10 +96,22 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
       const validation = await validateQRPayload(decoded, staffLocation);
 
       if (validation.valid) {
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(t => t.stop());
+        lastDecodedRef.current = { value: decoded, at: now };
+        try {
+          const result = await onScanSuccess(JSON.parse(decoded));
+          if (!activeRef.current) return;
+          setConfirmation(result);
+        } catch (e: any) {
+          setConfirmation({ ok: false, title: 'Failed to record', subtitle: e?.message || 'Try again.' });
         }
-        onScanSuccess(JSON.parse(decoded));
+        // Hold the confirmation card, then resume scanning automatically
+        setTimeout(() => {
+          if (activeRef.current) {
+            setConfirmation(null);
+            setIsProcessing(false);
+            processingRef.current = false;
+          }
+        }, 2500);
       } else {
         setError(validation.reason || 'Invalid QR Code');
         setTimeout(() => {
@@ -210,6 +236,24 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
             <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-3">
               <Loader2 size={32} className="text-indigo-400 animate-spin" />
               <p className="text-white/60 text-sm">Opening camera...</p>
+            </div>
+          )}
+
+          {/* Confirmation card — shows name + time, auto-dismisses */}
+          {confirmation && (
+            <div className="absolute inset-0 flex items-center justify-center p-4 animate-fade-in">
+              <div className={`w-full max-w-xs rounded-2xl p-5 text-center shadow-2xl border ${
+                confirmation.ok
+                  ? 'bg-emerald-500/95 border-emerald-300/40 text-white'
+                  : 'bg-amber-500/95 border-amber-300/40 text-white'
+              }`}>
+                <CheckCircle2 size={40} className="mx-auto mb-2 drop-shadow" />
+                <p className="text-lg font-bold leading-tight">{confirmation.title}</p>
+                {confirmation.subtitle && (
+                  <p className="text-sm opacity-95 mt-1">{confirmation.subtitle}</p>
+                )}
+                <p className="text-[11px] opacity-80 mt-3">Ready for next staff…</p>
+              </div>
             </div>
           )}
 

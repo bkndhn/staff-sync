@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { QrCode, RefreshCw } from 'lucide-react';
-import { generateQRPayload, QR_EXPIRATION_SECONDS } from '../utils/qrCrypto';
+import { generateQRPayload, getQRRefreshSeconds } from '../utils/qrCrypto';
 
 interface Props {
   location: string;
@@ -9,36 +9,49 @@ interface Props {
 
 const QRAttendanceGenerator: React.FC<Props> = ({ location }) => {
   const [payload, setPayload] = useState<string>('');
-  const [timeLeft, setTimeLeft] = useState<number>(QR_EXPIRATION_SECONDS);
+  const [refreshSec, setRefreshSec] = useState<number>(getQRRefreshSeconds());
+  const [timeLeft, setTimeLeft] = useState<number>(refreshSec);
 
   useEffect(() => {
     let active = true;
+    const period = getQRRefreshSeconds();
+    setRefreshSec(period);
+    setTimeLeft(period);
 
     const generate = async () => {
       const newPayload = await generateQRPayload(location);
       if (active) {
         setPayload(newPayload);
-        setTimeLeft(QR_EXPIRATION_SECONDS);
+        setTimeLeft(period);
       }
     };
 
-    // Initial generation
     generate();
 
-    // Timer interval
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           generate();
-          return QR_EXPIRATION_SECONDS;
+          return period;
         }
         return prev - 1;
       });
     }, 1000);
 
+    // React to settings changes from other tabs
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'qr_refresh_seconds') {
+        const n = getQRRefreshSeconds();
+        setRefreshSec(n);
+        setTimeLeft(n);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
     return () => {
       active = false;
       clearInterval(interval);
+      window.removeEventListener('storage', onStorage);
     };
   }, [location]);
 
@@ -73,7 +86,7 @@ const QRAttendanceGenerator: React.FC<Props> = ({ location }) => {
         <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
           <div 
             className={`h-full rounded-full transition-all duration-1000 ease-linear ${timeLeft <= 2 ? 'bg-orange-400' : 'bg-indigo-500'}`}
-            style={{ width: `${(timeLeft / QR_EXPIRATION_SECONDS) * 100}%` }}
+            style={{ width: `${(timeLeft / refreshSec) * 100}%` }}
           />
         </div>
       </div>
