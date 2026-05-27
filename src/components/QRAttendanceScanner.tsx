@@ -84,43 +84,44 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
     } catch { /* ignore per-frame errors */ }
 
     if (decoded && !processingRef.current) {
-      // Debounce duplicate frames of the same QR within 2.5s (continuous-scan mode)
+      // Strong duplicate-frame protection: ignore the same payload within 4s,
+      // regardless of whether the previous attempt succeeded or failed.
       const now = Date.now();
       const last = lastDecodedRef.current;
-      if (last && last.value === decoded && now - last.at < 2500) return;
+      if (last && last.value === decoded && now - last.at < 4000) return;
+      lastDecodedRef.current = { value: decoded, at: now };
 
       processingRef.current = true;
       setIsProcessing(true);
+      setError(null);
       setScanCount(c => c + 1);
+
+      const finish = (card: ScanConfirmation, holdMs: number) => {
+        if (!activeRef.current) return;
+        setConfirmation(card);
+        setTimeout(() => {
+          if (!activeRef.current) return;
+          setConfirmation(null);
+          setIsProcessing(false);
+          processingRef.current = false;
+          // Refresh the dup timestamp so the scanner is immediately ready
+          // for the next staff (different QR) without re-triggering this one.
+          lastDecodedRef.current = { value: decoded, at: Date.now() };
+        }, holdMs);
+      };
 
       const validation = await validateQRPayload(decoded, staffLocation);
 
-      if (validation.valid) {
-        lastDecodedRef.current = { value: decoded, at: now };
-        try {
-          const result = await onScanSuccess(JSON.parse(decoded));
-          if (!activeRef.current) return;
-          setConfirmation(result);
-        } catch (e: any) {
-          setConfirmation({ ok: false, title: 'Failed to record', subtitle: e?.message || 'Try again.' });
-        }
-        // Hold the confirmation card, then resume scanning automatically
-        setTimeout(() => {
-          if (activeRef.current) {
-            setConfirmation(null);
-            setIsProcessing(false);
-            processingRef.current = false;
-          }
-        }, 2500);
-      } else {
-        setError(validation.reason || 'Invalid QR Code');
-        setTimeout(() => {
-          if (activeRef.current) {
-            setError(null);
-            setIsProcessing(false);
-            processingRef.current = false;
-          }
-        }, 1800);
+      if (!validation.valid) {
+        finish({ ok: false, title: 'Invalid QR', subtitle: validation.reason || 'Please try again.' }, 2000);
+        return;
+      }
+
+      try {
+        const result = await onScanSuccess(JSON.parse(decoded));
+        finish(result, 2500);
+      } catch (e: any) {
+        finish({ ok: false, title: 'Failed to record', subtitle: e?.message || 'Try again.' }, 2200);
       }
     }
   }, [staffLocation, onScanSuccess]);
