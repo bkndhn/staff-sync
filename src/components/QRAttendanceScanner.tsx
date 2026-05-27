@@ -176,10 +176,10 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
   }, [processFrame]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-sm">
-      <div className="w-full max-w-sm bg-[var(--bg-app)] rounded-3xl overflow-hidden shadow-2xl border border-[var(--glass-border)] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/95 backdrop-blur-sm overflow-y-auto">
+      <div className="w-full max-w-sm bg-[var(--bg-app)] rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-[var(--glass-border)] flex flex-col my-auto">
         {/* Header */}
-        <div className="p-4 bg-[var(--bg-card)] border-b border-[var(--glass-border)] flex items-center justify-between">
+        <div className="p-3 sm:p-4 bg-[var(--bg-card)] border-b border-[var(--glass-border)] flex items-center justify-between">
           <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
             <QrCode size={20} className="text-indigo-400" />
             Scan Attendance QR
