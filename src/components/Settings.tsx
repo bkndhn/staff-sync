@@ -7,6 +7,7 @@ import { getQRRefreshSeconds, setQRRefreshSeconds } from '../utils/qrCrypto';
 import ShiftWindowsPanel from './ShiftWindowsPanel';
 import AttendanceRulesPanel from './AttendanceRulesPanel';
 import DeviceIntegration from './DeviceIntegration';
+import AdminQRTestMode from './AdminQRTestMode';
 
 interface SettingsProps {
     userRole: string;
@@ -440,6 +441,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                     </button>
                 </div>
             </div>
+
+            {/* Admin QR Test Mode — generate + validate */}
+            <AdminQRTestMode />
 
             {/* Default Salary Hike Interval */}
             <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">

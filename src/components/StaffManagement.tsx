@@ -1506,9 +1506,13 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                         <button onClick={() => setFaceModalStaff(member)} className="text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50" title="Face Samples">
                           <Camera size={16} />
                         </button>
-                        {member.deviceId && (
-                          <button onClick={() => handleResetDevice(member.id, member.name)} className="text-orange-600 hover:text-orange-800 p-1 rounded hover:bg-orange-50" title="Reset Device Lock">
+                        {member.deviceId ? (
+                          <button onClick={() => handleResetDevice(member.id, member.name)} className="text-orange-600 hover:text-orange-800 p-1 rounded hover:bg-orange-50" title={`Reset device lock (locked to device ${String(member.deviceId).substring(0,8)}…)`}>
                             <ShieldOff size={16} />
+                          </button>
+                        ) : (
+                          <button disabled className="text-gray-400 p-1 rounded cursor-not-allowed" title="No device locked yet — staff hasn't logged in from any device">
+                            <Shield size={16} />
                           </button>
                         )}
                         <button onClick={() => handleDelete(member)} className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50" title="Archive">
