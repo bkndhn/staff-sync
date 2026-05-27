@@ -7,6 +7,7 @@ import { getQRRefreshSeconds, setQRRefreshSeconds } from '../utils/qrCrypto';
 import ShiftWindowsPanel from './ShiftWindowsPanel';
 import AttendanceRulesPanel from './AttendanceRulesPanel';
 import DeviceIntegration from './DeviceIntegration';
+import AdminQRTestMode from './AdminQRTestMode';
 
 interface SettingsProps {
     userRole: string;
