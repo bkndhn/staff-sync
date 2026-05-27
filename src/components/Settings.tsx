@@ -442,6 +442,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                 </div>
             </div>
 
+            {/* Admin QR Test Mode — generate + validate */}
+            <AdminQRTestMode />
+
             {/* Default Salary Hike Interval */}
             <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
