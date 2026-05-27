@@ -240,18 +240,20 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
             </div>
           )}
 
-          {/* Confirmation card — shows name + time, auto-dismisses */}
+          {/* Confirmation card — shows name + time OR error, auto-dismisses */}
           {confirmation && (
-            <div className="absolute inset-0 flex items-center justify-center p-4 animate-fade-in">
-              <div className={`w-full max-w-xs rounded-2xl p-5 text-center shadow-2xl border ${
+            <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+              <div className={`w-full max-w-[260px] rounded-2xl p-4 sm:p-5 text-center shadow-2xl border ${
                 confirmation.ok
                   ? 'bg-emerald-500/95 border-emerald-300/40 text-white'
-                  : 'bg-amber-500/95 border-amber-300/40 text-white'
+                  : 'bg-red-500/95 border-red-300/40 text-white'
               }`}>
-                <CheckCircle2 size={40} className="mx-auto mb-2 drop-shadow" />
-                <p className="text-lg font-bold leading-tight">{confirmation.title}</p>
+                {confirmation.ok
+                  ? <CheckCircle2 size={36} className="mx-auto mb-2 drop-shadow" />
+                  : <AlertTriangle size={36} className="mx-auto mb-2 drop-shadow" />}
+                <p className="text-base sm:text-lg font-bold leading-tight break-words">{confirmation.title}</p>
                 {confirmation.subtitle && (
-                  <p className="text-sm opacity-95 mt-1">{confirmation.subtitle}</p>
+                  <p className="text-xs sm:text-sm opacity-95 mt-1 break-words">{confirmation.subtitle}</p>
                 )}
                 <p className="text-[11px] opacity-80 mt-3">Ready for next staff…</p>
               </div>
