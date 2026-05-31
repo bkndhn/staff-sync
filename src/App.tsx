@@ -17,6 +17,9 @@ import { AuditLogViewer } from './components/AuditLogViewer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { auditLogService } from './services/auditLogService';
 import { offlineSyncService } from './services/offlineSyncService';
+import { useOfflineSync } from './hooks/useOfflineSync';
+import { offlineDbService } from './services/offlineDb';
+
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
 const SalaryManagement = React.lazy(() => import('./components/SalaryManagement'));
 const PartTimeStaff = React.lazy(() => import('./components/PartTimeStaff'));
@@ -58,7 +61,11 @@ const ComponentLoader = () => <SkeletonLoader />;
 
 
 function App() {
+  // ── Capacitor Offline Sync — auto-syncs punches when network restores ────────
+  const { status: offlineSyncStatus } = useOfflineSync();
+
   const [user, setUser] = useState<User | null>(() => {
+
     // ── Synchronous session restore — no async useEffect needed ──────────────
     try {
       const saved = localStorage.getItem('staffManagementLogin');

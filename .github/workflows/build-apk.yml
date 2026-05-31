@@ -1,0 +1,94 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # also allows manual trigger from GitHub UI
+
+jobs:
+  build-apk:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout code ────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Setup Node.js ────────────────────────────────────────────────────
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # ── 3. Install dependencies ─────────────────────────────────────────────
+      - name: Install npm dependencies
+        run: npm install --legacy-peer-deps
+
+      # ── 4. Build the React/Vite web app ─────────────────────────────────────
+      - name: Build web app (vite build)
+        run: npm run build
+        env:
+          # Inject your Supabase credentials so the APK connects to the right DB
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      # ── 5. Setup Java (required for Android Gradle) ──────────────────────────
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # ── 6. Setup Android SDK ─────────────────────────────────────────────────
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # ── 7. Sync Capacitor → Android project ─────────────────────────────────
+      - name: Capacitor sync
+        run: npx cap sync android --no-open
+
+      # ── 8. Make gradlew executable ───────────────────────────────────────────
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      # ── 9. Build debug APK ───────────────────────────────────────────────────
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      # ── 10. Upload APK as downloadable artifact ──────────────────────────────
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: StaffSync-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      # ── 11. Create GitHub Release with APK (on main push) ───────────────────
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d-%H%M')" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-${{ steps.date.outputs.date }}
+          name: "Staff Sync APK — ${{ steps.date.outputs.date }}"
+          body: |
+            ## Staff Sync Android APK
+            
+            Auto-built from the latest `main` branch.
+            
+            ### Install Instructions
+            1. Download `app-debug.apk` below
+            2. Transfer to your Android phone
+            3. Enable "Install from unknown sources" in Settings
+            4. Open the APK file to install
+            
+            > ⚠️ This is a debug build. Safe for internal use.
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+          draft: false
+          prerelease: false

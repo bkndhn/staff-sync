@@ -1,96 +1,92 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { db } from '../lib/db';
-import { offlineSyncService } from '../services/offlineSyncService';
-import { punchEventService } from '../services/punchEventService';
+/**
+ * useOfflineSync — React hook
+ * Listens for network status changes using @capacitor/network
+ * and automatically triggers sync when connection is restored.
+ */
+import { useEffect, useState, useCallback } from 'react';
+import { Network } from '@capacitor/network';
+import { syncPendingPunches, offlineDbService } from '../services/offlineDb';
 
-export type SyncState = 'online-synced' | 'online-syncing' | 'offline';
+export interface SyncStatus {
+  isOnline: boolean;
+  pendingCount: number;
+  lastSyncTime: string | null;
+  isSyncing: boolean;
+  lastSyncResult: { synced: number; failed: number } | null;
+}
 
 export function useOfflineSync() {
-  const [syncState, setSyncState] = useState<SyncState>(navigator.onLine ? 'online-synced' : 'offline');
-  const [pendingCount, setPendingCount] = useState(0);
+  const [status, setStatus] = useState<SyncStatus>({
+    isOnline: true,
+    pendingCount: 0,
+    lastSyncTime: null,
+    isSyncing: false,
+    lastSyncResult: null,
+  });
 
-  // Re-check pending count periodically and on events
-  const updatePendingCount = async () => {
-    try {
-      const pending = await db.pendingPunches.count();
-      setPendingCount(pending);
-    } catch { /* ignore */ }
-  };
-
-  useEffect(() => {
-    const handleOnline = () => {
-      setSyncState('online-syncing');
-      performSync();
-    };
-    const handleOffline = () => {
-      setSyncState('offline');
-      updatePendingCount();
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    window.addEventListener('offline-sync-complete', updatePendingCount);
-    
-    // Initial sync check
-    if (navigator.onLine) {
-      performSync();
-    } else {
-      updatePendingCount();
-    }
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('offline-sync-complete', updatePendingCount);
-    };
+  const refreshPendingCount = useCallback(async () => {
+    const count = await offlineDbService.getPendingCount();
+    setStatus(prev => ({ ...prev, pendingCount: count }));
   }, []);
 
-  const performSync = async () => {
-    if (!navigator.onLine) return;
-    setSyncState('online-syncing');
-
+  const runSync = useCallback(async () => {
+    setStatus(prev => ({ ...prev, isSyncing: true }));
     try {
-      // 1. Flush any pending punches UP to Supabase (Uplink)
-      await offlineSyncService.flushQueue(async (punch) => {
-        // Strip offline-only fields before pushing
-        const { id, queuedAt, ...punchData } = punch;
-        await punchEventService.insert(punchData as any);
-      });
-      await updatePendingCount();
-
-      // 2. Pull data DOWN from Supabase (Downlink)
-      // Pull Staff
-      const { data: staffData } = await supabase.from('staff').select('*');
-      if (staffData) {
-        await db.staff.clear();
-        await db.staff.bulkPut(staffData as any);
-      }
-
-      // Pull Face Embeddings
-      const { data: faceData } = await supabase.from('face_embeddings').select('*');
-      if (faceData) {
-        await db.faceEmbeddings.clear();
-        await db.faceEmbeddings.bulkPut(faceData as any);
-      }
-
-      // Pull Shift Configs
-      const { data: shiftConfigData } = await supabase.from('location_shift_config').select('*');
-      if (shiftConfigData) {
-        await db.locationShiftConfig.clear();
-        await db.locationShiftConfig.bulkPut(shiftConfigData as any);
-      }
-
-      // We'll skip pulling locations/categories/floors for now unless explicitly requested
-      // This is sufficient for the Face Attendance page to work fully offline.
-
-      setSyncState('online-synced');
-    } catch (err) {
-      console.error('[OfflineSync] Downlink sync failed:', err);
-      // Stay in syncing state if it failed so user knows there's an issue, or revert to synced if it's intermittent
-      setSyncState('online-synced'); 
+      const result = await syncPendingPunches();
+      const count = await offlineDbService.getPendingCount();
+      setStatus(prev => ({
+        ...prev,
+        isSyncing: false,
+        pendingCount: count,
+        lastSyncTime: new Date().toLocaleTimeString('en-GB'),
+        lastSyncResult: result,
+      }));
+    } catch (e) {
+      setStatus(prev => ({ ...prev, isSyncing: false }));
     }
-  };
+  }, []);
 
-  return { syncState, pendingCount, forceSync: performSync };
+  useEffect(() => {
+    let removeListener: (() => void) | null = null;
+
+    const setup = async () => {
+      // Get initial network status
+      const netStatus = await Network.getStatus();
+      setStatus(prev => ({ ...prev, isOnline: netStatus.connected }));
+
+      // If online at startup, sync any queued punches
+      if (netStatus.connected) {
+        refreshPendingCount();
+        runSync();
+      }
+
+      // Listen for network changes
+      const handle = await Network.addListener('networkStatusChange', async (networkStatus) => {
+        const online = networkStatus.connected;
+        setStatus(prev => ({ ...prev, isOnline: online }));
+
+        if (online) {
+          console.log('[Network] Connection restored — syncing offline punches...');
+          await runSync();
+        } else {
+          console.log('[Network] Connection lost — punches will be saved locally.');
+          refreshPendingCount();
+        }
+      });
+
+      removeListener = () => handle.remove();
+    };
+
+    setup();
+
+    // Poll pending count every 30s as a fallback
+    const interval = setInterval(refreshPendingCount, 30000);
+
+    return () => {
+      removeListener?.();
+      clearInterval(interval);
+    };
+  }, [refreshPendingCount, runSync]);
+
+  return { status, runSync };
 }

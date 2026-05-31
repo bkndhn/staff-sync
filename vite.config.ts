@@ -5,11 +5,13 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  // CRITICAL for Capacitor: assets must load from relative paths inside APK
+  base: './',
   server: {
     host: "::",
     port: 8080,
     headers: {
-      // Required for onnxruntime-web WASM SIMD/threading
+      // Required for onnxruntime-web WASM SIMD/threading (web only - Capacitor WebView handles this differently)
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',
     },
@@ -25,9 +27,11 @@ export default defineConfig(({ mode }) => ({
   },
   optimizeDeps: {
     include: ['lucide-react'],
-    exclude: ['onnxruntime-web'], // Let Vite handle ONNX WASM natively
+    exclude: ['onnxruntime-web'],
   },
   build: {
+    // Capacitor needs smaller chunks for WebView loading performance
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -40,6 +44,6 @@ export default defineConfig(({ mode }) => ({
       },
     },
   },
-  // Ensure .wasm files are served correctly
   assetsInclude: ['**/*.wasm', '**/*.onnx'],
 }));
+
