@@ -10,6 +10,9 @@ jobs:
     name: Build Debug APK
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write   # needed to create GitHub Releases
+
     steps:
       # ── 1. Checkout code ────────────────────────────────────────────────────
       - name: Checkout repository
@@ -47,13 +50,23 @@ jobs:
 
       # ── 7. Sync Capacitor → Android project ─────────────────────────────────
       - name: Capacitor sync
-        run: npx cap sync android --no-open
+        run: npx cap sync android
 
-      # ── 8. Make gradlew executable ───────────────────────────────────────────
+      # ── 8. Cache Gradle dependencies ─────────────────────────────────────────
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      # ── 9. Make gradlew executable ───────────────────────────────────────────
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      # ── 9. Build debug APK ───────────────────────────────────────────────────
+      # ── 10. Build debug APK ───────────────────────────────────────────────────
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
@@ -74,21 +87,16 @@ jobs:
       - name: Create Release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: apk-${{ steps.date.outputs.date }}
           name: "Staff Sync APK — ${{ steps.date.outputs.date }}"
           body: |
             ## Staff Sync Android APK
-            
-            Auto-built from the latest `main` branch.
-            
-            ### Install Instructions
-            1. Download `app-debug.apk` below
-            2. Transfer to your Android phone
-            3. Enable "Install from unknown sources" in Settings
-            4. Open the APK file to install
-            
-            > ⚠️ This is a debug build. Safe for internal use.
+            Auto-built from the latest main branch.
+            Install: download APK, transfer to phone, enable unknown sources, tap to install.
           files: android/app/build/outputs/apk/debug/app-debug.apk
           draft: false
           prerelease: false
+          generate_release_notes: false
