@@ -1156,6 +1156,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       {showQRScanner && (
         <QRAttendanceScanner 
           staffLocation={staff.location}
+          allowAllLocations={true}
           onScanSuccess={handleQRScanSuccess}
           onClose={() => setShowQRScanner(false)}
         />
