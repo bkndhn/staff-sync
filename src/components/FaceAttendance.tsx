@@ -438,6 +438,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             if (!staffId) {
               setLastMatch({ name: 'Unknown face', distance, ts: Date.now(), status: 'unknown' });
               resetLiveness();
+              candidateRef.current = { staffId: null, hits: 0, distances: [] };
             } else if (!allowedStaffIds.has(staffId)) {
               const wrongStaff = allEmbeddings.find(e => e.staffId === staffId);
               setLastMatch({ name: wrongStaff?.staffName || 'Other location', distance, ts: Date.now(), status: 'wrong-loc' });
@@ -606,7 +607,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             </>
           ) : (
             <div className="p-8 pt-28 w-full h-full flex items-center justify-center bg-[var(--bg-app)] overflow-y-auto">
-              <QRAttendanceGenerator location={locationConfig?.locationName || staff[0]?.location || 'Main Branch'} />
+              <QRAttendanceGenerator location={userRole === 'admin' ? ALL_LOCATIONS_QR : (activeLocationName || locationConfig?.locationName || staff[0]?.location || 'Unknown Location')} />
             </div>
           )}
         </div>
