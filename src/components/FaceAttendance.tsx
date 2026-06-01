@@ -174,8 +174,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     (async () => {
       try {
         setLoadingEmbeddings(true);
-        // Determine the location for this session
-        const locationName = staff[0]?.location || '';
+        // Determine the location for this session. Admin kiosk generates an all-location QR;
+        // manager kiosk stays locked to the manager's assigned location.
+        const locationName = userRole === 'admin' ? 'All Locations' : (userLocation || staff[0]?.location || '');
         
         // Fetch all offline-cached data from Dexie
         const [list, sw, locCfgArr, kioskSettings] = await Promise.all([
@@ -206,7 +207,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       }
     })();
     return () => { cancelled = true; };
-  }, [staff]);
+  }, [staff, userLocation, userRole]);
 
   // ---- Camera ---------------------------------------------------------------
   const startCamera = useCallback(async () => {
