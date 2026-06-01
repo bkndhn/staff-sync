@@ -879,7 +879,7 @@ function App() {
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
             userRole={user?.role === 'staff' ? 'manager' : (user?.role || 'manager')}
-            userLocation={user?.location || ''}
+            userLocation={user?.role === 'manager' ? managerLocationName : (user?.location || '')}
             isDarkTheme={isDarkTheme}
             toggleTheme={toggleTheme}
           />
@@ -931,7 +931,7 @@ function App() {
               staff={staff}
               onUpdateAttendance={updateAttendance}
               onDeletePartTimeAttendance={deletePartTimeAttendance}
-              userLocation={user?.location}
+              userLocation={user?.role === 'manager' ? managerLocationName : user?.location}
             />
           </Suspense>
         );
@@ -959,8 +959,8 @@ function App() {
           <Suspense fallback={<ComponentLoader />}>
             <LeaveManagement
               userRole={user?.role as 'admin' | 'manager'}
-              userLocation={user?.location}
-              userName={user?.role === 'admin' ? 'Admin' : `${user?.location} Manager`}
+              userLocation={user?.role === 'manager' ? managerLocationName : user?.location}
+              userName={user?.role === 'admin' ? 'Admin' : `${managerLocationName || user?.location} Manager`}
             />
           </Suspense>
         );
@@ -977,6 +977,7 @@ function App() {
                 cacheService.invalidate(CACHE_KEYS.ATTENDANCE);
               }}
               userRole={user?.role as 'admin' | 'manager'}
+              userLocation={user?.role === 'manager' ? managerLocationName : user?.location}
             />
           </Suspense>
         );
