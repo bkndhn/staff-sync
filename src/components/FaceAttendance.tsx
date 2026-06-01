@@ -14,6 +14,7 @@ import QRAttendanceGenerator from './QRAttendanceGenerator';
 import { buildCentroidIndex, findBestMatch as findCosineMatch, type StaffEmbedding } from '../lib/embeddingMatcher';
 import { createLivenessState, updateLiveness, evaluateLiveness, type LivenessState } from '../lib/livenessEngine';
 import { db } from '../lib/db';
+import { ALL_LOCATIONS_QR, locationsMatch, normalizeLocationName } from '../utils/locationUtils';
 
 interface Props {
   staff: Staff[];                 // already location-scoped by App
@@ -23,6 +24,7 @@ interface Props {
   /** Full reload callback (used only for background cache invalidation, not UI) */
   onAttendanceUpdated?: () => void;
   userRole: 'admin' | 'manager';
+  userLocation?: string;
 }
 
 // Cosine distance threshold for ArcFace-style embeddings
@@ -46,7 +48,7 @@ const formatNow = () => {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 };
 
-const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole }) => {
+const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole, userLocation }) => {
   const { ready, loading, error, detect } = useFaceEngine(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
