@@ -486,9 +486,9 @@ function App() {
     // Filter staff based on user role and location
     let targetStaff = staff.filter(member => member.isActive);
 
-    if (user.role === 'manager' && user.location) {
+    if (user.role === 'manager' && managerLocationName) {
       // Managers can only bulk update staff from their location
-      targetStaff = targetStaff.filter(member => locationsMatch(member.location, managerLocationName || user.location));
+      targetStaff = targetStaff.filter(member => locationsMatch(member.location, managerLocationName));
     }
 
     const attendanceRecords = targetStaff.map(member => ({
