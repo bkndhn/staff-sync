@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { QrCode, RefreshCw } from 'lucide-react';
 import { generateQRPayload, getQRRefreshSeconds } from '../utils/qrCrypto';
+import { displayLocationName } from '../utils/locationUtils';
 
 interface Props {
   location: string;
@@ -62,6 +63,9 @@ const QRAttendanceGenerator: React.FC<Props> = ({ location }) => {
       <div className="flex items-center gap-2 mb-4 text-indigo-400">
         <QrCode size={24} />
         <h3 className="text-lg font-bold text-[var(--text-primary)]">Scan to Clock In/Out</h3>
+      </div>
+      <div className="mb-3 text-xs font-semibold text-[var(--text-secondary)] bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-full px-3 py-1">
+        {displayLocationName(location)}
       </div>
       
       <div className="bg-white p-4 rounded-xl shadow-inner mb-6 relative group overflow-hidden">

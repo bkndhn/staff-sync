@@ -14,6 +14,7 @@ import QRAttendanceGenerator from './QRAttendanceGenerator';
 import { buildCentroidIndex, findBestMatch as findCosineMatch, type StaffEmbedding } from '../lib/embeddingMatcher';
 import { createLivenessState, updateLiveness, evaluateLiveness, type LivenessState } from '../lib/livenessEngine';
 import { db } from '../lib/db';
+import { ALL_LOCATIONS_QR } from '../utils/locationUtils';
 
 interface Props {
   staff: Staff[];                 // already location-scoped by App
@@ -23,6 +24,7 @@ interface Props {
   /** Full reload callback (used only for background cache invalidation, not UI) */
   onAttendanceUpdated?: () => void;
   userRole: 'admin' | 'manager';
+  userLocation?: string;
 }
 
 // Cosine distance threshold for ArcFace-style embeddings
@@ -32,6 +34,7 @@ let COSINE_THRESHOLD = 0.38;
 const TOGGLE_MIN_SECONDS = 5 * 60;     // 5 minutes
 // Cooldown for the same kind (prevents double-IN flooding)
 const SAME_KIND_COOLDOWN = 60;         // 1 minute
+const MULTI_FRAME_REQUIRED = 3;
 
 type RecentEvent = {
   staffId: string;
@@ -46,11 +49,80 @@ const formatNow = () => {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 };
 
-const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole }) => {
+const assessFaceQuality = (
+  video: HTMLVideoElement,
+  result: {
+    qualityScore: number;
+    faceCount: number;
+    box: { x: number; y: number; width: number; height: number };
+    landmarks?: {
+      getLeftEye?: () => Array<{ x: number; y: number }>;
+      getRightEye?: () => Array<{ x: number; y: number }>;
+    };
+  },
+) => {
+  const { box } = result;
+  const frameArea = Math.max(1, video.videoWidth * video.videoHeight);
+  const faceAreaRatio = (box.width * box.height) / frameArea;
+  const sizeOk = faceAreaRatio > 0.015 && box.width >= 90 && box.height >= 90;
+  const confidenceOk = result.qualityScore >= 0.45;
+  const singleFaceOk = result.faceCount === 1;
+
+  let brightness = 128;
+  let sharpness = 40;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (ctx) {
+      ctx.drawImage(video, box.x, box.y, box.width, box.height, 0, 0, 64, 64);
+      const data = ctx.getImageData(0, 0, 64, 64).data;
+      let sum = 0;
+      const gray = new Uint8Array(64 * 64);
+      for (let i = 0; i < gray.length; i++) {
+        const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
+        const v = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+        gray[i] = v;
+        sum += v;
+      }
+      brightness = sum / gray.length;
+      let edge = 0;
+      for (let y = 1; y < 63; y++) {
+        for (let x = 1; x < 63; x++) {
+          const idx = y * 64 + x;
+          edge += Math.abs(gray[idx] - gray[idx - 1]) + Math.abs(gray[idx] - gray[idx - 64]);
+        }
+      }
+      sharpness = edge / (62 * 62 * 2);
+    }
+  } catch { /* quality checks are best-effort */ }
+
+  let angleOk = true;
+  try {
+    const leftEye = result.landmarks?.getLeftEye?.();
+    const rightEye = result.landmarks?.getRightEye?.();
+    if (leftEye?.length && rightEye?.length) {
+      const avg = (pts: Array<{ x: number; y: number }>) => pts.reduce((a, p) => ({ x: a.x + p.x / pts.length, y: a.y + p.y / pts.length }), { x: 0, y: 0 });
+      const l = avg(leftEye);
+      const r = avg(rightEye);
+      angleOk = Math.abs(l.y - r.y) / Math.max(1, Math.abs(l.x - r.x)) < 0.22;
+    }
+  } catch { /* ignore */ }
+
+  const lightOk = brightness >= 35 && brightness <= 225;
+  const blurOk = sharpness >= 8;
+  const ok = sizeOk && confidenceOk && singleFaceOk && lightOk && blurOk && angleOk;
+  const reason = !singleFaceOk ? 'Only one face allowed' : !sizeOk ? 'Move closer' : !confidenceOk ? 'Hold steady' : !lightOk ? 'Improve lighting' : !blurOk ? 'Image is blurry' : !angleOk ? 'Face camera straight' : 'Good';
+  return { ok, reason, brightness, sharpness };
+};
+
+const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole, userLocation }) => {
   const { ready, loading, error, detect } = useFaceEngine(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const lastPunchRef = useRef<Record<string, { ts: number; kind: 'in' | 'out' }>>({});
+  const candidateRef = useRef<{ staffId: string | null; hits: number; distances: number[] }>({ staffId: null, hits: 0, distances: [] });
   // Centroid index — rebuilt when embeddings change (cosine similarity matcher)
   const centroidIndexRef = useRef<Map<string, StaffEmbedding>>(new Map());
   // Per-candidate liveness state (new multi-layer engine)
@@ -74,6 +146,11 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+  const activeLocationName = useMemo(() => {
+    if (userRole === 'admin') return 'All Locations';
+    return userLocation || staff[0]?.location || '';
+  }, [staff, userLocation, userRole]);
+
   const todaysPunches = useMemo(() => {
     return attendance
       .filter(a => a.date === today && !a.isPartTime && (a.arrivalTime || a.leavingTime))
@@ -87,8 +164,8 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   // so we can detect "wrong location" attempts and surface a clear error.
   const allowedStaffIds = useMemo(() => new Set(staff.map(s => s.id)), [staff]);
   const scopedEmbeddings = useMemo(
-    () => allEmbeddings.filter(e => allowedStaffIds.has(e.staffId)),
-    [allEmbeddings, allowedStaffIds],
+    () => userRole === 'admin' ? allEmbeddings : allEmbeddings.filter(e => allowedStaffIds.has(e.staffId)),
+    [allEmbeddings, allowedStaffIds, userRole],
   );
 
   const staffById = useMemo(() => {
@@ -166,8 +243,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     (async () => {
       try {
         setLoadingEmbeddings(true);
-        // Determine the location for this session
-        const locationName = staff[0]?.location || '';
+        // Determine the location for this session. Admin kiosk generates an all-location QR;
+        // manager kiosk stays locked to the manager's assigned location.
+        const locationName = userRole === 'admin' ? 'All Locations' : (userLocation || staff[0]?.location || '');
         
         // Fetch all offline-cached data from Dexie
         const [list, sw, locCfgArr, kioskSettings] = await Promise.all([
@@ -198,7 +276,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       }
     })();
     return () => { cancelled = true; };
-  }, [staff]);
+  }, [staff, userLocation, userRole]);
 
   // ---- Camera ---------------------------------------------------------------
   const startCamera = useCallback(async () => {
@@ -351,18 +429,30 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           if (!r) {
             setLastMatch(null);
             resetLiveness();
-          } else {
-            const desc32 = new Float32Array(r.descriptor);
+            } else {
+              const quality = assessFaceQuality(videoRef.current!, r);
+              if (!quality.ok) {
+                setLastMatch({ name: quality.reason, distance: 1, ts: Date.now(), status: 'live-check' });
+                resetLiveness();
+                candidateRef.current = { staffId: null, hits: 0, distances: [] };
+                processing = false;
+                if (!cancelled) rafId = requestAnimationFrame(onFrame);
+                return;
+              }
+
+              const desc32 = new Float32Array(r.descriptor);
             const { staffId, distance } = findBestMatch(desc32);
 
             if (!staffId) {
               setLastMatch({ name: 'Unknown face', distance, ts: Date.now(), status: 'unknown' });
               resetLiveness();
+              candidateRef.current = { staffId: null, hits: 0, distances: [] };
             } else if (!allowedStaffIds.has(staffId)) {
               const wrongStaff = allEmbeddings.find(e => e.staffId === staffId);
               setLastMatch({ name: wrongStaff?.staffName || 'Other location', distance, ts: Date.now(), status: 'wrong-loc' });
-              setMessage({ kind: 'err', text: `${wrongStaff?.staffName || 'This staff'} does not belong to this location.` });
+              setMessage({ kind: 'err', text: `${wrongStaff?.staffName || 'This staff'} does not belong to ${activeLocationName || 'this location'}.` });
               resetLiveness();
+              candidateRef.current = { staffId: null, hits: 0, distances: [] };
             } else {
               const s = staffById.get(staffId);
               if (!s || !s.isActive) {
@@ -391,11 +481,27 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                   setMessage({ kind: 'err', text: `Spoof detected for ${s.name}. Blink naturally and try again.` });
                   resetLiveness();
                 } else if (liveness.isLive) {
-                  setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'ok' });
-                  await punch(s, distance, liveness.score);
-                  resetLiveness();
-                  // Brief pause so the success animation shows
-                  await new Promise(res => setTimeout(res, 1800));
+                  if (candidateRef.current.staffId !== staffId) {
+                    candidateRef.current = { staffId, hits: 1, distances: [distance] };
+                  } else {
+                    candidateRef.current = {
+                      staffId,
+                      hits: candidateRef.current.hits + 1,
+                      distances: [...candidateRef.current.distances, distance].slice(-MULTI_FRAME_REQUIRED),
+                    };
+                  }
+
+                  const avgDistance = candidateRef.current.distances.reduce((a, b) => a + b, 0) / candidateRef.current.distances.length;
+                  if (candidateRef.current.hits < MULTI_FRAME_REQUIRED) {
+                    setLastMatch({ name: `${s.name} (${candidateRef.current.hits}/${MULTI_FRAME_REQUIRED})`, distance: avgDistance, ts: Date.now(), status: 'live-check' });
+                  } else {
+                    setLastMatch({ name: s.name, distance: avgDistance, ts: Date.now(), status: 'ok' });
+                    await punch(s, avgDistance, liveness.score);
+                    resetLiveness();
+                    candidateRef.current = { staffId: null, hits: 0, distances: [] };
+                    // Brief pause so the success animation shows
+                    await new Promise(res => setTimeout(res, 1800));
+                  }
                 }
               }
             }
@@ -408,7 +514,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
     rafId = requestAnimationFrame(onFrame);
     return () => { cancelled = true; cancelAnimationFrame(rafId); };
-  }, [ready, cameraOn, allEmbeddings, detect, findBestMatch, staffById, allowedStaffIds, punch]);
+  }, [ready, cameraOn, allEmbeddings, detect, findBestMatch, staffById, allowedStaffIds, activeLocationName, punch]);
 
   const enrolledCount = enrolledStaffIds.size;
   const totalActive = staff.filter(s => s.isActive).length;
@@ -509,7 +615,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             </>
           ) : (
             <div className="p-8 pt-28 w-full h-full flex items-center justify-center bg-[var(--bg-app)] overflow-y-auto">
-              <QRAttendanceGenerator location={locationConfig?.locationName || staff[0]?.location || 'Main Branch'} />
+              <QRAttendanceGenerator location={userRole === 'admin' ? ALL_LOCATIONS_QR : (activeLocationName || locationConfig?.locationName || staff[0]?.location || 'Unknown Location')} />
             </div>
           )}
         </div>

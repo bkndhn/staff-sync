@@ -11,6 +11,7 @@ export interface ScanConfirmation {
 
 interface Props {
   staffLocation: string;
+  allowAllLocations?: boolean;
   /** Return a confirmation object — scanner will display it briefly and resume scanning. */
   onScanSuccess: (payload: any) => Promise<ScanConfirmation> | ScanConfirmation;
   onClose: () => void;
@@ -34,7 +35,7 @@ const getNativeDetector = (() => {
   };
 })();
 
-const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, onClose }) => {
+const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, allowAllLocations = true, onScanSuccess, onClose }) => {
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -110,7 +111,7 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
         }, holdMs);
       };
 
-      const validation = await validateQRPayload(decoded, staffLocation);
+      const validation = await validateQRPayload(decoded, staffLocation, { allowAllLocations });
 
       if (!validation.valid) {
         finish({ ok: false, title: 'Invalid QR', subtitle: validation.reason || 'Please try again.' }, 2000);
@@ -124,7 +125,7 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
         finish({ ok: false, title: 'Failed to record', subtitle: e?.message || 'Try again.' }, 2200);
       }
     }
-  }, [staffLocation, onScanSuccess]);
+  }, [staffLocation, allowAllLocations, onScanSuccess]);
 
   useEffect(() => {
     activeRef.current = true;

@@ -17,6 +17,8 @@ import { AuditLogViewer } from './components/AuditLogViewer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { auditLogService } from './services/auditLogService';
 import { offlineSyncService } from './services/offlineSyncService';
+import { isUuidLike, locationsMatch, normalizeLocationName } from './utils/locationUtils';
+import { locationService } from './services/locationService';
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
 const SalaryManagement = React.lazy(() => import('./components/SalaryManagement'));
 const PartTimeStaff = React.lazy(() => import('./components/PartTimeStaff'));
@@ -264,7 +266,7 @@ function App() {
     cacheService.invalidate(CACHE_KEYS.ATTENDANCE);
   }, []);
 
-  const handleLogin = (userData: { email: string; role: string; location?: string; staffId?: string; staffName?: string }) => {
+  const handleLogin = (userData: { email: string; role: string; location?: string; locationId?: string | null; staffId?: string; staffName?: string }) => {
     setUser(userData as User);
   };
 
@@ -275,23 +277,47 @@ function App() {
     setActiveTab('Dashboard');
   };
 
+  useEffect(() => {
+    if (user?.role !== 'manager') return;
+    const needsName = isUuidLike(user.location) || (!!user.locationId && normalizeLocationName(user.location) !== normalizeLocationName(user.locationId));
+    if (!needsName && user.location) return;
+    locationService.getLocations().then(locations => {
+      const matched = locations.find(location => location.id === user.locationId || location.id === user.location);
+      if (!matched?.name || matched.name === user.location) return;
+      const nextUser = { ...user, location: matched.name, locationId: matched.id } as User;
+      setUser(nextUser);
+      try {
+        const saved = JSON.parse(localStorage.getItem('staffManagementLogin') || '{}');
+        localStorage.setItem('staffManagementLogin', JSON.stringify({ ...saved, user: nextUser }));
+      } catch { /* ignore */ }
+    });
+  }, [user]);
+
+  const managerLocationName = useMemo(() => {
+    if (user?.role !== 'manager') return '';
+    if (user.location && !isUuidLike(user.location)) return user.location;
+    const id = user.locationId || (isUuidLike(user.location) ? user.location : null);
+    const matched = id ? staff.find(member => locationsMatch(member.location, id) || member.location === id) : null;
+    return matched?.location || user.location || '';
+  }, [staff, user?.role, user?.location, user?.locationId]);
+
   // Filter staff based on user role and location - memoized for performance
   const filteredStaff = useMemo(() => {
     if (user?.role === 'admin') {
       return staff;
-    } else if (user?.role === 'manager' && user.location) {
-      return staff.filter(member => member.location === user.location);
+    } else if (user?.role === 'manager' && managerLocationName) {
+      return staff.filter(member => locationsMatch(member.location, managerLocationName));
     }
     return [];
-  }, [staff, user?.role, user?.location]);
+  }, [staff, user?.role, managerLocationName]);
 
   // Filter attendance based on user role and location - memoized for performance
   const filteredAttendance = useMemo(() => {
     if (user?.role === 'admin') {
       return attendance;
-    } else if (user?.role === 'manager' && user.location) {
+    } else if (user?.role === 'manager' && managerLocationName) {
       const locationStaffIds = staff
-        .filter(member => member.location === user.location)
+        .filter(member => locationsMatch(member.location, managerLocationName))
         .map(member => member.id);
 
       return attendance.filter(record =>
@@ -301,7 +327,7 @@ function App() {
       );
     }
     return [];
-  }, [attendance, staff, user?.role, user?.location]);
+  }, [attendance, staff, user?.role, managerLocationName]);
 
   // Auto-carry forward advances from previous month
   useEffect(() => {
@@ -460,9 +486,9 @@ function App() {
     // Filter staff based on user role and location
     let targetStaff = staff.filter(member => member.isActive);
 
-    if (user.role === 'manager' && user.location) {
+    if (user.role === 'manager' && managerLocationName) {
       // Managers can only bulk update staff from their location
-      targetStaff = targetStaff.filter(member => member.location === user.location);
+      targetStaff = targetStaff.filter(member => locationsMatch(member.location, managerLocationName));
     }
 
     const attendanceRecords = targetStaff.map(member => ({
@@ -853,7 +879,7 @@ function App() {
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
             userRole={user?.role === 'staff' ? 'manager' : (user?.role || 'manager')}
-            userLocation={user?.location || ''}
+            userLocation={user?.role === 'manager' ? managerLocationName : (user?.location || '')}
             isDarkTheme={isDarkTheme}
             toggleTheme={toggleTheme}
           />
@@ -905,7 +931,7 @@ function App() {
               staff={staff}
               onUpdateAttendance={updateAttendance}
               onDeletePartTimeAttendance={deletePartTimeAttendance}
-              userLocation={user?.location}
+              userLocation={user?.role === 'manager' ? managerLocationName : user?.location}
             />
           </Suspense>
         );
@@ -933,8 +959,8 @@ function App() {
           <Suspense fallback={<ComponentLoader />}>
             <LeaveManagement
               userRole={user?.role as 'admin' | 'manager'}
-              userLocation={user?.location}
-              userName={user?.role === 'admin' ? 'Admin' : `${user?.location} Manager`}
+              userLocation={user?.role === 'manager' ? managerLocationName : user?.location}
+              userName={user?.role === 'admin' ? 'Admin' : `${managerLocationName || user?.location} Manager`}
             />
           </Suspense>
         );
@@ -951,6 +977,7 @@ function App() {
                 cacheService.invalidate(CACHE_KEYS.ATTENDANCE);
               }}
               userRole={user?.role as 'admin' | 'manager'}
+              userLocation={user?.role === 'manager' ? managerLocationName : user?.location}
             />
           </Suspense>
         );
