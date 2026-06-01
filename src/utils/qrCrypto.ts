@@ -1,3 +1,5 @@
+import { isAllLocationsQR, locationsMatch } from './locationUtils';
+
 export const QR_SECRET_KEY = 'staff_sync_qr_attendance_secret_2026';
 
 /** Default refresh window if the admin hasn't customised it. */
@@ -50,14 +52,15 @@ export const generateQRPayload = async (location: string): Promise<string> => {
   return JSON.stringify({ loc: location, ts: timestamp, sig: sig.substring(0, 16) });
 };
 
-export const validateQRPayload = async (payloadStr: string, staffLocation: string): Promise<{ valid: boolean; reason?: string }> => {
+export const validateQRPayload = async (payloadStr: string, staffLocation: string, options?: { allowAllLocations?: boolean }): Promise<{ valid: boolean; reason?: string; payload?: any }> => {
   try {
     const payload = JSON.parse(payloadStr);
     if (!payload.loc || !payload.ts || !payload.sig) {
       return { valid: false, reason: 'Invalid QR format' };
     }
 
-    if (payload.loc !== staffLocation) {
+    const allLocationsAllowed = options?.allowAllLocations && isAllLocationsQR(payload.loc);
+    if (!allLocationsAllowed && !locationsMatch(payload.loc, staffLocation)) {
       return { valid: false, reason: 'QR code is for a different branch/location' };
     }
 
@@ -72,7 +75,7 @@ export const validateQRPayload = async (payloadStr: string, staffLocation: strin
       return { valid: false, reason: 'Invalid signature. Fake QR code detected.' };
     }
 
-    return { valid: true };
+    return { valid: true, payload };
   } catch {
     return { valid: false, reason: 'Malformed QR data' };
   }
