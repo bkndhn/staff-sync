@@ -188,6 +188,7 @@ export interface User {
   email: string;
   role: 'admin' | 'manager' | 'staff';
   location?: string;
+  locationId?: string | null;
   staffId?: string;
   staffName?: string;
 }
