@@ -125,7 +125,7 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, allowAllLocations
         finish({ ok: false, title: 'Failed to record', subtitle: e?.message || 'Try again.' }, 2200);
       }
     }
-  }, [staffLocation, onScanSuccess]);
+  }, [staffLocation, allowAllLocations, onScanSuccess]);
 
   useEffect(() => {
     activeRef.current = true;
