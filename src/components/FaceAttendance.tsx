@@ -421,8 +421,18 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           if (!r) {
             setLastMatch(null);
             resetLiveness();
-          } else {
-            const desc32 = new Float32Array(r.descriptor);
+            } else {
+              const quality = assessFaceQuality(videoRef.current!, r);
+              if (!quality.ok) {
+                setLastMatch({ name: quality.reason, distance: 1, ts: Date.now(), status: 'live-check' });
+                resetLiveness();
+                candidateRef.current = { staffId: null, hits: 0, distances: [] };
+                processing = false;
+                if (!cancelled) rafId = requestAnimationFrame(onFrame);
+                return;
+              }
+
+              const desc32 = new Float32Array(r.descriptor);
             const { staffId, distance } = findBestMatch(desc32);
 
             if (!staffId) {
@@ -431,8 +441,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             } else if (!allowedStaffIds.has(staffId)) {
               const wrongStaff = allEmbeddings.find(e => e.staffId === staffId);
               setLastMatch({ name: wrongStaff?.staffName || 'Other location', distance, ts: Date.now(), status: 'wrong-loc' });
-              setMessage({ kind: 'err', text: `${wrongStaff?.staffName || 'This staff'} does not belong to this location.` });
+              setMessage({ kind: 'err', text: `${wrongStaff?.staffName || 'This staff'} does not belong to ${activeLocationName || 'this location'}.` });
               resetLiveness();
+              candidateRef.current = { staffId: null, hits: 0, distances: [] };
             } else {
               const s = staffById.get(staffId);
               if (!s || !s.isActive) {
@@ -461,11 +472,27 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                   setMessage({ kind: 'err', text: `Spoof detected for ${s.name}. Blink naturally and try again.` });
                   resetLiveness();
                 } else if (liveness.isLive) {
-                  setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'ok' });
-                  await punch(s, distance, liveness.score);
-                  resetLiveness();
-                  // Brief pause so the success animation shows
-                  await new Promise(res => setTimeout(res, 1800));
+                  if (candidateRef.current.staffId !== staffId) {
+                    candidateRef.current = { staffId, hits: 1, distances: [distance] };
+                  } else {
+                    candidateRef.current = {
+                      staffId,
+                      hits: candidateRef.current.hits + 1,
+                      distances: [...candidateRef.current.distances, distance].slice(-MULTI_FRAME_REQUIRED),
+                    };
+                  }
+
+                  const avgDistance = candidateRef.current.distances.reduce((a, b) => a + b, 0) / candidateRef.current.distances.length;
+                  if (candidateRef.current.hits < MULTI_FRAME_REQUIRED) {
+                    setLastMatch({ name: `${s.name} (${candidateRef.current.hits}/${MULTI_FRAME_REQUIRED})`, distance: avgDistance, ts: Date.now(), status: 'live-check' });
+                  } else {
+                    setLastMatch({ name: s.name, distance: avgDistance, ts: Date.now(), status: 'ok' });
+                    await punch(s, avgDistance, liveness.score);
+                    resetLiveness();
+                    candidateRef.current = { staffId: null, hits: 0, distances: [] };
+                    // Brief pause so the success animation shows
+                    await new Promise(res => setTimeout(res, 1800));
+                  }
                 }
               }
             }
