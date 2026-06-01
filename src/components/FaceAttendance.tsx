@@ -53,6 +53,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const lastPunchRef = useRef<Record<string, { ts: number; kind: 'in' | 'out' }>>({});
+  const candidateRef = useRef<{ staffId: string | null; hits: number; distances: number[] }>({ staffId: null, hits: 0, distances: [] });
   // Centroid index — rebuilt when embeddings change (cosine similarity matcher)
   const centroidIndexRef = useRef<Map<string, StaffEmbedding>>(new Map());
   // Per-candidate liveness state (new multi-layer engine)
@@ -76,6 +77,11 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+  const activeLocationName = useMemo(() => {
+    if (userRole === 'admin') return 'All Locations';
+    return userLocation || staff[0]?.location || '';
+  }, [staff, userLocation, userRole]);
+
   const todaysPunches = useMemo(() => {
     return attendance
       .filter(a => a.date === today && !a.isPartTime && (a.arrivalTime || a.leavingTime))
@@ -89,8 +95,8 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   // so we can detect "wrong location" attempts and surface a clear error.
   const allowedStaffIds = useMemo(() => new Set(staff.map(s => s.id)), [staff]);
   const scopedEmbeddings = useMemo(
-    () => allEmbeddings.filter(e => allowedStaffIds.has(e.staffId)),
-    [allEmbeddings, allowedStaffIds],
+    () => userRole === 'admin' ? allEmbeddings : allEmbeddings.filter(e => allowedStaffIds.has(e.staffId)),
+    [allEmbeddings, allowedStaffIds, userRole],
   );
 
   const staffById = useMemo(() => {
