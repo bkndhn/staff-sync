@@ -18,6 +18,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { auditLogService } from './services/auditLogService';
 import { offlineSyncService } from './services/offlineSyncService';
 import { isUuidLike, locationsMatch, normalizeLocationName } from './utils/locationUtils';
+import { locationService } from './services/locationService';
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
 const SalaryManagement = React.lazy(() => import('./components/SalaryManagement'));
 const PartTimeStaff = React.lazy(() => import('./components/PartTimeStaff'));
@@ -276,6 +277,22 @@ function App() {
     setActiveTab('Dashboard');
   };
 
+  useEffect(() => {
+    if (user?.role !== 'manager') return;
+    const needsName = isUuidLike(user.location) || (!!user.locationId && normalizeLocationName(user.location) !== normalizeLocationName(user.locationId));
+    if (!needsName && user.location) return;
+    locationService.getLocations().then(locations => {
+      const matched = locations.find(location => location.id === user.locationId || location.id === user.location);
+      if (!matched?.name || matched.name === user.location) return;
+      const nextUser = { ...user, location: matched.name, locationId: matched.id } as User;
+      setUser(nextUser);
+      try {
+        const saved = JSON.parse(localStorage.getItem('staffManagementLogin') || '{}');
+        localStorage.setItem('staffManagementLogin', JSON.stringify({ ...saved, user: nextUser }));
+      } catch { /* ignore */ }
+    });
+  }, [user]);
+
   const managerLocationName = useMemo(() => {
     if (user?.role !== 'manager') return '';
     if (user.location && !isUuidLike(user.location)) return user.location;
@@ -471,7 +488,7 @@ function App() {
 
     if (user.role === 'manager' && user.location) {
       // Managers can only bulk update staff from their location
-      targetStaff = targetStaff.filter(member => member.location === user.location);
+      targetStaff = targetStaff.filter(member => locationsMatch(member.location, managerLocationName || user.location));
     }
 
     const attendanceRecords = targetStaff.map(member => ({
