@@ -17,6 +17,7 @@ import { AuditLogViewer } from './components/AuditLogViewer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { auditLogService } from './services/auditLogService';
 import { offlineSyncService } from './services/offlineSyncService';
+import { isUuidLike, locationsMatch, normalizeLocationName } from './utils/locationUtils';
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
 const SalaryManagement = React.lazy(() => import('./components/SalaryManagement'));
 const PartTimeStaff = React.lazy(() => import('./components/PartTimeStaff'));
@@ -264,7 +265,7 @@ function App() {
     cacheService.invalidate(CACHE_KEYS.ATTENDANCE);
   }, []);
 
-  const handleLogin = (userData: { email: string; role: string; location?: string; staffId?: string; staffName?: string }) => {
+  const handleLogin = (userData: { email: string; role: string; location?: string; locationId?: string | null; staffId?: string; staffName?: string }) => {
     setUser(userData as User);
   };
 
@@ -275,23 +276,31 @@ function App() {
     setActiveTab('Dashboard');
   };
 
+  const managerLocationName = useMemo(() => {
+    if (user?.role !== 'manager') return '';
+    if (user.location && !isUuidLike(user.location)) return user.location;
+    const id = user.locationId || (isUuidLike(user.location) ? user.location : null);
+    const matched = id ? staff.find(member => locationsMatch(member.location, id) || member.location === id) : null;
+    return matched?.location || user.location || '';
+  }, [staff, user?.role, user?.location, user?.locationId]);
+
   // Filter staff based on user role and location - memoized for performance
   const filteredStaff = useMemo(() => {
     if (user?.role === 'admin') {
       return staff;
-    } else if (user?.role === 'manager' && user.location) {
-      return staff.filter(member => member.location === user.location);
+    } else if (user?.role === 'manager' && managerLocationName) {
+      return staff.filter(member => locationsMatch(member.location, managerLocationName));
     }
     return [];
-  }, [staff, user?.role, user?.location]);
+  }, [staff, user?.role, managerLocationName]);
 
   // Filter attendance based on user role and location - memoized for performance
   const filteredAttendance = useMemo(() => {
     if (user?.role === 'admin') {
       return attendance;
-    } else if (user?.role === 'manager' && user.location) {
+    } else if (user?.role === 'manager' && managerLocationName) {
       const locationStaffIds = staff
-        .filter(member => member.location === user.location)
+        .filter(member => locationsMatch(member.location, managerLocationName))
         .map(member => member.id);
 
       return attendance.filter(record =>
@@ -301,7 +310,7 @@ function App() {
       );
     }
     return [];
-  }, [attendance, staff, user?.role, user?.location]);
+  }, [attendance, staff, user?.role, managerLocationName]);
 
   // Auto-carry forward advances from previous month
   useEffect(() => {
