@@ -3,6 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { QrCode, RefreshCw, CheckCircle2, XCircle, Beaker } from 'lucide-react';
 import { generateQRPayload, validateQRPayload, getQRRefreshSeconds } from '../utils/qrCrypto';
 import { locationService, type Location } from '../services/locationService';
+import { ALL_LOCATIONS_QR, displayLocationName } from '../utils/locationUtils';
 
 /**
  * Admin-only test mode:
@@ -59,7 +60,7 @@ const AdminQRTestMode: React.FC = () => {
 
   const handleValidate = async () => {
     if (!validateText.trim()) return;
-    const res = await validateQRPayload(validateText.trim(), validateLocation);
+    const res = await validateQRPayload(validateText.trim(), validateLocation, { allowAllLocations: true });
     let payloadObj: any = null;
     let ageSec: number | undefined;
     try {
@@ -101,6 +102,7 @@ const AdminQRTestMode: React.FC = () => {
                 onChange={(e) => setSelectedLocation(e.target.value)}
                 className="input-premium w-full text-sm py-1.5"
               >
+                <option value={ALL_LOCATIONS_QR}>All Locations (Admin)</option>
                 {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
               </select>
             </div>
@@ -182,7 +184,7 @@ const AdminQRTestMode: React.FC = () => {
               </div>
               {validateResult.payload && (
                 <div className="mt-2 text-[11px] text-white/70 font-mono space-y-0.5">
-                  <div>loc: <span className="text-white">{String(validateResult.payload.loc)}</span></div>
+                  <div>loc: <span className="text-white">{displayLocationName(String(validateResult.payload.loc))}</span></div>
                   <div>ts: <span className="text-white">{String(validateResult.payload.ts)}</span></div>
                   {typeof validateResult.ageSec === 'number' && (
                     <div>age: <span className="text-white">{validateResult.ageSec}s</span> (window: {getQRRefreshSeconds() + 3}s)</div>
