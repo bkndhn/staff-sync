@@ -34,6 +34,7 @@ let COSINE_THRESHOLD = 0.38;
 const TOGGLE_MIN_SECONDS = 5 * 60;     // 5 minutes
 // Cooldown for the same kind (prevents double-IN flooding)
 const SAME_KIND_COOLDOWN = 60;         // 1 minute
+const MULTI_FRAME_REQUIRED = 3;
 
 type RecentEvent = {
   staffId: string;
@@ -46,6 +47,66 @@ type RecentEvent = {
 const formatNow = () => {
   const d = new Date();
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+};
+
+const assessFaceQuality = (
+  video: HTMLVideoElement,
+  result: { qualityScore: number; faceCount: number; box: { x: number; y: number; width: number; height: number }; landmarks?: any },
+) => {
+  const { box } = result;
+  const frameArea = Math.max(1, video.videoWidth * video.videoHeight);
+  const faceAreaRatio = (box.width * box.height) / frameArea;
+  const sizeOk = faceAreaRatio > 0.015 && box.width >= 90 && box.height >= 90;
+  const confidenceOk = result.qualityScore >= 0.45;
+  const singleFaceOk = result.faceCount === 1;
+
+  let brightness = 128;
+  let sharpness = 40;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (ctx) {
+      ctx.drawImage(video, box.x, box.y, box.width, box.height, 0, 0, 64, 64);
+      const data = ctx.getImageData(0, 0, 64, 64).data;
+      let sum = 0;
+      const gray = new Uint8Array(64 * 64);
+      for (let i = 0; i < gray.length; i++) {
+        const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
+        const v = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+        gray[i] = v;
+        sum += v;
+      }
+      brightness = sum / gray.length;
+      let edge = 0;
+      for (let y = 1; y < 63; y++) {
+        for (let x = 1; x < 63; x++) {
+          const idx = y * 64 + x;
+          edge += Math.abs(gray[idx] - gray[idx - 1]) + Math.abs(gray[idx] - gray[idx - 64]);
+        }
+      }
+      sharpness = edge / (62 * 62 * 2);
+    }
+  } catch { /* quality checks are best-effort */ }
+
+  let angleOk = true;
+  try {
+    const leftEye = result.landmarks?.getLeftEye?.();
+    const rightEye = result.landmarks?.getRightEye?.();
+    if (leftEye?.length && rightEye?.length) {
+      const avg = (pts: Array<{ x: number; y: number }>) => pts.reduce((a, p) => ({ x: a.x + p.x / pts.length, y: a.y + p.y / pts.length }), { x: 0, y: 0 });
+      const l = avg(leftEye);
+      const r = avg(rightEye);
+      angleOk = Math.abs(l.y - r.y) / Math.max(1, Math.abs(l.x - r.x)) < 0.22;
+    }
+  } catch { /* ignore */ }
+
+  const lightOk = brightness >= 35 && brightness <= 225;
+  const blurOk = sharpness >= 8;
+  const ok = sizeOk && confidenceOk && singleFaceOk && lightOk && blurOk && angleOk;
+  const reason = !singleFaceOk ? 'Only one face allowed' : !sizeOk ? 'Move closer' : !confidenceOk ? 'Hold steady' : !lightOk ? 'Improve lighting' : !blurOk ? 'Image is blurry' : !angleOk ? 'Face camera straight' : 'Good';
+  return { ok, reason, brightness, sharpness };
 };
 
 const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole, userLocation }) => {
