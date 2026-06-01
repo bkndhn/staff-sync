@@ -51,7 +51,15 @@ const formatNow = () => {
 
 const assessFaceQuality = (
   video: HTMLVideoElement,
-  result: { qualityScore: number; faceCount: number; box: { x: number; y: number; width: number; height: number }; landmarks?: any },
+  result: {
+    qualityScore: number;
+    faceCount: number;
+    box: { x: number; y: number; width: number; height: number };
+    landmarks?: {
+      getLeftEye?: () => Array<{ x: number; y: number }>;
+      getRightEye?: () => Array<{ x: number; y: number }>;
+    };
+  },
 ) => {
   const { box } = result;
   const frameArea = Math.max(1, video.videoWidth * video.videoHeight);
@@ -506,7 +514,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
     rafId = requestAnimationFrame(onFrame);
     return () => { cancelled = true; cancelAnimationFrame(rafId); };
-  }, [ready, cameraOn, allEmbeddings, detect, findBestMatch, staffById, allowedStaffIds, punch]);
+  }, [ready, cameraOn, allEmbeddings, detect, findBestMatch, staffById, allowedStaffIds, activeLocationName, punch]);
 
   const enrolledCount = enrolledStaffIds.size;
   const totalActive = staff.filter(s => s.isActive).length;
