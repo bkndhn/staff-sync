@@ -14,7 +14,7 @@ import QRAttendanceGenerator from './QRAttendanceGenerator';
 import { buildCentroidIndex, findBestMatch as findCosineMatch, type StaffEmbedding } from '../lib/embeddingMatcher';
 import { createLivenessState, updateLiveness, evaluateLiveness, type LivenessState } from '../lib/livenessEngine';
 import { db } from '../lib/db';
-import { ALL_LOCATIONS_QR, locationsMatch, normalizeLocationName } from '../utils/locationUtils';
+import { ALL_LOCATIONS_QR } from '../utils/locationUtils';
 
 interface Props {
   staff: Staff[];                 // already location-scoped by App
