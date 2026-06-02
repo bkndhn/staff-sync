@@ -23,6 +23,7 @@ interface Props {
   /** Full reload callback (used only for background cache invalidation, not UI) */
   onAttendanceUpdated?: () => void;
   userRole: 'admin' | 'manager';
+  userLocation?: string;
 }
 
 // Cosine distance threshold for ArcFace-style embeddings
@@ -46,7 +47,7 @@ const formatNow = () => {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 };
 
-const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole }) => {
+const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole, userLocation }) => {
   const { ready, loading, error, detect } = useFaceEngine(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -71,6 +72,18 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const [message, setMessage] = useState<{ kind: 'ok' | 'err' | 'warn'; text: string } | null>(null);
   const [editing, setEditing] = useState<Record<string, { arrival: string; leaving: string }>>({});
   const [viewMode, setViewMode] = useState<'camera' | 'qr'>('camera');
+
+  const availableLocations = useMemo(() => Array.from(new Set(staff.map(s => s.location).filter(Boolean))), [staff]);
+  const [selectedLocation, setSelectedLocation] = useState<string>(
+    userRole === 'manager' ? (userLocation || staff[0]?.location || '') : (availableLocations.length > 0 ? availableLocations[0] : 'Main Branch')
+  );
+
+  useEffect(() => {
+    // If a manager's location wasn't ready on first mount, force sync it once available
+    if (userRole === 'manager' && userLocation && selectedLocation !== userLocation) {
+      setSelectedLocation(userLocation);
+    }
+  }, [userRole, userLocation, selectedLocation]);
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -167,7 +180,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       try {
         setLoadingEmbeddings(true);
         // Determine the location for this session
-        const locationName = staff[0]?.location || '';
+        const locationName = selectedLocation;
         
         // Fetch all offline-cached data from Dexie
         const [list, sw, locCfgArr, kioskSettings] = await Promise.all([
@@ -198,7 +211,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       }
     })();
     return () => { cancelled = true; };
-  }, [staff]);
+  }, [staff, selectedLocation]);
 
   // ---- Camera ---------------------------------------------------------------
   const startCamera = useCallback(async () => {
@@ -473,6 +486,22 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                 <QrCode size={18} /> Show QR to Staff
               </button>
             </div>
+            
+            {userRole === 'admin' && (
+              <div className="bg-black/40 backdrop-blur-md rounded-2xl border border-white/20 p-1.5 flex shadow-2xl items-center px-4">
+                <select
+                  value={selectedLocation}
+                  onChange={e => setSelectedLocation(e.target.value)}
+                  className="bg-transparent text-white font-bold outline-none text-sm cursor-pointer"
+                >
+                  {availableLocations.map(loc => (
+                    <option key={loc} value={loc} className="bg-[#1a1a1a] text-white">{loc}</option>
+                  ))}
+                  {availableLocations.length === 0 && <option value="Main Branch" className="bg-[#1a1a1a] text-white">Main Branch</option>}
+                </select>
+              </div>
+            )}
+
             <div className="hidden xl:flex items-center gap-2 ml-4">
               <span className="text-xs px-3 py-1.5 rounded-full bg-black/50 border border-white/20 text-white">
                 {enrolledCount}/{totalActive} enrolled
@@ -509,7 +538,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             </>
           ) : (
             <div className="p-8 pt-28 w-full h-full flex items-center justify-center bg-[var(--bg-app)] overflow-y-auto">
-              <QRAttendanceGenerator location={locationConfig?.locationName || staff[0]?.location || 'Main Branch'} />
+              <QRAttendanceGenerator location={selectedLocation} />
             </div>
           )}
         </div>

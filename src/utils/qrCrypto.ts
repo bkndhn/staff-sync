@@ -29,25 +29,34 @@ export const setQRRefreshSeconds = (seconds: number): number => {
 export const QR_EXPIRATION_SECONDS = QR_REFRESH_DEFAULT;
 
 /**
- * Fast, synchronous 53-bit hash for QR signatures.
- * Does not require crypto.subtle, meaning it works on local HTTP networks.
+ * Secure HMAC-SHA256 cryptographic signature using Web Crypto API.
  */
-function cyrb53(str: string, seed = 0): string {
-  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
-  for (let i = 0, ch; i < str.length; i++) {
-    ch = str.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
-}
+const getCryptoKey = async (): Promise<CryptoKey> => {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(QR_SECRET_KEY);
+  return await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify']
+  );
+};
+
+const signPayload = async (data: string): Promise<string> => {
+  const key = await getCryptoKey();
+  const encoder = new TextEncoder();
+  const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
+  const hashArray = Array.from(new Uint8Array(signatureBuffer));
+  // Convert to hex string and truncate to 16 chars for QR code size efficiency
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+};
 
 export const generateQRPayload = async (location: string): Promise<string> => {
   const timestamp = Math.floor(Date.now() / 1000);
-  const sig = cyrb53(`${location}:${timestamp}:${QR_SECRET_KEY}`);
-  return JSON.stringify({ loc: location, ts: timestamp, sig: sig.substring(0, 16) });
+  const dataString = `${location}:${timestamp}`;
+  const sig = await signPayload(dataString);
+  return JSON.stringify({ loc: location, ts: timestamp, sig });
 };
 
 export const validateQRPayload = async (payloadStr: string, staffLocation: string): Promise<{ valid: boolean; reason?: string }> => {
@@ -62,14 +71,16 @@ export const validateQRPayload = async (payloadStr: string, staffLocation: strin
     }
 
     const now = Math.floor(Date.now() / 1000);
-    const window = getQRRefreshSeconds() + 3; // grace
+    // Expand the window to handle up to 45 seconds of clock drift between devices.
+    // This dramatically improves reliability without sacrificing realistic security against remote replay.
+    const window = getQRRefreshSeconds() + 45; 
     if (Math.abs(now - payload.ts) > window) {
       return { valid: false, reason: 'QR code has expired. Please scan the current one.' };
     }
 
-    const expectedSig = cyrb53(`${payload.loc}:${payload.ts}:${QR_SECRET_KEY}`).substring(0, 16);
+    const expectedSig = await signPayload(`${payload.loc}:${payload.ts}`);
     if (payload.sig !== expectedSig) {
-      return { valid: false, reason: 'Invalid signature. Fake QR code detected.' };
+      return { valid: false, reason: 'Invalid cryptographic signature. Fake QR code detected.' };
     }
 
     return { valid: true };

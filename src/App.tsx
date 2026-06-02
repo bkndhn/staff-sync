@@ -19,6 +19,8 @@ import { auditLogService } from './services/auditLogService';
 import { offlineSyncService } from './services/offlineSyncService';
 import { useOfflineSync } from './hooks/useOfflineSync';
 import { offlineDbService } from './services/offlineDb';
+import { db } from './lib/db';
+import { faceEmbeddingService } from './services/faceEmbeddingService';
 
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
 const SalaryManagement = React.lazy(() => import('./components/SalaryManagement'));
@@ -211,13 +213,21 @@ function App() {
   // silent re-render with fresh data. UI stays visible throughout.
   const silentRefresh = useCallback(async () => {
     try {
-      const [staffData, attendanceData, advanceData, oldStaffData, salaryHikeData] = await Promise.all([
+      const [staffData, attendanceData, advanceData, oldStaffData, salaryHikeData, faceEmbeddingsData] = await Promise.all([
         staffService.getAll(),
         attendanceService.getAll(),
         advanceService.getAll(),
         oldStaffService.getAll(),
         salaryHikeService.getAll(),
+        faceEmbeddingService.getAllApproved(),
       ]);
+      
+      // Sync approved face embeddings to local Dexie for offline Face Scanner
+      if (faceEmbeddingsData) {
+        await db.faceEmbeddings.clear();
+        await db.faceEmbeddings.bulkPut(faceEmbeddingsData);
+      }
+      
       // Update cache
       cacheService.set(CACHE_KEYS.STAFF, staffData, CACHE_TTL.MEDIUM);
       cacheService.set(CACHE_KEYS.ATTENDANCE, attendanceData, CACHE_TTL.SHORT);
@@ -958,6 +968,7 @@ function App() {
                 cacheService.invalidate(CACHE_KEYS.ATTENDANCE);
               }}
               userRole={user?.role as 'admin' | 'manager'}
+              userLocation={user?.location}
             />
           </Suspense>
         );

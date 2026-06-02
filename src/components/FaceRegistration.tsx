@@ -4,6 +4,7 @@ import { Staff } from '../types';
 import { useFaceEngine } from '../hooks/useFaceEngine';
 import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
 import { cosineDistance, computeCentroid } from '../lib/embeddingMatcher';
+import { db } from '../lib/db';
 
 interface Props {
   staff: Staff;
@@ -44,6 +45,15 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
     try {
       const list = await faceEmbeddingService.getByStaff(staff.id);
       setSamples(list);
+      
+      // Keep local Dexie DB in sync for immediate face recognition availability
+      const approvedList = list.filter(s => s.isApproved);
+      const oldKeys = await db.faceEmbeddings.where('staffId').equals(staff.id).primaryKeys();
+      await db.faceEmbeddings.bulkDelete(oldKeys as string[]);
+      if (approvedList.length > 0) {
+        await db.faceEmbeddings.bulkPut(approvedList);
+      }
+
       // Load signed URLs in parallel
       const urlEntries = await Promise.all(
         list.filter(s => s.imagePath).map(async (s) => {

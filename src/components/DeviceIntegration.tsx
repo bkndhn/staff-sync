@@ -175,15 +175,13 @@ const DeviceIntegration: React.FC<DeviceIntegrationProps> = ({ onImportPunches }
     { id: 'custom', label: 'Custom / Other' },
   ] as const;
 
-  const bridgeConfig = `{
-  "app_url": "${window.location.origin}",
-  "supabase_url": "YOUR_SUPABASE_URL",
-  "supabase_key": "YOUR_ANON_KEY",
-  "device_ip": "192.168.1.100",
-  "device_port": 4370,
-  "poll_interval_seconds": 30,
-  "location_code": "${apiConfig.locationCode || 'MAIN'}"
-}`;
+  const bridgeConfig = `SUPABASE_URL=YOUR_SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
+SYNC_INTERVAL_MS=30000
+
+# Optional: Set this to the exact branch name (e.g. "Main Branch")
+# to only sync the device at this specific location.
+LOCATION_NAME=${apiConfig.locationCode || ''}`;
 
   return (
     <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] overflow-hidden">

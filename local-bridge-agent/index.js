@@ -50,36 +50,58 @@ async function syncDevice(location) {
     } else {
       console.log(`📥 [${location.display_name}] Processing ${newLogs.length} NEW records...`);
       
-      // We must map eSSL deviceUserId to Supabase Staff UUID
-      for (const log of newLogs) {
-        // Find staff by device_id
-        const { data: staff, error: staffError } = await supabase
-          .from('staff')
-          .select('id, location')
-          .eq('device_id', log.deviceUserId)
-          .single();
+      // 1. Fetch all staff for this location to create a fast memory map
+      const { data: staffList, error: staffError } = await supabase
+        .from('staff')
+        .select('id, device_id')
+        .eq('location', location.display_name)
+        .not('device_id', 'is', null);
 
-        if (staffError || !staff) {
-          console.warn(`⚠️ [${location.display_name}] Unknown device user ID: ${log.deviceUserId} - Skipping record.`);
+      if (staffError || !staffList) {
+        console.error(`❌ [${location.display_name}] Failed to fetch staff mappings:`, staffError);
+        return;
+      }
+
+      // device_id (eSSL ID) -> supabase UUID
+      const staffMap = new Map(staffList.map(s => [s.device_id.toString(), s.id]));
+      
+      // 2. Prepare bulk insert array
+      const punchEvents = [];
+      let unknownCount = 0;
+
+      for (const log of newLogs) {
+        const staffId = staffMap.get(log.deviceUserId.toString());
+        
+        if (!staffId) {
+          unknownCount++;
           continue;
         }
 
-        // Push to punch_events
-        const punchTime = new Date(log.recordTime).toISOString();
-        const punchEvent = {
-          staff_id: staff.id,
-          punch_time: punchTime,
-          direction: 'unknown', // Typically eSSL doesn't strictly enforce IN/OUT, so the cloud app figures it out
+        punchEvents.push({
+          staff_id: staffId,
+          punch_time: new Date(log.recordTime).toISOString(),
+          direction: 'unknown', // eSSL cloud app resolves IN/OUT automatically
           device_name: `eSSL (${location.device_ip})`,
           is_manual: false
-        };
+        });
+      }
 
-        const { error: insertError } = await supabase.from('punch_events').insert([punchEvent]);
+      if (unknownCount > 0) {
+        console.warn(`⚠️ [${location.display_name}] Skipped ${unknownCount} records (Unknown device user ID). Ensure all staff have their device IDs registered in the app.`);
+      }
+
+      // 3. Bulk insert to Supabase for high performance
+      if (punchEvents.length > 0) {
+        const { error: insertError } = await supabase.from('punch_events').insert(punchEvents);
+        
         if (insertError) {
-          console.error(`❌ [${location.display_name}] Failed to save punch for staff ${staff.id}:`, insertError.message);
+          console.error(`❌ [${location.display_name}] Bulk insert failed:`, insertError.message);
+          return; // Abort so last_sync_time is not updated
         } else {
-          console.log(`✅ [${location.display_name}] Saved punch for staff ${staff.id} at ${punchTime}`);
+          console.log(`✅ [${location.display_name}] Successfully synced ${punchEvents.length} punches to cloud.`);
         }
+      } else {
+        console.log(`ℹ️ [${location.display_name}] All new records were for unknown users. Nothing inserted.`);
       }
     }
 
@@ -110,11 +132,17 @@ async function startSyncCycle() {
 
   while (true) {
     try {
-      const { data: locations, error } = await supabase
+      let query = supabase
         .from('locations')
         .select('*')
         .eq('is_active', true)
         .not('device_ip', 'is', null);
+
+      if (process.env.LOCATION_NAME) {
+        query = query.eq('display_name', process.env.LOCATION_NAME);
+      }
+
+      const { data: locations, error } = await query;
 
       if (error) {
         console.error("Database fetch error:", error);
