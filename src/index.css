@@ -403,11 +403,11 @@ body.light-theme button[class*="from-purple-6"] svg {
   color: #ffffff !important;
 }
 
-/* Active nav tabs in light mode - white text */
+/* Active nav tabs in light mode - primary text */
 body.light-theme .nav-tab-active,
 body.light-theme .nav-tab-active span,
 body.light-theme .nav-tab-active svg {
-  color: #ffffff !important;
+  color: var(--primary-gradient) !important;
 }
 
 body.light-theme .text-white\/80,
@@ -2330,7 +2330,6 @@ body.light-theme button[class*="bg-red-6"] svg,
 body.light-theme button[class*="bg-green-6"] svg,
 body.light-theme button[class*="bg-emerald-6"] svg,
 body.light-theme button.bg-\[\#25D366\] svg,
-body.light-theme .nav-tab-active svg,
 body.light-theme .mobile-nav-item-active svg {
   color: #ffffff !important;
 }
