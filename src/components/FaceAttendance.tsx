@@ -492,7 +492,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                 <select
                   value={selectedLocation}
                   onChange={e => setSelectedLocation(e.target.value)}
-                  className="bg-transparent text-white font-bold outline-none text-sm cursor-pointer"
+                  className="bg-[var(--bg-card)] text-[var(--text-primary)] border border-[var(--glass-border)] font-bold outline-none text-sm cursor-pointer px-3 py-1.5 rounded-xl appearance-none"
                 >
                   {availableLocations.map(loc => (
                     <option key={loc} value={loc}>{loc}</option>
