@@ -149,23 +149,22 @@ function App() {
     return true;
   });
 
-  // Apply theme on change
   useEffect(() => {
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
 
     if (isDarkTheme) {
       document.body.classList.remove('light-theme');
       localStorage.setItem('theme', 'dark');
-      // Update status bar color for dark theme
+      // Update status bar color for Material 3 dark theme
       if (metaThemeColor) {
-        metaThemeColor.setAttribute('content', '#0f0f1a');
+        metaThemeColor.setAttribute('content', '#121212');
       }
     } else {
       document.body.classList.add('light-theme');
       localStorage.setItem('theme', 'light');
-      // Update status bar color for light theme
+      // Update status bar color for Material 3 light theme
       if (metaThemeColor) {
-        metaThemeColor.setAttribute('content', '#f5f7fa');
+        metaThemeColor.setAttribute('content', '#FEF7FF');
       }
     }
   }, [isDarkTheme]);

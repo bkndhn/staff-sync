@@ -5,84 +5,105 @@
 @tailwind utilities;
 
 /* ============================================
-   PREMIUM UI DESIGN SYSTEM
-   Dark theme with vibrant gradients
+   MATERIAL DESIGN 3 - ANDROID PWA UI
+   Professional Native App Aesthetics
    ============================================ */
 
-/* Root Variables for Premium Dark Theme */
+/* Root Variables for Premium Dark Theme (Material 3 Dark) */
 :root {
   /* Navigation */
   --nav-height: 72px;
-  --nav-blur: 20px;
+  --nav-blur: 0px;
 
-  /* Premium Dark Color Palette */
-  --bg-primary: #0f0f1a;
-  --bg-secondary: #1a1a2e;
-  --bg-tertiary: #16213e;
-  --bg-card: rgba(26, 26, 46, 0.8);
-  --bg-card-hover: rgba(30, 30, 60, 0.9);
+  /* Material 3 Dark Color Palette */
+  --bg-primary: #121212; /* Dark surface */
+  --bg-secondary: #1E1E1E; /* Surface container */
+  --bg-tertiary: #2D2D2D;
+  --bg-card: #1E1E1E; /* Solid cards */
+  --bg-card-hover: #292929;
 
-  /* Accent Gradients */
-  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-  --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  --danger-gradient: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
-  --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  --purple-gradient: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+  /* Accent Solid Colors (overriding old gradients) */
+  --primary-gradient: #D0BCFF; /* Material Primary Dark (Light Purple) */
+  --success-gradient: #81C995;
+  --warning-gradient: #FDD663;
+  --danger-gradient: #F28B82;
+  --info-gradient: #8AB4F8;
+  --purple-gradient: #D0BCFF;
+
+  /* Primary Button text color mapping for dark mode (light button = dark text) */
+  --on-primary: #381E72;
+  --on-success: #0F5223;
+  --on-danger: #601410;
 
   /* Text Colors */
-  --text-primary: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.7);
-  --text-muted: rgba(255, 255, 255, 0.5);
+  --text-primary: #E6E1E5;
+  --text-secondary: #CAC4D0;
+  --text-muted: #938F99;
 
-  /* Glass Effects */
-  --glass-bg: rgba(255, 255, 255, 0.05);
-  --glass-bg-strong: rgba(255, 255, 255, 0.1);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-border-strong: rgba(255, 255, 255, 0.2);
+  /* Surface Enhancements (replacing glass) */
+  --glass-bg: #1E1E1E;
+  --glass-bg-strong: #2D2D2D;
+  --glass-border: #333333; /* Very subtle border */
+  --glass-border-strong: #444444;
 
-  /* Shadows */
-  --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.3);
-  --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.4);
-  --shadow-strong: 0 12px 48px rgba(0, 0, 0, 0.5);
-  --shadow-glow-primary: 0 0 40px rgba(102, 126, 234, 0.3);
-  --shadow-glow-success: 0 0 40px rgba(56, 239, 125, 0.3);
+  /* Material 3 Elevations */
+  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.15); /* Level 1 */
+  --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2); /* Level 2 */
+  --shadow-strong: 0 8px 12px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3); /* Level 3 */
+  --shadow-glow-primary: 0 4px 12px rgba(208, 188, 255, 0.2);
+  --shadow-glow-success: 0 4px 12px rgba(129, 201, 149, 0.2);
 
   /* Transitions */
-  --transition-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: cubic-bezier(0.2, 0, 0, 1); /* Standard decelerate */
+  --transition-smooth: cubic-bezier(0.2, 0, 0, 1);
 
   /* Safe Area */
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* ============================================
-   LIGHT THEME OVERRIDE
+   LIGHT THEME OVERRIDE (Material 3 Light)
+   ============================================ */
+/* ============================================
+   LIGHT THEME OVERRIDE (Material 3 Light)
    ============================================ */
 body.light-theme {
-  --bg-primary: #f5f7fa;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #e8ecf1;
-  --bg-card: rgba(255, 255, 255, 0.95);
-  --bg-card-hover: rgba(255, 255, 255, 1);
+  --bg-primary: #FEF7FF; /* Material 3 Light Surface */
+  --bg-secondary: #F3EDF7; /* Surface Variant */
+  --bg-tertiary: #E8DEF8;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F9F9F9;
 
-  /* Text Colors - Dark for light theme */
-  --text-primary: #1a1a2e;
-  --text-secondary: rgba(26, 26, 46, 0.7);
-  --text-muted: rgba(26, 26, 46, 0.5);
+  /* Text Colors */
+  --text-primary: #1C1B1F;
+  --text-secondary: #49454F;
+  --text-muted: #79747E;
 
-  /* Glass Effects - Darker for light theme */
-  --glass-bg: rgba(0, 0, 0, 0.02);
-  --glass-bg-strong: rgba(0, 0, 0, 0.05);
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --glass-border-strong: rgba(0, 0, 0, 0.15);
+  /* Solid Colors */
+  --primary-gradient: #6750A4; /* Material Primary Light */
+  --success-gradient: #146C2E;
+  --warning-gradient: #7D5260;
+  --danger-gradient: #B3261E;
+  --info-gradient: #0061A4;
+  --purple-gradient: #6750A4;
+
+  /* Button text colors for light mode (dark button = light text) */
+  --on-primary: #FFFFFF;
+  --on-success: #FFFFFF;
+  --on-danger: #FFFFFF;
+
+  /* Surface Enhancements */
+  --glass-bg: #FFFFFF;
+  --glass-bg-strong: #F3EDF7;
+  --glass-border: #E7E0EC;
+  --glass-border-strong: #CAC4D0;
 
   /* Shadows - Lighter for light theme */
-  --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.08);
-  --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.12);
-  --shadow-strong: 0 12px 48px rgba(0, 0, 0, 0.15);
-  --shadow-glow-primary: 0 0 40px rgba(102, 126, 234, 0.15);
-  --shadow-glow-success: 0 0 40px rgba(56, 239, 125, 0.15);
+  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-strong: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+  --shadow-glow-primary: 0 4px 12px rgba(103, 80, 164, 0.2);
+  --shadow-glow-success: 0 4px 12px rgba(20, 108, 46, 0.2);
 }
 
 /* Light theme border overrides */
@@ -413,18 +434,8 @@ body {
 
 /* Premium Background Pattern */
 body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background:
-    radial-gradient(ellipse at top left, rgba(102, 126, 234, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom right, rgba(118, 75, 162, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at center, rgba(99, 102, 241, 0.05) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: -1;
+  /* Removed vibrant background glow gradients for Material 3 flat design */
+  content: none;
 }
 
 /* ============================================
@@ -441,86 +452,92 @@ body::before {
 }
 
 /* ============================================
-   PREMIUM GLASSMORPHISM CARDS
+   PREMIUM GLASSMORPHISM CARDS -> MATERIAL ELEVATED SURFACES
    ============================================ */
 .glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-card);
   border: 1px solid var(--glass-border);
-  border-radius: 20px;
+  border-radius: 16px;
   box-shadow: var(--shadow-soft);
   transition: all 0.3s var(--transition-smooth);
 }
 
 .glass-card:hover {
-  background: var(--glass-bg-strong);
-  border-color: var(--glass-border-strong);
+  background: var(--bg-card-hover);
   box-shadow: var(--shadow-medium);
-  transform: translateY(-2px);
 }
 
 .glass-card-static {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-card);
   border: 1px solid var(--glass-border);
-  border-radius: 20px;
+  border-radius: 16px;
   box-shadow: var(--shadow-soft);
 }
 
 /* ============================================
-   PREMIUM BUTTON STYLES
+   PREMIUM BUTTON STYLES -> MATERIAL BUTTONS
    ============================================ */
 .btn-premium {
-  background: var(--primary-gradient);
-  color: white;
+  background: var(--primary-gradient); /* Now a solid color */
+  color: var(--on-primary);
   border: none;
-  border-radius: 12px;
-  padding: 12px 24px;
-  font-weight: 600;
+  border-radius: 100px; /* Fully rounded for Material 3 */
+  padding: 10px 24px;
+  font-weight: 500;
   font-size: 0.875rem;
-  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
-  transition: all 300ms var(--transition-spring);
-  transform: translateZ(0);
-  will-change: transform, box-shadow;
+  letter-spacing: 0.1px;
+  box-shadow: var(--shadow-soft);
+  transition: background-color 200ms ease, box-shadow 200ms ease, transform 100ms ease;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Material Ripple effect simulation */
+.btn-premium::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.light-theme .btn-premium::after {
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
 .btn-premium:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+  box-shadow: var(--shadow-medium);
+}
+
+.btn-premium:hover::after {
+  opacity: 1;
 }
 
 .btn-premium:active {
-  transform: translateY(0) scale(0.98);
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+  box-shadow: none;
 }
 
 .btn-premium-success {
   background: var(--success-gradient);
-  box-shadow: 0 4px 14px rgba(56, 239, 125, 0.4);
-}
-
-.btn-premium-success:hover {
-  box-shadow: 0 6px 20px rgba(56, 239, 125, 0.5);
+  color: var(--on-success);
 }
 
 .btn-premium-danger {
   background: var(--danger-gradient);
-  box-shadow: 0 4px 14px rgba(255, 65, 108, 0.4);
-}
-
-.btn-premium-danger:hover {
-  box-shadow: 0 6px 20px rgba(255, 65, 108, 0.5);
+  color: var(--on-danger);
 }
 
 .btn-ghost {
-  background: var(--glass-bg);
-  color: var(--text-primary);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  padding: 12px 24px;
+  background: transparent;
+  color: var(--primary-gradient);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: 100px;
+  padding: 10px 24px;
   font-weight: 500;
   transition: all 200ms var(--transition-smooth);
   cursor: pointer;
@@ -528,21 +545,20 @@ body::before {
 
 .btn-ghost:hover {
   background: var(--glass-bg-strong);
-  border-color: var(--glass-border-strong);
 }
 
 /* ============================================
-   PREMIUM INPUT STYLES
+   PREMIUM INPUT STYLES (Material 3 Outlined Field)
    ============================================ */
 .input-premium {
   width: 100%;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: 8px; /* Material uses smaller radius for inputs */
   padding: 14px 16px;
   color: var(--text-primary);
   font-size: 1rem;
-  transition: all 200ms var(--transition-smooth);
+  transition: all 200ms ease;
 }
 
 .input-premium::placeholder {
@@ -551,13 +567,13 @@ body::before {
 
 .input-premium:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-  background: var(--glass-bg-strong);
+  border-color: var(--primary-gradient);
+  box-shadow: inset 0 0 0 1px var(--primary-gradient); /* Material 3 focus ring is usually an inner 2px border */
+  background: var(--bg-secondary);
 }
 
 .input-premium:hover:not(:focus) {
-  border-color: var(--glass-border-strong);
+  border-color: var(--text-secondary);
 }
 
 /* Select styling */
@@ -577,7 +593,7 @@ select.input-premium option {
 }
 
 /* ============================================
-   PREMIUM TABLE STYLES
+   PREMIUM TABLE STYLES (Material 3 Data Table)
    ============================================ */
 .table-premium {
   width: 100%;
@@ -592,8 +608,8 @@ select.input-premium option {
 }
 
 .table-premium th {
-  background: var(--primary-gradient);
-  color: white;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
   padding: 16px 12px;
   text-align: left;
   font-weight: 600;
@@ -601,6 +617,7 @@ select.input-premium option {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
+  border-bottom: 1px solid var(--glass-border-strong);
 }
 
 .table-premium th:first-child {
@@ -612,7 +629,7 @@ select.input-premium option {
 }
 
 .table-premium td {
-  background: var(--glass-bg);
+  background: var(--bg-card);
   padding: 14px 12px;
   border-bottom: 1px solid var(--glass-border);
   color: var(--text-primary);
@@ -620,7 +637,7 @@ select.input-premium option {
 }
 
 .table-premium tbody tr {
-  transition: all 200ms var(--transition-smooth);
+  transition: background-color 200ms ease;
 }
 
 .table-premium tbody tr:hover td {
@@ -686,18 +703,17 @@ select.input-premium option {
 }
 
 /* ============================================
-   PREMIUM STAT CARDS
+   PREMIUM STAT CARDS (Material 3 Elevated Card)
    ============================================ */
 .stat-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-card);
   border: 1px solid var(--glass-border);
-  border-radius: 20px;
+  border-radius: 16px;
   padding: 24px;
   position: relative;
   overflow: hidden;
-  transition: all 300ms var(--transition-smooth);
+  box-shadow: var(--shadow-soft);
+  transition: all 200ms ease;
 }
 
 .stat-card::before {
@@ -708,18 +724,12 @@ select.input-premium option {
   right: 0;
   height: 4px;
   background: var(--primary-gradient);
-  opacity: 0;
-  transition: opacity 300ms var(--transition-smooth);
+  opacity: 0.8;
 }
 
 .stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-glow-primary);
-  border-color: rgba(102, 126, 234, 0.3);
-}
-
-.stat-card:hover::before {
-  opacity: 1;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
 }
 
 .stat-card-success::before {
@@ -779,33 +789,30 @@ select.input-premium option {
 }
 
 /* ============================================
-   PREMIUM MODAL STYLES
+   PREMIUM MODAL STYLES (Material 3 Dialog)
    ============================================ */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.5); /* Flat dark overlay, no blur in M3 */
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
   padding: 16px;
-  animation: fade-in 200ms var(--transition-smooth);
+  animation: fade-in 200ms ease;
 }
 
 .modal-content {
   background: var(--bg-secondary);
-  border: 1px solid var(--glass-border);
-  border-radius: 24px;
-  padding: 28px;
+  border-radius: 28px; /* Material 3 standard dialog radius */
+  padding: 24px;
   max-width: 480px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--shadow-strong);
-  animation: modal-slide-up 300ms var(--transition-spring);
+  animation: modal-slide-up 300ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 @keyframes fade-in {
@@ -841,14 +848,12 @@ select.input-premium option {
 }
 
 /* ============================================
-   PREMIUM NAVIGATION STYLES
+   PREMIUM NAVIGATION STYLES (Material 3 App Bar)
    ============================================ */
 .nav-premium {
-  background: rgba(15, 15, 26, 0.9);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-secondary);
   border-bottom: 1px solid var(--glass-border);
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Subtle elevation */
 }
 
 .nav-tab {
@@ -856,37 +861,37 @@ select.input-premium option {
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  border-radius: 10px;
+  border-radius: 100px; /* Fully rounded pill for Material 3 */
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-secondary);
-  transition: all 200ms var(--transition-smooth);
+  transition: all 200ms ease;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
 }
 
 .nav-tab:hover {
+  background: var(--glass-bg-strong);
   color: var(--text-primary);
-  background: var(--glass-bg);
 }
 
 .nav-tab-active {
-  background: var(--primary-gradient);
-  color: white;
-  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+  background: var(--glass-bg-strong); /* Less intrusive background for active desktop tab */
+  color: var(--primary-gradient);
+  font-weight: 600;
 }
 
 .nav-tab-active:hover {
-  background: var(--primary-gradient);
-  color: white;
+  background: var(--glass-border);
 }
 
-/* Mobile Bottom Nav */
+/* Mobile Bottom Nav (Material 3) */
 .mobile-nav {
-  background: rgba(15, 15, 26, 0.95);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: var(--bg-secondary);
   border-top: 1px solid var(--glass-border);
-  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .mobile-nav-item {
@@ -894,18 +899,29 @@ select.input-premium option {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 8px;
-  border-radius: 16px;
-  transition: all 300ms var(--transition-spring);
+  padding: 8px 4px 4px 4px;
+  border-radius: 12px;
+  transition: all 200ms ease;
   flex: 1;
   min-width: 48px;
   max-width: 72px;
 }
 
-.mobile-nav-item-active {
+.mobile-nav-item svg {
+  transition: all 200ms ease;
+  border-radius: 16px;
+  padding: 2px 12px;
+  box-sizing: content-box;
+}
+
+.mobile-nav-item-active svg {
   background: var(--primary-gradient);
-  transform: translateY(-4px);
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
+  color: var(--on-primary) !important;
+}
+
+.mobile-nav-item-active span {
+  color: var(--text-primary) !important;
+  font-weight: 700;
 }
 
 /* ============================================
