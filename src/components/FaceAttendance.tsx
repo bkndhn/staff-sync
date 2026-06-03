@@ -495,9 +495,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                   className="bg-transparent text-white font-bold outline-none text-sm cursor-pointer"
                 >
                   {availableLocations.map(loc => (
-                    <option key={loc} value={loc} className="bg-[#1a1a1a] text-white">{loc}</option>
+                    <option key={loc} value={loc}>{loc}</option>
                   ))}
-                  {availableLocations.length === 0 && <option value="Main Branch" className="bg-[#1a1a1a] text-white">Main Branch</option>}
+                  {availableLocations.length === 0 && <option value="Main Branch">Main Branch</option>}
                 </select>
               </div>
             )}

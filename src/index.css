@@ -361,7 +361,7 @@ body.light-theme .mobile-nav-item span {
 }
 
 body.light-theme .mobile-nav-item-active span {
-  color: white !important;
+  color: var(--primary-gradient) !important;
 }
 
 body.light-theme .mobile-nav-item svg {
@@ -369,7 +369,7 @@ body.light-theme .mobile-nav-item svg {
 }
 
 body.light-theme .mobile-nav-item-active svg {
-  color: white !important;
+  color: var(--primary-gradient) !important;
 }
 
 /* Fix for light theme specific date picker icon visibility */
@@ -587,9 +587,10 @@ select.input-premium {
   padding-right: 40px;
 }
 
-select.input-premium option {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+select.input-premium option,
+option {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
 }
 
 /* ============================================
