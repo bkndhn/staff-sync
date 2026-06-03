@@ -181,12 +181,12 @@ const Dashboard: React.FC<DashboardProps> = ({
           const rec = fullTimeAttendance.find(a => a.staffId === id);
           if (!sm) return null;
           return (
-            <div key={id} className="flex items-center justify-between gap-2 text-[11px] md:text-xs px-2 py-1 rounded bg-white/5 border border-white/10">
-              <span className="font-semibold text-white/85 truncate">{sm.name}</span>
-              <span className="font-mono text-white/70 whitespace-nowrap">
-                <span className="text-emerald-300">IN {fmt12h(rec?.arrivalTime)}</span>
-                <span className="mx-1 text-white/30">·</span>
-                <span className="text-blue-300">OUT {fmt12h(rec?.leavingTime)}</span>
+            <div key={id} className="flex items-center justify-between gap-2 text-[11px] md:text-xs px-2 py-1 rounded bg-[var(--glass-bg)] border border-[var(--glass-border)]">
+              <span className="font-semibold text-[var(--text-primary)] truncate">{sm.name}</span>
+              <span className="font-mono text-[var(--text-secondary)] whitespace-nowrap">
+                <span className="text-emerald-400">IN {fmt12h(rec?.arrivalTime)}</span>
+                <span className="mx-1 opacity-50">·</span>
+                <span className="text-blue-400">OUT {fmt12h(rec?.leavingTime)}</span>
               </span>
             </div>
           );
@@ -200,12 +200,12 @@ const Dashboard: React.FC<DashboardProps> = ({
     return (
       <div className="mt-2 space-y-1">
         {records.map(rec => (
-          <div key={rec.id || `${rec.staffId}-${rec.shift}`} className="flex items-center justify-between gap-2 text-[11px] md:text-xs px-2 py-1 rounded bg-white/5 border border-white/10">
-            <span className="font-semibold text-white/85 truncate">{rec.staffName} <span className="text-purple-300">({rec.shift})</span></span>
-            <span className="font-mono text-white/70 whitespace-nowrap">
-              <span className="text-emerald-300">IN {fmt12h(rec.arrivalTime)}</span>
-              <span className="mx-1 text-white/30">·</span>
-              <span className="text-blue-300">OUT {fmt12h(rec.leavingTime)}</span>
+          <div key={rec.id || `${rec.staffId}-${rec.shift}`} className="flex items-center justify-between gap-2 text-[11px] md:text-xs px-2 py-1 rounded bg-[var(--glass-bg)] border border-[var(--glass-border)]">
+            <span className="font-semibold text-[var(--text-primary)] truncate">{rec.staffName} <span className="text-purple-400">({rec.shift})</span></span>
+            <span className="font-mono text-[var(--text-secondary)] whitespace-nowrap">
+              <span className="text-emerald-400">IN {fmt12h(rec.arrivalTime)}</span>
+              <span className="mx-1 opacity-50">·</span>
+              <span className="text-blue-400">OUT {fmt12h(rec.leavingTime)}</span>
             </span>
           </div>
         ))}
@@ -327,7 +327,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="stat-card card-animate">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-white/60 mb-1">Active Staff</p>
+                  <p className="text-sm text-[var(--text-secondary)] mb-1">Active Staff</p>
                   <p className="text-3xl font-bold text-white">{activeStaff.length}</p>
                 </div>
                 <div className="stat-icon stat-icon-primary"><Users size={22} /></div>
@@ -336,7 +336,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="stat-card stat-card-success card-animate">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-white/60 mb-1">Present Today</p>
+                  <p className="text-sm text-[var(--text-secondary)] mb-1">Present Today</p>
                   <p className="text-3xl font-bold text-emerald-400">{presentToday + halfDayToday}</p>
                 </div>
                 <div className="stat-icon stat-icon-success"><Clock size={22} /></div>
@@ -345,7 +345,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="stat-card stat-card-warning card-animate">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-white/60 mb-1">Half Day Today</p>
+                  <p className="text-sm text-[var(--text-secondary)] mb-1">Half Day Today</p>
                   <p className="text-3xl font-bold text-amber-400">{halfDayToday}</p>
                   <p className="text-xs text-white/40">Partial attendance</p>
                 </div>
@@ -355,7 +355,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="stat-card stat-card-danger card-animate">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-white/60 mb-1">Absent Today</p>
+                  <p className="text-sm text-[var(--text-secondary)] mb-1">Absent Today</p>
                   <p className="text-3xl font-bold text-red-400">{absentToday}</p>
                   <p className="text-xs text-white/40">Not present</p>
                 </div>
@@ -365,7 +365,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="stat-card card-animate" style={{ background: 'linear-gradient(135deg, rgba(251,146,60,0.15), rgba(251,146,60,0.05))' }}>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-white/60 mb-1">Uninformed Leave</p>
+                  <p className="text-sm text-[var(--text-secondary)] mb-1">Uninformed Leave</p>
                   <p className="text-3xl font-bold text-orange-400">{uninformedCount}</p>
                   <p className="text-xs text-white/40">Unapproved absences</p>
                 </div>
@@ -377,7 +377,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="stat-card stat-card-purple card-animate">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-white/60 mb-1">Part-Time Today</p>
+                  <p className="text-sm text-[var(--text-secondary)] mb-1">Part-Time Today</p>
                   <div className="flex items-end gap-3">
                     <p className="text-3xl font-bold text-purple-400">{partTimeTotal}</p>
                     <p className="text-sm text-white/50 mb-1">
@@ -415,7 +415,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           {/* Location Order Editor */}
           {showOrderEditor && (
             <div className="glass-card-static p-4 rounded-xl mb-4">
-              <p className="text-sm text-white/60 mb-3">Drag or use arrows to reorder locations:</p>
+              <p className="text-sm text-[var(--text-secondary)] mb-3">Drag or use arrows to reorder locations:</p>
               <div className="space-y-2">
                 {locations.map((loc, index) => (
                   <div
@@ -432,14 +432,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                     <button
                       onClick={() => moveLocation(index, 'up')}
                       disabled={index === 0}
-                      className="p-1 text-white/60 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="p-1 text-[var(--text-secondary)] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       <ArrowUp size={16} />
                     </button>
                     <button
                       onClick={() => moveLocation(index, 'down')}
                       disabled={index === locations.length - 1}
-                      className="p-1 text-white/60 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="p-1 text-[var(--text-secondary)] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       <ArrowDown size={16} />
                     </button>
@@ -523,7 +523,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     <span className="text-sm text-cyan-400 ml-2">+{tempGuests.length} Temp</span>
                   )}
                   {locationPartTimeData.length > 0 && (
-                    <span className="text-sm text-white/60">{' + Part-Time: '}{locationPartTimeData.length}</span>
+                    <span className="text-sm text-[var(--text-secondary)]">{' + Part-Time: '}{locationPartTimeData.length}</span>
                   )}
                 </h3>
 
@@ -539,7 +539,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                       });
                       const noTimeNames = sortStaffIdsByOrder(noTimeIds).map(id => formatStaffName(id, false));
                       return noTimeNames.length > 0 ? (
-                        <p className="text-sm text-white/60">{noTimeNames.join(', ')}</p>
+                        <p className="text-sm text-[var(--text-secondary)]">{noTimeNames.join(', ')}</p>
                       ) : null;
                     })()}
                     {renderPunchList(assignedPresentIds)}
@@ -553,29 +553,29 @@ const Dashboard: React.FC<DashboardProps> = ({
                       });
                       const noTimeNames = sortStaffIdsByOrder(noTimeIds).map(id => formatStaffName(id, false));
                       return noTimeNames.length > 0 ? (
-                        <p className="text-sm text-white/60">{noTimeNames.join(', ')}</p>
+                        <p className="text-sm text-[var(--text-secondary)]">{noTimeNames.join(', ')}</p>
                       ) : null;
                     })()}
                     {renderPunchList(assignedHalfDayIds)}
                   </div>
                   <div className="glass-card-static p-4 border-l-4 border-red-500">
                     <p className="text-base font-bold text-red-400 mb-2">❌ Absent: {assignedAbsent.length}</p>
-                    <p className="text-sm text-white/60">{assignedAbsent.length > 0 ? assignedAbsent.join(', ') : 'None'}</p>
+                    <p className="text-sm text-[var(--text-secondary)]">{assignedAbsent.length > 0 ? assignedAbsent.join(', ') : 'None'}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="glass-card-static p-4 border-l-4 border-cyan-500">
                     <p className="text-base font-bold text-cyan-400 mb-2">🔄 Temp/Guest: {tempGuests.length}</p>
-                    <p className="text-sm text-white/60">{tempGuests.length > 0 ? tempGuests.join(', ') : 'None'}</p>
+                    <p className="text-sm text-[var(--text-secondary)]">{tempGuests.length > 0 ? tempGuests.join(', ') : 'None'}</p>
                   </div>
                   <div className="glass-card-static p-4 border-l-4 border-orange-500">
                     <p className="text-base font-bold text-orange-400 mb-2">📤 Working Elsewhere: {workingElsewhere.length}</p>
-                    <p className="text-sm text-white/60">{workingElsewhere.length > 0 ? workingElsewhere.join(', ') : 'None'}</p>
+                    <p className="text-sm text-[var(--text-secondary)]">{workingElsewhere.length > 0 ? workingElsewhere.join(', ') : 'None'}</p>
                   </div>
                   <div className="glass-card-static p-4 border-l-4 border-purple-500">
                     <p className="text-base font-bold text-purple-400 mb-2">👥 Part-Time: {locationPartTimeData.length}</p>
-                    <p className="text-sm text-white/60">{partTimeNames.length > 0 ? partTimeNames.join(', ') : 'None'}</p>
+                    <p className="text-sm text-[var(--text-secondary)]">{partTimeNames.length > 0 ? partTimeNames.join(', ') : 'None'}</p>
                     {renderPartTimePunchList(locationPartTimeData)}
                   </div>
                 </div>
@@ -618,7 +618,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <h3 className="text-base md:text-lg font-semibold text-gradient mb-4 text-center">
                     All Locations - Total Present: {overallFullTimePresent.length + overallFullTimeHalfDay.length}
                     {partTimeAttendance.length > 0 && (
-                      <span className="text-sm text-white/60">
+                      <span className="text-sm text-[var(--text-secondary)]">
                         {' + Part-Time: '}{partTimeAttendance.length}
                         {' ('}Both: {overallPartTimeBoth.length}, Morning: {overallPartTimeMorning.length}, Evening: {overallPartTimeEvening.length}{')'}
                       </span>
@@ -628,20 +628,20 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="glass-card-static p-4 border-l-4 border-emerald-500">
                       <p className="text-base font-bold text-emerald-400 mb-2">✅ Present: {overallFullTimePresent.length}/{fullTimeStaff.length}</p>
-                      <p className="text-sm text-white/60">{overallFullTimePresent.length > 0 ? overallFullTimePresent.join(', ') : 'None'}</p>
+                      <p className="text-sm text-[var(--text-secondary)]">{overallFullTimePresent.length > 0 ? overallFullTimePresent.join(', ') : 'None'}</p>
                     </div>
                     <div className="glass-card-static p-4 border-l-4 border-amber-500">
                       <p className="text-base font-bold text-amber-400 mb-2">🕒 Half-day: {overallFullTimeHalfDay.length}</p>
-                      <p className="text-sm text-white/60">{overallFullTimeHalfDay.length > 0 ? overallFullTimeHalfDay.join(', ') : 'None'}</p>
+                      <p className="text-sm text-[var(--text-secondary)]">{overallFullTimeHalfDay.length > 0 ? overallFullTimeHalfDay.join(', ') : 'None'}</p>
                     </div>
                     <div className="glass-card-static p-4 border-l-4 border-red-500">
                       <p className="text-base font-bold text-red-400 mb-2">❌ Absent: {overallFullTimeAbsent.length}</p>
-                      <p className="text-sm text-white/60">{overallFullTimeAbsent.length > 0 ? overallFullTimeAbsent.join(', ') : 'None'}</p>
+                      <p className="text-sm text-[var(--text-secondary)]">{overallFullTimeAbsent.length > 0 ? overallFullTimeAbsent.join(', ') : 'None'}</p>
                     </div>
                     <div className="glass-card-static p-4 border-l-4 border-purple-500">
                       <p className="text-base font-bold text-purple-400 mb-2">👥 Part-Time: {partTimeAttendance.length}</p>
                       <p className="text-xs text-white/40 mb-1">(B: {overallPartTimeBoth.length}, M: {overallPartTimeMorning.length}, E: {overallPartTimeEvening.length})</p>
-                      <p className="text-sm text-white/60">{overallPartTimeNames.length > 0 ? overallPartTimeNames.join(', ') : 'None'}</p>
+                      <p className="text-sm text-[var(--text-secondary)]">{overallPartTimeNames.length > 0 ? overallPartTimeNames.join(', ') : 'None'}</p>
                       {renderPartTimePunchList(partTimeAttendance)}
                     </div>
                   </div>

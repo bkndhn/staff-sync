@@ -655,8 +655,8 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                         </div>
                         {!isEditing && (
                           <div className="flex flex-col items-end">
-                            <span className="text-xs font-mono text-emerald-400/90 font-medium tracking-tight whitespace-nowrap">IN {formatTime12h(rec.arrivalTime)}</span>
-                            <span className="text-xs font-mono text-blue-400/90 font-medium tracking-tight whitespace-nowrap">OUT {formatTime12h(rec.leavingTime)}</span>
+                            <span className="text-xs font-mono text-emerald-400 opacity-90 font-medium tracking-tight whitespace-nowrap">IN {formatTime12h(rec.arrivalTime)}</span>
+                            <span className="text-xs font-mono text-blue-400 opacity-90 font-medium tracking-tight whitespace-nowrap">OUT {formatTime12h(rec.leavingTime)}</span>
                           </div>
                         )}
                       </div>
