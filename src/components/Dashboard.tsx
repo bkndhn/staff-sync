@@ -64,6 +64,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     } catch { return []; }
   });
   const [showOrderEditor, setShowOrderEditor] = React.useState(false);
+  const [groupBy, setGroupBy] = React.useState<'none' | 'floor' | 'designation'>('none');
 
   React.useEffect(() => {
     const loadLocations = async () => {
@@ -300,6 +301,19 @@ const Dashboard: React.FC<DashboardProps> = ({
             <span className="text-xs md:text-sm">{isDarkTheme ? 'Light' : 'Dark'}</span>
           </button>
 
+          <div className="w-[120px] md:w-[140px] lg:w-32">
+            <label className="block text-[10px] uppercase tracking-wider font-bold text-white/40 mb-1 ml-1">Group By</label>
+            <select
+              value={groupBy}
+              onChange={(e) => setGroupBy(e.target.value as any)}
+              className="input-premium py-2 px-3 text-sm w-full"
+            >
+              <option value="none">Location</option>
+              <option value="floor">Floor</option>
+              <option value="designation">Designation</option>
+            </select>
+          </div>
+
           <div className="w-[160px] md:w-[180px] lg:w-48">
             <label className="block text-[10px] uppercase tracking-wider font-bold text-white/40 mb-1 ml-1">Select Date</label>
             <input
@@ -515,32 +529,77 @@ const Dashboard: React.FC<DashboardProps> = ({
 
             const locationTotalPresent = assignedPresent.length + assignedHalfDay.length;
 
+            const groupedAssignedStaff = assignedStaff.reduce((acc, staff) => {
+              let key = 'Unassigned';
+              if (groupBy === 'floor' && staff.floor) key = staff.floor;
+              if (groupBy === 'designation' && staff.designation) key = staff.designation;
+              if (!acc[key]) acc[key] = [];
+              acc[key].push(staff.id);
+              return acc;
+            }, {} as Record<string, string[]>);
+
+            const renderGroupCards = (groupName: string, groupTotalIds: string[]) => {
+              const groupPresentIds = assignedPresentIds.filter(id => groupTotalIds.includes(id));
+              const groupHalfDayIds = assignedHalfDayIds.filter(id => groupTotalIds.includes(id));
+              const groupAbsentIds = assignedAbsentIds.filter(id => groupTotalIds.includes(id));
+              return (
+                <div key={groupName} className="mb-6 last:mb-0 bg-black/10 dark:bg-white/5 p-4 rounded-xl border border-[var(--glass-border)]">
+                  <h4 className="text-sm md:text-base font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                    {groupName} <span className="text-[var(--text-secondary)] text-xs font-normal">({groupPresentIds.length + groupHalfDayIds.length}/{groupTotalIds.length} Present)</span>
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="glass-card-static p-4 border-l-4 border-emerald-500">
+                      <p className="text-base font-bold text-emerald-400 mb-2">✅ Present: {groupPresentIds.length}/{groupTotalIds.length}</p>
+                      {renderPunchList(groupPresentIds)}
+                    </div>
+                    <div className="glass-card-static p-4 border-l-4 border-amber-500">
+                      <p className="text-base font-bold text-amber-400 mb-2">🕒 Half-day: {groupHalfDayIds.length}</p>
+                      {renderPunchList(groupHalfDayIds)}
+                    </div>
+                    <div className="glass-card-static p-4 border-l-4 border-red-500">
+                      <p className="text-base font-bold text-red-400 mb-2">❌ Absent: {groupAbsentIds.length}</p>
+                      <p className="text-sm text-[var(--text-secondary)]">{groupAbsentIds.length > 0 ? sortStaffIdsByOrder(groupAbsentIds).map(id => formatStaffName(id, false)).join(', ') : 'None'}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            };
+
             return (
-              <div key={location.name} className="border-b border-white/10 pb-6 last:border-b-0 last:pb-0">
+              <div key={location.name} className="border-b border-[var(--glass-border)] pb-6 last:border-b-0 last:pb-0">
                 <h3 className="text-base md:text-lg font-semibold text-gradient mb-4 text-center">
                   {location.name} - Staff Present: {locationTotalPresent}/{locationTotalFullTimeStaff}
                   {tempGuests.length > 0 && (
                     <span className="text-sm text-cyan-400 ml-2">+{tempGuests.length} Temp</span>
                   )}
                   {locationPartTimeData.length > 0 && (
-                    <span className="text-sm text-[var(--text-secondary)]">{' + Part-Time: '}{locationPartTimeData.length}</span>
+                    <span className="text-sm text-[var(--text-secondary)] ml-2">{' + Part-Time: '}{locationPartTimeData.length}</span>
                   )}
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="glass-card-static p-4 border-l-4 border-emerald-500">
-                    <p className="text-base font-bold text-emerald-400 mb-2">✅ Present: {assignedPresent.length}/{locationTotalFullTimeStaff}</p>
-                    {renderPunchList(assignedPresentIds)}
+                {groupBy === 'none' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="glass-card-static p-4 border-l-4 border-emerald-500">
+                      <p className="text-base font-bold text-emerald-400 mb-2">✅ Present: {assignedPresent.length}/{locationTotalFullTimeStaff}</p>
+                      {renderPunchList(assignedPresentIds)}
+                    </div>
+                    <div className="glass-card-static p-4 border-l-4 border-amber-500">
+                      <p className="text-base font-bold text-amber-400 mb-2">🕒 Half-day: {assignedHalfDay.length}</p>
+                      {renderPunchList(assignedHalfDayIds)}
+                    </div>
+                    <div className="glass-card-static p-4 border-l-4 border-red-500">
+                      <p className="text-base font-bold text-red-400 mb-2">❌ Absent: {assignedAbsent.length}</p>
+                      <p className="text-sm text-[var(--text-secondary)]">{assignedAbsent.length > 0 ? assignedAbsent.join(', ') : 'None'}</p>
+                    </div>
                   </div>
-                  <div className="glass-card-static p-4 border-l-4 border-amber-500">
-                    <p className="text-base font-bold text-amber-400 mb-2">🕒 Half-day: {assignedHalfDay.length}</p>
-                    {renderPunchList(assignedHalfDayIds)}
+                ) : (
+                  <div className="mb-4 space-y-4">
+                    {Object.entries(groupedAssignedStaff).sort(([a], [b]) => a.localeCompare(b)).map(([groupName, groupTotalIds]) => (
+                      renderGroupCards(groupName, groupTotalIds)
+                    ))}
                   </div>
-                  <div className="glass-card-static p-4 border-l-4 border-red-500">
-                    <p className="text-base font-bold text-red-400 mb-2">❌ Absent: {assignedAbsent.length}</p>
-                    <p className="text-sm text-[var(--text-secondary)]">{assignedAbsent.length > 0 ? assignedAbsent.join(', ') : 'None'}</p>
-                  </div>
-                </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="glass-card-static p-4 border-l-4 border-cyan-500">
