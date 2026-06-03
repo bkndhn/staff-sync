@@ -262,6 +262,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         const updated = await locationService.updateLocation(id, editLocationValue);
         if (updated) {
           setLocations(locations.map(l => l.id === id ? { ...l, name: updated.name } : l));
+          onRefreshStaff();
         }
     }
     
@@ -346,11 +347,17 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
 
   const handleUpdateFloor = async (id: string) => {
     if (!editFloorValue.trim()) return;
-    const updated = await floorService.updateFloor(id, editFloorValue.trim());
-    if (updated) {
-      setFloors(prev => prev.map(f => f.id === id ? updated : f));
-      setEditingFloor(null);
+    const floor = editingFloor;
+    if (!floor) return;
+    if (editFloorValue.trim() !== floor.name || editFloorLocation !== floor.locationName) {
+      const { floorService } = await import('../services/floorService');
+      const updated = await floorService.updateFloor(id, editFloorValue.trim(), editFloorLocation);
+      if (updated) {
+        setFloors(floors.map(f => f.id === id ? updated : f));
+        onRefreshStaff();
+      }
     }
+    setEditingFloor(null);
   };
 
   const handleDeleteFloor = (floor: Floor) => {
@@ -376,11 +383,17 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
 
   const handleUpdateDesignation = async (id: string) => {
     if (!editDesignationValue.trim()) return;
-    const updated = await designationService.updateDesignation(id, editDesignationValue.trim());
-    if (updated) {
-      setDesignations(prev => prev.map(d => d.id === id ? updated : d));
-      setEditingDesignation(null);
+    const desig = editingDesignation;
+    if (!desig) return;
+    if (editDesignationValue.trim() !== desig.displayName) {
+      const { designationService } = await import('../services/designationService');
+      const updated = await designationService.updateDesignation(id, editDesignationValue.trim());
+      if (updated) {
+        setDesignations(designations.map(d => d.id === id ? updated : d));
+        onRefreshStaff();
+      }
     }
+    setEditingDesignation(null);
   };
 
   const handleDeleteDesignation = (desig: Designation) => {
@@ -781,16 +794,18 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             >
               All
             </button>
-            {Array.from(new Set(staff.filter(s => s.isActive && s.floor).map(s => s.floor!))).map(flr => (
+            {floors
+              .filter(f => f.isActive !== false && (locationFilter === 'All' || f.locationName === locationFilter))
+              .map(flr => (
               <button
-                key={flr}
-                onClick={() => setFloorFilter(flr)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${floorFilter === flr
+                key={flr.id}
+                onClick={() => setFloorFilter(flr.name)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${floorFilter === flr.name
                   ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white'
                   : 'bg-white/10 text-white/70 hover:bg-white/20'
                   }`}
               >
-                {flr}
+                {flr.name}
               </button>
             ))}
           </div>
@@ -803,22 +818,22 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             <button
               onClick={() => setDesignationFilter('All')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${designationFilter === 'All'
-                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
+                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white'
                 : 'bg-white/10 text-white/70 hover:bg-white/20'
                 }`}
             >
               All
             </button>
-            {Array.from(new Set(staff.filter(s => s.isActive && s.designation).map(s => s.designation!))).map(des => (
+            {designations.filter(d => d.isActive !== false).map(desig => (
               <button
-                key={des}
-                onClick={() => setDesignationFilter(des)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${designationFilter === des
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
+                key={desig.id}
+                onClick={() => setDesignationFilter(desig.displayName)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${designationFilter === desig.displayName
+                  ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white'
                   : 'bg-white/10 text-white/70 hover:bg-white/20'
                   }`}
               >
-                {des}
+                {desig.displayName}
               </button>
             ))}
           </div>
