@@ -633,60 +633,45 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               className="input-premium"
             />
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowLocationManager(true)}
-              className="btn-premium flex items-center gap-2 px-3 py-2 text-sm"
-              style={{ background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)' }}
-              title="Manage Locations"
-            >
-              <MapPin size={16} />
-              <span className="hidden sm:inline">Locations</span>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <div className="hidden lg:flex gap-2">
+              <button onClick={() => setShowLocationManager(true)} className="btn-premium flex items-center gap-2 px-3 py-2 text-sm" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)' }} title="Manage Locations">
+                <MapPin size={16} /><span className="hidden xl:inline">Locations</span>
+              </button>
+              <button onClick={() => setShowFloorManager(true)} className="btn-premium flex items-center gap-2 px-3 py-2 text-sm" style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)' }} title="Manage Floors">
+                <Layers size={16} /><span className="hidden xl:inline">Floors</span>
+              </button>
+              <button onClick={() => setShowDesignationManager(true)} className="btn-premium flex items-center gap-2 px-3 py-2 text-sm" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)' }} title="Manage Designations">
+                <Briefcase size={16} /><span className="hidden xl:inline">Designations</span>
+              </button>
+              <button onClick={() => setShowCategoryManager(true)} className="btn-premium btn-premium-success flex items-center gap-2 px-3 py-2 text-sm" title="Manage Salary Categories">
+                <DollarSign size={16} /><span className="hidden xl:inline">Categories</span>
+              </button>
+            </div>
+
+            {/* Mobile Dropdown for Secondary Actions */}
+            <div className="lg:hidden relative flex-1 sm:flex-none">
+              <button onClick={() => {
+                  const el = document.getElementById('mobile-more-actions');
+                  if (el) el.classList.toggle('hidden');
+                }} 
+                className="w-full btn-premium flex justify-center items-center gap-2 px-3 py-2 text-sm bg-white/10"
+              >
+                <Settings2 size={16} /> <span>Manage</span> <ChevronDown size={14} />
+              </button>
+              <div id="mobile-more-actions" className="hidden absolute top-full left-0 mt-2 w-48 bg-[#1e1e2e] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <button onClick={() => { setShowLocationManager(true); document.getElementById('mobile-more-actions')?.classList.add('hidden'); }} className="w-full text-left px-4 py-3 hover:bg-white/10 text-sm flex items-center gap-3 border-b border-white/5"><MapPin size={16} className="text-purple-400"/> Locations</button>
+                <button onClick={() => { setShowFloorManager(true); document.getElementById('mobile-more-actions')?.classList.add('hidden'); }} className="w-full text-left px-4 py-3 hover:bg-white/10 text-sm flex items-center gap-3 border-b border-white/5"><Layers size={16} className="text-blue-400"/> Floors</button>
+                <button onClick={() => { setShowDesignationManager(true); document.getElementById('mobile-more-actions')?.classList.add('hidden'); }} className="w-full text-left px-4 py-3 hover:bg-white/10 text-sm flex items-center gap-3 border-b border-white/5"><Briefcase size={16} className="text-amber-400"/> Designations</button>
+                <button onClick={() => { setShowCategoryManager(true); document.getElementById('mobile-more-actions')?.classList.add('hidden'); }} className="w-full text-left px-4 py-3 hover:bg-white/10 text-sm flex items-center gap-3"><DollarSign size={16} className="text-emerald-400"/> Categories</button>
+              </div>
+            </div>
+
+            <button onClick={() => setShowBulkImport(true)} className="btn-premium btn-premium-success flex items-center justify-center gap-2 px-3 py-2 text-sm flex-1 sm:flex-none" title="Bulk Import">
+              <Upload size={16} /><span className="hidden sm:inline">Import</span>
             </button>
-            <button
-              onClick={() => setShowFloorManager(true)}
-              className="btn-premium flex items-center gap-2 px-3 py-2 text-sm"
-              style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)' }}
-              title="Manage Floors"
-            >
-              <Layers size={16} />
-              <span className="hidden sm:inline">Floors</span>
-            </button>
-            <button
-              onClick={() => setShowDesignationManager(true)}
-              className="btn-premium flex items-center gap-2 px-3 py-2 text-sm"
-              style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)' }}
-              title="Manage Designations"
-            >
-              <Briefcase size={16} />
-              <span className="hidden sm:inline">Designations</span>
-            </button>
-            <button
-              onClick={() => setShowCategoryManager(true)}
-              className="btn-premium btn-premium-success flex items-center gap-2 px-3 py-2 text-sm"
-              title="Manage Salary Categories"
-            >
-              <DollarSign size={16} />
-              <span className="hidden sm:inline">Categories</span>
-            </button>
-            <button
-              onClick={() => setShowBulkImport(true)}
-              className="btn-premium btn-premium-success flex items-center gap-2 px-3 py-2 text-sm"
-              title="Bulk Import Staff from Excel"
-            >
-              <Upload size={16} />
-              <span className="hidden sm:inline">Bulk Import</span>
-            </button>
-            <button
-              onClick={() => {
-                resetForm();
-                setEditingStaff(null);
-                setShowAddForm(!showAddForm);
-              }}
-              className="btn-premium flex items-center gap-2 px-4 py-2"
-            >
-              <Plus size={20} />
-              <span className="hidden sm:inline">Add Staff</span>
+            <button onClick={() => { resetForm(); setEditingStaff(null); setShowAddForm(!showAddForm); }} className="btn-premium flex items-center justify-center gap-2 px-4 py-2 flex-1 sm:flex-none whitespace-nowrap">
+              <Plus size={20} /><span className="hidden sm:inline">Add Staff</span>
             </button>
           </div>
         </div>
