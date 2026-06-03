@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { QrCode, XCircle, CheckCircle2, AlertTriangle, Loader2, Zap } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { QrCode, XCircle, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { validateQRPayload } from '../utils/qrCrypto';
-import jsQR from 'jsqr';
+import { Html5Qrcode } from 'html5-qrcode';
 
 export interface ScanConfirmation {
   ok: boolean;
@@ -11,28 +11,9 @@ export interface ScanConfirmation {
 
 interface Props {
   staffLocation: string;
-  /** Return a confirmation object — scanner will display it briefly and resume scanning. */
   onScanSuccess: (payload: any) => Promise<ScanConfirmation> | ScanConfirmation;
   onClose: () => void;
 }
-
-/** Check if native BarcodeDetector (hardware-accelerated) is available */
-const getNativeDetector = (() => {
-  let detector: any = null;
-  let checked = false;
-  return async () => {
-    if (checked) return detector;
-    checked = true;
-    if (!('BarcodeDetector' in window)) return null;
-    try {
-      const formats = await (window as any).BarcodeDetector.getSupportedFormats();
-      if (formats.includes('qr_code')) {
-        detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
-      }
-    } catch { /* ignore */ }
-    return detector;
-  };
-})();
 
 const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, onClose }) => {
   const [error, setError] = useState<string | null>(null);
@@ -40,142 +21,94 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
   const [isProcessing, setIsProcessing] = useState(false);
   const [confirmation, setConfirmation] = useState<ScanConfirmation | null>(null);
   const [scanCount, setScanCount] = useState(0);
-  const [useNative, setUseNative] = useState<boolean | null>(null);
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rafRef = useRef<number>(0);
-  const streamRef = useRef<MediaStream | null>(null);
-  const processingRef = useRef(false);
   const activeRef = useRef(true);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const processingRef = useRef(false);
   const lastDecodedRef = useRef<{ value: string; at: number } | null>(null);
-
-  const processFrame = useCallback(async (detector: any) => {
-    if (!activeRef.current || processingRef.current) return;
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || video.readyState < 2) return;
-
-    let decoded: string | null = null;
-
-    try {
-      if (detector) {
-        // Native BarcodeDetector — ~0-2ms
-        const results = await detector.detect(video);
-        if (results && results.length > 0) decoded = results[0].rawValue;
-      } else {
-        // jsQR fallback
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (!ctx) return;
-        
-        // Scale down video frame for blazing fast ~1ms jsQR processing
-        const MAX_W = 400;
-        const scale = Math.min(1, MAX_W / video.videoWidth);
-        canvas.width = video.videoWidth * scale;
-        canvas.height = video.videoHeight * scale;
-        
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'dontInvert'
-        });
-        if (code) decoded = code.data;
-      }
-    } catch { /* ignore per-frame errors */ }
-
-    if (decoded && !processingRef.current) {
-      // Debounce duplicate frames of the same QR within 2.5s (continuous-scan mode)
-      const now = Date.now();
-      const last = lastDecodedRef.current;
-      if (last && last.value === decoded && now - last.at < 2500) return;
-
-      processingRef.current = true;
-      setIsProcessing(true);
-      setScanCount(c => c + 1);
-
-      const validation = await validateQRPayload(decoded, staffLocation);
-
-      if (validation.valid) {
-        lastDecodedRef.current = { value: decoded, at: now };
-        try {
-          const result = await onScanSuccess(JSON.parse(decoded));
-          if (!activeRef.current) return;
-          setConfirmation(result);
-        } catch (e: any) {
-          setConfirmation({ ok: false, title: 'Failed to record', subtitle: e?.message || 'Try again.' });
-        }
-        // Hold the confirmation card, then resume scanning automatically
-        setTimeout(() => {
-          if (activeRef.current) {
-            setConfirmation(null);
-            setIsProcessing(false);
-            processingRef.current = false;
-          }
-        }, 2500);
-      } else {
-        setError(validation.reason || 'Invalid QR Code');
-        setTimeout(() => {
-          if (activeRef.current) {
-            setError(null);
-            setIsProcessing(false);
-            processingRef.current = false;
-          }
-        }, 1800);
-      }
-    }
-  }, [staffLocation, onScanSuccess]);
 
   useEffect(() => {
     activeRef.current = true;
-    let detector: any = null;
+    const scanner = new Html5Qrcode("qr-reader");
+    scannerRef.current = scanner;
 
-    const start = async () => {
+    const startScanner = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+        await scanner.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+          },
+          async (decodedText) => {
+            if (!activeRef.current || processingRef.current) return;
+
+            // Debounce
+            const now = Date.now();
+            const last = lastDecodedRef.current;
+            if (last && last.value === decodedText && now - last.at < 2500) return;
+
+            processingRef.current = true;
+            setIsProcessing(true);
+            setScanCount(c => c + 1);
+
+            const validation = await validateQRPayload(decodedText, staffLocation);
+
+            if (validation.valid) {
+              lastDecodedRef.current = { value: decodedText, at: now };
+              try {
+                const result = await onScanSuccess(JSON.parse(decodedText));
+                if (!activeRef.current) return;
+                setConfirmation(result);
+              } catch (e: any) {
+                setConfirmation({ ok: false, title: 'Failed to record', subtitle: e?.message || 'Try again.' });
+              }
+              // Hold confirmation card
+              setTimeout(() => {
+                if (activeRef.current) {
+                  setConfirmation(null);
+                  setIsProcessing(false);
+                  processingRef.current = false;
+                }
+              }, 2500);
+            } else {
+              setError(validation.reason || 'Invalid QR Code');
+              setTimeout(() => {
+                if (activeRef.current) {
+                  setError(null);
+                  setIsProcessing(false);
+                  processingRef.current = false;
+                }
+              }, 1800);
+            }
+          },
+          (errorMessage) => {
+            // Ignore frame-level errors
           }
-        });
-        if (!activeRef.current) { stream.getTracks().forEach(t => t.stop()); return; }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-
-        detector = await getNativeDetector();
-        setUseNative(!!detector);
-        setIsReady(true);
-
-        // Tight RAF loop — runs every animation frame (~16ms at 60fps)
-        const loop = async () => {
-          if (!activeRef.current) return;
-          await processFrame(detector);
-          rafRef.current = requestAnimationFrame(loop);
-        };
-        rafRef.current = requestAnimationFrame(loop);
+        );
+        if (activeRef.current) setIsReady(true);
       } catch (err: any) {
         if (activeRef.current) {
-          setError(err?.message?.includes('Permission') 
-            ? 'Camera permission denied. Please allow camera access.' 
+          setError(err?.message?.includes('Permission') || err?.name === 'NotAllowedError'
+            ? 'Camera permission denied. Please allow camera access.'
             : 'Cannot open camera. Try again.');
         }
       }
     };
 
-    start();
+    startScanner();
 
     return () => {
       activeRef.current = false;
-      cancelAnimationFrame(rafRef.current);
-      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+      if (scannerRef.current && scannerRef.current.isScanning) {
+        scannerRef.current.stop().catch(() => {});
+      }
     };
-  }, [processFrame]);
+  }, [staffLocation, onScanSuccess]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/95 backdrop-blur-sm">
       <div className="w-full max-w-sm bg-[var(--bg-app)] rounded-3xl overflow-hidden shadow-2xl border border-[var(--glass-border)] flex flex-col">
         {/* Header */}
         <div className="p-4 bg-[var(--bg-card)] border-b border-[var(--glass-border)] flex items-center justify-between">
@@ -183,65 +116,40 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
             <QrCode size={20} className="text-indigo-400" />
             Scan Attendance QR
           </h3>
-          <div className="flex items-center gap-2">
-            {useNative !== null && (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${useNative ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                {useNative ? (
-                  <span className="flex items-center gap-1"><Zap size={10} /> Native</span>
-                ) : 'jsQR'}
-              </span>
-            )}
-            <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-[var(--text-secondary)] hover:text-white transition-colors">
-              <XCircle size={22} />
-            </button>
-          </div>
+          <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-[var(--text-secondary)] hover:text-white transition-colors">
+            <XCircle size={22} />
+          </button>
         </div>
 
         {/* Scanner viewport */}
-        <div className="relative bg-black aspect-square flex items-center justify-center">
-          <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
-          <canvas ref={canvasRef} className="hidden" />
+        <div className="relative bg-black aspect-square flex items-center justify-center overflow-hidden">
+          <div id="qr-reader" className="w-full h-full" />
 
-          {/* Target corners */}
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            <div className="w-56 h-56 relative">
-              {/* Corner markers */}
-              {[
-                'top-0 left-0 border-t-4 border-l-4 rounded-tl-xl',
-                'top-0 right-0 border-t-4 border-r-4 rounded-tr-xl',
-                'bottom-0 left-0 border-b-4 border-l-4 rounded-bl-xl',
-                'bottom-0 right-0 border-b-4 border-r-4 rounded-br-xl',
-              ].map((cls, i) => (
-                <div key={i} className={`absolute w-8 h-8 border-indigo-400 ${cls} transition-all duration-300 ${isProcessing ? 'border-emerald-400 scale-110' : ''}`} />
-              ))}
+          {/* Scanning line overlay */}
+          {isReady && !isProcessing && !error && (
+            <div className="absolute left-4 right-4 top-1/2 h-0.5 bg-gradient-to-r from-transparent via-indigo-400 to-transparent shadow-[0_0_8px_2px_rgba(99,102,241,0.6)] animate-[scan_1.5s_ease-in-out_infinite] z-10" style={{ transform: 'translateY(-50%)' }} />
+          )}
 
-              {/* Scanning line */}
-              {isReady && !isProcessing && !error && (
-                <div className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-indigo-400 to-transparent shadow-[0_0_8px_2px_rgba(99,102,241,0.6)] animate-[scan_1.5s_ease-in-out_infinite]" />
-              )}
-
-              {/* Processing overlay */}
-              {isProcessing && !error && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="bg-emerald-500/20 border border-emerald-400/40 rounded-2xl p-4">
-                    <CheckCircle2 size={32} className="text-emerald-400 animate-bounce" />
-                  </div>
-                </div>
-              )}
+          {/* Processing overlay */}
+          {isProcessing && !error && (
+            <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/40">
+              <div className="bg-emerald-500/20 border border-emerald-400/40 rounded-2xl p-4">
+                <CheckCircle2 size={32} className="text-emerald-400 animate-bounce" />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Loading overlay */}
           {!isReady && !error && (
-            <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-3">
+            <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-3 z-20">
               <Loader2 size={32} className="text-indigo-400 animate-spin" />
               <p className="text-white/60 text-sm">Opening camera...</p>
             </div>
           )}
 
-          {/* Confirmation card — shows name + time, auto-dismisses */}
+          {/* Confirmation card */}
           {confirmation && (
-            <div className="absolute inset-0 flex items-center justify-center p-4 animate-fade-in">
+            <div className="absolute inset-0 flex items-center justify-center p-4 animate-fade-in z-30">
               <div className={`w-full max-w-xs rounded-2xl p-5 text-center shadow-2xl border ${
                 confirmation.ok
                   ? 'bg-emerald-500/95 border-emerald-300/40 text-white'
@@ -259,7 +167,7 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
 
           {/* Error banner */}
           {error && (
-            <div className="absolute bottom-4 left-4 right-4 p-3 rounded-xl bg-red-500/90 backdrop-blur text-white text-sm flex items-start gap-2 shadow-xl animate-fade-in">
+            <div className="absolute bottom-4 left-4 right-4 p-3 rounded-xl bg-red-500/90 backdrop-blur text-white text-sm flex items-start gap-2 shadow-xl animate-fade-in z-30">
               <AlertTriangle size={16} className="shrink-0 mt-0.5" />
               <p className="font-medium">{error}</p>
             </div>
@@ -276,6 +184,12 @@ const QRAttendanceScanner: React.FC<Props> = ({ staffLocation, onScanSuccess, on
           )}
         </div>
       </div>
+      <style>{`
+        #qr-reader { border: none !important; }
+        #qr-reader__scan_region { min-height: 100% !important; }
+        #qr-reader__dashboard { display: none !important; }
+        #qr-reader video { object-fit: cover !important; }
+      `}</style>
     </div>
   );
 };

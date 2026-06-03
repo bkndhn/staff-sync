@@ -26,7 +26,7 @@ let modelsWarmedUp = false;
 
 const ensureModelsLoaded = async (): Promise<void> => {
   if (
-    faceapi.nets.tinyFaceDetector.isLoaded &&
+    faceapi.nets.ssdMobilenetv1.isLoaded &&
     faceapi.nets.faceLandmark68Net.isLoaded &&
     faceapi.nets.faceRecognitionNet.isLoaded
   ) return;
@@ -34,8 +34,8 @@ const ensureModelsLoaded = async (): Promise<void> => {
   if (!modelsLoadingPromise) {
     modelsLoadingPromise = (async () => {
       await Promise.all([
-        // TinyFaceDetector — significantly lighter to avoid freezing the UI on devices without WebGL
-        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        // SSD MobileNetV1 — vastly superior accuracy to TinyFaceDetector
+        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
         faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
       ]);
@@ -51,7 +51,7 @@ const warmUpModels = async (): Promise<void> => {
     const canvas = document.createElement('canvas');
     canvas.width = 224; canvas.height = 224;
     await faceapi
-      .detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.2 }))
+      .detectAllFaces(canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.2 }))
       .withFaceLandmarks()
       .withFaceDescriptors();
   } catch { /* warm-up errors are harmless */ }
@@ -98,9 +98,9 @@ export const useFaceEngine = (autoLoad = true) => {
   ): Promise<DetectionResult | null> => {
     await ensureModelsLoaded();
 
-    const options = new faceapi.TinyFaceDetectorOptions({
-      inputSize: 512, // Greatly increases detection accuracy (far away faces, angles) over default 416
-      scoreThreshold: opts?.scoreThreshold ?? 0.2, // Lowered from 0.35 to 0.2 for better mobile detection
+    const options = new faceapi.SsdMobilenetv1Options({
+      minConfidence: opts?.scoreThreshold ?? 0.45, // Use 0.45 threshold for high accuracy
+      maxResults: 10
     });
 
     const results = await faceapi
