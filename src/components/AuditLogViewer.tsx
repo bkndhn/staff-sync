@@ -133,11 +133,11 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
             onChange={(e) => setSelectedAction(e.target.value)}
             className="input-premium pl-10 text-sm py-2.5 w-full appearance-none pr-8 cursor-pointer font-medium"
           >
-            <option value="all" className="bg-[#131324] text-white">All Event Types</option>
-            <option value="attendance_override" className="bg-[#131324] text-white">Attendance Override</option>
-            <option value="salary_edit" className="bg-[#131324] text-white">Salary Edit</option>
-            <option value="staff_update" className="bg-[#131324] text-white">Staff Update</option>
-            <option value="bulk_update" className="bg-[#131324] text-white">Bulk Action</option>
+            <option value="all">All Event Types</option>
+            <option value="attendance_override">Attendance Override</option>
+            <option value="salary_edit">Salary Edit</option>
+            <option value="staff_update">Staff Update</option>
+            <option value="bulk_update">Bulk Action</option>
           </select>
         </div>
       </div>

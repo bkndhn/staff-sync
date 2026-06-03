@@ -213,14 +213,14 @@ body.light-theme .stat-card {
 }
 
 /* Light theme inputs */
-body.light-theme .input-premium,
-body.light-theme input[type="text"],
-body.light-theme input[type="number"],
-body.light-theme input[type="date"],
-body.light-theme input[type="email"],
-body.light-theme input[type="password"],
-body.light-theme select,
-body.light-theme textarea {
+body.light-theme .input-premium:not(.bg-transparent),
+body.light-theme input[type="text"]:not(.bg-transparent),
+body.light-theme input[type="number"]:not(.bg-transparent),
+body.light-theme input[type="date"]:not(.bg-transparent),
+body.light-theme input[type="email"]:not(.bg-transparent),
+body.light-theme input[type="password"]:not(.bg-transparent),
+body.light-theme select:not(.bg-transparent),
+body.light-theme textarea:not(.bg-transparent) {
   background: rgba(255, 255, 255, 0.9) !important;
   border-color: rgba(0, 0, 0, 0.15) !important;
   color: #1a1a2e !important;
