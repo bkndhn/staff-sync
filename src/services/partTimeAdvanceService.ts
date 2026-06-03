@@ -37,7 +37,7 @@ export const partTimeAdvanceService = {
         weekNumber: number
     ): Promise<number> {
         // Logic to find previous week
-        let prevWeek = weekNumber - 1;
+        const prevWeek = weekNumber - 1;
         let prevMonth = month;
         let prevYear = year;
 

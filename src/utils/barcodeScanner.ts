@@ -7,7 +7,6 @@
  */
 
 let nativeDetector: any = null;
-let zxingReader: any = null;
 
 // Initialize native detector once
 const initNativeDetector = async (): Promise<boolean> => {

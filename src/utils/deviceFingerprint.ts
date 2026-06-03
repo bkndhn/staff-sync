@@ -30,7 +30,7 @@ function getCanvasFingerprint(): string {
     ctx.fillText('Hello, world!', 4, 17);
     
     return canvas.toDataURL();
-  } catch (e) {
+  } catch {
     return 'no-canvas';
   }
 }
@@ -71,7 +71,7 @@ export async function generateDeviceFingerprint(): Promise<string> {
       persistentId = crypto.randomUUID();
       localStorage.setItem('device_persistent_id', persistentId);
     }
-  } catch (e) {
+  } catch {
     // Incognito might block localStorage in some strict browsers
   }
   

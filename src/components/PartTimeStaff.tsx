@@ -35,7 +35,7 @@ const TimeInput: React.FC<{
     const get12h = (time24: string) => {
         if (!time24) return { h: "09", m: "00", p: "am" };
         const [hStr, mStr] = time24.split(":");
-        let hInt = parseInt(hStr || "0");
+        const hInt = parseInt(hStr || "0");
         const p = hInt >= 12 ? "pm" : "am";
         const h = hInt % 12 || 12;
         return { h: h.toString().padStart(2, "0"), m: mStr || "00", p };
@@ -369,7 +369,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             let totalWeeks = 0;
 
             // Check each month in the range
-            let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+            const currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
             while (currentDate <= endDate) {
                 const year = currentDate.getFullYear();
                 const month = currentDate.getMonth();
@@ -469,7 +469,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             const shouldSettle = !status.isFullySettled;
             const updates: { staffName: string; location: string; settlementKey: string; isSettled: boolean }[] = [];
 
-            let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+            const currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
             while (currentDate <= endDate) {
                 const year = currentDate.getFullYear();
                 const month = currentDate.getMonth();
@@ -710,7 +710,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
     // Calculate part-time salaries for the selected month
     const calculatePartTimeSalaries = (): PartTimeSalaryDetail[] => {
-        let monthlyAttendance = attendance.filter(record => {
+        const monthlyAttendance = attendance.filter(record => {
             if (!record.isPartTime) return false;
 
             const recordDate = new Date(record.date);

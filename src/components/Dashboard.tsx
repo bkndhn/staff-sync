@@ -83,7 +83,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         ? fetchedLocations
         : fetchedLocations.filter(loc => loc.name === userLocation);
 
-      let formattedLocations = locationsToShow.map((loc, index) => ({
+      const formattedLocations = locationsToShow.map((loc, index) => ({
         name: loc.name,
         color: colors[index % colors.length],
         stats: calculateLocationAttendance(activeStaff, todayAttendance, selectedDate, loc.name)

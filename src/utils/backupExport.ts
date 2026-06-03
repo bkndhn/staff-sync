@@ -28,7 +28,7 @@ async function fetchAll(table: string): Promise<any[]> {
   const pageSize = 1000;
   let from = 0;
   // Paginate to avoid Supabase's 1000-row default cap.
-  // eslint-disable-next-line no-constant-condition
+   
   while (true) {
     const { data, error } = await supabase
       .from(table as any)

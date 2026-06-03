@@ -492,7 +492,6 @@ export const generateSalarySlipPDF = (
   year: number
 ) => {
   const doc = new jsPDF();
-  const _pageWidth = doc.internal.pageSize.getWidth();
   const monthName = new Date(year, month).toLocaleString('default', { month: 'long' });
 
   renderCompactSalarySlip(doc, salaryDetail, staffMember, monthName, year, 10);
@@ -508,7 +507,6 @@ export const exportBulkSalarySlipsPDF = (
   year: number
 ) => {
   const doc = new jsPDF();
-  const _pageHeight = doc.internal.pageSize.getHeight();
   const monthName = new Date(year, month).toLocaleString('default', { month: 'long' });
   const slipHeight = 90; // Height per slip
   const slipsPerPage = 3;

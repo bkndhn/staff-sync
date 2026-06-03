@@ -402,10 +402,7 @@ export const calculateLocationAttendance = (
     }
   });
 
-  // Get part-time attendance for this location and date
-  const partTimeAttendance = attendance.filter(record =>
-    record.isPartTime && record.date === date && record.status === 'Present'
-  );
+  // partTimeAttendance calculation was removed as it was unused
 
   const present = locationAttendance.filter(record => record.status === 'Present');
   const halfDay = locationAttendance.filter(record => record.status === 'Half Day');
