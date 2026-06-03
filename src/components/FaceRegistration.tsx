@@ -136,7 +136,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         setMessage({ kind: 'err', text: 'Multiple faces detected. Only one person should be in frame.' });
         return;
       }
-      if (result.qualityScore < 0.55) {
+      if (result.qualityScore < 0.40) {
         setMessage({ kind: 'warn', text: 'Low quality detection. Improve lighting and try again.' });
         return;
       }

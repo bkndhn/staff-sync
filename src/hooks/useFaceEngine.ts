@@ -26,7 +26,7 @@ let modelsWarmedUp = false;
 
 const ensureModelsLoaded = async (): Promise<void> => {
   if (
-    faceapi.nets.ssdMobilenetv1.isLoaded &&
+    faceapi.nets.tinyFaceDetector.isLoaded &&
     faceapi.nets.faceLandmark68Net.isLoaded &&
     faceapi.nets.faceRecognitionNet.isLoaded
   ) return;
@@ -34,8 +34,8 @@ const ensureModelsLoaded = async (): Promise<void> => {
   if (!modelsLoadingPromise) {
     modelsLoadingPromise = (async () => {
       await Promise.all([
-        // SSD MobileNetV1 — vastly superior accuracy to TinyFaceDetector
-        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+        // TinyFaceDetector — significantly lighter and won't crash mobile WebGL, optimized with high inputSize
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
         faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
       ]);
@@ -51,7 +51,7 @@ const warmUpModels = async (): Promise<void> => {
     const canvas = document.createElement('canvas');
     canvas.width = 224; canvas.height = 224;
     await faceapi
-      .detectAllFaces(canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.2 }))
+      .detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.2 }))
       .withFaceLandmarks()
       .withFaceDescriptors();
   } catch { /* warm-up errors are harmless */ }
@@ -98,9 +98,9 @@ export const useFaceEngine = (autoLoad = true) => {
   ): Promise<DetectionResult | null> => {
     await ensureModelsLoaded();
 
-    const options = new faceapi.SsdMobilenetv1Options({
-      minConfidence: opts?.scoreThreshold ?? 0.45, // Use 0.45 threshold for high accuracy
-      maxResults: 10
+    const options = new faceapi.TinyFaceDetectorOptions({
+      inputSize: 608, // Increased from 416/512 to 608 for vastly superior accuracy on small/far faces
+      scoreThreshold: opts?.scoreThreshold ?? 0.35, // Balanced threshold to prevent false positives but catch real faces
     });
 
     const results = await faceapi
