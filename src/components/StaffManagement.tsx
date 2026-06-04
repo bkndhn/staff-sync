@@ -262,6 +262,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         const updated = await locationService.updateLocation(id, editLocationValue);
         if (updated) {
           setLocations(locations.map(l => l.id === id ? { ...l, name: updated.name } : l));
+          setFloors(floors.map(f => f.locationName === loc.name ? { ...f, locationName: updated.name } : f));
           onRefreshStaff();
         }
     }
@@ -794,18 +795,19 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             >
               All
             </button>
-            {floors
-              .filter(f => f.isActive !== false && (locationFilter === 'All' || f.locationName === locationFilter))
-              .map(flr => (
+            {Array.from(new Set([
+              ...floors.filter(f => f.isActive !== false && (locationFilter === 'All' || f.locationName === locationFilter)).map(f => f.name),
+              ...staff.filter(s => s.isActive !== false && s.floor && (locationFilter === 'All' || s.location === locationFilter)).map(s => s.floor!)
+            ])).sort().map(flrName => (
               <button
-                key={flr.id}
-                onClick={() => setFloorFilter(flr.name)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${floorFilter === flr.name
+                key={flrName}
+                onClick={() => setFloorFilter(flrName)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${floorFilter === flrName
                   ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white'
                   : 'bg-white/10 text-white/70 hover:bg-white/20'
                   }`}
               >
-                {flr.name}
+                {flrName}
               </button>
             ))}
           </div>
@@ -824,16 +826,19 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             >
               All
             </button>
-            {designations.filter(d => d.isActive !== false).map(desig => (
+            {Array.from(new Set([
+              ...designations.filter(d => d.isActive !== false).map(d => d.displayName),
+              ...staff.filter(s => s.isActive !== false && s.designation).map(s => s.designation!)
+            ])).sort().map(desigName => (
               <button
-                key={desig.id}
-                onClick={() => setDesignationFilter(desig.displayName)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${designationFilter === desig.displayName
+                key={desigName}
+                onClick={() => setDesignationFilter(desigName)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${designationFilter === desigName
                   ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white'
                   : 'bg-white/10 text-white/70 hover:bg-white/20'
                   }`}
               >
-                {desig.displayName}
+                {desigName}
               </button>
             ))}
           </div>
@@ -861,14 +866,24 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               <label className="block text-sm font-medium text-white/70 mb-1">Floor</label>
               <select value={formData.floor} onChange={(e) => setFormData({ ...formData, floor: e.target.value })} className="input-premium">
                 <option value="">No Floor</option>
-                {floors.filter(f => f.locationName === formData.location).map(f => (<option key={f.id} value={f.name}>{f.name}</option>))}
+                {Array.from(new Set([
+                  ...floors.filter(f => f.locationName === formData.location).map(f => f.name),
+                  ...staff.filter(s => s.location === formData.location && s.floor).map(s => s.floor!)
+                ])).sort().map(flrName => (
+                  <option key={flrName} value={flrName}>{flrName}</option>
+                ))}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1">Designation</label>
               <select value={formData.designation} onChange={(e) => setFormData({ ...formData, designation: e.target.value })} className="input-premium">
                 <option value="">No Designation</option>
-                {designations.map(d => (<option key={d.id} value={d.displayName}>{d.displayName}</option>))}
+                {Array.from(new Set([
+                  ...designations.map(d => d.displayName),
+                  ...staff.filter(s => s.designation).map(s => s.designation!)
+                ])).sort().map(desigName => (
+                  <option key={desigName} value={desigName}>{desigName}</option>
+                ))}
               </select>
             </div>
             <div>

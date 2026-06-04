@@ -102,6 +102,15 @@ export const locationService = {
             if (staffError) {
                 console.error('Error updating staff locations:', staffError);
             }
+
+            const { error: floorError } = await supabase
+                .from('floors')
+                .update({ location_name: name })
+                .eq('location_name', oldName);
+
+            if (floorError) {
+                console.error('Error updating floor locations:', floorError);
+            }
         }
 
         return {
