@@ -75,6 +75,9 @@ export const designationService = {
     },
 
     async updateDesignation(id: string, displayName: string): Promise<Designation | null> {
+        const { data: oldDesig } = await supabase.from('designations').select('display_name').eq('id', id).single();
+        const oldDisplayName = oldDesig?.display_name;
+
         const name = displayName.toLowerCase().replace(/[^a-z0-9]/g, '_');
         const { data, error } = await supabase
             .from('designations')
@@ -86,6 +89,14 @@ export const designationService = {
         if (error) {
             console.error('Error updating designation:', error);
             return null;
+        }
+
+        if (oldDisplayName && oldDisplayName !== displayName) {
+            const { error: staffError } = await supabase
+                .from('staff')
+                .update({ designation: displayName })
+                .eq('designation', oldDisplayName);
+            if (staffError) console.error('Error updating staff designations:', staffError);
         }
 
         return {

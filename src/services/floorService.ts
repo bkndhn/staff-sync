@@ -75,10 +75,19 @@ export const floorService = {
         };
     },
 
-    async updateFloor(id: string, name: string): Promise<Floor | null> {
+    async updateFloor(id: string, name: string, locationName?: string): Promise<Floor | null> {
+        // Fetch old floor to get its old name
+        const { data: oldFloor } = await supabase.from('floors').select('name').eq('id', id).single();
+        const oldName = oldFloor?.name;
+
+        const updateData: any = { name, updated_at: new Date().toISOString() };
+        if (locationName) {
+            updateData.location_name = locationName;
+        }
+
         const { data, error } = await supabase
             .from('floors')
-            .update({ name, updated_at: new Date().toISOString() })
+            .update(updateData)
             .eq('id', id)
             .select()
             .single();
@@ -86,6 +95,14 @@ export const floorService = {
         if (error) {
             console.error('Error updating floor:', error);
             return null;
+        }
+
+        if (oldName && oldName !== name) {
+            const { error: staffError } = await supabase
+                .from('staff')
+                .update({ floor: name })
+                .eq('floor', oldName);
+            if (staffError) console.error('Error updating staff floors:', staffError);
         }
 
         return {
