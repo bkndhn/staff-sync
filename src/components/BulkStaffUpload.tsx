@@ -47,6 +47,7 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
         StaffAccommodation: 'day_scholar',
         SundayPenalty: true,
         SalaryCalculationDays: 30,
+        DeviceID: '101',
       },
       {
         Name: 'Jane Smith (Part Time)',
