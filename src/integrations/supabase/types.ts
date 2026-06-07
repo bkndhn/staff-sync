@@ -18,33 +18,45 @@ export type Database = {
         Row: {
           amount: number
           created_at: string | null
+          deduct_periods: number | null
           entry_date: string
           id: string
           month: number
           purpose: string | null
           staff_id: string
+          start_deduct_month: number | null
+          start_deduct_year: number | null
+          total_deducted: number | null
           updated_at: string | null
           year: number
         }
         Insert: {
           amount?: number
           created_at?: string | null
+          deduct_periods?: number | null
           entry_date: string
           id?: string
           month: number
           purpose?: string | null
           staff_id: string
+          start_deduct_month?: number | null
+          start_deduct_year?: number | null
+          total_deducted?: number | null
           updated_at?: string | null
           year: number
         }
         Update: {
           amount?: number
           created_at?: string | null
+          deduct_periods?: number | null
           entry_date?: string
           id?: string
           month?: number
           purpose?: string | null
           staff_id?: string
+          start_deduct_month?: number | null
+          start_deduct_year?: number | null
+          total_deducted?: number | null
           updated_at?: string | null
           year?: number
         }
@@ -202,10 +214,13 @@ export type Database = {
       }
       attendance: {
         Row: {
+          applied_rule_details: Json | null
+          applied_rule_type: string | null
           arrival_time: string | null
           attendance_value: number
           created_at: string | null
           date: string
+          floor: string | null
           id: string
           is_part_time: boolean | null
           is_sunday: boolean | null
@@ -219,14 +234,15 @@ export type Database = {
           staff_id: string
           staff_name: string | null
           status: string
-          applied_rule_type: string | null
-          applied_rule_details: Json | null
         }
         Insert: {
+          applied_rule_details?: Json | null
+          applied_rule_type?: string | null
           arrival_time?: string | null
           attendance_value: number
           created_at?: string | null
           date: string
+          floor?: string | null
           id?: string
           is_part_time?: boolean | null
           is_sunday?: boolean | null
@@ -240,14 +256,15 @@ export type Database = {
           staff_id: string
           staff_name?: string | null
           status: string
-          applied_rule_type?: string | null
-          applied_rule_details?: Json | null
         }
         Update: {
+          applied_rule_details?: Json | null
+          applied_rule_type?: string | null
           arrival_time?: string | null
           attendance_value?: number
           created_at?: string | null
           date?: string
+          floor?: string | null
           id?: string
           is_part_time?: boolean | null
           is_sunday?: boolean | null
@@ -261,8 +278,6 @@ export type Database = {
           staff_id?: string
           staff_name?: string | null
           status?: string
-          applied_rule_type?: string | null
-          applied_rule_details?: Json | null
         }
         Relationships: []
       }
@@ -270,65 +285,65 @@ export type Database = {
         Row: {
           created_at: string | null
           display_name: string
-          id: string
-          is_active: boolean | null
-          name: string
-          sort_order: number | null
-          updated_at: string | null
-          shift_start: string | null
-          shift_end: string | null
-          grace_late_min: number | null
-          grace_early_min: number | null
-          min_hours_full: number | null
-          min_hours_half: number | null
-          morning_cutoff: string | null
+          early_deduction_rate: number | null
           early_exit_time: string | null
           evening_verification_time: string | null
           full_day_requires_morning: boolean | null
+          grace_early_min: number | null
+          grace_late_min: number | null
+          id: string
+          is_active: boolean | null
           late_deduction_rate: number | null
-          early_deduction_rate: number | null
+          min_hours_full: number | null
+          min_hours_half: number | null
+          morning_cutoff: string | null
+          name: string
+          shift_end: string | null
+          shift_start: string | null
+          sort_order: number | null
+          updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           display_name: string
-          id?: string
-          is_active?: boolean | null
-          name: string
-          sort_order?: number | null
-          updated_at?: string | null
-          shift_start?: string | null
-          shift_end?: string | null
-          grace_late_min?: number | null
-          grace_early_min?: number | null
-          min_hours_full?: number | null
-          min_hours_half?: number | null
-          morning_cutoff?: string | null
+          early_deduction_rate?: number | null
           early_exit_time?: string | null
           evening_verification_time?: string | null
           full_day_requires_morning?: boolean | null
+          grace_early_min?: number | null
+          grace_late_min?: number | null
+          id?: string
+          is_active?: boolean | null
           late_deduction_rate?: number | null
-          early_deduction_rate?: number | null
+          min_hours_full?: number | null
+          min_hours_half?: number | null
+          morning_cutoff?: string | null
+          name: string
+          shift_end?: string | null
+          shift_start?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           display_name?: string
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          sort_order?: number | null
-          updated_at?: string | null
-          shift_start?: string | null
-          shift_end?: string | null
-          grace_late_min?: number | null
-          grace_early_min?: number | null
-          min_hours_full?: number | null
-          min_hours_half?: number | null
-          morning_cutoff?: string | null
+          early_deduction_rate?: number | null
           early_exit_time?: string | null
           evening_verification_time?: string | null
           full_day_requires_morning?: boolean | null
+          grace_early_min?: number | null
+          grace_late_min?: number | null
+          id?: string
+          is_active?: boolean | null
           late_deduction_rate?: number | null
-          early_deduction_rate?: number | null
+          min_hours_full?: number | null
+          min_hours_half?: number | null
+          morning_cutoff?: string | null
+          name?: string
+          shift_end?: string | null
+          shift_start?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -494,6 +509,74 @@ export type Database = {
         }
         Relationships: []
       }
+      location_designation_shift_config: {
+        Row: {
+          created_at: string | null
+          designation_id: string
+          early_deduction_rate: number | null
+          early_exit_time: string | null
+          evening_verification_time: string | null
+          full_day_requires_morning: boolean | null
+          grace_early_min: number | null
+          grace_late_min: number | null
+          id: string
+          late_deduction_rate: number | null
+          location_name: string
+          min_hours_full: number | null
+          min_hours_half: number | null
+          morning_cutoff: string | null
+          shift_end: string | null
+          shift_start: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          designation_id: string
+          early_deduction_rate?: number | null
+          early_exit_time?: string | null
+          evening_verification_time?: string | null
+          full_day_requires_morning?: boolean | null
+          grace_early_min?: number | null
+          grace_late_min?: number | null
+          id?: string
+          late_deduction_rate?: number | null
+          location_name: string
+          min_hours_full?: number | null
+          min_hours_half?: number | null
+          morning_cutoff?: string | null
+          shift_end?: string | null
+          shift_start?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          designation_id?: string
+          early_deduction_rate?: number | null
+          early_exit_time?: string | null
+          evening_verification_time?: string | null
+          full_day_requires_morning?: boolean | null
+          grace_early_min?: number | null
+          grace_late_min?: number | null
+          id?: string
+          late_deduction_rate?: number | null
+          location_name?: string
+          min_hours_full?: number | null
+          min_hours_half?: number | null
+          morning_cutoff?: string | null
+          shift_end?: string | null
+          shift_start?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_designation_shift_config_designation_id_fkey"
+            columns: ["designation_id"]
+            isOneToOne: false
+            referencedRelation: "designations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       location_shift_config: {
         Row: {
           allow_manager_override: boolean
@@ -544,74 +627,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      location_designation_shift_config: {
-        Row: {
-          created_at: string | null
-          designation_id: string
-          early_exit_time: string | null
-          evening_verification_time: string | null
-          full_day_requires_morning: boolean | null
-          grace_early_min: number | null
-          grace_late_min: number | null
-          id: string
-          location_name: string
-          min_hours_full: number | null
-          min_hours_half: number | null
-          morning_cutoff: string | null
-          shift_end: string | null
-          shift_start: string | null
-          late_deduction_rate: number | null
-          early_deduction_rate: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          designation_id: string
-          early_exit_time?: string | null
-          evening_verification_time?: string | null
-          full_day_requires_morning?: boolean | null
-          grace_early_min?: number | null
-          grace_late_min?: number | null
-          id?: string
-          location_name: string
-          min_hours_full?: number | null
-          min_hours_half?: number | null
-          morning_cutoff?: string | null
-          shift_end?: string | null
-          shift_start?: string | null
-          late_deduction_rate?: number | null
-          early_deduction_rate?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          designation_id?: string
-          early_exit_time?: string | null
-          evening_verification_time?: string | null
-          full_day_requires_morning?: boolean | null
-          grace_early_min?: number | null
-          grace_late_min?: number | null
-          id?: string
-          location_name?: string
-          min_hours_full?: number | null
-          min_hours_half?: number | null
-          morning_cutoff?: string | null
-          shift_end?: string | null
-          shift_start?: string | null
-          late_deduction_rate?: number | null
-          early_deduction_rate?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "location_designation_shift_config_designation_id_fkey"
-            columns: ["designation_id"]
-            isOneToOne: false
-            referencedRelation: "designations"
-            referencedColumns: ["id"]
-          }
-        ]
       }
       locations: {
         Row: {
@@ -926,9 +941,11 @@ export type Database = {
         Row: {
           basic_override: number | null
           created_at: string
+          early_leave_deduction_override: number | null
           hra_override: number | null
           id: string
           incentive_override: number | null
+          late_coming_deduction_override: number | null
           meal_allowance_override: number | null
           month: number
           salary_supplements_override: Json | null
@@ -940,9 +957,11 @@ export type Database = {
         Insert: {
           basic_override?: number | null
           created_at?: string
+          early_leave_deduction_override?: number | null
           hra_override?: number | null
           id?: string
           incentive_override?: number | null
+          late_coming_deduction_override?: number | null
           meal_allowance_override?: number | null
           month: number
           salary_supplements_override?: Json | null
@@ -954,9 +973,11 @@ export type Database = {
         Update: {
           basic_override?: number | null
           created_at?: string
+          early_leave_deduction_override?: number | null
           hra_override?: number | null
           id?: string
           incentive_override?: number | null
+          late_coming_deduction_override?: number | null
           meal_allowance_override?: number | null
           month?: number
           salary_supplements_override?: Json | null
