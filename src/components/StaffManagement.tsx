@@ -645,7 +645,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       hikeIntervalMonths: member.hikeIntervalMonths || 0,
       statutoryDeductions: member.statutoryDeductions || {},
       pfNumber: member.pfNumber || '',
-      esiNumber: member.esiNumber || ''
+      esiNumber: member.esiNumber || '',
+      deviceId: member.deviceId || ''
     });
     setEditingStaff(member);
     setShowAddForm(true);
