@@ -170,9 +170,9 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
   const getPunchMetrics = (record: Attendance, staffMember: Staff, shiftWindows: any) => {
     if (record.status === 'Absent') return { isLate: false, isEarly: false, lateMins: 0, earlyMins: 0, isOnTime: false };
     
-    let shiftKey = record.shift || staffMember.shift || 'Both';
+    let shiftKey: any = record.shift || staffMember.shift || 'Both';
     if (shiftKey === '-') shiftKey = staffMember.shift || 'Both';
-    const baseWin = (shiftWindows && shiftWindows[shiftKey]) || DEFAULT_SHIFT_WINDOWS[shiftKey] || DEFAULT_SHIFT_WINDOWS['Both'];
+    const baseWin = (shiftWindows && shiftWindows[shiftKey]) || (DEFAULT_SHIFT_WINDOWS as any)[shiftKey] || DEFAULT_SHIFT_WINDOWS['Both'];
     const win = baseWin ? (staffMember.shiftWindow ? { ...baseWin, ...staffMember.shiftWindow } : baseWin) : DEFAULT_SHIFT_WINDOWS['Both'];
     
     let lateMins = 0;
