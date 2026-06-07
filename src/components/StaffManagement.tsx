@@ -168,7 +168,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     hikeIntervalMonths: 0,
     statutoryDeductions: {} as Record<string, StatutoryDeduction>,
     pfNumber: '',
-    esiNumber: ''
+    esiNumber: '',
+    deviceId: ''
   });
 
   // Set default location when locations load
