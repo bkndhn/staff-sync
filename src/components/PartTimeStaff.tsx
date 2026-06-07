@@ -1103,7 +1103,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             shift: (new Date().getDay() === 0 ? 'Both' : 'Morning') as 'Morning' | 'Evening' | 'Both',
             salary: 0,
             arrivalTime: '',
-            leavingTime: ''
+            leavingTime: '',
+            floor: ''
         });
         setShowAddForm(false);
     };
@@ -1113,6 +1114,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         setEditData({
             name: record.staffName || '',
             location: record.location || 'Big Shop',
+            floor: record.floor || '',
             shift: record.shift || 'Morning',
             status: record.status,
             salary: record.salary || getPartTimeDailySalary(record.date),
