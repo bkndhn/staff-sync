@@ -580,6 +580,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         salary: number;
         arrivalTime: string;
         leavingTime: string;
+        floor: string;
     }>(() => {
         const config = getDefaultShiftConfig();
         const location = (userLocation || 'Big Shop') as string;
@@ -591,7 +592,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             shift: config.shift,
             salary: 0,
             arrivalTime: config.arrivalTime,
-            leavingTime: initialLeavingTime
+            leavingTime: initialLeavingTime,
+            floor: ''
         };
     });
 
