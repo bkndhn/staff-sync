@@ -1,1 +1,3 @@
 project_id = "nsmppwnpdxomjmgrtqka"
+[functions.device-push]
+verify_jwt = false

@@ -168,7 +168,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     hikeIntervalMonths: 0,
     statutoryDeductions: {} as Record<string, StatutoryDeduction>,
     pfNumber: '',
-    esiNumber: ''
+    esiNumber: '',
+    deviceId: ''
   });
 
   // Set default location when locations load
@@ -555,7 +556,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       hikeIntervalMonths: 0,
       statutoryDeductions: {},
       pfNumber: '',
-      esiNumber: ''
+      esiNumber: '',
+      deviceId: ''
     });
   };
 
@@ -566,6 +568,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     const phoneDigits = formData.contactNumber.replace(/[^0-9]/g, '');
     if (phoneDigits.length !== 10) {
       await customAlert('Please enter a valid 10-digit mobile number');
+      return;
+    }
+    const deviceIdTrim = (formData.deviceId || '').trim();
+    if (!deviceIdTrim) {
+      await customAlert('Biometric Device ID / Employee Code is required');
+      return;
+    }
+    const duplicateDevice = staff.find(s => s.id !== editingStaff?.id && (s.deviceId || '').trim() === deviceIdTrim);
+    if (duplicateDevice) {
+      await customAlert(`Device ID "${deviceIdTrim}" is already assigned to ${duplicateDevice.name}`);
       return;
     }
 
@@ -643,7 +655,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       hikeIntervalMonths: member.hikeIntervalMonths || 0,
       statutoryDeductions: member.statutoryDeductions || {},
       pfNumber: member.pfNumber || '',
-      esiNumber: member.esiNumber || ''
+      esiNumber: member.esiNumber || '',
+      deviceId: member.deviceId || ''
     });
     setEditingStaff(member);
     setShowAddForm(true);
@@ -1144,7 +1157,25 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                   <label className="block text-sm font-medium text-white/70 mb-1">ESI Number <span className="text-white/30 text-xs">(optional)</span></label>
                   <input type="text" value={formData.esiNumber} onChange={(e) => setFormData({ ...formData, esiNumber: e.target.value })} className="input-premium" placeholder="e.g. 1234567890" />
                 </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-white/70 mb-1">
+                    Biometric Device ID / Employee Code <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.deviceId}
+                    onChange={(e) => setFormData({ ...formData, deviceId: e.target.value.replace(/\s+/g, '') })}
+                    className="input-premium"
+                    placeholder="e.g. 101 (the enroll number on the eSSL / ZKTeco device)"
+                    required
+                  />
+                  <p className="text-xs text-white/50 mt-1">
+                    Required to match punches from biometric / cloud-push devices to this staff member.
+                    Must exactly match the enroll number on the device.
+                  </p>
+                </div>
               </div>
+
             </div>
             </div>
 

@@ -47,6 +47,7 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
         StaffAccommodation: 'day_scholar',
         SundayPenalty: true,
         SalaryCalculationDays: 30,
+        DeviceID: '101',
       },
       {
         Name: 'Jane Smith (Part Time)',
@@ -70,6 +71,7 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
         StaffAccommodation: '',
         SundayPenalty: false,
         SalaryCalculationDays: 30,
+        DeviceID: '102',
       }
     ];
     const ws = XLSX.utils.json_to_sheet(sample);
@@ -96,6 +98,7 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
       { Field: 'StaffAccommodation', Required: 'No', Example: 'day_scholar', Notes: 'day_scholar | accommodation | (blank)' },
       { Field: 'SundayPenalty', Required: 'No', Example: 'true', Notes: 'true / false' },
       { Field: 'SalaryCalculationDays', Required: 'No', Example: '30', Notes: 'Default 30' },
+      { Field: 'DeviceID', Required: 'Yes', Example: '101', Notes: 'Biometric enroll number / Employee Code (must match device)' },
     ];
     const wsI = XLSX.utils.json_to_sheet(instructions);
     XLSX.utils.book_append_sheet(wb, wsI, 'Instructions');
@@ -165,11 +168,13 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
         ifscCode: String(r.IFSCCode || '').trim() || undefined,
         bankName: String(r.BankName || '').trim() || undefined,
         paymentMode: String(r.PaymentMode || 'cash').toLowerCase() === 'bank' ? 'bank' : 'cash',
+        deviceId: String(r.DeviceID || r.DeviceId || r.deviceId || r.EmployeeCode || '').trim() || null,
       };
 
       const duplicate = existingNames.has(name.toLowerCase());
       let error: string | undefined;
       if (!data.location) error = 'Missing Location';
+      else if (!data.deviceId) error = 'Missing DeviceID (biometric enroll number)';
       else if (type === 'full-time' && totalSalary <= 0) error = 'Total salary required for full-time';
 
       return { rowNum: idx + 2, data, error, duplicate };
@@ -254,6 +259,7 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
                       <th className="px-2 py-2 text-left">Type</th>
                       <th className="px-2 py-2 text-right">Total</th>
                       <th className="px-2 py-2 text-left">Joined</th>
+                      <th className="px-2 py-2 text-left">Device ID</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -270,6 +276,7 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
                         <td className="px-2 py-1.5">{r.data.type}</td>
                         <td className="px-2 py-1.5 text-right">₹{r.data.totalSalary?.toLocaleString('en-IN')}</td>
                         <td className="px-2 py-1.5">{r.data.joinedDate}</td>
+                        <td className="px-2 py-1.5 font-mono">{r.data.deviceId || <span className="text-red-500">—</span>}</td>
                       </tr>
                     ))}
                   </tbody>
