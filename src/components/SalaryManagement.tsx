@@ -428,7 +428,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       if (record.staffName) {
         uniqueStaff.set(record.staffName, {
           name: record.staffName,
-          location: record.location || 'Unknown'
+          location: record.location || 'Unknown',
+          floor: record.floor || ''
         });
       }
     });
@@ -437,6 +438,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       calculatePartTimeSalary(
         staff.name,
         staff.location,
+        staff.floor,
         attendance,
         selectedYear,
         selectedMonth
