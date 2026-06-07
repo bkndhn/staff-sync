@@ -580,6 +580,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         salary: number;
         arrivalTime: string;
         leavingTime: string;
+        floor: string;
     }>(() => {
         const config = getDefaultShiftConfig();
         const location = (userLocation || 'Big Shop') as string;
@@ -591,7 +592,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             shift: config.shift,
             salary: 0,
             arrivalTime: config.arrivalTime,
-            leavingTime: initialLeavingTime
+            leavingTime: initialLeavingTime,
+            floor: ''
         };
     });
 
@@ -828,7 +830,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             shift: defaultShift as 'Morning' | 'Evening' | 'Both',
             salary: 0,
             arrivalTime: defaultArrival,
-            leavingTime: defaultLeaving
+            leavingTime: defaultLeaving,
+            floor: ''
         }]);
     };
 
@@ -1100,7 +1103,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             shift: (new Date().getDay() === 0 ? 'Both' : 'Morning') as 'Morning' | 'Evening' | 'Both',
             salary: 0,
             arrivalTime: '',
-            leavingTime: ''
+            leavingTime: '',
+            floor: ''
         });
         setShowAddForm(false);
     };
@@ -1110,6 +1114,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         setEditData({
             name: record.staffName || '',
             location: record.location || 'Big Shop',
+            floor: record.floor || '',
             shift: record.shift || 'Morning',
             status: record.status,
             salary: record.salary || getPartTimeDailySalary(record.date),

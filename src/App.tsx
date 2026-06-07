@@ -24,6 +24,7 @@ import { faceEmbeddingService } from './services/faceEmbeddingService';
 import { designationService } from './services/designationService';
 import { locationDesignationShiftService } from './services/locationDesignationShiftService';
 import { resolveActiveRule } from './utils/attendanceRules';
+import { appSettingsService } from './services/appSettingsService';
 
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
 const SalaryManagement = React.lazy(() => import('./components/SalaryManagement'));

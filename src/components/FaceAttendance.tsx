@@ -131,7 +131,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     }
     // Use new smart rules engine if location config is available
     if (locationConfig) {
-      const rules = resolveAttendanceRules(locationConfig, s?.shiftWindow);
+      const rules = resolveAttendanceRules(locationConfig, (s as Staff | undefined)?.shiftWindow);
       const { status, attendanceValue } = calculateAttendanceStatus(arrival || undefined, leaving || undefined, rules);
       return { status, value: attendanceValue, appliedRuleType: undefined, appliedRuleDetails: undefined };
     }

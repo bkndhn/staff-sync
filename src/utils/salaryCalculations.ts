@@ -333,9 +333,9 @@ export const calculateSalary = (
 
     // Fallback if no specific rule details were saved on the record
     if (!rulesToUse) {
-      let shiftKey = record.shift || staff.shift || 'Both';
+      let shiftKey: any = record.shift || staff.shift || 'Both';
       if (shiftKey === '-') shiftKey = staff.shift || 'Both';
-      const baseWin = windows[shiftKey] || DEFAULT_SHIFT_WINDOWS[shiftKey] || DEFAULT_SHIFT_WINDOWS['Both'];
+      const baseWin = windows[shiftKey] || (DEFAULT_SHIFT_WINDOWS as any)[shiftKey] || DEFAULT_SHIFT_WINDOWS['Both'];
       const win = baseWin ? (staff.shiftWindow ? { ...baseWin, ...staff.shiftWindow } : baseWin) : DEFAULT_SHIFT_WINDOWS['Both'];
       rulesToUse = {
         shiftStart: win.start,

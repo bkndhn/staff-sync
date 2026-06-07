@@ -428,7 +428,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       if (record.staffName) {
         uniqueStaff.set(record.staffName, {
           name: record.staffName,
-          location: record.location || 'Unknown'
+          location: record.location || 'Unknown',
+          floor: record.floor || ''
         });
       }
     });
@@ -437,6 +438,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       calculatePartTimeSalary(
         staff.name,
         staff.location,
+        staff.floor,
         attendance,
         selectedYear,
         selectedMonth
@@ -511,7 +513,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       const hraVal = overrides.hra ?? detail?.hraEarned ?? 0;
       const mealAllowanceVal = overrides.mealAllowance ?? detail?.mealAllowance ?? 0;
       const sundayPenaltyVal = overrides.sundayPenalty ?? detail?.sundayPenalty ?? 0;
-      const staffOverride = overrides[member.id];
+      const staffOverride = overrides[member.id] as any;
       const lateComingDeductionVal = staffOverride?.lateComingDeductionOverride ?? detail?.lateComingDeduction ?? 0;
       const earlyLeaveDeductionVal = staffOverride?.earlyLeaveDeductionOverride ?? detail?.earlyLeaveDeduction ?? 0;
 

@@ -170,9 +170,9 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
   const getPunchMetrics = (record: Attendance, staffMember: Staff, shiftWindows: any) => {
     if (record.status === 'Absent') return { isLate: false, isEarly: false, lateMins: 0, earlyMins: 0, isOnTime: false };
     
-    let shiftKey = record.shift || staffMember.shift || 'Both';
+    let shiftKey: any = record.shift || staffMember.shift || 'Both';
     if (shiftKey === '-') shiftKey = staffMember.shift || 'Both';
-    const baseWin = (shiftWindows && shiftWindows[shiftKey]) || DEFAULT_SHIFT_WINDOWS[shiftKey] || DEFAULT_SHIFT_WINDOWS['Both'];
+    const baseWin = (shiftWindows && shiftWindows[shiftKey]) || (DEFAULT_SHIFT_WINDOWS as any)[shiftKey] || DEFAULT_SHIFT_WINDOWS['Both'];
     const win = baseWin ? (staffMember.shiftWindow ? { ...baseWin, ...staffMember.shiftWindow } : baseWin) : DEFAULT_SHIFT_WINDOWS['Both'];
     
     let lateMins = 0;
@@ -253,7 +253,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
           dailyPresent += val;
           presentSum += val;
 
-          const pm = getPunchMetrics(record, s, globalShiftWindows);
+          const pm = getPunchMetrics(record as Attendance, s, globalShiftWindows);
           if (pm.isLate) {
             lateSum++;
             if (!lateMap[s.id]) lateMap[s.id] = { staffId: s.id, count: 0, details: [] };
@@ -277,7 +277,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
           halfDaySum++;
           presentSum += val;
 
-          const pm = getPunchMetrics(record, s, globalShiftWindows);
+          const pm = getPunchMetrics(record as Attendance, s, globalShiftWindows);
           if (pm.isLate) {
             lateSum++;
             if (!lateMap[s.id]) lateMap[s.id] = { staffId: s.id, count: 0, details: [] };
@@ -319,26 +319,26 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
     };
 
     const lateComersMap = Object.entries(lateMap).map(([id, info]) => ({
-      staffId: id,
       ...info,
+      staffId: id,
       ...getStaffInfo(id)
     })).sort((a, b) => b.count - a.count);
 
     const earlyLeaversMap = Object.entries(earlyMap).map(([id, info]) => ({
-      staffId: id,
       ...info,
+      staffId: id,
       ...getStaffInfo(id)
     })).sort((a, b) => b.count - a.count);
 
     const absentsMap = Object.entries(abMap).map(([id, info]) => ({
-      staffId: id,
       ...info,
+      staffId: id,
       ...getStaffInfo(id)
     })).sort((a, b) => b.count - a.count);
 
     const onTimeMap = Object.entries(otMap).map(([id, info]) => ({
-      staffId: id,
       ...info,
+      staffId: id,
       ...getStaffInfo(id)
     })).sort((a, b) => b.count - a.count);
 

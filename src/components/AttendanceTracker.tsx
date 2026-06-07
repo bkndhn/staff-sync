@@ -1154,8 +1154,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       ruleDetails = resolved.rules;
                     }
 
-                    const shiftKey = data.shift !== '-' ? data.shift : (staffMember?.shift || 'Both');
-                    const baseWin = globalShiftWindows[shiftKey] || DEFAULT_SHIFT_WINDOWS[shiftKey];
+                    const shiftKey = (data.shift !== '-' ? data.shift : (staffMember?.shift || 'Both')) as keyof typeof DEFAULT_SHIFT_WINDOWS;
+                    const baseWin = (globalShiftWindows as any)[shiftKey] || DEFAULT_SHIFT_WINDOWS[shiftKey];
                     const startVal = ruleDetails?.shiftStart || baseWin.start;
                     const endVal = ruleDetails?.shiftEnd || baseWin.end;
                     const graceLate = ruleDetails?.graceLateMin !== undefined ? ruleDetails.graceLateMin : baseWin.graceLateMin;
