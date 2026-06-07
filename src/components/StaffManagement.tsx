@@ -268,7 +268,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         if (updated) {
           setLocations(locations.map(l => l.id === id ? { ...l, name: updated.name } : l));
           setFloors(floors.map(f => f.locationName === loc.name ? { ...f, locationName: updated.name } : f));
-          onRefreshStaff();
+          onRefreshStaff?.();
         } else {
           alert("Failed to update location. Please try again.");
         }
@@ -392,7 +392,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             const up = updatedFloors.find(uf => uf.id === f.id);
             return up ? up : f;
           }));
-          onRefreshStaff();
+          onRefreshStaff?.();
         } else {
           alert("Failed to update floors.");
         }
@@ -400,7 +400,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         const updated = await floorService.updateFloor(id, editFloorValue.trim());
         if (updated) {
           setFloors(floors.map(f => f.id === id ? updated : f));
-          onRefreshStaff();
+          onRefreshStaff?.();
         } else {
           alert("Failed to update floor. It might already exist or you lack permission.");
         }
@@ -453,7 +453,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       const updated = await designationService.updateDesignation(id, editDesignationValue.trim());
       if (updated) {
         setDesignations(designations.map(d => d.id === id ? updated : d));
-        onRefreshStaff();
+        onRefreshStaff?.();
       } else {
         alert("Failed to update designation. It might already exist or you lack permission.");
       }
@@ -2115,7 +2115,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             for (const r of records) {
               await onAddStaff(r);
             }
-            if (onRefreshStaff) await onRefreshStaff();
+            if (onRefreshStaff) await onRefreshStaff?.();
           }}
           onClose={() => setShowBulkImport(false)}
         />
