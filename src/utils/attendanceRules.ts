@@ -51,6 +51,10 @@ export interface AttendanceRules {
   fullDayRequiresMorning: boolean;
   /** Evening threshold to finalize Pending Full Day to Full Day */
   eveningVerificationTime: string;
+  /** Fraction of daily rate deducted per late arrival */
+  lateDeductionRate: number;
+  /** Fraction of daily rate deducted per early leave */
+  earlyDeductionRate: number;
 }
 
 export type AttendanceStatus = 'Present' | 'Half Day' | 'Absent' | 'Pending Full Day' | 'Manual Override';
@@ -158,6 +162,152 @@ export const calculateAttendanceStatus = (
   return { status, attendanceValue, reasons };
 };
 
+import { type Staff, type Designation, type LocationDesignationShiftConfig } from '../types';
+
+export interface RuleResolutionResult {
+  rules: AttendanceRules;
+  appliedRuleType: 'staff_override' | 'location_designation' | 'designation_general' | 'location_general' | 'global_fallback';
+}
+
+export const resolveActiveRule = (
+  staff: Staff,
+  locationConfig?: any | null,
+  designations: Designation[] = [],
+  locationDesignationConfigs: LocationDesignationShiftConfig[] = [],
+  globalKioskSettings?: {
+    morningCutoff?: string;
+    earlyExitTime?: string;
+    eveningVerificationTime?: string;
+    fullDayRequiresMorning?: boolean;
+  } | null
+): RuleResolutionResult => {
+  // Import DEFAULT_SHIFT_WINDOWS dynamically or handle fallback.
+  // Actually, we should just use the passed global fallback if possible, but the original code had hardcoded defaults.
+  // Let's rely on DEFAULT_SHIFT_WINDOWS if possible.
+  
+  // To avoid circular dependency or import issues, let's just construct the fallback manually based on staff.shift
+  const shiftKey = staff.shift || 'Both';
+  let fallbackStart = '09:00';
+  let fallbackEnd = '18:00';
+  let fallbackMinFull = 8;
+  let fallbackMinHalf = 4;
+  let fallbackGraceLate = 15;
+  let fallbackGraceEarly = 15;
+  
+  if (shiftKey === 'Morning') {
+    fallbackStart = '10:00'; fallbackEnd = '14:00'; fallbackMinFull = 4; fallbackMinHalf = 2; fallbackGraceLate = 15; fallbackGraceEarly = 15;
+  } else if (shiftKey === 'Evening') {
+    fallbackStart = '14:00'; fallbackEnd = '21:00'; fallbackMinFull = 6; fallbackMinHalf = 3; fallbackGraceLate = 15; fallbackGraceEarly = 15;
+  } else {
+    fallbackStart = '10:00'; fallbackEnd = '21:00'; fallbackMinFull = 8; fallbackMinHalf = 4; fallbackGraceLate = 20; fallbackGraceEarly = 20;
+  }
+
+  // Default values
+  const defaultRules: AttendanceRules = {
+    shiftStart: fallbackStart,
+    shiftEnd: fallbackEnd,
+    graceLateMin: fallbackGraceLate,
+    graceEarlyMin: fallbackGraceEarly,
+    minHoursFull: fallbackMinFull,
+    minHoursHalf: fallbackMinHalf,
+    morningCutoff: globalKioskSettings?.morningCutoff || '12:00',
+    earlyExitTime: globalKioskSettings?.earlyExitTime || '16:00',
+    eveningVerificationTime: globalKioskSettings?.eveningVerificationTime || '18:00',
+    fullDayRequiresMorning: globalKioskSettings?.fullDayRequiresMorning !== false,
+    lateDeductionRate: 0.5,
+    earlyDeductionRate: 0.5,
+  };
+
+  // 1) Staff shiftWindow override (highest priority)
+  if (staff.shiftWindow && (staff.shiftWindow.start || staff.shiftWindow.end)) {
+    return {
+      rules: {
+        ...defaultRules,
+        shiftStart: staff.shiftWindow.start || locationConfig?.shiftStart || defaultRules.shiftStart,
+        shiftEnd: staff.shiftWindow.end || locationConfig?.shiftEnd || defaultRules.shiftEnd,
+        graceLateMin: staff.shiftWindow.graceLateMin !== undefined ? staff.shiftWindow.graceLateMin : (locationConfig?.graceLateMin ?? defaultRules.graceLateMin),
+        graceEarlyMin: staff.shiftWindow.graceEarlyMin !== undefined ? staff.shiftWindow.graceEarlyMin : (locationConfig?.graceEarlyMin ?? defaultRules.graceEarlyMin),
+        minHoursFull: staff.shiftWindow.minHoursFull !== undefined ? staff.shiftWindow.minHoursFull : (locationConfig?.minHoursFull ?? defaultRules.minHoursFull),
+        minHoursHalf: staff.shiftWindow.minHoursHalf !== undefined ? staff.shiftWindow.minHoursHalf : (locationConfig?.minHoursHalf ?? defaultRules.minHoursHalf),
+      },
+      appliedRuleType: 'staff_override',
+    };
+  }
+
+  // Find designation matching staff
+  const staffDesignation = designations.find(d => d.displayName === staff.designation || d.name === staff.designation);
+
+  // 2) Location-Designation Override
+  if (staff.location && staffDesignation) {
+    const locDesig = locationDesignationConfigs.find(
+      c => c.locationName === staff.location && c.designationId === staffDesignation.id
+    );
+    if (locDesig) {
+      const rules: AttendanceRules = {
+        shiftStart: locDesig.shiftStart || locationConfig?.shiftStart || staffDesignation.shiftStart || defaultRules.shiftStart,
+        shiftEnd: locDesig.shiftEnd || locationConfig?.shiftEnd || staffDesignation.shiftEnd || defaultRules.shiftEnd,
+        graceLateMin: locDesig.graceLateMin !== undefined ? locDesig.graceLateMin : (locationConfig?.graceLateMin !== undefined ? locationConfig.graceLateMin : (staffDesignation.graceLateMin ?? defaultRules.graceLateMin)),
+        graceEarlyMin: locDesig.graceEarlyMin !== undefined ? locDesig.graceEarlyMin : (locationConfig?.graceEarlyMin !== undefined ? locationConfig.graceEarlyMin : (staffDesignation.graceEarlyMin ?? defaultRules.graceEarlyMin)),
+        minHoursFull: locDesig.minHoursFull !== undefined ? locDesig.minHoursFull : (locationConfig?.minHoursFull !== undefined ? locationConfig.minHoursFull : (staffDesignation.minHoursFull ?? defaultRules.minHoursFull)),
+        minHoursHalf: locDesig.minHoursHalf !== undefined ? locDesig.minHoursHalf : (locationConfig?.minHoursHalf !== undefined ? locationConfig.minHoursHalf : (staffDesignation.minHoursHalf ?? defaultRules.minHoursHalf)),
+        morningCutoff: locDesig.morningCutoff || locationConfig?.morningCutoff || staffDesignation.morningCutoff || defaultRules.morningCutoff,
+        earlyExitTime: locDesig.earlyExitTime || locationConfig?.earlyExitTime || staffDesignation.earlyExitTime || defaultRules.earlyExitTime,
+        eveningVerificationTime: locDesig.eveningVerificationTime || locationConfig?.eveningVerificationTime || staffDesignation.eveningVerificationTime || defaultRules.eveningVerificationTime,
+        fullDayRequiresMorning: locDesig.fullDayRequiresMorning !== undefined ? locDesig.fullDayRequiresMorning : (locationConfig?.fullDayRequiresMorning !== undefined ? locationConfig.fullDayRequiresMorning : (staffDesignation.fullDayRequiresMorning ?? defaultRules.fullDayRequiresMorning)),
+        lateDeductionRate: locDesig.lateDeductionRate !== undefined ? locDesig.lateDeductionRate : (staffDesignation.lateDeductionRate !== undefined ? staffDesignation.lateDeductionRate : defaultRules.lateDeductionRate),
+        earlyDeductionRate: locDesig.earlyDeductionRate !== undefined ? locDesig.earlyDeductionRate : (staffDesignation.earlyDeductionRate !== undefined ? staffDesignation.earlyDeductionRate : defaultRules.earlyDeductionRate),
+      };
+      return { rules, appliedRuleType: 'location_designation' };
+    }
+  }
+
+  // 3) Location General Rule
+  if (locationConfig && (locationConfig.shiftStart || locationConfig.shiftEnd)) {
+    const rules: AttendanceRules = {
+      shiftStart: locationConfig.shiftStart || defaultRules.shiftStart,
+      shiftEnd: locationConfig.shiftEnd || defaultRules.shiftEnd,
+      graceLateMin: locationConfig.graceLateMin !== undefined ? locationConfig.graceLateMin : defaultRules.graceLateMin,
+      graceEarlyMin: locationConfig.graceEarlyMin !== undefined ? locationConfig.graceEarlyMin : defaultRules.graceEarlyMin,
+      minHoursFull: locationConfig.minHoursFull !== undefined ? locationConfig.minHoursFull : defaultRules.minHoursFull,
+      minHoursHalf: locationConfig.minHoursHalf !== undefined ? locationConfig.minHoursHalf : defaultRules.minHoursHalf,
+      morningCutoff: locationConfig.morningCutoff || defaultRules.morningCutoff,
+      earlyExitTime: locationConfig.earlyExitTime || defaultRules.earlyExitTime,
+      eveningVerificationTime: locationConfig.eveningVerificationTime || defaultRules.eveningVerificationTime,
+      fullDayRequiresMorning: locationConfig.fullDayRequiresMorning !== undefined ? locationConfig.fullDayRequiresMorning : defaultRules.fullDayRequiresMorning,
+      lateDeductionRate: defaultRules.lateDeductionRate,
+      earlyDeductionRate: defaultRules.earlyDeductionRate,
+    };
+    return { rules, appliedRuleType: 'location_general' };
+  }
+
+  // 4) Designation Rule
+  if (staffDesignation) {
+    if (staffDesignation.shiftStart || staffDesignation.shiftEnd) {
+      const rules: AttendanceRules = {
+        shiftStart: staffDesignation.shiftStart || defaultRules.shiftStart,
+        shiftEnd: staffDesignation.shiftEnd || defaultRules.shiftEnd,
+        graceLateMin: staffDesignation.graceLateMin !== undefined ? staffDesignation.graceLateMin : defaultRules.graceLateMin,
+        graceEarlyMin: staffDesignation.graceEarlyMin !== undefined ? staffDesignation.graceEarlyMin : defaultRules.graceEarlyMin,
+        minHoursFull: staffDesignation.minHoursFull !== undefined ? staffDesignation.minHoursFull : defaultRules.minHoursFull,
+        minHoursHalf: staffDesignation.minHoursHalf !== undefined ? staffDesignation.minHoursHalf : defaultRules.minHoursHalf,
+        morningCutoff: staffDesignation.morningCutoff || defaultRules.morningCutoff,
+        earlyExitTime: staffDesignation.earlyExitTime || defaultRules.earlyExitTime,
+        eveningVerificationTime: staffDesignation.eveningVerificationTime || defaultRules.eveningVerificationTime,
+        fullDayRequiresMorning: staffDesignation.fullDayRequiresMorning !== undefined ? staffDesignation.fullDayRequiresMorning : defaultRules.fullDayRequiresMorning,
+        lateDeductionRate: staffDesignation.lateDeductionRate !== undefined ? staffDesignation.lateDeductionRate : defaultRules.lateDeductionRate,
+        earlyDeductionRate: staffDesignation.earlyDeductionRate !== undefined ? staffDesignation.earlyDeductionRate : defaultRules.earlyDeductionRate,
+      };
+      return { rules, appliedRuleType: 'designation_general' };
+    }
+  }
+
+  // 5) Global Fallback
+  return {
+    rules: defaultRules,
+    appliedRuleType: 'global_fallback',
+  };
+};
+
 /**
  * Convert a LocationShiftConfig (or per-staff shiftWindow override) to AttendanceRules.
  * Priority: staffWindow override > locationConfig > hardcoded fallback.
@@ -190,9 +340,10 @@ export const resolveAttendanceRules = (
   graceEarlyMin: staffOverride?.graceEarlyMin ?? locationConfig.graceEarlyMin,
   minHoursFull: staffOverride?.minHoursFull ?? locationConfig.minHoursFull,
   minHoursHalf: staffOverride?.minHoursHalf ?? locationConfig.minHoursHalf,
-  // Morning/evening cutoffs are location-level only (not per-staff)
   morningCutoff: locationConfig.morningCutoff,
   earlyExitTime: locationConfig.earlyExitTime,
   eveningVerificationTime: locationConfig.eveningVerificationTime,
   fullDayRequiresMorning: locationConfig.fullDayRequiresMorning,
+  lateDeductionRate: 0.5,
+  earlyDeductionRate: 0.5,
 });

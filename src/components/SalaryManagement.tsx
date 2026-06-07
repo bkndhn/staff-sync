@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Staff, Attendance, SalaryDetail, AdvanceDeduction, PartTimeSalaryDetail, SalaryOverride } from '../types';
 import { DollarSign, Download, Users, Calendar, TrendingUp, Edit2, Save, X, FileSpreadsheet, FileText, MessageCircle, Filter, Plus, Trash2 } from 'lucide-react';
-import { calculateAttendanceMetrics, calculateSalary, calculatePartTimeSalary, roundToNearest10 } from '../utils/salaryCalculations';
+import { calculateAttendanceMetrics, calculateSalary, calculatePartTimeSalary, roundToNearest10, computeScheduledDeductions } from '../utils/salaryCalculations';
+import type { DeductionBreakdown } from '../utils/salaryCalculations';
 import { exportSalaryToExcel, exportSalaryPDF, generateSalarySlipPDF, exportBulkSalarySlipsPDF, exportStatutoryToExcel } from '../utils/exportUtils';
 import { salaryCategoryService, type SalaryCategory } from '../services/salaryCategoryService';
 import { salaryOverrideService } from '../services/salaryOverrideService';
 import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryService';
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
+import { appSettingsService } from '../services/appSettingsService';
 import BulkSalarySender from './BulkSalarySender';
 
 interface SalaryManagementProps {
@@ -19,6 +21,7 @@ interface SalaryManagementProps {
 interface TempSalaryData {
   oldAdvance?: number;
   currentAdvance?: number;
+  originalCurrentAdvance?: number | null;
   deduction?: number;
   newAdvance?: number;
   basicOverride?: number;
@@ -26,6 +29,8 @@ interface TempSalaryData {
   hraOverride?: number;
   mealAllowanceOverride?: number;
   sundayPenaltyOverride?: number;
+  lateComingDeductionOverride?: number;
+  earlyLeaveDeductionOverride?: number;
   grossSalary?: number;
   netSalary?: number;
 }
@@ -62,29 +67,65 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [showAdvanceEntryModal, setShowAdvanceEntryModal] = useState<string | null>(null);
   const [advanceEntries, setAdvanceEntries] = useState<{ [staffId: string]: AdvanceEntry[] }>({});
-  const [advanceForm, setAdvanceForm] = useState({ entryDate: new Date().toISOString().split('T')[0], amount: 0, purpose: '' });
+  const [advanceForm, setAdvanceForm] = useState({ entryDate: new Date().toISOString().split('T')[0], amount: 0, purpose: '', deductPeriods: 1, startDeductMonth: undefined as number | undefined, startDeductYear: undefined as number | undefined });
+  const [scheduledDeductions, setScheduledDeductions] = useState<{ [staffId: string]: { total: number; breakdown: DeductionBreakdown[] } }>({});
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [modalAdvanceEntries, setModalAdvanceEntries] = useState<AdvanceEntry[]>([]);
+
+  const getDefaultDate = (month: number, year: number) => {
+    const now = new Date();
+    if (month === now.getMonth() && year === now.getFullYear()) {
+      return now.toISOString().split('T')[0];
+    }
+    return `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  };
+
+  const loadAllAdvanceEntries = async () => {
+    const { supabase } = await import('../lib/supabase');
+    // 1. Load entries created in this month (for Cur Adv sum)
+    const { data, error } = await supabase
+      .from('advance_entries')
+      .select('*')
+      .eq('month', selectedMonth)
+      .eq('year', selectedYear);
+    if (error) { console.error('Error loading advance entries:', error); return; }
+
+    const grouped: { [k: string]: AdvanceEntry[] } = {};
+    (data || []).forEach((row: any) => {
+      const e = advanceEntryService.mapFromDatabase(row);
+      if (!grouped[e.staffId]) grouped[e.staffId] = [];
+      grouped[e.staffId].push(e);
+    });
+
+    // 2. Also load entries from OTHER months that have deductions active in this month
+    const activeEntries = await advanceEntryService.getActiveForMonth(selectedMonth, selectedYear);
+    activeEntries.forEach(e => {
+      // Don't duplicate entries already loaded from this month
+      if (e.month === selectedMonth && e.year === selectedYear) return;
+      if (!grouped[e.staffId]) grouped[e.staffId] = [];
+      // Avoid duplicates by id
+      if (!grouped[e.staffId].some(ex => ex.id === e.id)) {
+        grouped[e.staffId].push(e);
+      }
+    });
+
+    setAdvanceEntries(grouped);
+  };
 
   // Load all date-wise advance entries for the selected month (used to auto-sum into Cur Adv)
+  // Also loads entries from previous months that have active deduction schedules spanning into this month
   useEffect(() => {
-    const loadAllEntries = async () => {
-      const { supabase } = await import('../lib/supabase');
-      const { data, error } = await supabase
-        .from('advance_entries')
-        .select('*')
-        .eq('month', selectedMonth)
-        .eq('year', selectedYear);
-      if (error) { console.error('Error loading advance entries:', error); return; }
-      const grouped: { [k: string]: AdvanceEntry[] } = {};
-      (data || []).forEach((row: any) => {
-        const e = advanceEntryService.mapFromDatabase(row);
-        if (!grouped[e.staffId]) grouped[e.staffId] = [];
-        grouped[e.staffId].push(e);
-      });
-      setAdvanceEntries(grouped);
-    };
-    loadAllEntries();
+    loadAllAdvanceEntries();
   }, [selectedMonth, selectedYear]);
+
+  // Compute scheduled deductions from multi-period advance entries
+  useEffect(() => {
+    const computed: typeof scheduledDeductions = {};
+    Object.entries(advanceEntries).forEach(([staffId, entries]) => {
+      computed[staffId] = computeScheduledDeductions(entries, selectedMonth, selectedYear);
+    });
+    setScheduledDeductions(computed);
+  }, [advanceEntries, selectedMonth, selectedYear]);
   const [showSalaryColumnPicker, setShowSalaryColumnPicker] = useState(false);
   const [salaryVisibleCols, setSalaryVisibleCols] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('salaryVisibleColumns');
@@ -92,7 +133,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     return {
       location: true, type: true, payment: true, floor: true, designation: true,
       present: true, leave: true, sunAbs: true, oldAdv: true, curAdv: true,
-      sunPenalty: true, statutory: true, esi: true, pf: true, gross: true, net: true, newAdv: true
+      sunPenalty: true, lateComingDeduction: true, earlyLeaveDeduction: true, statutory: true, esi: true, pf: true, gross: true, net: true, newAdv: true
     };
   });
   const toggleSalaryCol = (col: string) => {
@@ -106,10 +147,56 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     location: 'Location', type: 'Type', payment: 'Payment', floor: 'Floor', designation: 'Designation',
     present: 'Present', leave: 'Leave', sunAbs: 'Sun Abs', oldAdv: 'Old Adv', curAdv: 'Cur Adv',
     deduction: 'Deduction', basic: 'Basic', incentive: 'Incentive', hra: 'HRA', meal: 'Meal',
-    sunPenalty: 'Sun Penalty', statutory: 'ESI/PF/Statutory', esi: 'ESI', pf: 'PF', gross: 'Gross', net: 'Net Salary', newAdv: 'New Adv'
+    sunPenalty: 'Sun Penalty', lateComingDeduction: 'Late Coming Ded.', earlyLeaveDeduction: 'Early Leave Ded.', statutory: 'ESI/PF/Statutory', esi: 'ESI', pf: 'PF', gross: 'Gross', net: 'Net Salary', newAdv: 'New Adv'
   };
   const [salaryCategories, setSalaryCategories] = useState<SalaryCategory[]>(() => salaryCategoryService.getCategoriesSync());
   const [showBulkSender, setShowBulkSender] = useState(false);
+  const [overrideConfig, setOverrideConfig] = useState<any>({
+    oldAdvance: false,
+    currentAdvance: false,
+    deduction: false,
+    basic: false,
+    incentive: false,
+    hra: false,
+    mealAllowance: false,
+    sundayPenalty: false
+  });
+
+  useEffect(() => {
+    // Load override config
+    const loadConfig = async () => {
+      try {
+        const saved = await appSettingsService.getSetting('salary_override_config');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setOverrideConfig({
+            oldAdvance: parsed.oldAdvance === true,
+            currentAdvance: parsed.currentAdvance === true,
+            deduction: parsed.deduction === true,
+            basic: parsed.basic === true,
+            incentive: parsed.incentive === true,
+            hra: parsed.hra === true,
+            mealAllowance: parsed.mealAllowance === true,
+            sundayPenalty: parsed.sundayPenalty === true
+          });
+        } else {
+          setOverrideConfig({
+            oldAdvance: false,
+            currentAdvance: false,
+            deduction: false,
+            basic: false,
+            incentive: false,
+            hra: false,
+            mealAllowance: false,
+            sundayPenalty: false
+          });
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    loadConfig();
+  }, []);
 
   // Load categories from DB on mount
   useEffect(() => {
@@ -172,8 +259,24 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     loadOverrides();
   }, [selectedMonth, selectedYear]);
 
-  const activeStaff = staff.filter(member => {
-    if (!member.isActive) return false;
+  // Filter staff to active ones OR inactive ones that have data for the selected month
+  const activeStaff = staff.filter(s => {
+    if (s.isActive) return true;
+    const hasAttendance = (Array.isArray(attendance) ? attendance : []).some(a => 
+      a.staffId === s.id && 
+      new Date(a.date).getMonth() === selectedMonth && 
+      new Date(a.date).getFullYear() === selectedYear
+    );
+    if (hasAttendance) return true;
+    const hasAdvances = advances.some(a => 
+      a.staffId === s.id && 
+      a.month === selectedMonth && 
+      a.year === selectedYear && 
+      (a.currentAdvance > 0 || a.oldAdvance > 0 || a.deduction > 0 || (a.newAdvance && a.newAdvance > 0))
+    );
+    if (hasAdvances) return true;
+    return false;
+  }).filter(member => {
     const query = searchQuery.toLowerCase().trim();
     if (!query) return true;
     const haystack = [
@@ -244,24 +347,21 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         adv.year === selectedYear
       );
 
-      const baseDetail = calculateSalary(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear);
+      const memberAdvanceEntries = advanceEntries[member.id] || [];
+      const baseDetail = calculateSalary(
+        member,
+        attendanceMetrics,
+        memberAdvances ?? null,
+        advances,
+        attendance,
+        selectedMonth,
+        selectedYear,
+        memberAdvanceEntries,
+        overrideConfig,
+        scheduledDeductions[member.id]?.total || 0
+      );
 
-      // Auto-sum date-wise advance entries into Current Advance
-      // Rule: If staff has date-wise entries AND no manual override exists in 'advances' table for currentAdvance,
-      // use the entries sum. If user manually edits via Edit mode and saves, that explicit value takes precedence.
-      const entriesSum = (advanceEntries[member.id] || []).reduce((s, e) => s + e.amount, 0);
-      const hasManualAdvanceRow = !!memberAdvances && (memberAdvances.currentAdvance || 0) > 0;
-      const effectiveCurAdv = hasManualAdvanceRow
-        ? baseDetail.curAdv
-        : (entriesSum > 0 ? roundToNearest10(entriesSum) : baseDetail.curAdv);
-
-      // Recompute new advance & net if curAdv changed
       let mergedDetail = baseDetail;
-      if (effectiveCurAdv !== baseDetail.curAdv) {
-        const newAdv = roundToNearest10(baseDetail.oldAdv + effectiveCurAdv - baseDetail.deduction);
-        const netSalary = Math.max(0, roundToNearest10(baseDetail.grossSalary - effectiveCurAdv - baseDetail.deduction - baseDetail.sundayPenalty));
-        mergedDetail = { ...baseDetail, curAdv: effectiveCurAdv, newAdv, netSalary };
-      }
 
       // Merge with overrides if present
       const override = overrides[member.id];
@@ -272,9 +372,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         const hra = override.hraOverride ?? mergedDetail.hraEarned;
         const meal = override.mealAllowanceOverride ?? mergedDetail.mealAllowance;
         const sundayPenalty = override.sundayPenaltyOverride ?? mergedDetail.sundayPenalty;
+        const lateComingDeduction = override.lateComingDeductionOverride ?? mergedDetail.lateComingDeduction ?? 0;
+        const earlyLeaveDeduction = override.earlyLeaveDeductionOverride ?? mergedDetail.earlyLeaveDeduction ?? 0;
 
         const gross = roundToNearest10(basic + incentive + hra + meal);
-        const net = roundToNearest10(gross - mergedDetail.curAdv - mergedDetail.deduction - sundayPenalty);
+        const net = roundToNearest10(gross - mergedDetail.curAdv - mergedDetail.deduction - sundayPenalty - lateComingDeduction - earlyLeaveDeduction);
 
         resultDetail = {
           ...mergedDetail,
@@ -283,6 +385,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           hraEarned: hra,
           mealAllowance: meal,
           sundayPenalty: sundayPenalty,
+          lateComingDeduction,
+          earlyLeaveDeduction,
           grossSalary: gross,
           netSalary: net
         };
@@ -312,7 +416,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
   // Calculate part-time salaries
   const calculatePartTimeSalaries = (): PartTimeSalaryDetail[] => {
-    const monthlyAttendance = attendance.filter(record => {
+    const monthlyAttendance = (Array.isArray(attendance) ? attendance : []).filter(record => {
       const recordDate = new Date(record.date);
       return record.isPartTime &&
         recordDate.getMonth() === selectedMonth &&
@@ -348,7 +452,29 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     ? salaryDetails.reduce((sum, detail) => sum + detail.presentDays + (detail.halfDays * 0.5), 0) / salaryDetails.length
     : 0;
 
-  const handleEnableEditAll = () => {
+  const handleEnableEditAll = async () => {
+    // Always re-load the override config fresh from DB before enabling edit
+    let freshConfig = overrideConfig;
+    try {
+      const saved = await appSettingsService.getSetting('salary_override_config');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        freshConfig = {
+          oldAdvance: parsed.oldAdvance === true,
+          currentAdvance: parsed.currentAdvance === true,
+          deduction: parsed.deduction === true,
+          basic: parsed.basic === true,
+          incentive: parsed.incentive === true,
+          hra: parsed.hra === true,
+          mealAllowance: parsed.mealAllowance === true,
+          sundayPenalty: parsed.sundayPenalty === true
+        };
+        setOverrideConfig(freshConfig);
+      }
+    } catch (e: any) {
+      console.error('[SalaryManagement] Error loading override config:', e);
+    }
+
     const initialTempAdvances: { [key: string]: TempSalaryData } = {};
 
     activeStaff.forEach(member => {
@@ -375,28 +501,36 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       // Get the salary detail for this member
       const detail = salaryDetails.find(d => d.staffId === member.id);
 
-      const oldAdv = currentAdvances?.oldAdvance ?? previousAdvance?.newAdvance ?? 0;
-      const curAdv = currentAdvances?.currentAdvance ?? 0;
-      const deduction = currentAdvances?.deduction ?? 0;
-      const basicVal = detail?.basicEarned ?? 0;
-      const incentiveVal = detail?.incentiveEarned ?? 0;
-      const hraVal = detail?.hraEarned ?? 0;
-      const mealAllowanceVal = detail?.mealAllowance ?? 0;
-      const sundayPenaltyVal = detail?.sundayPenalty ?? 0;
+      const oldAdv = detail?.oldAdv ?? currentAdvances?.oldAdvance ?? previousAdvance?.newAdvance ?? 0;
+      const curAdv = detail?.curAdv ?? currentAdvances?.currentAdvance ?? 0;
+      const deduction = detail?.deduction ?? currentAdvances?.deduction ?? 0;
+      const overrides = currentAdvances?.overrides || {};
+      
+      const basicVal = overrides.basic ?? detail?.basicEarned ?? 0;
+      const incentiveVal = overrides.incentive ?? detail?.incentiveEarned ?? 0;
+      const hraVal = overrides.hra ?? detail?.hraEarned ?? 0;
+      const mealAllowanceVal = overrides.mealAllowance ?? detail?.mealAllowance ?? 0;
+      const sundayPenaltyVal = overrides.sundayPenalty ?? detail?.sundayPenalty ?? 0;
+      const staffOverride = overrides[member.id];
+      const lateComingDeductionVal = staffOverride?.lateComingDeductionOverride ?? detail?.lateComingDeduction ?? 0;
+      const earlyLeaveDeductionVal = staffOverride?.earlyLeaveDeductionOverride ?? detail?.earlyLeaveDeduction ?? 0;
 
       const grossSalary = roundToNearest10(basicVal + incentiveVal + hraVal + mealAllowanceVal);
-      const netSalary = roundToNearest10(grossSalary - deduction - sundayPenaltyVal);
+      const netSalary = roundToNearest10(grossSalary - deduction - sundayPenaltyVal - lateComingDeductionVal - earlyLeaveDeductionVal);
       const newAdvance = roundToNearest10(oldAdv + curAdv - deduction);
 
       initialTempAdvances[member.id] = {
         oldAdvance: oldAdv,
         currentAdvance: curAdv,
+        originalCurrentAdvance: currentAdvances?.currentAdvance,
         deduction: deduction,
         basicOverride: basicVal,
         incentiveOverride: incentiveVal,
         hraOverride: hraVal,
         mealAllowanceOverride: mealAllowanceVal,
         sundayPenaltyOverride: sundayPenaltyVal,
+        lateComingDeductionOverride: lateComingDeductionVal,
+        earlyLeaveDeductionOverride: earlyLeaveDeductionVal,
         grossSalary: grossSalary,
         netSalary: netSalary,
         newAdvance: newAdvance
@@ -412,14 +546,33 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     try {
       const savePromises = Object.keys(tempAdvances).map(staffId => {
         const temp = tempAdvances[staffId];
+        const detail = salaryDetails.find(d => d.staffId === staffId);
         if (temp) {
+          let finalCurAdv = temp.currentAdvance ?? 0;
+          // If the user didn't change the value from the displayed total,
+          // save the original manual value to avoid freezing the date-wise auto-sum
+          if (temp.currentAdvance === detail?.curAdv && temp.originalCurrentAdvance !== undefined) {
+            finalCurAdv = temp.originalCurrentAdvance ?? 0;
+          }
+
           const newAdvance = roundToNearest10((temp.oldAdvance || 0) + (temp.currentAdvance || 0) - (temp.deduction || 0));
 
+          const overridesObj: Record<string, number> = {};
+          if (overrideConfig?.basic) overridesObj.basic = temp.basicOverride || 0;
+          if (overrideConfig?.incentive) overridesObj.incentive = temp.incentiveOverride || 0;
+          if (overrideConfig?.hra) overridesObj.hra = temp.hraOverride || 0;
+          if (overrideConfig?.mealAllowance) overridesObj.mealAllowance = temp.mealAllowanceOverride || 0;
+          if (overrideConfig?.sundayPenalty) overridesObj.sundayPenalty = temp.sundayPenaltyOverride || 0;
+          
+          overridesObj.lateComingDeduction = temp.lateComingDeductionOverride || 0;
+          overridesObj.earlyLeaveDeduction = temp.earlyLeaveDeductionOverride || 0;
+
           return onUpdateAdvances(staffId, selectedMonth, selectedYear, {
-            oldAdvance: temp.oldAdvance,
-            currentAdvance: temp.currentAdvance,
-            deduction: temp.deduction,
-            newAdvance,
+            oldAdvance: temp.oldAdvance ?? 0,
+            currentAdvance: finalCurAdv ?? 0,
+            deduction: temp.deduction ?? 0,
+            newAdvance: newAdvance ?? 0,
+            overrides: Object.keys(overridesObj).length > 0 ? overridesObj : undefined,
             updatedAt: new Date().toISOString()
           });
         }
@@ -428,11 +581,74 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
       await Promise.all(savePromises);
 
+      // --- Distribute actual deductions across advance entries and update totalDeducted ---
+      try {
+        for (const staffId of Object.keys(tempAdvances)) {
+          const temp = tempAdvances[staffId];
+          if (!temp) continue;
+
+          const actualDeduction = temp.deduction ?? 0;
+          if (actualDeduction <= 0) continue;
+
+          const staffEntries = advanceEntries[staffId] || [];
+          const scheduled = computeScheduledDeductions(staffEntries, selectedMonth, selectedYear);
+          if (scheduled.breakdown.length === 0) continue;
+
+          // Distribute actual deduction pro-rata based on scheduled amounts
+          const scheduledTotal = scheduled.total || 1; // avoid div by 0
+          let distributed = 0;
+
+          for (let i = 0; i < scheduled.breakdown.length; i++) {
+            const bd = scheduled.breakdown[i];
+            const entry = staffEntries.find(e => e.id === bd.entryId);
+            if (!entry) continue;
+
+            let share: number;
+            if (i === scheduled.breakdown.length - 1) {
+              // Last entry gets remainder to avoid rounding drift
+              share = actualDeduction - distributed;
+            } else {
+              share = Math.round((bd.amount / scheduledTotal) * actualDeduction);
+            }
+
+            // Cap at remaining balance for this entry
+            const currentDeducted = entry.totalDeducted || 0;
+            const remaining = entry.amount - currentDeducted;
+            share = Math.min(Math.max(0, share), remaining);
+            distributed += share;
+
+            if (share > 0) {
+              await advanceEntryService.updateTotalDeducted(entry.id, currentDeducted + share);
+            }
+          }
+        }
+
+        // Reload advance entries to reflect updated balances
+        const { supabase: sb } = await import('../lib/supabase');
+        const { data: refreshData } = await sb
+          .from('advance_entries')
+          .select('*')
+          .eq('month', selectedMonth)
+          .eq('year', selectedYear);
+        if (refreshData) {
+          const grouped: { [k: string]: AdvanceEntry[] } = {};
+          refreshData.forEach((row: any) => {
+            const e = advanceEntryService.mapFromDatabase(row);
+            if (!grouped[e.staffId]) grouped[e.staffId] = [];
+            grouped[e.staffId].push(e);
+          });
+          setAdvanceEntries(grouped);
+        }
+      } catch (distErr) {
+        console.error('Error distributing deductions:', distErr);
+        // Non-fatal: salary was saved, deduction tracking may be slightly off
+      }
+
       setEditMode(false);
       setTempAdvances({});
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving advances:', error);
-      alert('Error saving advances. Please try again.');
+      alert('Error saving advances: ' + (error?.message || JSON.stringify(error)));
     } finally {
       setSaving(false);
     }
@@ -551,14 +767,16 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     const hraVal = updated.hraOverride || 0;
     const mealAllowanceVal = updated.mealAllowanceOverride || 0;
     const sundayPenaltyVal = updated.sundayPenaltyOverride || 0;
+    const lateComingDeductionVal = updated.lateComingDeductionOverride || 0;
+    const earlyLeaveDeductionVal = updated.earlyLeaveDeductionOverride || 0;
     const oldAdv = updated.oldAdvance || 0;
     const curAdv = updated.currentAdvance || 0;
     const deduction = updated.deduction || 0;
 
     // Gross = Basic + Incentive + HRA + Meal Allowance
     updated.grossSalary = roundToNearest10(basicVal + incentiveVal + hraVal + mealAllowanceVal);
-    // Net = Gross - Deduction - Sunday Penalty
-    updated.netSalary = roundToNearest10(updated.grossSalary - deduction - sundayPenaltyVal);
+    // Net = Gross - Deduction - Sunday Penalty - Late - Early
+    updated.netSalary = roundToNearest10(updated.grossSalary - deduction - sundayPenaltyVal - lateComingDeductionVal - earlyLeaveDeductionVal);
     // New Adv = Old Adv + Cur Adv - Deduction
     updated.newAdvance = roundToNearest10(oldAdv + curAdv - deduction);
 
@@ -568,7 +786,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     });
 
     // Auto-save overrides to DB and update local overrides state
-    if (['basicOverride', 'incentiveOverride', 'hraOverride', 'mealAllowanceOverride', 'sundayPenaltyOverride'].includes(field)) {
+    if (['basicOverride', 'incentiveOverride', 'hraOverride', 'mealAllowanceOverride', 'sundayPenaltyOverride', 'lateComingDeductionOverride', 'earlyLeaveDeductionOverride'].includes(field)) {
       const overrideUpdate = {
         staffId,
         month: selectedMonth + 1,
@@ -577,7 +795,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         incentiveOverride: updated.incentiveOverride,
         hraOverride: updated.hraOverride,
         mealAllowanceOverride: updated.mealAllowanceOverride,
-        sundayPenaltyOverride: updated.sundayPenaltyOverride
+        sundayPenaltyOverride: updated.sundayPenaltyOverride,
+        lateComingDeductionOverride: updated.lateComingDeductionOverride,
+        earlyLeaveDeductionOverride: updated.earlyLeaveDeductionOverride
       };
 
       // Optimistically update local state so View Mode reflects changes instantly
@@ -1006,10 +1226,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 <th className="px-2 md:px-4 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
                 <th className="px-2 md:px-4 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 z-10 bg-gray-50">Name</th>
                 {salaryVisibleCols.location !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>}
-                {salaryVisibleCols.type !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>}
-                {salaryVisibleCols.payment !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>}
                 {salaryVisibleCols.floor !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Floor</th>}
                 {salaryVisibleCols.designation !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>}
+                {salaryVisibleCols.type !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>}
+                {salaryVisibleCols.payment !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>}
                 {salaryVisibleCols.present !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Present</th>}
                 {salaryVisibleCols.leave !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Leave</th>}
                 {salaryVisibleCols.sunAbs !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sun Abs</th>}
@@ -1022,6 +1242,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 {salaryVisibleCols.meal !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{salaryCategories.find((c: SalaryCategory) => c.id === 'meal_allowance')?.name || 'Meal Allowance'}</th>}
                 {customCategories.map((cat: SalaryCategory) => (<th key={cat.id} className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{cat.name}</th>))}
                 {salaryVisibleCols.sunPenalty !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sun Penalty</th>}
+                {salaryVisibleCols.lateComingDeduction !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Late Coming Ded.</th>}
+                {salaryVisibleCols.earlyLeaveDeduction !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Early Leave Ded.</th>}
                 {salaryVisibleCols.statutory !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ESI/PF/Stat</th>}
                 {salaryVisibleCols.esi !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider text-red-500">ESI</th>}
                 {salaryVisibleCols.pf !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider text-red-500">PF</th>}
@@ -1038,7 +1260,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
                 return (
                   <tr key={detail.staffId} className={`hover:bg-gray-50 text-base ${(() => {
-                    const uninformedDays = attendance.filter(a =>
+                    const uninformedDays = (Array.isArray(attendance) ? attendance : []).filter(a =>
                       a.staffId === detail.staffId && a.isUninformed &&
                       new Date(a.date).getMonth() === selectedMonth && new Date(a.date).getFullYear() === selectedYear
                     ).length;
@@ -1048,7 +1270,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <td className="px-2 md:px-4 py-3 whitespace-nowrap font-medium text-gray-900 sticky left-0 z-10 bg-white">
                       {staffMember?.name}
                       {(() => {
-                        const uCount = attendance.filter(a =>
+                        const uCount = (Array.isArray(attendance) ? attendance : []).filter(a =>
                           a.staffId === detail.staffId && a.isUninformed &&
                           new Date(a.date).getMonth() === selectedMonth && new Date(a.date).getFullYear() === selectedYear
                         ).length;
@@ -1058,8 +1280,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     {salaryVisibleCols.location !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
                       <span className="text-xs font-medium">{staffMember?.location}</span>
                     </td>}
+                    {salaryVisibleCols.floor !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-xs text-gray-600">{staffMember?.floor || '-'}</td>}
+                    {salaryVisibleCols.designation !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-xs text-gray-600">{staffMember?.designation || '-'}</td>}
                     {salaryVisibleCols.type !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${staffMember?.staffAccommodation === 'day_scholar' ? 'bg-blue-100 text-blue-700' : staffMember?.staffAccommodation === 'accommodation' ? 'bg-purple-100 text-purple-700' : 'text-gray-500'}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${staffMember?.staffAccommodation === 'day_scholar' ? 'badge-type-day' : staffMember?.staffAccommodation === 'accommodation' ? 'badge-type-acc' : 'text-gray-500'}`}>
                         {staffMember?.staffAccommodation === 'day_scholar' ? 'Day' : staffMember?.staffAccommodation === 'accommodation' ? 'Acc' : '-'}
                       </span>
                     </td>}
@@ -1068,8 +1292,6 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                         {(staffMember?.paymentMode || 'cash') === 'bank' ? 'Bank' : 'Cash'}
                       </span>
                     </td>}
-                    {salaryVisibleCols.floor !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-xs text-gray-600">{staffMember?.floor || '-'}</td>}
-                    {salaryVisibleCols.designation !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-xs text-gray-600">{staffMember?.designation || '-'}</td>}
                     {salaryVisibleCols.present !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
                       <span className="badge-premium badge-success">
                         {(detail.presentDays + detail.halfDays * 0.5).toFixed(1)}
@@ -1086,27 +1308,75 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       </span>
                     </td>}
                     {salaryVisibleCols.oldAdv !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
-                      {editMode ? (
+                      {editMode && overrideConfig?.oldAdvance ? (
                         <input type="number" value={tempData?.oldAdvance || 0} onChange={(e) => updateTempAdvance(detail.staffId, 'oldAdvance', Number(e.target.value))} className="w-16 md:w-20 px-1 md:px-2 py-1 text-xs border rounded text-center" />
                       ) : (
                         <span className="text-blue-600">₹{detail.oldAdv}</span>
                       )}
                     </td>}
                     {salaryVisibleCols.curAdv !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
-                      {editMode ? (
+                      {editMode && overrideConfig?.currentAdvance ? (
                         <input type="number" value={tempData?.currentAdvance || 0} onChange={(e) => updateTempAdvance(detail.staffId, 'currentAdvance', Number(e.target.value))} className="w-16 md:w-20 px-1 md:px-2 py-1 text-xs border rounded text-center" />
                       ) : (
                         <div className="flex items-center justify-center gap-1">
                           <span className="text-blue-600">₹{detail.curAdv}</span>
-                          {(advanceEntries[detail.staffId]?.length || 0) > 0 && (
-                            <span className="text-[9px] font-bold px-1 rounded bg-blue-100 text-blue-700" title={`${advanceEntries[detail.staffId].length} date-wise entries`}>
-                              {advanceEntries[detail.staffId].length}
-                            </span>
-                          )}
+                          {(() => {
+                            const thisMonthCount = (advanceEntries[detail.staffId] || [])
+                              .filter(e => e.month === selectedMonth && e.year === selectedYear)
+                              .length;
+                            return thisMonthCount > 0 ? (
+                              <span className="text-[9px] font-bold px-1 rounded bg-blue-100 text-blue-700" title={`${thisMonthCount} date-wise entries for this month`}>
+                                {thisMonthCount}
+                              </span>
+                            ) : null;
+                          })()}
                           <button onClick={async () => {
-                            const entries = await advanceEntryService.getByStaffAndMonth(detail.staffId, selectedMonth, selectedYear);
-                            setAdvanceEntries(prev => ({ ...prev, [detail.staffId]: entries }));
-                            setShowAdvanceEntryModal(detail.staffId);
+                            const defDate = getDefaultDate(selectedMonth, selectedYear);
+                            setAdvanceForm({
+                              entryDate: defDate,
+                              amount: 0,
+                              purpose: '',
+                              deductPeriods: 1,
+                              startDeductMonth: selectedMonth,
+                              startDeductYear: selectedYear
+                            });
+                            setEditingEntryId(null);
+                            
+                            try {
+                              const entries = await advanceEntryService.getByStaff(detail.staffId);
+                              
+                              // Check if there are no date-wise advance entries for the selected month/year, but detail.curAdv > 0
+                              const selectedMonthEntries = entries.filter(e => e.month === selectedMonth && e.year === selectedYear);
+                              if (selectedMonthEntries.length === 0 && detail.curAdv > 0) {
+                                const newEntry = await advanceEntryService.create({
+                                  staffId: detail.staffId,
+                                  entryDate: `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`,
+                                  amount: detail.curAdv,
+                                  purpose: 'Legacy Advance (Migrated)',
+                                  month: selectedMonth,
+                                  year: selectedYear,
+                                  deductPeriods: 1,
+                                  startDeductMonth: selectedMonth,
+                                  startDeductYear: selectedYear,
+                                  totalDeducted: 0
+                                });
+                                if (newEntry) {
+                                  entries.push(newEntry);
+                                  // Set legacy currentAdvance to 0 in advances table
+                                  await onUpdateAdvances(detail.staffId, selectedMonth, selectedYear, {
+                                    currentAdvance: 0
+                                  });
+                                  // Reload advances in parent component
+                                  await loadAllAdvanceEntries();
+                                }
+                              }
+                              
+                              setModalAdvanceEntries(entries);
+                              setShowAdvanceEntryModal(detail.staffId);
+                            } catch (err) {
+                              console.error('Error opening advance modal:', err);
+                              alert('Error loading advance entries');
+                            }
                           }} className="p-0.5 rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50" title="Add / view date-wise advance entries">
                             <Plus size={12} />
                           </button>
@@ -1114,35 +1384,40 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       )}
                     </td>}
                     {salaryVisibleCols.deduction !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
-                      {editMode ? (
+                      {editMode && overrideConfig?.deduction ? (
                         <input type="number" value={tempData?.deduction || 0} onChange={(e) => updateTempAdvance(detail.staffId, 'deduction', Number(e.target.value))} className="w-16 md:w-20 px-1 md:px-2 py-1 text-xs border rounded text-center" />
                       ) : (
-                        <span className="text-red-600">₹{detail.deduction}</span>
+                        <>
+                          <span className="text-red-600">₹{detail.deduction}</span>
+                          {scheduledDeductions[detail.staffId]?.total > 0 && !editMode && (
+                            <span className="block text-[9px] font-bold text-blue-500">Auto</span>
+                          )}
+                        </>
                       )}
                     </td>}
                     {salaryVisibleCols.basic !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
-                      {editMode ? (
+                      {editMode && overrideConfig?.basic ? (
                         <input type="number" value={tempData?.basicOverride || 0} onChange={(e) => updateTempAdvance(detail.staffId, 'basicOverride', Number(e.target.value))} className="w-16 md:w-20 px-1 md:px-2 py-1 text-xs border rounded text-center" />
                       ) : (
                         <span className="text-gray-900">₹{detail.basicEarned}</span>
                       )}
                     </td>}
                     {salaryVisibleCols.incentive !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
-                      {editMode ? (
+                      {editMode && overrideConfig?.incentive ? (
                         <input type="number" value={tempData?.incentiveOverride || 0} onChange={(e) => updateTempAdvance(detail.staffId, 'incentiveOverride', Number(e.target.value))} className="w-16 md:w-20 px-1 md:px-2 py-1 text-xs border rounded text-center" />
                       ) : (
                         <span className="text-gray-900">₹{detail.incentiveEarned}</span>
                       )}
                     </td>}
                     {salaryVisibleCols.hra !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
-                      {editMode ? (
+                      {editMode && overrideConfig?.hra ? (
                         <input type="number" value={tempData?.hraOverride || 0} onChange={(e) => updateTempAdvance(detail.staffId, 'hraOverride', Number(e.target.value))} className="w-16 md:w-20 px-1 md:px-2 py-1 text-xs border rounded text-center" />
                       ) : (
                         <span className="text-gray-900">₹{detail.hraEarned}</span>
                       )}
                     </td>}
                     {salaryVisibleCols.meal !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
-                      {editMode ? (
+                      {editMode && overrideConfig?.mealAllowance ? (
                         <input type="number" value={tempData?.mealAllowanceOverride || 0} onChange={(e) => updateTempAdvance(detail.staffId, 'mealAllowanceOverride', Number(e.target.value))} className="w-16 md:w-20 px-1 md:px-2 py-1 text-xs border rounded text-center" />
                       ) : (
                         <span className="text-gray-900">₹{detail.mealAllowance}</span>
@@ -1157,10 +1432,24 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       );
                     })}
                     {salaryVisibleCols.sunPenalty !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
-                      {editMode ? (
+                      {editMode && overrideConfig?.sundayPenalty ? (
                         <input type="number" value={tempData?.sundayPenaltyOverride || 0} onChange={(e) => updateTempAdvance(detail.staffId, 'sundayPenaltyOverride', Number(e.target.value))} className="w-16 md:w-20 px-1 md:px-2 py-1 text-xs border rounded text-center" />
                       ) : (
                         <span className={`${detail.sundayPenalty > 0 ? 'text-red-600' : 'text-gray-900'}`}>₹{detail.sundayPenalty}</span>
+                      )}
+                    </td>}
+                    {salaryVisibleCols.lateComingDeduction !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
+                      {editMode ? (
+                        <input type="number" value={tempData?.lateComingDeductionOverride || 0} onChange={(e) => updateTempAdvance(detail.staffId, 'lateComingDeductionOverride', Number(e.target.value))} className="w-16 md:w-20 px-1 md:px-2 py-1 text-xs border rounded text-center" />
+                      ) : (
+                        <span className={`${(detail.lateComingDeduction || 0) > 0 ? 'text-red-600' : 'text-gray-900'}`}>₹{detail.lateComingDeduction || 0}</span>
+                      )}
+                    </td>}
+                    {salaryVisibleCols.earlyLeaveDeduction !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
+                      {editMode ? (
+                        <input type="number" value={tempData?.earlyLeaveDeductionOverride || 0} onChange={(e) => updateTempAdvance(detail.staffId, 'earlyLeaveDeductionOverride', Number(e.target.value))} className="w-16 md:w-20 px-1 md:px-2 py-1 text-xs border rounded text-center" />
+                      ) : (
+                        <span className={`${(detail.earlyLeaveDeduction || 0) > 0 ? 'text-red-600' : 'text-gray-900'}`}>₹{detail.earlyLeaveDeduction || 0}</span>
                       )}
                     </td>}
                     {salaryVisibleCols.statutory !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
@@ -1220,10 +1509,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 <td className="px-2 md:px-4 py-3 whitespace-nowrap" colSpan={
                   2 + // S.No + Name (always)
                   (salaryVisibleCols.location !== false ? 1 : 0) +
-                  (salaryVisibleCols.type !== false ? 1 : 0) +
-                  (salaryVisibleCols.payment !== false ? 1 : 0) +
                   (salaryVisibleCols.floor !== false ? 1 : 0) +
                   (salaryVisibleCols.designation !== false ? 1 : 0) +
+                  (salaryVisibleCols.type !== false ? 1 : 0) +
+                  (salaryVisibleCols.payment !== false ? 1 : 0) +
                   (salaryVisibleCols.present !== false ? 1 : 0) +
                   (salaryVisibleCols.leave !== false ? 1 : 0) +
                   (salaryVisibleCols.sunAbs !== false ? 1 : 0)
@@ -1372,6 +1661,50 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   placeholder="Enter amount" />
               </div>
               <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Deduct In Periods</label>
+                <input type="number" min={1} max={36} value={advanceForm.deductPeriods || 1}
+                  onChange={e => setAdvanceForm(f => ({ ...f, deductPeriods: Math.max(1, Number(e.target.value)) }))}
+                  className="w-full rounded-lg border border-gray-300 p-2.5 text-sm focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Start Deduction From</label>
+                <div className="flex gap-2">
+                  <select value={advanceForm.startDeductMonth ?? selectedMonth}
+                    onChange={e => setAdvanceForm(f => ({ ...f, startDeductMonth: Number(e.target.value) }))}
+                    className="flex-1 rounded-lg border border-gray-300 p-2.5 text-sm focus:ring-2 focus:ring-blue-500">
+                    {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
+                      <option key={i} value={i}>{m}</option>
+                    ))}
+                  </select>
+                  <select value={advanceForm.startDeductYear ?? selectedYear}
+                    onChange={e => setAdvanceForm(f => ({ ...f, startDeductYear: Number(e.target.value) }))}
+                    className="w-24 rounded-lg border border-gray-300 p-2.5 text-sm focus:ring-2 focus:ring-blue-500">
+                    {[selectedYear - 1, selectedYear, selectedYear + 1].map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {(advanceForm.deductPeriods || 1) > 1 && advanceForm.amount > 0 && (
+                <div className="mt-2 p-2 bg-blue-50 rounded-lg text-xs text-blue-700">
+                  <p className="font-semibold mb-1">Deduction Preview:</p>
+                  {(() => {
+                    const periods = advanceForm.deductPeriods || 1;
+                    const perPeriod = Math.floor(advanceForm.amount / periods);
+                    const lastPeriod = advanceForm.amount - perPeriod * (periods - 1);
+                    const startM = advanceForm.startDeductMonth ?? selectedMonth;
+                    const startY = advanceForm.startDeductYear ?? selectedYear;
+                    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                    return Array.from({ length: periods }, (_, i) => {
+                      const m = (startM + i) % 12;
+                      const y = startY + Math.floor((startM + i) / 12);
+                      const amt = i === periods - 1 ? lastPeriod : perPeriod;
+                      return <p key={i}>{months[m]} {y}: ₹{amt.toLocaleString('en-IN')}</p>;
+                    });
+                  })()}
+                </div>
+              )}
+              <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Purpose</label>
                 <input type="text" value={advanceForm.purpose}
                   onChange={e => setAdvanceForm(f => ({ ...f, purpose: e.target.value }))}
@@ -1380,36 +1713,54 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               </div>
             </div>
 
-            {/* Existing entries for this staff this month */}
-            {(advanceEntries[showAdvanceEntryModal] || []).length > 0 && (
+            {/* Existing entries for this staff */}
+            {modalAdvanceEntries.length > 0 && (
               <div className="mt-4 pt-3 border-t border-gray-200">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-gray-500">Entries this month:</p>
+                  <p className="text-xs font-semibold text-gray-500">Advance Entries History:</p>
                   <p className="text-xs font-bold text-blue-600">
-                    Total: ₹{(advanceEntries[showAdvanceEntryModal] || []).reduce((s, e) => s + e.amount, 0).toLocaleString('en-IN')}
+                    Total Active: ₹{modalAdvanceEntries.reduce((s, e) => s + e.amount, 0).toLocaleString('en-IN')}
                   </p>
                 </div>
                 <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                  {(advanceEntries[showAdvanceEntryModal] || []).map(entry => (
+                  {modalAdvanceEntries.map(entry => (
                     <div key={entry.id} className={`flex items-center justify-between p-2 rounded-lg text-sm ${editingEntryId === entry.id ? 'bg-blue-50 ring-1 ring-blue-300' : 'bg-gray-50'}`}>
                       <div>
-                        <span className="font-medium">{new Date(entry.entryDate).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
+                        <span className="font-medium">{new Date(entry.entryDate).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</span>
                         {entry.purpose && <span className="text-gray-500 ml-2">— {entry.purpose}</span>}
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="font-bold text-blue-600">₹{entry.amount.toLocaleString('en-IN')}</span>
+                        {(entry.deductPeriods || 1) > 1 && (
+                          <span className="text-[10px] text-gray-400 ml-1">({entry.deductPeriods}p • Bal: ₹{((entry.amount - (entry.totalDeducted || 0))).toLocaleString('en-IN')})</span>
+                        )}
                         <button onClick={() => {
                           setEditingEntryId(entry.id);
-                          setAdvanceForm({ entryDate: entry.entryDate, amount: entry.amount, purpose: entry.purpose || '' });
+                          setAdvanceForm({
+                            entryDate: entry.entryDate,
+                            amount: entry.amount,
+                            purpose: entry.purpose || '',
+                            deductPeriods: entry.deductPeriods || 1,
+                            startDeductMonth: entry.startDeductMonth ?? entry.month,
+                            startDeductYear: entry.startDeductYear ?? entry.year
+                          });
                         }} className="p-1 text-amber-500 hover:text-amber-700" title="Edit"><Edit2 size={13} /></button>
                         <button onClick={async () => {
                           if (!confirm('Delete this advance entry?')) return;
                           await advanceEntryService.delete(entry.id);
-                          const updated = await advanceEntryService.getByStaffAndMonth(showAdvanceEntryModal!, selectedMonth, selectedYear);
-                          setAdvanceEntries(prev => ({ ...prev, [showAdvanceEntryModal!]: updated }));
+                          const updated = await advanceEntryService.getByStaff(showAdvanceEntryModal!);
+                          setModalAdvanceEntries(updated);
+                          await loadAllAdvanceEntries();
                           if (editingEntryId === entry.id) {
                             setEditingEntryId(null);
-                            setAdvanceForm({ entryDate: new Date().toISOString().split('T')[0], amount: 0, purpose: '' });
+                            setAdvanceForm({
+                              entryDate: getDefaultDate(selectedMonth, selectedYear),
+                              amount: 0,
+                              purpose: '',
+                              deductPeriods: 1,
+                              startDeductMonth: selectedMonth,
+                              startDeductYear: selectedYear
+                            });
                           }
                         }} className="p-1 text-red-400 hover:text-red-600" title="Delete"><Trash2 size={14} /></button>
                       </div>
@@ -1418,14 +1769,32 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 </div>
               </div>
             )}
-
+ 
             <div className="flex gap-3 mt-5">
-              <button onClick={() => { setShowAdvanceEntryModal(null); setEditingEntryId(null); setAdvanceForm({ entryDate: new Date().toISOString().split('T')[0], amount: 0, purpose: '' }); }}
+              <button onClick={() => {
+                setShowAdvanceEntryModal(null);
+                setEditingEntryId(null);
+                setAdvanceForm({
+                  entryDate: getDefaultDate(selectedMonth, selectedYear),
+                  amount: 0,
+                  purpose: '',
+                  deductPeriods: 1,
+                  startDeductMonth: selectedMonth,
+                  startDeductYear: selectedYear
+                });
+              }}
                 className="flex-1 py-2.5 rounded-xl border border-gray-300 text-gray-600 font-semibold text-sm hover:bg-gray-50">Close</button>
               {editingEntryId && (
                 <button onClick={() => {
                   setEditingEntryId(null);
-                  setAdvanceForm({ entryDate: new Date().toISOString().split('T')[0], amount: 0, purpose: '' });
+                  setAdvanceForm({
+                    entryDate: getDefaultDate(selectedMonth, selectedYear),
+                    amount: 0,
+                    purpose: '',
+                    deductPeriods: 1,
+                    startDeductMonth: selectedMonth,
+                    startDeductYear: selectedYear
+                  });
                 }} className="flex-1 py-2.5 rounded-xl border border-amber-300 text-amber-700 font-semibold text-sm hover:bg-amber-50">Cancel Edit</button>
               )}
               <button onClick={async () => {
@@ -1436,20 +1805,37 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     entryDate: advanceForm.entryDate,
                     amount: advanceForm.amount,
                     purpose: advanceForm.purpose || undefined,
+                    deductPeriods: advanceForm.deductPeriods || 1,
+                    startDeductMonth: advanceForm.startDeductMonth,
+                    startDeductYear: advanceForm.startDeductYear
                   });
                 } else {
+                  const entryDateObj = new Date(advanceForm.entryDate);
+                  const entryMonth = entryDateObj.getMonth();
+                  const entryYear = entryDateObj.getFullYear();
                   await advanceEntryService.create({
                     staffId,
                     entryDate: advanceForm.entryDate,
                     amount: advanceForm.amount,
                     purpose: advanceForm.purpose || undefined,
-                    month: selectedMonth,
-                    year: selectedYear
+                    month: entryMonth,
+                    year: entryYear,
+                    deductPeriods: advanceForm.deductPeriods || 1,
+                    startDeductMonth: advanceForm.startDeductMonth ?? entryMonth,
+                    startDeductYear: advanceForm.startDeductYear ?? entryYear
                   });
                 }
-                const updated = await advanceEntryService.getByStaffAndMonth(staffId, selectedMonth, selectedYear);
-                setAdvanceEntries(prev => ({ ...prev, [staffId]: updated }));
-                setAdvanceForm({ entryDate: new Date().toISOString().split('T')[0], amount: 0, purpose: '' });
+                const updated = await advanceEntryService.getByStaff(staffId);
+                setModalAdvanceEntries(updated);
+                await loadAllAdvanceEntries();
+                setAdvanceForm({
+                  entryDate: getDefaultDate(selectedMonth, selectedYear),
+                  amount: 0,
+                  purpose: '',
+                  deductPeriods: 1,
+                  startDeductMonth: selectedMonth,
+                  startDeductYear: selectedYear
+                });
                 setEditingEntryId(null);
               }}
                 disabled={!advanceForm.amount || !advanceForm.entryDate}

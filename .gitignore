@@ -36,3 +36,11 @@ Thumbs.db
 
 # Supabase
 .supabase/
+
+# Local helper/test scripts and configs
+/*.cjs
+/*.sql
+/check-data.ts
+/src/scratch/
+
+

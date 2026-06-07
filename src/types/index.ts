@@ -51,6 +51,7 @@ export interface Staff {
   esiNumber?: string;
   /** Bound physical device ID for anti-buddy punching */
   deviceId?: string | null;
+  exemptFromLateDeduction?: boolean;
 }
 
 export type DeductionBase = 'basic' | 'basic_hra' | 'gross' | 'fixed';
@@ -77,11 +78,14 @@ export interface Attendance {
   isPartTime?: boolean;
   staffName?: string;
   location?: string;
+  floor?: string;
   salary?: number;
   salaryOverride?: boolean;
   arrivalTime?: string;
   leavingTime?: string;
   isUninformed?: boolean;
+  appliedRuleType?: string;
+  appliedRuleDetails?: any;
 }
 
 export interface SalaryDetail {
@@ -101,6 +105,8 @@ export interface SalaryDetail {
   salarySupplements?: Record<string, number>;
   sundayPenalty: number;
   mealAllowance: number;
+  lateComingDeduction?: number;
+  earlyLeaveDeduction?: number;
   grossSalary: number;
   newAdv: number;
   netSalary: number;
@@ -112,6 +118,7 @@ export interface SalaryDetail {
 export interface PartTimeSalaryDetail {
   staffName: string;
   location: string;
+  floor?: string;
   totalDays: number;
   totalShifts: number;
   ratePerDay: number;
@@ -169,6 +176,7 @@ export interface AdvanceDeduction {
   deduction: number;
   newAdvance: number;
   notes?: string;
+  overrides?: Record<string, number>;
   createdAt: string;
   updatedAt: string;
 }
@@ -208,10 +216,12 @@ export interface SalaryOverride {
   hraOverride?: number;
   mealAllowanceOverride?: number;
   sundayPenaltyOverride?: number;
+  lateComingDeductionOverride?: number;
+  earlyLeaveDeductionOverride?: number;
   salarySupplementsOverride?: Record<string, number>;
 }
 
-export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Salary Management' | 'Part-Time Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Audit Log';
+export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Salary Management' | 'Part-Time Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Audit Log' | 'Workforce Insights';
 
 // Re-export AppUser from userService
 export type { AppUser } from '../services/userService';
@@ -263,4 +273,44 @@ export interface AuditLog {
   details: string;
   performedBy: string;
   timestamp: string;
+}
+
+export interface Designation {
+  id: string;
+  name: string;
+  displayName: string;
+  isActive: boolean;
+  sortOrder: number;
+  shiftStart?: string;
+  shiftEnd?: string;
+  graceLateMin?: number;
+  graceEarlyMin?: number;
+  minHoursFull?: number;
+  minHoursHalf?: number;
+  morningCutoff?: string;
+  earlyExitTime?: string;
+  eveningVerificationTime?: string;
+  fullDayRequiresMorning?: boolean;
+  lateDeductionRate?: number;
+  earlyDeductionRate?: number;
+}
+
+export interface LocationDesignationShiftConfig {
+  id?: string;
+  locationName: string;
+  designationId: string;
+  shiftStart?: string;
+  shiftEnd?: string;
+  graceLateMin?: number;
+  graceEarlyMin?: number;
+  minHoursFull?: number;
+  minHoursHalf?: number;
+  morningCutoff?: string;
+  earlyExitTime?: string;
+  eveningVerificationTime?: string;
+  fullDayRequiresMorning?: boolean;
+  lateDeductionRate?: number;
+  earlyDeductionRate?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }

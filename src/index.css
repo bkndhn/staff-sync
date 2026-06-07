@@ -159,6 +159,10 @@ body.light-theme button.bg-\[\#25D366\] .text-white {
 }
 
 /* EXCEPTION: Preserve white text inside gradient headers */
+body.light-theme .section-header h2,
+body.light-theme .section-header h3,
+body.light-theme .section-header span,
+body.light-theme .section-header button,
 body.light-theme [class*="bg-gradient"] .text-white,
 body.light-theme [class*="bg-gradient"] h1,
 body.light-theme [class*="bg-gradient"] h2,
@@ -174,6 +178,7 @@ body.light-theme [class*="from-purple"] h2 {
   color: #ffffff !important;
 }
 
+body.light-theme .section-header svg,
 body.light-theme [class*="bg-gradient"] svg,
 body.light-theme [class*="from-blue"] svg,
 body.light-theme [class*="from-purple"] svg {
@@ -1887,6 +1892,17 @@ th span {
   color: inherit !important;
 }
 
+/* Type badge overrides - Day / Acc */
+.badge-type-day {
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+.badge-type-acc {
+  background-color: #8b5cf6 !important;
+  color: #ffffff !important;
+}
+
 /* Badge overrides - ensure they're styled correctly */
 span[class*="bg-"][class*="text-"] {
   /* Allow badges to use their defined colors */
@@ -2111,6 +2127,7 @@ label:has(input:checked) .font-medium {
   font-weight: 500 !important;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-align: center !important;
   border-bottom: 1px solid #e5e7eb !important;
   position: sticky !important;
   top: 0;

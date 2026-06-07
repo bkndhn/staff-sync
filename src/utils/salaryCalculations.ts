@@ -1,5 +1,7 @@
 import { Staff, Attendance, AdvanceDeduction, PartTimeSalaryDetail, WeeklySalary, DailySalary } from '../types';
+import { AdvanceEntry } from '../services/advanceEntryService';
 import { settingsService } from '../services/settingsService';
+import { DEFAULT_SHIFT_WINDOWS, parseHHMM, minutesBetween } from '../services/shiftService';
 
 // Round to nearest 10
 export const roundToNearest10 = (value: number): number => {
@@ -51,7 +53,7 @@ export const calculateAttendanceMetrics = (
   year: number,
   month: number
 ) => {
-  const monthlyAttendance = attendance.filter(record => {
+  const monthlyAttendance = (Array.isArray(attendance) ? attendance : []).filter(record => {
     const recordDate = new Date(record.date);
     return record.staffId === staffId &&
       recordDate.getMonth() === month &&
@@ -90,11 +92,12 @@ export const calculateAttendanceMetrics = (
 export const calculatePartTimeSalary = (
   staffName: string,
   location: string,
+  floor: string,
   attendance: Attendance[],
   year: number,
   month: number
 ): PartTimeSalaryDetail => {
-  const monthlyAttendance = attendance.filter(record => {
+  const monthlyAttendance = (Array.isArray(attendance) ? attendance : []).filter(record => {
     return record.staffName === staffName &&
       record.isPartTime &&
       record.status === 'Present';
@@ -144,6 +147,7 @@ export const calculatePartTimeSalary = (
   return {
     staffName,
     location,
+    floor,
     totalDays,
     totalShifts: 0, // Not used in new calculation
     ratePerDay: 350, // Base rate
@@ -179,6 +183,60 @@ export const getPreviousMonthAdvance = (
   return previousAdvance?.newAdvance || 0;
 };
 
+export interface DeductionBreakdown {
+  entryId: string;
+  amount: number;
+  entryTotal: number;
+  remaining: number;
+  periodLabel: string; // e.g. '2/3'
+}
+
+export const computeScheduledDeductions = (
+  entries: AdvanceEntry[],
+  currentMonth: number,
+  currentYear: number
+): { total: number; breakdown: DeductionBreakdown[] } => {
+  const breakdown: DeductionBreakdown[] = [];
+  let total = 0;
+
+  for (const entry of entries) {
+    const deductPeriods = entry.deductPeriods || 1;
+    const startMonth = entry.startDeductMonth ?? entry.month;
+    const startYear = entry.startDeductYear ?? entry.year;
+    const totalDeducted = entry.totalDeducted || 0;
+    const remaining = entry.amount - totalDeducted;
+
+    if (remaining <= 0) continue; // fully paid
+
+    const periodsElapsed = (currentYear - startYear) * 12 + (currentMonth - startMonth);
+    if (periodsElapsed < 0) continue; // hasn't started yet
+
+    const remainingPeriods = Math.max(1, deductPeriods - periodsElapsed);
+    const currentPeriod = periodsElapsed + 1;
+
+    let thisMonthDeduction: number;
+    if (remainingPeriods === 1) {
+      thisMonthDeduction = remaining; // last period gets everything
+    } else {
+      thisMonthDeduction = roundToNearest10(Math.floor(remaining / remainingPeriods));
+    }
+
+    // Cap at remaining
+    thisMonthDeduction = Math.min(thisMonthDeduction, remaining);
+
+    breakdown.push({
+      entryId: entry.id,
+      amount: thisMonthDeduction,
+      entryTotal: entry.amount,
+      remaining: remaining,
+      periodLabel: `${Math.min(currentPeriod, deductPeriods)}/${deductPeriods}`
+    });
+    total += thisMonthDeduction;
+  }
+
+  return { total: roundToNearest10(total), breakdown };
+};
+
 // Calculate salary based on attendance
 // Scenario 1: salaryCalculationDays = 26
 // Scenario 2: salaryCalculationDays = 30
@@ -190,12 +248,145 @@ export const calculateSalary = (
   allAdvances: AdvanceDeduction[],
   attendance: Attendance[],
   currentMonth: number,
-  currentYear: number
+  currentYear: number,
+  advanceEntries: AdvanceEntry[] = [],
+  overrideConfig?: any,
+  scheduledDeductionTotal?: number,
+  globalShiftWindows?: any
 ) => {
-  const { totalPresentDays, sundayAbsents, presentDays, halfDays, leaveDays } = attendanceMetrics;
+  let { totalPresentDays, sundayAbsents, presentDays, halfDays, leaveDays } = attendanceMetrics;
 
   // Get salary calculation days from staff settings (default 26)
   const calculationDays = staff.salaryCalculationDays || 26;
+
+  const windows = globalShiftWindows || DEFAULT_SHIFT_WINDOWS;
+
+  // Filter full-time attendance for the staff in the current month
+  const monthlyAttendance = (Array.isArray(attendance) ? attendance : []).filter(record => {
+    const recordDate = new Date(record.date);
+    return record.staffId === staff.id &&
+      recordDate.getMonth() === currentMonth &&
+      recordDate.getFullYear() === currentYear &&
+      !record.isPartTime;
+  });
+
+  // 1. Recalculate presentDays/halfDays to treat late/early half days as full days for salary pro-rating (avoid double-docking)
+  let adjustedPresentDays = 0;
+  let adjustedHalfDays = 0;
+
+  monthlyAttendance.forEach(record => {
+    if (record.status === 'Present' || record.status === 'Pending Full Day' || record.status === 'Manual Override') {
+      adjustedPresentDays += record.attendanceValue || 1;
+    } else if (record.status === 'Half Day') {
+      const shiftKey = record.shift || staff.shift || 'Both';
+      const baseWin = windows[shiftKey] || DEFAULT_SHIFT_WINDOWS[shiftKey];
+      const win = staff.shiftWindow ? { ...baseWin, ...staff.shiftWindow } : baseWin;
+
+      const arr = record.arrivalTime ? parseHHMM(record.arrivalTime) : null;
+      const lev = record.leavingTime ? parseHHMM(record.leavingTime) : null;
+
+      let isGenuineHalfDay = true;
+      if (arr !== null && lev !== null) {
+        const workedMins = minutesBetween(record.arrivalTime, record.leavingTime);
+        const workedHours = workedMins / 60;
+        if (workedHours >= win.minHoursFull) {
+          isGenuineHalfDay = false; // It was a half-day solely because of late arrival/early leave
+        }
+      }
+
+      if (isGenuineHalfDay) {
+        adjustedHalfDays += 0.5;
+      } else {
+        adjustedPresentDays += 1.0;
+      }
+    }
+  });
+
+  if (adjustedPresentDays + adjustedHalfDays !== totalPresentDays && totalPresentDays > 0) {
+    presentDays = Math.floor(adjustedPresentDays);
+    halfDays = Math.floor(adjustedHalfDays * 2);
+    totalPresentDays = adjustedPresentDays + adjustedHalfDays;
+    leaveDays = getDaysInMonth(currentYear, currentMonth) - Math.floor(totalPresentDays);
+  }
+
+  // 2. Count late arrivals and early leaves beyond grace periods and compute daily deductions
+  let lateCount = 0;
+  let earlyCount = 0;
+  let recordLateDeduction = 0;
+  let recordEarlyDeduction = 0;
+  const dailyRate = staff.basicSalary / calculationDays;
+
+  monthlyAttendance.forEach(record => {
+    if (record.status === 'Absent') return;
+
+    // Retrieve active rules applied to this day's record
+    let rulesToUse: any = null;
+    if (record.appliedRuleDetails) {
+      try {
+        rulesToUse = typeof record.appliedRuleDetails === 'string'
+          ? JSON.parse(record.appliedRuleDetails)
+          : record.appliedRuleDetails;
+      } catch {
+        rulesToUse = null;
+      }
+    }
+
+    // Fallback if no specific rule details were saved on the record
+    if (!rulesToUse) {
+      let shiftKey = record.shift || staff.shift || 'Both';
+      if (shiftKey === '-') shiftKey = staff.shift || 'Both';
+      const baseWin = windows[shiftKey] || DEFAULT_SHIFT_WINDOWS[shiftKey] || DEFAULT_SHIFT_WINDOWS['Both'];
+      const win = baseWin ? (staff.shiftWindow ? { ...baseWin, ...staff.shiftWindow } : baseWin) : DEFAULT_SHIFT_WINDOWS['Both'];
+      rulesToUse = {
+        shiftStart: win.start,
+        shiftEnd: win.end,
+        graceLateMin: win.graceLateMin,
+        graceEarlyMin: win.graceEarlyMin,
+        lateDeductionRate: 0.5,
+        earlyDeductionRate: 0.5,
+      };
+    }
+
+    if (record.arrivalTime) {
+      const arr = parseHHMM(record.arrivalTime);
+      const start = parseHHMM(rulesToUse.shiftStart || rulesToUse.start);
+      if (arr !== null && start !== null) {
+        const lateBy = arr - start;
+        if (lateBy > (rulesToUse.graceLateMin ?? 15)) {
+          lateCount++;
+          if (!staff.exemptFromLateDeduction) {
+            const rate = rulesToUse.lateDeductionRate !== undefined ? rulesToUse.lateDeductionRate : 0.5;
+            recordLateDeduction += rate * dailyRate;
+          }
+        }
+      }
+    }
+
+    if (record.leavingTime) {
+      const lev = parseHHMM(record.leavingTime);
+      const end = parseHHMM(rulesToUse.shiftEnd || rulesToUse.end);
+      if (lev !== null && end !== null) {
+        const earlyBy = end - lev;
+        if (earlyBy > (rulesToUse.graceEarlyMin ?? 15)) {
+          earlyCount++;
+          const rate = rulesToUse.earlyDeductionRate !== undefined ? rulesToUse.earlyDeductionRate : 0.5;
+          recordEarlyDeduction += rate * dailyRate;
+        }
+      }
+    }
+  });
+
+  let lateComingDeduction = roundToNearest10(recordLateDeduction);
+  let earlyLeaveDeduction = roundToNearest10(recordEarlyDeduction);
+
+  // Apply overrides from advances JSON if they are present there
+  const manualOverrides = advances?.overrides || {};
+  if (manualOverrides.lateComingDeduction !== undefined) {
+    lateComingDeduction = manualOverrides.lateComingDeduction;
+  }
+  if (manualOverrides.earlyLeaveDeduction !== undefined) {
+    earlyLeaveDeduction = manualOverrides.earlyLeaveDeduction;
+  }
 
   let basicEarned: number;
   let incentiveEarned: number;
@@ -283,15 +474,6 @@ export const calculateSalary = (
 
   // Only apply penalty if enabled for this staff member (default to true if undefined)
   if (staff.sundayPenalty !== false) {
-    // Get Sunday half-day count from attendance
-    const monthlyAttendance = attendance.filter(record => {
-      const recordDate = new Date(record.date);
-      return record.staffId === staff.id &&
-        recordDate.getMonth() === currentMonth &&
-        recordDate.getFullYear() === currentYear &&
-        !record.isPartTime;
-    });
-
     const sundayHalfDays = monthlyAttendance
       .filter(record => record.status === 'Half Day' && isSunday(record.date))
       .length;
@@ -344,19 +526,38 @@ export const calculateSalary = (
     mealAllowance = rawMeal;
   }
 
+  const overrides = advances?.overrides || {};
+  if (overrideConfig?.basic && overrides.basic !== undefined) basicEarned = overrides.basic;
+  if (overrideConfig?.incentive && overrides.incentive !== undefined) incentiveEarned = overrides.incentive;
+  if (overrideConfig?.hra && overrides.hra !== undefined) hraEarned = overrides.hra;
+  if (overrideConfig?.mealAllowance && overrides.mealAllowance !== undefined) mealAllowance = overrides.mealAllowance;
+  if (overrideConfig?.sundayPenalty && overrides.sundayPenalty !== undefined) sundayPenalty = overrides.sundayPenalty;
+
   // Gross salary calculation
   const grossSalary = roundToNearest10(basicEarned + incentiveEarned + hraEarned + supplementsTotal + mealAllowance);
 
   // Advance and deduction handling with carry-forward
   const oldAdv = advances?.oldAdvance || getPreviousMonthAdvance(staff.id, allAdvances, currentMonth, currentYear);
-  const curAdv = advances?.currentAdvance || 0;
-  const deduction = advances?.deduction || 0;
+  
+  let curAdv = advances?.currentAdvance || 0;
+  
+  const entriesSum = advanceEntries
+    .filter(e => e.month === currentMonth && e.year === currentYear)
+    .reduce((s, e) => s + e.amount, 0);
+  const hasManualAdvanceRow = !!advances && (advances.currentAdvance || 0) > 0;
+  if (!hasManualAdvanceRow && entriesSum > 0) {
+    curAdv = roundToNearest10(entriesSum);
+  }
+
+  // Use manual deduction if set, otherwise use auto-scheduled deduction
+  const manualDeduction = advances?.deduction || 0;
+  const deduction = manualDeduction > 0 ? manualDeduction : (scheduledDeductionTotal || 0);
 
   // Calculate new advance
   const newAdv = roundToNearest10(oldAdv + curAdv - deduction);
 
-  // Calculate net salary (deduct Sunday penalty from net salary)
-  const netSalary = Math.max(0, roundToNearest10(grossSalary - curAdv - deduction - sundayPenalty));
+  // Calculate net salary (deduct Sunday penalty and late/early deductions from net salary)
+  const netSalary = Math.max(0, roundToNearest10(grossSalary - curAdv - deduction - sundayPenalty - lateComingDeduction - earlyLeaveDeduction));
 
   return {
     staffId: staff.id,
@@ -375,6 +576,8 @@ export const calculateSalary = (
     hraDeduction: roundToNearest10(hraDeduction), // Internal tracking
     sundayPenalty: roundToNearest10(sundayPenalty),
     mealAllowance: roundToNearest10(mealAllowance),
+    lateComingDeduction: roundToNearest10(lateComingDeduction),
+    earlyLeaveDeduction: roundToNearest10(earlyLeaveDeduction),
     grossSalary,
     newAdv,
     netSalary,
@@ -391,7 +594,7 @@ export const calculateLocationAttendance = (
   location: string
 ) => {
   const locationStaff = staff.filter(member => member.location === location && member.isActive);
-  const locationAttendance = attendance.filter(record => {
+  const locationAttendance = (Array.isArray(attendance) ? attendance : []).filter(record => {
     if (record.isPartTime) {
       // For part-time staff, check by location in attendance record
       return record.date === date && record.location === location;

@@ -24,6 +24,8 @@ export const salaryOverrideService = {
             hraOverride: override.hra_override,
             mealAllowanceOverride: override.meal_allowance_override,
             sundayPenaltyOverride: override.sunday_penalty_override,
+            lateComingDeductionOverride: override.late_coming_deduction_override,
+            earlyLeaveDeductionOverride: override.early_leave_deduction_override,
             salarySupplementsOverride: override.salary_supplements_override || {}
         })) as SalaryOverride[];
     },
@@ -38,6 +40,8 @@ export const salaryOverrideService = {
             hra_override: override.hraOverride,
             meal_allowance_override: override.mealAllowanceOverride,
             sunday_penalty_override: override.sundayPenaltyOverride,
+            late_coming_deduction_override: override.lateComingDeductionOverride,
+            early_leave_deduction_override: override.earlyLeaveDeductionOverride,
             salary_supplements_override: override.salarySupplementsOverride,
             updated_at: new Date().toISOString()
         };

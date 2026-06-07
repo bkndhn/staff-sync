@@ -46,6 +46,8 @@ export interface DatabaseAttendance {
   arrival_time?: string | null;
   leaving_time?: string | null;
   is_uninformed?: boolean | null;
+  applied_rule_type?: string | null;
+  applied_rule_details?: any | null;
 }
 
 export interface DatabaseAdvanceDeduction {

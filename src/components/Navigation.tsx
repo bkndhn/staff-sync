@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
   X,
   ShieldAlert,
+  TrendingUp,
 } from 'lucide-react';
 import { SyncBadge } from './SyncBadge';
 
@@ -41,6 +42,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
     if (user.role === 'admin') {
       return [
         { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
+        { id: 'Workforce Insights' as NavigationTab, label: 'Insights', icon: TrendingUp },
         { id: 'Staff Management' as NavigationTab, label: 'Staff', icon: Users },
         { id: 'Attendance' as NavigationTab, label: 'Attendance', icon: Calendar },
         { id: 'Face Attendance' as NavigationTab, label: 'Face', icon: ScanFace },
@@ -55,6 +57,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
     // Manager
     return [
       { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
+      { id: 'Workforce Insights' as NavigationTab, label: 'Insights', icon: TrendingUp },
       { id: 'Attendance' as NavigationTab, label: 'Attendance', icon: Calendar },
       { id: 'Face Attendance' as NavigationTab, label: 'Face', icon: ScanFace },
       { id: 'Part-Time Staff' as NavigationTab, label: 'Part-Time', icon: Clock },

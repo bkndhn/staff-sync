@@ -68,6 +68,18 @@ export const advanceService = {
   },
 
   mapFromDatabase(dbAdvance: any): AdvanceDeduction {
+    let notes = dbAdvance.notes || '';
+    let overrides = undefined;
+    const jsonMatch = notes.match(/\[JSON\](.*?)\[\/JSON\]/);
+    if (jsonMatch) {
+      try {
+        overrides = JSON.parse(jsonMatch[1]);
+        notes = notes.replace(jsonMatch[0], '').trim();
+      } catch (e) {
+        console.error('Failed to parse overrides from notes:', e);
+      }
+    }
+
     return {
       id: dbAdvance.id,
       staffId: dbAdvance.staff_id,
@@ -77,13 +89,19 @@ export const advanceService = {
       currentAdvance: dbAdvance.current_advance,
       deduction: dbAdvance.deduction,
       newAdvance: dbAdvance.new_advance,
-      notes: dbAdvance.notes ?? undefined,
+      notes: notes || undefined,
+      overrides: overrides,
       createdAt: dbAdvance.created_at ?? undefined,
       updatedAt: dbAdvance.updated_at ?? undefined
     };
   },
 
   mapToDatabase(advance: Omit<AdvanceDeduction, 'id' | 'createdAt' | 'updatedAt'>): Omit<DatabaseAdvance, 'id' | 'created_at' | 'updated_at'> {
+    let finalNotes = advance.notes || '';
+    if (advance.overrides && Object.keys(advance.overrides).length > 0) {
+      finalNotes = `[JSON]${JSON.stringify(advance.overrides)}[/JSON] ` + finalNotes;
+    }
+
     return {
       staff_id: advance.staffId,
       month: advance.month,
@@ -92,7 +110,7 @@ export const advanceService = {
       current_advance: advance.currentAdvance,
       deduction: advance.deduction,
       new_advance: advance.newAdvance,
-      notes: advance.notes
+      notes: finalNotes || undefined
     };
   }
 };

@@ -57,7 +57,7 @@ export const shiftService = {
 // ---------- Time helpers ----------
 
 export const parseHHMM = (t?: string): number | null => {
-  if (!t) return null;
+  if (!t || typeof t !== 'string') return null;
   const m = /^(\d{1,2}):(\d{2})/.exec(t.trim());
   if (!m) return null;
   const h = Number(m[1]); const mm = Number(m[2]);

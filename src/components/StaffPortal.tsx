@@ -6,7 +6,7 @@ import {
   CalendarDays, Trash2, Plus, Camera, QrCode
 } from 'lucide-react';
 import { Staff, Attendance, SalaryHike, AdvanceDeduction, SalaryOverride } from '../types';
-import { calculateAttendanceMetrics, calculateSalary, getDaysInMonth, isSunday, roundToNearest10 } from '../utils/salaryCalculations';
+import { calculateAttendanceMetrics, calculateSalary, getDaysInMonth, isSunday, roundToNearest10, getPreviousMonthAdvance } from '../utils/salaryCalculations';
 import { salaryOverrideService } from '../services/salaryOverrideService';
 import { salaryCategoryService, type SalaryCategory } from '../services/salaryCategoryService';
 import { leaveService, LeaveRequest } from '../services/leaveService';
@@ -17,8 +17,12 @@ import YearlyAttendanceSummary from './YearlyAttendanceSummary';
 import QRAttendanceScanner from './QRAttendanceScanner';
 import { punchEventService } from '../services/punchEventService';
 import { attendanceService } from '../services/attendanceService';
+import { DEFAULT_SHIFT_WINDOWS, parseHHMM } from '../services/shiftService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { db } from '../lib/db';
+import { appSettingsService } from '../services/appSettingsService';
+import { resolveActiveRule, calculateAttendanceStatus } from '../utils/attendanceRules';
 
 interface StaffPortalProps {
   staff: Staff;
@@ -97,12 +101,16 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       .catch((err) => console.error('Error loading leave requests:', err));
   }, [staff.id]);
 
-  // Load advance entries for selected month
+  // Load all advance entries for this staff
   useEffect(() => {
-    advanceEntryService.getByStaffAndMonth(staff.id, selectedMonth, selectedYear)
+    advanceEntryService.getByStaff(staff.id)
       .then(setAdvanceEntries)
       .catch((err) => console.error('Error loading advance entries:', err));
-  }, [staff.id, selectedMonth, selectedYear]);
+  }, [staff.id]);
+
+  const currentMonthAdvanceEntries = useMemo(() => 
+    advanceEntries.filter(e => e.month === selectedMonth && e.year === selectedYear),
+  [advanceEntries, selectedMonth, selectedYear]);
 
   const handleLeaveSubmit = async () => {
     if (!leaveForm.leaveDate || !leaveForm.reason.trim()) return;
@@ -143,6 +151,34 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       }
 
       const kind: 'in' | 'out' = hasIn ? 'out' : 'in';
+      const arrivalTime = kind === 'in' ? nowTime : todayRecord?.arrivalTime;
+      const leavingTime = kind === 'out' ? nowTime : todayRecord?.leavingTime;
+
+      // ── Smart status calculation using location/staff/designation rules ──────
+      let autoStatus: 'Present' | 'Half Day' | 'Absent' | 'Pending Full Day' | 'Manual Override' = 'Present';
+      let autoValue = 1;
+      let appliedRuleType: string | undefined = undefined;
+      let appliedRuleDetails: any | undefined = undefined;
+
+      try {
+        const [desigs, locDesigConfigs, locCfgArr, kioskSettings] = await Promise.all([
+          db.designations.toArray(),
+          db.locationDesignationShiftConfig.toArray(),
+          db.locationShiftConfig.where('locationName').equals(staff.location || '').toArray(),
+          appSettingsService.getKioskGlobalSettings(),
+        ]);
+        const locCfg = locCfgArr.length > 0 ? locCfgArr[0] : null;
+        const resolved = resolveActiveRule(staff, locCfg, desigs, locDesigConfigs, kioskSettings);
+        if (resolved) {
+          const decision = calculateAttendanceStatus(arrivalTime || undefined, leavingTime || undefined, resolved.rules);
+          autoStatus = decision.status;
+          autoValue = decision.attendanceValue;
+          appliedRuleType = resolved.appliedRuleType;
+          appliedRuleDetails = resolved.rules;
+        }
+      } catch (err) {
+        console.error('Error resolving rules in StaffPortal self-punch:', err);
+      }
 
       if (kind === 'in') {
         await attendanceService.upsert({
@@ -150,16 +186,22 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
           staffName: staff.name,
           location: staff.location,
           date: today,
-          status: 'Present' as any,
-          attendanceValue: 1,
+          status: autoStatus as any,
+          attendanceValue: autoValue,
           isSunday: isSunday(today),
           isPartTime: false,
-          arrivalTime: nowTime
+          arrivalTime: nowTime,
+          appliedRuleType,
+          appliedRuleDetails,
         } as any);
       } else {
         await attendanceService.upsert({
           ...todayRecord!,
-          leavingTime: nowTime
+          leavingTime: nowTime,
+          status: autoStatus as any,
+          attendanceValue: autoValue,
+          appliedRuleType,
+          appliedRuleDetails,
         } as any);
       }
 
@@ -201,6 +243,43 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     [staff.id, attendance, selectedMonth, selectedYear]
   );
 
+  const lateEarlyCounts = useMemo(() => {
+    let late = 0;
+    let early = 0;
+    
+    monthlyAttendance.forEach(record => {
+      if (record.status === 'Absent') return;
+      
+      const shiftKey = record.shift || staff.shift || 'Both';
+      const baseWin = DEFAULT_SHIFT_WINDOWS[shiftKey] || DEFAULT_SHIFT_WINDOWS['Both'];
+      const win = staff.shiftWindow ? { ...baseWin, ...staff.shiftWindow } : baseWin;
+      
+      if (record.arrivalTime) {
+        const arr = parseHHMM(record.arrivalTime);
+        const start = parseHHMM(win.start);
+        if (arr !== null && start !== null) {
+          const lateBy = arr - start;
+          if (lateBy > win.graceLateMin) {
+            late++;
+          }
+        }
+      }
+      
+      if (record.leavingTime) {
+        const lev = parseHHMM(record.leavingTime);
+        const end = parseHHMM(win.end);
+        if (lev !== null && end !== null) {
+          const earlyBy = end - lev;
+          if (earlyBy > win.graceEarlyMin) {
+            early++;
+          }
+        }
+      }
+    });
+    
+    return { late, early };
+  }, [monthlyAttendance, staff.shift, staff.shiftWindow]);
+
   const activeCustomCategories = useMemo(
     () => salaryCategories.filter(c => !c.isBuiltIn && !c.isDeleted),
     [salaryCategories]
@@ -235,7 +314,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   // Salary for selected month - with overrides applied
   const salaryDetail = useMemo(() => {
     const adv = advances.find(a => a.staffId === staff.id && a.month === selectedMonth && a.year === selectedYear) || null;
-    const baseDetail = calculateSalary(staff, metrics, adv, advances, attendance, selectedMonth, selectedYear);
+    const baseDetail = calculateSalary(staff, metrics, adv, advances, attendance, selectedMonth, selectedYear, currentMonthAdvanceEntries);
 
     // Apply overrides if they exist
     let result = baseDetail as typeof baseDetail & { statutoryTotal?: number; statutoryBreakdown?: Array<{ key: string; label: string; amount: number }> };
@@ -245,10 +324,12 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       const hra = overrides.hraOverride ?? baseDetail.hraEarned;
       const meal = overrides.mealAllowanceOverride ?? baseDetail.mealAllowance;
       const sundayPenalty = overrides.sundayPenaltyOverride ?? baseDetail.sundayPenalty;
+      const lateComingDeduction = overrides.lateComingDeductionOverride ?? (baseDetail.lateComingDeduction ?? 0);
+      const earlyLeaveDeduction = overrides.earlyLeaveDeductionOverride ?? (baseDetail.earlyLeaveDeduction ?? 0);
       const supplementsTotal = effectiveSupplements.reduce((sum, item) => sum + item.amount, 0);
 
       const gross = roundToNearest10(basic + incentive + hra + meal + supplementsTotal);
-      const net = roundToNearest10(gross - baseDetail.curAdv - baseDetail.deduction - sundayPenalty);
+      const net = roundToNearest10(gross - baseDetail.curAdv - baseDetail.deduction - sundayPenalty - lateComingDeduction - earlyLeaveDeduction);
 
       result = {
         ...baseDetail,
@@ -257,6 +338,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         hraEarned: hra,
         mealAllowance: meal,
         sundayPenalty,
+        lateComingDeduction,
+        earlyLeaveDeduction,
         grossSalary: gross,
         netSalary: Math.max(0, net)
       };
@@ -364,6 +447,14 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
     const deductionRows = [
       ['Sunday Penalty', `${rs} ${salaryDetail.sundayPenalty.toLocaleString('en-IN')}`],
+    ];
+    if ((salaryDetail.lateComingDeduction || 0) > 0) {
+      deductionRows.push(['Late Coming Deduction', `${rs} ${salaryDetail.lateComingDeduction!.toLocaleString('en-IN')}`]);
+    }
+    if ((salaryDetail.earlyLeaveDeduction || 0) > 0) {
+      deductionRows.push(['Early Leave Deduction', `${rs} ${salaryDetail.earlyLeaveDeduction!.toLocaleString('en-IN')}`]);
+    }
+    deductionRows.push(
       ['Old Advance', `${rs} ${salaryDetail.oldAdv.toLocaleString('en-IN')}`],
       ['Current Advance', `${rs} ${salaryDetail.curAdv.toLocaleString('en-IN')}`],
       ['Deduction', `${rs} ${salaryDetail.deduction.toLocaleString('en-IN')}`],
@@ -372,7 +463,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         `${rs} ${b.amount.toLocaleString('en-IN')}`,
       ])),
       ['New Advance Balance', `${rs} ${salaryDetail.newAdv.toLocaleString('en-IN')}`],
-    ];
+    );
 
     const allRows = [...earningsRows, ['', ''], ...deductionRows, ['', ''], ['NET SALARY', `${rs} ${salaryDetail.netSalary.toLocaleString('en-IN')}`]];
 
@@ -562,12 +653,14 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       {activeSection === 'attendance' && (
         <div className="space-y-4">
           {/* Summary */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-7 gap-3">
             <QuickStat label="Present" value={`${metrics.presentDays}`} icon={CheckCircle} color="emerald" />
             <QuickStat label="Half Days" value={`${metrics.halfDays}`} icon={Clock} color="amber" />
             <QuickStat label="Leaves" value={`${metrics.leaveDays}`} icon={XCircle} color="red" />
             <QuickStat label="Sun. Absent" value={`${metrics.sundayAbsents}`} icon={Calendar} color="orange" />
             <QuickStat label="Uninformed" value={`${monthlyAttendance.filter(a => a.isUninformed).length}`} icon={AlertTriangle} color="orange" />
+            <QuickStat label="Late Arrivals" value={`${lateEarlyCounts.late}`} icon={Clock} color="red" />
+            <QuickStat label="Early Leaves" value={`${lateEarlyCounts.early}`} icon={Clock} color="orange" />
           </div>
           {/* Legend */}
           <div className="flex flex-wrap gap-3 text-[10px] px-1">
@@ -643,12 +736,54 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                                   }`}>
                                   {record?.isUninformed ? '⚠' : status === 'Present' ? 'P' : status === 'Half Day' ? halfCode : 'A'}
                                 </span>
-                                {(record?.arrivalTime || record?.leavingTime) && (
-                                  <div className="mt-1 text-[8px] font-medium leading-tight text-center">
-                                    {record.arrivalTime && <div className="text-emerald-500">IN {record.arrivalTime}</div>}
-                                    {record.leavingTime && <div className="text-orange-500">OUT {record.leavingTime}</div>}
-                                  </div>
-                                )}
+                                {(record?.arrivalTime || record?.leavingTime) && (() => {
+                                  const shiftKey = record.shift || staff.shift || 'Both';
+                                  const baseWin = DEFAULT_SHIFT_WINDOWS[shiftKey] || DEFAULT_SHIFT_WINDOWS['Both'];
+                                  const win = staff.shiftWindow ? { ...baseWin, ...staff.shiftWindow } : baseWin;
+
+                                  let lateMins = 0;
+                                  if (record.arrivalTime && win) {
+                                    const arr = parseHHMM(record.arrivalTime);
+                                    const start = parseHHMM(win.start);
+                                    if (arr !== null && start !== null) {
+                                      lateMins = Math.max(0, arr - start);
+                                    }
+                                  }
+
+                                  let earlyMins = 0;
+                                  if (record.leavingTime && win) {
+                                    const lev = parseHHMM(record.leavingTime);
+                                    const end = parseHHMM(win.end);
+                                    if (lev !== null && end !== null) {
+                                      earlyMins = Math.max(0, end - lev);
+                                    }
+                                  }
+
+                                  return (
+                                    <div className="mt-1 text-[8px] font-medium leading-tight text-center">
+                                      {record.arrivalTime && (
+                                        <div className="text-emerald-500">
+                                          IN {record.arrivalTime.substring(0, 5)}
+                                          {lateMins > 0 && (
+                                            <span className={win && lateMins > win.graceLateMin ? "text-red-500 font-bold block" : "text-gray-400 block"}>
+                                              (Late: {lateMins}m)
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                      {record.leavingTime && (
+                                        <div className="text-orange-500 mt-0.5">
+                                          OUT {record.leavingTime.substring(0, 5)}
+                                          {earlyMins > 0 && (
+                                            <span className={win && earlyMins > win.graceEarlyMin ? "text-red-500 font-bold block" : "text-gray-400 block"}>
+                                              (Early: {earlyMins}m)
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             </td>
                           );
@@ -820,6 +955,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
             </div>
             <div className="p-5 space-y-3">
               {salaryDetail.sundayPenalty > 0 && <SalaryRow label="Sunday Penalty" value={`- Rs. ${salaryDetail.sundayPenalty.toLocaleString('en-IN')}`} danger />}
+              {(salaryDetail.lateComingDeduction || 0) > 0 && <SalaryRow label="Late Coming Deduction" value={`- Rs. ${salaryDetail.lateComingDeduction!.toLocaleString('en-IN')}`} danger />}
+              {(salaryDetail.earlyLeaveDeduction || 0) > 0 && <SalaryRow label="Early Leave Deduction" value={`- Rs. ${salaryDetail.earlyLeaveDeduction!.toLocaleString('en-IN')}`} danger />}
               <SalaryRow label="Deduction" value={`Rs. ${salaryDetail.deduction.toLocaleString('en-IN')}`} />
               {(salaryDetail.statutoryBreakdown || []).map((b) => (
                 <SalaryRow
@@ -867,11 +1004,11 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               })()}
 
               {/* Date-wise advance entries */}
-              {advanceEntries.length > 0 && (
+              {currentMonthAdvanceEntries.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-[var(--glass-border)]">
                   <p className="text-xs font-semibold text-[var(--text-muted)] mb-2 uppercase tracking-wide">Date-wise Advances</p>
                   <div className="space-y-1.5">
-                    {advanceEntries.map(entry => (
+                    {currentMonthAdvanceEntries.map(entry => (
                       <div key={entry.id} className="flex items-center justify-between p-2.5 rounded-lg bg-blue-500/5 border border-blue-500/10">
                         <div>
                           <span className="text-xs font-medium text-[var(--text-primary)]">
@@ -896,35 +1033,65 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               </h3>
             </div>
             <div className="p-4">
-              {(() => {
-                const staffAdvances = advances
-                  .filter(a => a.staffId === staff.id)
-                  .sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month))
-                  .slice(0, 6);
-                if (staffAdvances.length === 0) return <p className="text-sm text-[var(--text-muted)] text-center py-4">No advance records found.</p>;
-                return (
-                  <div className="space-y-2">
-                    {staffAdvances.map(adv => {
-                      const mName = new Date(adv.year, adv.month).toLocaleString('default', { month: 'short' });
-                      return (
-                        <div key={adv.id} className="flex items-center justify-between p-3 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)]">
-                          <div>
-                            <span className="text-sm font-semibold text-[var(--text-primary)]">{mName} {adv.year}</span>
-                            <div className="flex gap-3 text-[11px] text-[var(--text-muted)] mt-0.5">
-                              <span>Old: ₹{adv.oldAdvance}</span>
-                              <span>Given: ₹{adv.currentAdvance}</span>
-                              <span>Ded: ₹{adv.deduction}</span>
+                 {(() => {
+                  // Generate exactly the last 6 months sequentially
+                  const past6Months = [];
+                  let currM = selectedMonth - 1;
+                  let currY = selectedYear;
+                  
+                  for (let i = 0; i < 6; i++) {
+                    if (currM < 0) {
+                      currM = 11;
+                      currY -= 1;
+                    }
+                    
+                    const advRow = advances.find(a => a.staffId === staff.id && a.month === currM && a.year === currY);
+                    let computedOldAdv = 0;
+                    let computedCurAdv = 0;
+                    if (!advRow) {
+                      computedOldAdv = getPreviousMonthAdvance(staff.id, advances, currM, currY);
+                      
+                      // Auto-calculate given advance if not in advances table
+                      const monthEntries = advanceEntries.filter(e => e.month === currM && e.year === currY);
+                      computedCurAdv = monthEntries.reduce((sum, e) => sum + e.amount, 0);
+                    }
+                    
+                    past6Months.push({
+                      id: advRow?.id || `virtual-${currY}-${currM}`,
+                      month: currM,
+                      year: currY,
+                      oldAdvance: advRow?.oldAdvance ?? computedOldAdv,
+                      currentAdvance: advRow?.currentAdvance ?? computedCurAdv,
+                      deduction: advRow?.deduction ?? 0,
+                      newAdvance: advRow?.newAdvance ?? (computedOldAdv + computedCurAdv)
+                    });
+                    
+                    currM--;
+                  }
+
+                  return (
+                    <div className="space-y-2">
+                      {past6Months.map(adv => {
+                        const mName = new Date(adv.year, adv.month).toLocaleString('default', { month: 'short' });
+                        return (
+                          <div key={adv.id} className="flex items-center justify-between p-3 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)]">
+                            <div>
+                              <span className="text-sm font-semibold text-[var(--text-primary)]">{mName} {adv.year}</span>
+                              <div className="flex gap-3 text-[11px] text-[var(--text-muted)] mt-0.5">
+                                <span>Old: ₹{adv.oldAdvance}</span>
+                                <span>Given: ₹{adv.currentAdvance}</span>
+                                <span>Ded: ₹{adv.deduction}</span>
+                              </div>
                             </div>
+                            <span className={`text-sm font-bold ${adv.newAdvance > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                              ₹{adv.newAdvance.toLocaleString('en-IN')}
+                            </span>
                           </div>
-                          <span className={`text-sm font-bold ${adv.newAdvance > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                            ₹{adv.newAdvance.toLocaleString('en-IN')}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
             </div>
           </div>
 

@@ -9,6 +9,8 @@ import { type Floor } from '../services/floorService';
 import { type Designation } from '../services/designationService';
 import { type PunchEvent } from '../services/punchEventService';
 
+import { type LocationDesignationShiftConfig } from '../types';
+
 export class StaffSyncDB extends Dexie {
   staff!: Table<Staff, string>;
   faceEmbeddings!: Table<FaceEmbedding, string>;
@@ -20,6 +22,7 @@ export class StaffSyncDB extends Dexie {
   floors!: Table<Floor, string>;
   designations!: Table<Designation, string>;
   punchEvents!: Table<PunchEvent, string>;
+  locationDesignationShiftConfig!: Table<LocationDesignationShiftConfig, string>;
 
   constructor() {
     super('StaffSyncDB');
@@ -35,6 +38,10 @@ export class StaffSyncDB extends Dexie {
       floors: 'id, locationId',
       designations: 'id',
       punchEvents: 'id, staffId, date'
+    });
+
+    this.version(2).stores({
+      locationDesignationShiftConfig: 'id, locationName, designationId, [locationName+designationId]'
     });
   }
 }

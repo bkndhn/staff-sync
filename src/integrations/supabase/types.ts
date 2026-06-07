@@ -219,6 +219,8 @@ export type Database = {
           staff_id: string
           staff_name: string | null
           status: string
+          applied_rule_type: string | null
+          applied_rule_details: Json | null
         }
         Insert: {
           arrival_time?: string | null
@@ -238,6 +240,8 @@ export type Database = {
           staff_id: string
           staff_name?: string | null
           status: string
+          applied_rule_type?: string | null
+          applied_rule_details?: Json | null
         }
         Update: {
           arrival_time?: string | null
@@ -257,6 +261,8 @@ export type Database = {
           staff_id?: string
           staff_name?: string | null
           status?: string
+          applied_rule_type?: string | null
+          applied_rule_details?: Json | null
         }
         Relationships: []
       }
@@ -269,6 +275,18 @@ export type Database = {
           name: string
           sort_order: number | null
           updated_at: string | null
+          shift_start: string | null
+          shift_end: string | null
+          grace_late_min: number | null
+          grace_early_min: number | null
+          min_hours_full: number | null
+          min_hours_half: number | null
+          morning_cutoff: string | null
+          early_exit_time: string | null
+          evening_verification_time: string | null
+          full_day_requires_morning: boolean | null
+          late_deduction_rate: number | null
+          early_deduction_rate: number | null
         }
         Insert: {
           created_at?: string | null
@@ -278,6 +296,18 @@ export type Database = {
           name: string
           sort_order?: number | null
           updated_at?: string | null
+          shift_start?: string | null
+          shift_end?: string | null
+          grace_late_min?: number | null
+          grace_early_min?: number | null
+          min_hours_full?: number | null
+          min_hours_half?: number | null
+          morning_cutoff?: string | null
+          early_exit_time?: string | null
+          evening_verification_time?: string | null
+          full_day_requires_morning?: boolean | null
+          late_deduction_rate?: number | null
+          early_deduction_rate?: number | null
         }
         Update: {
           created_at?: string | null
@@ -287,6 +317,18 @@ export type Database = {
           name?: string
           sort_order?: number | null
           updated_at?: string | null
+          shift_start?: string | null
+          shift_end?: string | null
+          grace_late_min?: number | null
+          grace_early_min?: number | null
+          min_hours_full?: number | null
+          min_hours_half?: number | null
+          morning_cutoff?: string | null
+          early_exit_time?: string | null
+          evening_verification_time?: string | null
+          full_day_requires_morning?: boolean | null
+          late_deduction_rate?: number | null
+          early_deduction_rate?: number | null
         }
         Relationships: []
       }
@@ -502,6 +544,74 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      location_designation_shift_config: {
+        Row: {
+          created_at: string | null
+          designation_id: string
+          early_exit_time: string | null
+          evening_verification_time: string | null
+          full_day_requires_morning: boolean | null
+          grace_early_min: number | null
+          grace_late_min: number | null
+          id: string
+          location_name: string
+          min_hours_full: number | null
+          min_hours_half: number | null
+          morning_cutoff: string | null
+          shift_end: string | null
+          shift_start: string | null
+          late_deduction_rate: number | null
+          early_deduction_rate: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          designation_id: string
+          early_exit_time?: string | null
+          evening_verification_time?: string | null
+          full_day_requires_morning?: boolean | null
+          grace_early_min?: number | null
+          grace_late_min?: number | null
+          id?: string
+          location_name: string
+          min_hours_full?: number | null
+          min_hours_half?: number | null
+          morning_cutoff?: string | null
+          shift_end?: string | null
+          shift_start?: string | null
+          late_deduction_rate?: number | null
+          early_deduction_rate?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          designation_id?: string
+          early_exit_time?: string | null
+          evening_verification_time?: string | null
+          full_day_requires_morning?: boolean | null
+          grace_early_min?: number | null
+          grace_late_min?: number | null
+          id?: string
+          location_name?: string
+          min_hours_full?: number | null
+          min_hours_half?: number | null
+          morning_cutoff?: string | null
+          shift_end?: string | null
+          shift_start?: string | null
+          late_deduction_rate?: number | null
+          early_deduction_rate?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_designation_shift_config_designation_id_fkey"
+            columns: ["designation_id"]
+            isOneToOne: false
+            referencedRelation: "designations"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       locations: {
         Row: {
@@ -878,6 +988,7 @@ export type Database = {
           device_id: string | null
           display_order: number | null
           esi_number: string | null
+          exempt_from_late_deduction: boolean | null
           experience: string
           floor: string | null
           hike_interval_months: number | null
@@ -918,6 +1029,7 @@ export type Database = {
           device_id?: string | null
           display_order?: number | null
           esi_number?: string | null
+          exempt_from_late_deduction?: boolean | null
           experience: string
           floor?: string | null
           hike_interval_months?: number | null
@@ -958,6 +1070,7 @@ export type Database = {
           device_id?: string | null
           display_order?: number | null
           esi_number?: string | null
+          exempt_from_late_deduction?: boolean | null
           experience?: string
           floor?: string | null
           hike_interval_months?: number | null

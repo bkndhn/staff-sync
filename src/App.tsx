@@ -21,6 +21,9 @@ import { useOfflineSync } from './hooks/useOfflineSync';
 import { offlineDbService } from './services/offlineDb';
 import { db } from './lib/db';
 import { faceEmbeddingService } from './services/faceEmbeddingService';
+import { designationService } from './services/designationService';
+import { locationDesignationShiftService } from './services/locationDesignationShiftService';
+import { resolveActiveRule } from './utils/attendanceRules';
 
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
 const SalaryManagement = React.lazy(() => import('./components/SalaryManagement'));
@@ -30,6 +33,7 @@ const Settings = React.lazy(() => import('./components/Settings'));
 const StaffPortal = React.lazy(() => import('./components/StaffPortal'));
 const LeaveManagement = React.lazy(() => import('./components/LeaveManagement'));
 const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
+const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
 
 
 // ─── Prefetch all lazy chunks in the background after login ───────────────────
@@ -43,6 +47,7 @@ const prefetchAllComponents = () => {
   import('./components/StaffPortal');
   import('./components/LeaveManagement');
   import('./components/FaceAttendance');
+  import('./components/WorkforceInsights');
 };
 
 // ─── Skeleton shimmer ─────────────────────────────────────────────────────────
@@ -212,19 +217,27 @@ function App() {
   // silent re-render with fresh data. UI stays visible throughout.
   const silentRefresh = useCallback(async () => {
     try {
-      const [staffData, attendanceData, advanceData, oldStaffData, salaryHikeData, faceEmbeddingsData] = await Promise.all([
+      const [staffData, attendanceData, advanceData, oldStaffData, salaryHikeData, faceEmbeddingsData, designationsData, locDesigConfigs] = await Promise.all([
         staffService.getAll(),
         attendanceService.getAll(),
         advanceService.getAll(),
         oldStaffService.getAll(),
         salaryHikeService.getAll(),
         faceEmbeddingService.getAllApproved(),
+        designationService.getAllDesignations(),
+        locationDesignationShiftService.listAll(),
       ]);
       
       // Sync approved face embeddings to local Dexie for offline Face Scanner
       if (faceEmbeddingsData) {
         await db.faceEmbeddings.clear();
         await db.faceEmbeddings.bulkPut(faceEmbeddingsData);
+      }
+
+      // Sync designations to local Dexie
+      if (designationsData) {
+        await db.designations.clear();
+        await db.designations.bulkPut(designationsData);
       }
       
       // Update cache
@@ -342,7 +355,10 @@ function App() {
     salary?: number,
     salaryOverride?: boolean,
     arrivalTime?: string,
-    leavingTime?: string
+    leavingTime?: string,
+    floor?: string,
+    appliedRuleType?: string,
+    appliedRuleDetails?: any
   ) => {
     // Check if manager is trying to edit non-today attendance
     if (user?.role === 'manager') {
@@ -398,6 +414,11 @@ function App() {
       }
     }
 
+    const staffMember = staff.find(s => s.id === staffId);
+    const finalStaffName = staffName || staffMember?.name;
+    const finalLocation = location || staffMember?.location;
+    const finalFloor = floor || staffMember?.floor;
+
     if (!finalLeavingTime && (status === 'Present' || status === 'Half Day')) {
       // Check location (either passed directly or from staff record if we had it, but loop doesn't give staff record here easily)
       // However, we can use the location passed in arg.
@@ -405,9 +426,29 @@ function App() {
       // For full-time staff, location is usually constant.
 
       // Ensure consistent check for Godown
-      const locToCheck = location || '';
+      const locToCheck = finalLocation || '';
       if (locToCheck.toLowerCase().includes('godown')) {
         finalLeavingTime = '21:00';
+      }
+    }
+
+    // Resolve rules hierarchy details if missing for full-time staff
+    let finalAppliedRuleType = appliedRuleType;
+    let finalAppliedRuleDetails = appliedRuleDetails;
+    if (!finalAppliedRuleDetails && staffMember && !isPartTime) {
+      try {
+        const [desigs, locDesigConfigs, locCfgArr, kioskSettings] = await Promise.all([
+          db.designations.toArray(),
+          db.locationDesignationShiftConfig.toArray(),
+          db.locationShiftConfig.where('locationName').equals(finalLocation || staffMember.location || '').toArray(),
+          appSettingsService.getKioskGlobalSettings(),
+        ]);
+        const locCfg = locCfgArr.length > 0 ? locCfgArr[0] : null;
+        const resolved = resolveActiveRule(staffMember, locCfg, desigs, locDesigConfigs, kioskSettings);
+        finalAppliedRuleType = resolved.appliedRuleType;
+        finalAppliedRuleDetails = resolved.rules;
+      } catch (err) {
+        console.error('Error resolving rules during manual update:', err);
       }
     }
 
@@ -418,13 +459,16 @@ function App() {
       attendanceValue,
       isSunday: isSunday(date),
       isPartTime: !!isPartTime,
-      staffName,
+      staffName: finalStaffName,
       shift: shift as any,
-      location,
+      location: finalLocation,
+      floor: finalFloor,
       salary,
       salaryOverride,
       arrivalTime: finalArrivalTime,
-      leavingTime: finalLeavingTime
+      leavingTime: finalLeavingTime,
+      appliedRuleType: finalAppliedRuleType,
+      appliedRuleDetails: finalAppliedRuleDetails
     };
 
     try {
@@ -434,7 +478,7 @@ function App() {
       auditLogService.log({
         action: 'attendance_override',
         staffId,
-        staffName: staffName || 'Staff',
+        staffName: finalStaffName || 'Staff',
         details: `Marked attendance as ${status} for ${date} (${shift || 'Morning'})`,
         performedBy: user?.email || 'manager'
       });
@@ -481,17 +525,39 @@ function App() {
       targetStaff = targetStaff.filter(member => member.location === user.location);
     }
 
-    const attendanceRecords = targetStaff.map(member => ({
-      staffId: member.id,
-      date,
-      status,
-      attendanceValue: status === 'Present' ? 1 : status === 'Half Day' ? 0.5 : 0,
-      isSunday: isSunday(date),
-      isPartTime: false,
-      ...(status === 'Half Day' && shift ? { shift } : {}),
-      ...(arrivalTime ? { arrivalTime } : {}),
-      ...(leavingTime ? { leavingTime } : {}),
-    }));
+    let desigs: any[] = [];
+    let locDesigConfigs: any[] = [];
+    let locConfigs: any[] = [];
+    let kioskSettings: any = null;
+    try {
+      [desigs, locDesigConfigs, locConfigs, kioskSettings] = await Promise.all([
+        db.designations.toArray(),
+        db.locationDesignationShiftConfig.toArray(),
+        db.locationShiftConfig.toArray(),
+        appSettingsService.getKioskGlobalSettings(),
+      ]);
+    } catch (err) {
+      console.error('Error loading rules for bulk update:', err);
+    }
+
+    const attendanceRecords = targetStaff.map(member => {
+      const currentLocConfig = locConfigs.find(lc => lc.locationName === member.location);
+      const resolved = resolveActiveRule(member, currentLocConfig, desigs, locDesigConfigs, kioskSettings);
+      return {
+        staffId: member.id,
+        date,
+        status,
+        attendanceValue: status === 'Present' ? 1 : status === 'Half Day' ? 0.5 : 0,
+        isSunday: isSunday(date),
+        isPartTime: false,
+        location: member.location,
+        ...(status === 'Half Day' && shift ? { shift } : {}),
+        ...(arrivalTime ? { arrivalTime } : {}),
+        ...(leavingTime ? { leavingTime } : {}),
+        appliedRuleType: resolved?.appliedRuleType || null,
+        appliedRuleDetails: resolved?.rules || null,
+      };
+    });
 
     try {
       const savedRecords = await attendanceService.bulkUpsert(attendanceRecords);
@@ -503,7 +569,8 @@ function App() {
       });
 
       setAttendance(prev => {
-        const filtered = prev.filter(a => !(a.date === date && !a.isPartTime));
+        const targetStaffIds = new Set(targetStaff.map(s => s.id));
+        const filtered = prev.filter(a => !(a.date === date && !a.isPartTime && targetStaffIds.has(a.staffId)));
         return [...filtered, ...savedRecords];
       });
     } catch (error) {
@@ -780,41 +847,37 @@ function App() {
       return;
     }
 
-    try {
-      const existingAdvance = advances.find(adv =>
+    const existingAdvance = advances.find(adv =>
+      adv.staffId === staffId && adv.month === month && adv.year === year
+    );
+
+    const advanceRecord = {
+      staffId,
+      month,
+      year,
+      oldAdvance: existingAdvance?.oldAdvance || 0,
+      currentAdvance: existingAdvance?.currentAdvance || 0,
+      deduction: existingAdvance?.deduction || 0,
+      newAdvance: existingAdvance?.newAdvance || 0,
+      notes: existingAdvance?.notes,
+      ...advanceData
+    };
+
+    const savedAdvance = await advanceService.upsert(advanceRecord);
+
+    setAdvances(prev => {
+      const existingIndex = prev.findIndex(adv =>
         adv.staffId === staffId && adv.month === month && adv.year === year
       );
 
-      const advanceRecord = {
-        staffId,
-        month,
-        year,
-        oldAdvance: existingAdvance?.oldAdvance || 0,
-        currentAdvance: existingAdvance?.currentAdvance || 0,
-        deduction: existingAdvance?.deduction || 0,
-        newAdvance: existingAdvance?.newAdvance || 0,
-        notes: existingAdvance?.notes,
-        ...advanceData
-      };
-
-      const savedAdvance = await advanceService.upsert(advanceRecord);
-
-      setAdvances(prev => {
-        const existingIndex = prev.findIndex(adv =>
-          adv.staffId === staffId && adv.month === month && adv.year === year
-        );
-
-        if (existingIndex >= 0) {
-          const updated = [...prev];
-          updated[existingIndex] = savedAdvance;
-          return updated;
-        } else {
-          return [...prev, savedAdvance];
-        }
-      });
-    } catch (error) {
-      console.error('Error updating advances:', error);
-    }
+      if (existingIndex >= 0) {
+        const updated = [...prev];
+        updated[existingIndex] = savedAdvance;
+        return updated;
+      } else {
+        return [...prev, savedAdvance];
+      }
+    });
   };
 
   // Update staff order (drag and drop reordering)
@@ -873,6 +936,19 @@ function App() {
             isDarkTheme={isDarkTheme}
             toggleTheme={toggleTheme}
           />
+        );
+      case 'Workforce Insights':
+        if (user?.role !== 'admin' && user?.role !== 'manager') return null;
+        return (
+          <Suspense fallback={<ComponentLoader />}>
+            <WorkforceInsights
+              staff={filteredStaffData}
+              attendance={filteredAttendanceData}
+              advances={advances}
+              userLocation={user?.location}
+              userRole={user?.role}
+            />
+          </Suspense>
         );
       case 'Staff Management':
         if (user?.role !== 'admin') return null;

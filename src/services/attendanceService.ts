@@ -52,11 +52,15 @@ export const attendanceService = {
     }
 
     const dbAttendance = this.mapToDatabase(attendance);
+    // Always strip id from upsert payload — let the composite unique constraint
+    // (staff_id, date, is_part_time) handle conflict detection so the row is
+    // matched and updated correctly regardless of whether we know its PK.
+    const { id: _stripId, ...upsertPayload } = dbAttendance;
 
     try {
       const { data, error } = await supabase
         .from('attendance')
-        .upsert([dbAttendance as any], {
+        .upsert([upsertPayload as any], {
           onConflict: 'staff_id,date,is_part_time'
         })
         .select()
@@ -90,9 +94,10 @@ export const attendanceService = {
   /** Dedicated remote upsert invoked during background queue flushing to prevent infinite loops */
   async upsertRemoteOnly(attendance: Omit<Attendance, 'id'>): Promise<Attendance> {
     const dbAttendance = this.mapToDatabase(attendance);
+    const { id: _stripId, ...upsertPayload } = dbAttendance;
     const { data, error } = await supabase
       .from('attendance')
-      .upsert([dbAttendance as any], {
+      .upsert([upsertPayload as any], {
         onConflict: 'staff_id,date,is_part_time'
       })
       .select()
@@ -117,7 +122,11 @@ export const attendanceService = {
       return localResults;
     }
 
-    const dbRecords = attendanceRecords.map(this.mapToDatabase);
+    const dbRecords = attendanceRecords.map(rec => {
+      const mapped = this.mapToDatabase(rec);
+      const { id: _stripId, ...payload } = mapped;
+      return payload;
+    });
 
     try {
       const { data, error } = await supabase
@@ -175,30 +184,41 @@ export const attendanceService = {
       staffName: dbAttendance.staff_name ?? undefined,
       shift: dbAttendance.shift as Attendance['shift'],
       location: dbAttendance.location ?? undefined,
+      floor: dbAttendance.floor ?? undefined,
       salary: dbAttendance.salary ?? undefined,
       salaryOverride: dbAttendance.salary_override ?? undefined,
       arrivalTime: dbAttendance.arrival_time ?? undefined,
       leavingTime: dbAttendance.leaving_time ?? undefined,
-      isUninformed: dbAttendance.is_uninformed ?? undefined
+      isUninformed: dbAttendance.is_uninformed ?? undefined,
+      appliedRuleType: dbAttendance.applied_rule_type ?? undefined,
+      appliedRuleDetails: dbAttendance.applied_rule_details ?? undefined
     };
   },
 
-  mapToDatabase(attendance: Omit<Attendance, 'id'>): Omit<DatabaseAttendance, 'id' | 'created_at'> {
-    return {
+  mapToDatabase(attendance: Partial<Attendance>): any {
+    const dbRecord: any = {
       staff_id: attendance.staffId,
       date: attendance.date,
       status: attendance.status,
       attendance_value: attendance.attendanceValue,
-      is_sunday: isSunday(attendance.date),
+      is_sunday: attendance.date ? isSunday(attendance.date) : false,
       is_part_time: attendance.isPartTime || false,
       staff_name: attendance.staffName,
       shift: attendance.shift,
       location: attendance.location,
+      floor: attendance.floor,
       salary: attendance.salary,
       salary_override: attendance.salaryOverride,
       arrival_time: attendance.arrivalTime,
       leaving_time: attendance.leavingTime,
-      is_uninformed: attendance.isUninformed || false
+      is_uninformed: attendance.isUninformed,
+      applied_rule_type: attendance.appliedRuleType,
+      applied_rule_details: attendance.appliedRuleDetails
     };
+    if (attendance.id && !attendance.id.startsWith('offline_')) {
+      dbRecord.id = attendance.id;
+    }
+    return dbRecord;
   }
+
 };

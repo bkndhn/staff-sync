@@ -119,6 +119,7 @@ export const exportSalaryToExcel = async (
     'S.No': index + 1,
     'Name': detail.staffName,
     'Location': detail.location,
+    'Floor': detail.floor || '-',
     'Total Days': detail.totalDays,
     'Total Earnings': formatNumberForExport(detail.totalEarnings)
   }));
@@ -393,12 +394,13 @@ export const exportPartTimeSalaryPDF = (
       index + 1,
       detail.staffName,
       detail.location,
+      detail.floor || '-',
       detail.totalDays,
       detail.totalEarnings
     ]);
 
     autoTable(doc, {
-      head: [['S.No', 'Name', 'Location', 'Days', 'Total Earnings']],
+      head: [['S.No', 'Name', 'Location', 'Floor', 'Days', 'Total Earnings']],
       body: partTimeData,
       startY: currentY,
       styles: { fontSize: 10 },

@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Staff, Attendance, AttendanceFilter } from '../types';
+import { Staff, Attendance, AttendanceFilter, Designation, LocationDesignationShiftConfig } from '../types';
 import { Calendar, Download, Check, X, Filter, MapPin, Clock, Upload, Share2, AlertTriangle } from 'lucide-react';
 import { isSunday } from '../utils/salaryCalculations';
+import { DEFAULT_SHIFT_WINDOWS, parseHHMM, shiftService } from '../services/shiftService';
 import { exportAttendancePDF } from '../utils/exportUtils';
 import BulkAttendanceUpload from './BulkAttendanceUpload';
 import { attendanceService } from '../services/attendanceService';
 import YearlyAttendanceSummary from './YearlyAttendanceSummary';
 import { appSettingsService } from '../services/appSettingsService';
+import { db } from '../lib/db';
+import { resolveActiveRule } from '../utils/attendanceRules';
 
 interface AttendanceTrackerProps {
   staff: Staff[];
@@ -56,6 +59,10 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [bulkOutTime, setBulkOutTime] = useState<string>('');
   const [individualTimes, setIndividualTimes] = useState<Record<string, { inTime: string, outTime: string }>>({});
   const [managerCanOverride, setManagerCanOverride] = useState(true);
+  const [designations, setDesignations] = useState<Designation[]>([]);
+  const [locationDesignationConfigs, setLocationDesignationConfigs] = useState<LocationDesignationShiftConfig[]>([]);
+  const [locationConfigs, setLocationConfigs] = useState<any[]>([]);
+  const [globalKioskSettings, setGlobalKioskSettings] = useState<any | null>(null);
 
   const handleIndividualTimeChange = (staffId: string, field: 'inTime' | 'outTime', value: string) => {
     setIndividualTimes(prev => ({
@@ -79,6 +86,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   };
 
   // Load available locations and settings
+  const [globalShiftWindows, setGlobalShiftWindows] = useState<any>(DEFAULT_SHIFT_WINDOWS);
+
   useEffect(() => {
     const fetchLocations = async () => {
       const { locationService } = await import('../services/locationService');
@@ -90,6 +99,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     fetchLocations();
     
     appSettingsService.getManagerCanOverride().then(setManagerCanOverride);
+    shiftService.loadGlobal().then(setGlobalShiftWindows);
+    db.designations.toArray().then(setDesignations);
+    db.locationDesignationShiftConfig.toArray().then(setLocationDesignationConfigs);
+    db.locationShiftConfig.toArray().then(setLocationConfigs);
+    appSettingsService.getKioskGlobalSettings().then(setGlobalKioskSettings);
   }, []);
 
   const activeStaff = staff.filter(member => member.isActive);
@@ -681,6 +695,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       arrivalTime: attendanceRecord?.arrivalTime || '',
       leavingTime: attendanceRecord?.leavingTime || '',
       hasRecord: !!attendanceRecord,
+      appliedRuleDetails: attendanceRecord?.appliedRuleDetails || null,
+      appliedRuleType: attendanceRecord?.appliedRuleType || null,
     });
   });
 
@@ -952,6 +968,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Floor</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Desg</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Shift</th>
+                <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Late By</th>
+                <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Early Leave By</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -980,6 +998,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                               type="time" 
                               value={individualTimes[data.id]?.inTime !== undefined ? individualTimes[data.id].inTime : (data.arrivalTime || '')}
                               onChange={(e) => handleIndividualTimeChange(data.id, 'inTime', e.target.value)}
+                              onBlur={() => {
+                                if (data.hasRecord) {
+                                  confirmIndividualUpdate(data.id, data.status, data);
+                                }
+                              }}
                               className="text-[10px] md:text-xs border-none p-0 outline-none focus:ring-0 w-[60px]"
                             />
                           </div>
@@ -989,6 +1012,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                               type="time" 
                               value={individualTimes[data.id]?.outTime !== undefined ? individualTimes[data.id].outTime : (data.leavingTime || '')}
                               onChange={(e) => handleIndividualTimeChange(data.id, 'outTime', e.target.value)}
+                              onBlur={() => {
+                                if (data.hasRecord) {
+                                  confirmIndividualUpdate(data.id, data.status, data);
+                                }
+                              }}
                               className="text-[10px] md:text-xs border-none p-0 outline-none focus:ring-0 w-[60px]"
                             />
                           </div>
@@ -1110,6 +1138,64 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       <span className="text-gray-400">-</span>
                     )}
                   </td>
+                   {/* Late By & Early Leave By Columns */}
+                  {(() => {
+                    const staffMember = staff.find(s => s.id === data.id);
+                    let ruleDetails = data.appliedRuleDetails;
+                    if (!ruleDetails && staffMember) {
+                      const currentLocConfig = locationConfigs.find(lc => lc.locationName === (data.location || staffMember.location));
+                      const resolved = resolveActiveRule(staffMember, currentLocConfig, designations, locationDesignationConfigs, globalKioskSettings);
+                      ruleDetails = resolved.rules;
+                    }
+
+                    const shiftKey = data.shift !== '-' ? data.shift : (staffMember?.shift || 'Both');
+                    const baseWin = globalShiftWindows[shiftKey] || DEFAULT_SHIFT_WINDOWS[shiftKey];
+                    const startVal = ruleDetails?.shiftStart || baseWin.start;
+                    const endVal = ruleDetails?.shiftEnd || baseWin.end;
+                    const graceLate = ruleDetails?.graceLateMin !== undefined ? ruleDetails.graceLateMin : baseWin.graceLateMin;
+                    const graceEarly = ruleDetails?.graceEarlyMin !== undefined ? ruleDetails.graceEarlyMin : baseWin.graceEarlyMin;
+
+                    let lateMins = 0;
+                    if (data.arrivalTime) {
+                      const arr = parseHHMM(data.arrivalTime);
+                      const start = parseHHMM(startVal);
+                      if (arr !== null && start !== null) {
+                        lateMins = Math.max(0, arr - start);
+                      }
+                    }
+
+                    let earlyMins = 0;
+                    if (data.leavingTime) {
+                      const lev = parseHHMM(data.leavingTime);
+                      const end = parseHHMM(endVal);
+                      if (lev !== null && end !== null) {
+                        earlyMins = Math.max(0, end - lev);
+                      }
+                    }
+
+                    return (
+                      <>
+                        <td className="px-3 md:px-6 py-4 whitespace-nowrap text-xs">
+                          {lateMins > 0 ? (
+                            <span className={lateMins > graceLate ? 'text-red-500 font-bold' : 'text-gray-600 font-medium'}>
+                              {lateMins} min
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 md:px-6 py-4 whitespace-nowrap text-xs">
+                          {earlyMins > 0 ? (
+                            <span className={earlyMins > graceEarly ? 'text-red-500 font-bold' : 'text-gray-600 font-medium'}>
+                              {earlyMins} min
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                      </>
+                    );
+                  })()}
                 </tr>
               ))}
             </tbody>

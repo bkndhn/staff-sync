@@ -6,12 +6,13 @@ import { exportSalaryToExcel, exportPartTimeSalaryPDF } from '../utils/exportUti
 import { settingsService } from '../services/settingsService';
 import { partTimeAdvanceService } from '../services/partTimeAdvanceService';
 import { partTimeSettlementService } from '../services/partTimeSettlementService';
+import { floorService, Floor } from '../services/floorService';
 import { PartTimeAdvanceRecord } from '../types';
 
 interface PartTimeStaffProps {
     attendance: Attendance[];
     staff: Staff[];
-    onUpdateAttendance: (staffId: string, date: string, status: 'Present' | 'Half Day' | 'Absent', isPartTime?: boolean, staffName?: string, shift?: 'Morning' | 'Evening' | 'Both', location?: string, salary?: number, salaryOverride?: boolean, arrivalTime?: string, leavingTime?: string) => void;
+    onUpdateAttendance: (staffId: string, date: string, status: 'Present' | 'Half Day' | 'Absent', isPartTime?: boolean, staffName?: string, shift?: 'Morning' | 'Evening' | 'Both', location?: string, salary?: number, salaryOverride?: boolean, arrivalTime?: string, leavingTime?: string, floor?: string) => void;
     onDeletePartTimeAttendance: (attendanceId: string) => void;
     userLocation?: string;
     userRole?: string;
@@ -156,9 +157,11 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingAttendance, setEditingAttendance] = useState<string | null>(null);
+    const [floors, setFloors] = useState<Floor[]>([]);
     const [editData, setEditData] = useState<{
         name: string;
         location: string;
+        floor: string;
         shift: string;
         status: string;
         salary: number;
@@ -167,6 +170,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     }>({
         name: '',
         location: '',
+        floor: '',
         shift: '',
         status: '',
         salary: 0,
@@ -556,19 +560,19 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         salary: number;
         arrivalTime: string;
         leavingTime: string;
-    }[]>(() => {
-        const config = getDefaultShiftConfig();
-        const initialLeavingTime = (userLocation === 'Godown') ? '21:00' : config.leavingTime;
+        floor: string;
+    }[]>([{
+        name: '',
+        shift: getDefaultShiftConfig().shift,
+        salary: 0,
+        arrivalTime: getDefaultShiftConfig().arrivalTime,
+        leavingTime: getDefaultShiftConfig().leavingTime,
+        floor: ''
+    }]);
 
-        return [{
-            name: '',
-            shift: config.shift,
-            salary: 0,
-            arrivalTime: config.arrivalTime,
-            leavingTime: initialLeavingTime
-        }];
-    });
     const [bulkLocation, setBulkLocation] = useState(userLocation || 'Big Shop');
+    const [bulkFloor, setBulkFloor] = useState('');
+
     const [newStaffData, setNewStaffData] = useState<{
         name: string;
         location: string;
@@ -597,6 +601,20 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             setBulkLocation(availableLocations[0]);
         }
     }, [availableLocations, userLocation]);
+
+    useEffect(() => {
+        floorService.getFloors().then(setFloors);
+    }, []);
+
+    // Update bulkFloor when bulkLocation changes
+    useEffect(() => {
+        const availableFloors = floors.filter(f => f.locationName === bulkLocation);
+        if (availableFloors.length > 0) {
+            setBulkFloor(availableFloors[0].name);
+        } else {
+            setBulkFloor('');
+        }
+    }, [bulkLocation, floors]);
 
     // Get recent names for smart suggestions
     const getRecentNames = () => {
@@ -734,30 +752,41 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
 
 
-        const uniqueStaff = new Map<string, { name: string; locations: Set<string> }>();
+        const uniqueStaff = new Map<string, { name: string; locations: Set<string>; floors: Set<string> }>();
         monthlyAttendance.forEach(record => {
             if (record.staffName) {
                 const key = record.staffName.toLowerCase();
+                const validFloor = record.floor && record.floor !== '-' ? record.floor : null;
+                
                 if (!uniqueStaff.has(key)) {
+                    const floorSet = new Set<string>();
+                    if (validFloor) floorSet.add(validFloor);
+                    
                     uniqueStaff.set(key, {
                         name: record.staffName,
-                        locations: new Set([record.location || 'Unknown'])
+                        locations: new Set([record.location || 'Unknown']),
+                        floors: floorSet
                     });
                 } else {
                     uniqueStaff.get(key)!.locations.add(record.location || 'Unknown');
+                    if (validFloor) {
+                        uniqueStaff.get(key)!.floors.add(validFloor);
+                    }
                 }
             }
         });
 
-        return Array.from(uniqueStaff.values()).map(staff =>
-            calculatePartTimeSalary(
+        return Array.from(uniqueStaff.values()).map(staff => {
+            const floorsArray = Array.from(staff.floors);
+            return calculatePartTimeSalary(
                 staff.name,
                 Array.from(staff.locations).join(', '),
+                floorsArray.length > 0 ? floorsArray.join(', ') : '-',
                 monthlyAttendance,
                 selectedYear,
                 selectedMonth
-            )
-        );
+            );
+        });
     };
 
     // Check for duplicates
@@ -907,7 +936,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             onUpdateAttendance(
                 staffId, selectedDate, 'Present', true,
                 staffData.name.trim(), staffData.shift, bulkLocation,
-                finalSalary, isSalaryEdited, arrivalTime, leavingTime
+                finalSalary, isSalaryEdited, arrivalTime, leavingTime, staffData.floor || bulkFloor
             );
         });
 
@@ -920,7 +949,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             shift: config.shift,
             salary: 0,
             arrivalTime: config.arrivalTime,
-            leavingTime: initialLeavingTime
+            leavingTime: initialLeavingTime,
+            floor: ''
         }]);
         setShowAddForm(false);
     };
@@ -1061,7 +1091,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             finalSalary,
             isSalaryEdited,
             defaultArrivalTime,
-            defaultLeavingTime
+            defaultLeavingTime,
+            newStaffData.floor
         );
         setNewStaffData({
             name: '',
@@ -1125,7 +1156,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             editData.salary,
             isSalaryEdited,
             editData.arrivalTime,
-            editData.leavingTime
+            editData.leavingTime,
+            editData.floor
         );
         setEditingAttendance(null);
     };
@@ -1262,17 +1294,32 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                     </div>
 
                     <form onSubmit={handleBulkSubmit}>
-                        {/* Common Location */}
-                        <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Location (Applies to all)</label>
-                            <select
-                                value={bulkLocation}
-                                onChange={(e) => handleBulkLocationChange(e.target.value)}
-                                className="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                disabled={!!userLocation}
-                            >
-                                {availableLocations.map(loc => (<option key={loc} value={loc}>{loc}</option>))}
-                            </select>
+                        {/* Common Location & Floor */}
+                        <div className="mb-6 flex flex-col md:flex-row gap-4">
+                            <div className="flex-1 md:w-1/3">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Location (Applies to all)</label>
+                                <select
+                                    value={bulkLocation}
+                                    onChange={(e) => handleBulkLocationChange(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    disabled={!!userLocation}
+                                >
+                                    {availableLocations.map(loc => (<option key={loc} value={loc}>{loc}</option>))}
+                                </select>
+                            </div>
+                            <div className="flex-1 md:w-1/3">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Floor (Applies to all)</label>
+                                <select
+                                    value={bulkFloor}
+                                    onChange={(e) => setBulkFloor(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                >
+                                    <option value="">None</option>
+                                    {floors.filter(f => f.locationName === bulkLocation).map(floor => (
+                                        <option key={floor.id} value={floor.name}>{floor.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         {/* Staff Rows */}
@@ -1451,6 +1498,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
                                     <th className="sticky left-0 z-10 bg-gray-50 px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Name</th>
                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Floor</th>
                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shift</th>
                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salary</th>
@@ -1467,6 +1515,11 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className="badge-premium badge-purple">
                                                 {record.location}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="text-sm font-medium text-gray-700">
+                                                {record.floor || '-'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1506,6 +1559,16 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                             className="px-2 py-1 text-xs border rounded"
                                                         >
                                                             {availableLocations.map(loc => (<option key={loc} value={loc}>{loc}</option>))}
+                                                        </select>
+                                                        <select
+                                                            value={editData.floor}
+                                                            onChange={(e) => setEditData({ ...editData, floor: e.target.value })}
+                                                            className="px-2 py-1 text-xs border rounded"
+                                                        >
+                                                            <option value="">None</option>
+                                                            {floors.filter(f => f.locationName === editData.location).map(floor => (
+                                                                <option key={floor.id} value={floor.name}>{floor.name}</option>
+                                                            ))}
                                                         </select>
                                                         <select
                                                             value={editData.shift}
@@ -1823,6 +1886,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                 <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
                                 <th className="sticky left-0 z-10 bg-gray-50 px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Name</th>
                                 <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Floor</th>
                                 {reportType === 'weekly' && getWeeksInMonth(selectedYear, selectedMonth)[selectedWeek] && (() => {
                                     const weekData = getWeeksInMonth(selectedYear, selectedMonth)[selectedWeek];
                                     const headers = [];
@@ -1831,10 +1895,12 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                         const currentDate = new Date(weekData.startDate);
                                         currentDate.setDate(currentDate.getDate() + i);
                                         const dayNum = currentDate.getDate();
-                                        const monthName = currentDate.toLocaleDateString('en-US', { month: 'short' });
+                                        const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+                                        const monthName = currentDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
 
                                         headers.push(
                                             <th key={i} className="w-16 min-w-[64px] px-1 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <div className="text-[10px] font-bold">{dayName}</div>
                                                 <div>{dayNum}</div>
                                                 <div className="text-[10px] text-gray-400">{monthName}</div>
                                             </th>
@@ -1866,17 +1932,11 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     const staffSettled = settlementStatus.isFullySettled;
                                     const staffPartial = settlementStatus.isPartiallySettled;
 
-                                    // Get advance record for this week (only applicable in weekly view for input)
-                                    // For monthly/date range, we might show total advanced? 
-                                    // Requirement mainly detailed weekly logic. Let's focus on that for input.
-
                                     const advanceKey = `${salary.staffName}-${salary.location}-${selectedYear}-${selectedMonth}-${selectedWeek}`;
                                     const advanceRecord = advanceRecords[advanceKey];
                                     const advanceAmount = advanceRecord?.advanceGiven || 0;
                                     const pendingAmount = advanceRecord?.pendingSalary || 0;
                                     const closingBalance = advanceRecord?.closingBalance || 0;
-                                    // Make sure we carry forward opening balance for display if needed? 
-                                    // For now, closing balance is what matters - "Carry this +200 forward"
 
                                     // Determine row background color
                                     let rowBgClass = 'hover:bg-gray-50';
@@ -1913,6 +1973,9 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                 <span className="badge-premium badge-purple">
                                                     {salary.location}
                                                 </span>
+                                            </td>
+                                            <td className="px-3 md:px-6 py-4 whitespace-nowrap">
+                                                {salary.floor || '-'}
                                             </td>
                                             {reportType === 'weekly' && (() => {
                                                 const weekData = getWeeksInMonth(selectedYear, selectedMonth)[selectedWeek];
@@ -2088,7 +2151,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                         </tbody>
                         <tfoot className="bg-gray-50 font-bold">
                             <tr>
-                                <td colSpan={reportType === 'weekly' ? (getWeeksInMonth(selectedYear, selectedMonth)[selectedWeek] ? 4 + (getWeeksInMonth(selectedYear, selectedMonth)[selectedWeek].endDay - getWeeksInMonth(selectedYear, selectedMonth)[selectedWeek].startDay + 1) : 11) : 6} className="px-3 md:px-6 py-4 text-right text-base text-gray-900">Total Net Payable:</td>
+                                <td colSpan={reportType === 'weekly' ? (getWeeksInMonth(selectedYear, selectedMonth)[selectedWeek] ? 5 + (getWeeksInMonth(selectedYear, selectedMonth)[selectedWeek].endDay - getWeeksInMonth(selectedYear, selectedMonth)[selectedWeek].startDay + 1) : 12) : 7} className="px-3 md:px-6 py-4 text-right text-base text-gray-900">Total Net Payable:</td>
                                 <td className="px-3 md:px-6 py-4 text-right text-green-600 text-lg">
                                     ₹{partTimeSalaries.reduce((sum, salary) => {
                                         const advance = reportType === 'weekly'

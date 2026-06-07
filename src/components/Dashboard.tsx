@@ -409,8 +409,8 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Location-based Attendance */}
       <div className="section-card">
         <div className="section-header">
-          <MapPin size={20} />
-          <h2 className="text-lg font-semibold flex-1">
+          <MapPin size={20} className="text-white" />
+          <h2 className="text-lg font-semibold flex-1 text-white">
             {userRole === 'admin'
               ? "Today's Attendance by Location"
               : `${userLocation} - Today's Attendance`
@@ -469,9 +469,9 @@ const Dashboard: React.FC<DashboardProps> = ({
             const locationMorning = locationPartTimeData.filter(record => record.shift === 'Morning');
             const locationEvening = locationPartTimeData.filter(record => record.shift === 'Evening');
             const partTimeNames = [
-              ...locationBoth.map(record => `${record.staffName} (Both)`),
-              ...locationMorning.map(record => `${record.staffName} (Morning)`),
-              ...locationEvening.map(record => `${record.staffName} (Evening)`)
+              ...locationBoth.map(record => `${record.staffName} (Both${record.floor ? ` - ${record.floor}` : ''})`),
+              ...locationMorning.map(record => `${record.staffName} (Morning${record.floor ? ` - ${record.floor}` : ''})`),
+              ...locationEvening.map(record => `${record.staffName} (Evening${record.floor ? ` - ${record.floor}` : ''})`)
             ];
 
             const assignedStaff = fullTimeStaff.filter(s => s.location === location.name);
@@ -641,7 +641,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   const indexB = staff.findIndex(s => s.id === b.staffId || s.name === b.staffName);
                   return indexA - indexB;
                 })
-                .map(record => `${record.staffName} (${record.shift})`);
+                .map(record => `${record.staffName} (${record.shift}${record.floor ? ` - ${record.floor}` : ''})`);
 
               const overallFullTimePresentIds = fullTimeAttendance.filter(record => record.status === 'Present').map(record => record.staffId);
               const overallFullTimePresent = sortStaffIdsByOrder(overallFullTimePresentIds).map(id => formatStaffName(id, false));

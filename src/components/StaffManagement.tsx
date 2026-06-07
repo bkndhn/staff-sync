@@ -92,16 +92,18 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const [newCategory, setNewCategory] = useState('');
   const [newFloor, setNewFloor] = useState('');
   const [newFloorLocation, setNewFloorLocation] = useState('');
+  const [editingFloor, setEditingFloor] = useState<Floor | null>(null);
+  const [editFloorValue, setEditFloorValue] = useState('');
+  const [applyToAllLocations, setApplyToAllLocations] = useState(false);
+  const [applyDeleteToAllLocations, setApplyDeleteToAllLocations] = useState(false);
   const [newDesignation, setNewDesignation] = useState('');
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [editingFloor, setEditingFloor] = useState<Floor | null>(null);
   const [editingDesignation, setEditingDesignation] = useState<Designation | null>(null);
   const [editLocationValue, setEditLocationValue] = useState('');
   const [editLocationIp, setEditLocationIp] = useState('');
   const [editLocationPort, setEditLocationPort] = useState(4370);
   const [editCategoryValue, setEditCategoryValue] = useState('');
-  const [editFloorValue, setEditFloorValue] = useState('');
   const [editDesignationValue, setEditDesignationValue] = useState('');
 
   // Confirmation dialog state
@@ -152,6 +154,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     salarySupplements: {} as Record<string, number>,
     allowanceCalcModes: {} as Record<string, 'fixed' | 'per_day'>,
     sundayPenalty: true,
+    exemptFromLateDeduction: false,
     salaryCalculationDays: 30,
     contactNumber: '',
     address: '',
@@ -238,6 +241,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             locationName: result.location.name
           });
         }
+      } else {
+        alert("Failed to create location. It may already exist or there is a database permission error.");
       }
     }
   };
@@ -264,6 +269,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
           setLocations(locations.map(l => l.id === id ? { ...l, name: updated.name } : l));
           setFloors(floors.map(f => f.locationName === loc.name ? { ...f, locationName: updated.name } : f));
           onRefreshStaff();
+        } else {
+          alert("Failed to update location. Please try again.");
         }
     }
     
@@ -339,10 +346,28 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   // Floor handlers
   const handleAddFloor = async () => {
     if (!newFloor.trim() || !newFloorLocation) return;
-    const floor = await floorService.addFloor(newFloorLocation, newFloor.trim());
-    if (floor) {
-      setFloors(prev => [...prev, floor]);
+    
+    if (newFloorLocation === 'ALL') {
+      const { floorService } = await import('../services/floorService');
+      const addedFloors: Floor[] = [];
+      for (const loc of locations) {
+        // Only add if it doesn't already exist for this location
+        if (!floors.find(f => f.locationName === loc.name && f.name.toLowerCase() === newFloor.trim().toLowerCase())) {
+          const floor = await floorService.addFloor(loc.name, newFloor.trim());
+          if (floor) addedFloors.push(floor);
+        }
+      }
+      if (addedFloors.length > 0) {
+        setFloors(prev => [...prev, ...addedFloors]);
+      }
       setNewFloor('');
+    } else {
+      const { floorService } = await import('../services/floorService');
+      const floor = await floorService.addFloor(newFloorLocation, newFloor.trim());
+      if (floor) {
+        setFloors(prev => [...prev, floor]);
+        setNewFloor('');
+      }
     }
   };
 
@@ -350,26 +375,63 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     if (!editFloorValue.trim()) return;
     const floor = editingFloor;
     if (!floor) return;
-    if (editFloorValue.trim() !== floor.name || editFloorLocation !== floor.locationName) {
+    if (editFloorValue.trim() !== floor.name) {
       const { floorService } = await import('../services/floorService');
-      const updated = await floorService.updateFloor(id, editFloorValue.trim(), editFloorLocation);
-      if (updated) {
-        setFloors(floors.map(f => f.id === id ? updated : f));
-        onRefreshStaff();
+      
+      if (applyToAllLocations) {
+        // Find all floors with the old name across all locations
+        const floorsToUpdate = floors.filter(f => f.name === floor.name);
+        const updatedFloors: Floor[] = [];
+        for (const f of floorsToUpdate) {
+          const updated = await floorService.updateFloor(f.id, editFloorValue.trim());
+          if (updated) updatedFloors.push(updated);
+        }
+        
+        if (updatedFloors.length > 0) {
+          setFloors(prev => prev.map(f => {
+            const up = updatedFloors.find(uf => uf.id === f.id);
+            return up ? up : f;
+          }));
+          onRefreshStaff();
+        } else {
+          alert("Failed to update floors.");
+        }
+      } else {
+        const updated = await floorService.updateFloor(id, editFloorValue.trim());
+        if (updated) {
+          setFloors(floors.map(f => f.id === id ? updated : f));
+          onRefreshStaff();
+        } else {
+          alert("Failed to update floor. It might already exist or you lack permission.");
+        }
       }
     }
     setEditingFloor(null);
+    setApplyToAllLocations(false);
   };
 
   const handleDeleteFloor = (floor: Floor) => {
+    setApplyDeleteToAllLocations(false);
     setConfirmDialog({ type: 'floor', id: floor.id, name: floor.name, action: 'delete' });
   };
 
   const confirmFloorDelete = async () => {
-    if (!confirmDialog || confirmDialog.type !== 'floor') return;
-    await floorService.deleteFloor(confirmDialog.id);
-    setFloors(prev => prev.filter(f => f.id !== confirmDialog.id));
+    if (confirmDialog?.type !== 'floor') return;
+    const { floorService } = await import('../services/floorService');
+    
+    if (applyDeleteToAllLocations) {
+      const floorsToDelete = floors.filter(f => f.name === confirmDialog.name);
+      for (const f of floorsToDelete) {
+        await floorService.deleteFloor(f.id);
+      }
+    } else {
+      await floorService.deleteFloor(confirmDialog.id);
+    }
+    
+    const f = await floorService.getFloors();
+    setFloors(f);
     setConfirmDialog(null);
+    setApplyDeleteToAllLocations(false);
   };
 
   // Designation handlers
@@ -392,6 +454,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       if (updated) {
         setDesignations(designations.map(d => d.id === id ? updated : d));
         onRefreshStaff();
+      } else {
+        alert("Failed to update designation. It might already exist or you lack permission.");
       }
     }
     setEditingDesignation(null);
@@ -477,6 +541,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       salarySupplements: {},
       allowanceCalcModes: {},
       sundayPenalty: true,
+      exemptFromLateDeduction: false,
       salaryCalculationDays: 30,
       contactNumber: '',
       address: '',
@@ -564,6 +629,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       salarySupplements: supplements,
       allowanceCalcModes: member.allowanceCalcModes || {},
       sundayPenalty: member.sundayPenalty ?? true,
+      exemptFromLateDeduction: member.exemptFromLateDeduction ?? false,
       salaryCalculationDays: member.salaryCalculationDays || 30,
       contactNumber: member.contactNumber || '',
       address: member.address || '',
@@ -996,10 +1062,14 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               <input type="number" value={formData.salaryCalculationDays} onChange={(e) => setFormData({ ...formData, salaryCalculationDays: Number(e.target.value) })} className="input-premium" min="0" max="31" />
               <p className="text-xs text-white/40 mt-0.5">0 = Fixed salary</p>
             </div>
-            <div className="flex items-center h-full pt-6">
+            <div className="flex flex-col justify-end gap-2 pt-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={formData.sundayPenalty} onChange={(e) => setFormData({ ...formData, sundayPenalty: e.target.checked })} className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-white/30 bg-white/10" />
                 <span className="text-sm font-medium text-white/70">Apply Sunday Penalty</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={formData.exemptFromLateDeduction} onChange={(e) => setFormData({ ...formData, exemptFromLateDeduction: e.target.checked })} className="w-5 h-5 text-amber-500 rounded focus:ring-amber-500 border-white/30 bg-white/10" />
+                <span className="text-sm font-medium text-white/70">Exempt from Late Deduction</span>
               </label>
             </div>
 
@@ -1441,7 +1511,14 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                       {member.floor || <span className="text-gray-400 italic">-</span>}
                     </td>}
                     {visibleColumns.designation !== false && <td className="px-3 py-4 text-sm text-center">
-                      {member.designation || <span className="text-gray-400 italic">-</span>}
+                      <div className="flex flex-col items-center gap-1 justify-center">
+                        <span>{member.designation || <span className="text-gray-400 italic">-</span>}</span>
+                        {member.exemptFromLateDeduction && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 leading-none">
+                            Exempt
+                          </span>
+                        )}
+                      </div>
                     </td>}
                     {visibleColumns.experience !== false && <td className="px-3 py-4 text-sm text-blue-600 font-medium text-center">
                       {calculateExperience(member.joinedDate)}
@@ -1771,10 +1848,11 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               <select
                 value={newFloorLocation}
                 onChange={(e) => setNewFloorLocation(e.target.value)}
-                className="input-premium text-sm sm:w-[45%] sm:flex-shrink-0"
+                className="input-premium flex-1 min-w-0 text-sm sm:min-w-[140px]"
               >
                 <option value="">Select Location</option>
-                {locations.map(loc => (<option key={loc.id} value={loc.name}>{loc.name}</option>))}
+                <option value="ALL">All Locations</option>
+                {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
               </select>
               <input
                 type="text"
@@ -1803,11 +1881,17 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                     {locFloors.map(floor => (
                       <div key={floor.id} className="flex items-center justify-between p-2.5 glass-card-static rounded-lg mb-1">
                         {editingFloor?.id === floor.id ? (
-                          <div className="flex-1 flex gap-2 mr-2">
-                            <input type="text" value={editFloorValue} onChange={(e) => setEditFloorValue(e.target.value)} className="input-premium flex-1 text-sm py-1" autoFocus
-                              onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateFloor(floor.id); if (e.key === 'Escape') setEditingFloor(null); }} />
-                            <button onClick={() => handleUpdateFloor(floor.id)} className="p-1 text-emerald-400"><Check size={16} /></button>
-                            <button onClick={() => setEditingFloor(null)} className="p-1 text-red-400"><X size={16} /></button>
+                          <div className="flex-1 flex flex-col gap-1 mr-2">
+                            <div className="flex gap-2">
+                              <input type="text" value={editFloorValue} onChange={(e) => setEditFloorValue(e.target.value)} className="input-premium flex-1 text-sm py-1" autoFocus
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateFloor(floor.id); if (e.key === 'Escape') setEditingFloor(null); }} />
+                              <button onClick={() => handleUpdateFloor(floor.id)} className="p-1 text-emerald-400"><Check size={16} /></button>
+                              <button onClick={() => setEditingFloor(null)} className="p-1 text-red-400"><X size={16} /></button>
+                            </div>
+                            <label className="text-[10px] text-white/50 flex items-center gap-1 cursor-pointer">
+                              <input type="checkbox" checked={applyToAllLocations} onChange={(e) => setApplyToAllLocations(e.target.checked)} className="rounded bg-white/10 border-white/20" />
+                              Apply to all locations
+                            </label>
                           </div>
                         ) : (
                           <>
@@ -1918,6 +2002,12 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 </>
               )}
             </p>
+            {confirmDialog.type === 'floor' && confirmDialog.action === 'delete' && (
+              <label className="flex items-center justify-center gap-2 mb-6 text-sm text-white/70 cursor-pointer hover:text-white">
+                <input type="checkbox" checked={applyDeleteToAllLocations} onChange={(e) => setApplyDeleteToAllLocations(e.target.checked)} className="rounded bg-white/10 border-white/20" />
+                Delete from all locations
+              </label>
+            )}
             <div className="flex gap-3">
               <button
                 onClick={() => {

@@ -7,6 +7,7 @@ import { getQRRefreshSeconds, setQRRefreshSeconds } from '../utils/qrCrypto';
 import ShiftWindowsPanel from './ShiftWindowsPanel';
 import AttendanceRulesPanel from './AttendanceRulesPanel';
 import DeviceIntegration from './DeviceIntegration';
+import SalaryOverridesPanel from './SalaryOverridesPanel';
 
 interface SettingsProps {
     userRole: string;
@@ -563,6 +564,20 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                 </div>
               </div>
               <AttendanceRulesPanel />
+            </div>
+
+            {/* Salary Overrides Config */}
+            <div className="glass-card-static p-4 rounded-xl space-y-3 mt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <Edit2 size={20} className="text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)] text-sm">Salary Overrides configuration</h3>
+                  <p className="text-xs text-[var(--text-muted)]">Select which salary components can be manually overridden in the Salary Management page.</p>
+                </div>
+              </div>
+              <SalaryOverridesPanel />
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">

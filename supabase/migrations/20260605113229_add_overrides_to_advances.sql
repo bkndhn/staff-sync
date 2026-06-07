@@ -1,0 +1,1 @@
+﻿ALTER TABLE advances ADD COLUMN IF NOT EXISTS overrides JSONB DEFAULT '{}'::jsonb;

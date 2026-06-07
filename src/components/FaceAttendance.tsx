@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity, Zap, QrCode } from 'lucide-react';
-import { Staff, Attendance } from '../types';
+import { Staff, Attendance, Designation, LocationDesignationShiftConfig } from '../types';
 import { useFaceEngine } from '../hooks/useFaceEngine';
 import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
 import { attendanceService } from '../services/attendanceService';
@@ -9,7 +9,7 @@ import { isSunday } from '../utils/salaryCalculations';
 import { shiftService, formatTime12h, ShiftWindows, minutesBetween } from '../services/shiftService';
 import { locationShiftService, LocationShiftConfig, DEFAULT_LOCATION_CONFIG } from '../services/locationShiftService';
 import { appSettingsService } from '../services/appSettingsService';
-import { calculateAttendanceStatus, resolveAttendanceRules } from '../utils/attendanceRules';
+import { calculateAttendanceStatus, resolveAttendanceRules, resolveActiveRule } from '../utils/attendanceRules';
 import QRAttendanceGenerator from './QRAttendanceGenerator';
 import { buildCentroidIndex, findBestMatch as findCosineMatch, type StaffEmbedding } from '../lib/embeddingMatcher';
 import { createLivenessState, updateLiveness, evaluateLiveness, type LivenessState } from '../lib/livenessEngine';
@@ -72,6 +72,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const [message, setMessage] = useState<{ kind: 'ok' | 'err' | 'warn'; text: string } | null>(null);
   const [editing, setEditing] = useState<Record<string, { arrival: string; leaving: string }>>({});
   const [viewMode, setViewMode] = useState<'camera' | 'qr'>('camera');
+  const [designations, setDesignations] = useState<Designation[]>([]);
+  const [locationDesignationConfigs, setLocationDesignationConfigs] = useState<LocationDesignationShiftConfig[]>([]);
+  const [globalKioskSettingsState, setGlobalKioskSettingsState] = useState<any | null>(null);
 
   const availableLocations = useMemo(() => Array.from(new Set(staff.map(s => s.location).filter(Boolean))), [staff]);
   const [selectedLocation, setSelectedLocation] = useState<string>(
@@ -121,23 +124,28 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
   // ---- Helpers --------------------------------------------------------------
   const recomputeStatus = (arrival: string, leaving: string, s?: Staff) => {
+    if (s) {
+      const resolved = resolveActiveRule(s, locationConfig, designations, locationDesignationConfigs, globalKioskSettingsState);
+      const { status, attendanceValue } = calculateAttendanceStatus(arrival || undefined, leaving || undefined, resolved.rules);
+      return { status, value: attendanceValue, appliedRuleType: resolved.appliedRuleType, appliedRuleDetails: resolved.rules };
+    }
     // Use new smart rules engine if location config is available
     if (locationConfig) {
       const rules = resolveAttendanceRules(locationConfig, s?.shiftWindow);
       const { status, attendanceValue } = calculateAttendanceStatus(arrival || undefined, leaving || undefined, rules);
-      return { status, value: attendanceValue };
+      return { status, value: attendanceValue, appliedRuleType: undefined, appliedRuleDetails: undefined };
     }
     // Fallback to shift-window based calculation
-    if (!shiftWindows || !s) return { status: 'Present' as const, value: 1 };
+    if (!shiftWindows || !s) return { status: 'Present' as const, value: 1, appliedRuleType: undefined, appliedRuleDetails: undefined };
     const status: 'Present' | 'Half Day' | 'Absent' = 'Present';
-    return { status, value: status === 'Present' ? 1 : (status as string) === 'Half Day' ? 0.5 : 0 };
+    return { status, value: status === 'Present' ? 1 : (status as string) === 'Half Day' ? 0.5 : 0, appliedRuleType: undefined, appliedRuleDetails: undefined };
   };
 
   const saveOverride = async (rec: Attendance) => {
     const edit = editing[rec.id!];
     if (!edit) return;
     const s = staff.find(x => x.id === rec.staffId);
-    const { status, value } = recomputeStatus(edit.arrival, edit.leaving, s);
+    const { status, value, appliedRuleType, appliedRuleDetails } = recomputeStatus(edit.arrival, edit.leaving, s);
     try {
       const saved = await attendanceService.upsert({
         staffId: rec.staffId, date: rec.date, status, attendanceValue: value,
@@ -145,6 +153,8 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         shift: rec.shift, location: rec.location,
         arrivalTime: edit.arrival || undefined, leavingTime: edit.leaving || undefined,
         isUninformed: rec.isUninformed, salaryOverride: true,
+        appliedRuleType,
+        appliedRuleDetails,
       } as any);
       // ── Instant zero-latency patch into App state ──
       onAttendancePatch?.(saved);
@@ -183,11 +193,13 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         const locationName = selectedLocation;
         
         // Fetch all offline-cached data from Dexie
-        const [list, sw, locCfgArr, kioskSettings] = await Promise.all([
+        const [list, sw, locCfgArr, kioskSettings, desigs, locDesigConfigs] = await Promise.all([
           db.faceEmbeddings.toArray(),
           shiftService.loadGlobal(true), // TODO: shiftService could also use Dexie, but keeping for now as config
           db.locationShiftConfig.where('locationName').equals(locationName).toArray(),
           appSettingsService.getKioskGlobalSettings(),
+          db.designations.toArray(),
+          db.locationDesignationShiftConfig.toArray(),
         ]);
         
         // Ensure format matches expected
@@ -199,6 +211,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           setShiftWindows(sw);
           setLocationConfig(locCfg || { ...DEFAULT_LOCATION_CONFIG, locationName });
           setManagerCanOverride(kioskSettings.managerCanOverride);
+          setDesignations(desigs);
+          setLocationDesignationConfigs(locDesigConfigs);
+          setGlobalKioskSettingsState(kioskSettings);
           // Cosine threshold: settings value is in Euclidean space (0.6), convert roughly
           // Cosine ~0.38 ≈ Euclidean ~0.60 for 128-dim ResNet embeddings
           const rawThreshold = kioskSettings.matchThreshold || 0.60;
@@ -299,26 +314,18 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     const arrivalTime = summary.firstIn || (kind === 'in' ? time : existing?.arrivalTime);
     const leavingTime = summary.lastOut || (kind === 'out' ? time : existing?.leavingTime);
 
-    // ── Smart status calculation using location/staff rules ──────────────────
+    // ── Smart status calculation using location/staff/designation rules ──────
     let autoStatus: 'Present' | 'Half Day' | 'Absent' | 'Pending Full Day' | 'Manual Override' = 'Present';
     let autoValue = 1;
+    let appliedRuleType: string | undefined = undefined;
+    let appliedRuleDetails: any | undefined = undefined;
 
-    if (locationConfig) {
-      // Use new smart rules engine: morning cutoff + early-exit logic
-      const rules = resolveAttendanceRules(locationConfig, s.shiftWindow);
-      const decision = calculateAttendanceStatus(arrivalTime, leavingTime, rules);
-      autoStatus = decision.status;
-      autoValue = decision.attendanceValue;
-    } else if (shiftWindows) {
-      // Fallback to old shift-window engine
-      const win = shiftService.resolve(s, shiftWindows);
-      const hours = summary.minutes / 60;
-      const { status } = shiftService.resolve(s, shiftWindows)
-        ? { status: hours >= win.minHoursFull ? 'Present' : hours >= win.minHoursHalf ? 'Half Day' : 'Absent' }
-        : { status: 'Present' };
-      autoStatus = status as typeof autoStatus;
-      autoValue = autoStatus === 'Present' || autoStatus === 'Pending Full Day' ? 1 : autoStatus === 'Half Day' ? 0.5 : 0;
-    }
+    const resolved = resolveActiveRule(s, locationConfig, designations, locationDesignationConfigs, globalKioskSettingsState);
+    const decision = calculateAttendanceStatus(arrivalTime, leavingTime, resolved.rules);
+    autoStatus = decision.status;
+    autoValue = decision.attendanceValue;
+    appliedRuleType = resolved.appliedRuleType;
+    appliedRuleDetails = resolved.rules;
 
     try {
       const saved = await attendanceService.upsert({
@@ -326,6 +333,8 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         isSunday: isSunday(today), isPartTime: false, staffName: s.name,
         shift: s.shift, location: s.location,
         arrivalTime, leavingTime, isUninformed: false,
+        appliedRuleType,
+        appliedRuleDetails,
       });
       // ── Instant zero-latency patch into App state ──
       onAttendancePatch?.(saved);
