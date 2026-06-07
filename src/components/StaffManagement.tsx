@@ -570,6 +570,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       await customAlert('Please enter a valid 10-digit mobile number');
       return;
     }
+    const deviceIdTrim = (formData.deviceId || '').trim();
+    if (!deviceIdTrim) {
+      await customAlert('Biometric Device ID / Employee Code is required');
+      return;
+    }
+    const duplicateDevice = staff.find(s => s.id !== editingStaff?.id && (s.deviceId || '').trim() === deviceIdTrim);
+    if (duplicateDevice) {
+      await customAlert(`Device ID "${deviceIdTrim}" is already assigned to ${duplicateDevice.name}`);
+      return;
+    }
 
     let totalSalary = (formData.basicSalary || 0) + (formData.incentive || 0) + (formData.hra || 0) + (formData.mealAllowance || 0);
     totalSalary += activeCustomCategories.reduce((sum, cat) => sum + (formData.salarySupplements[cat.id] || formData.salarySupplements[cat.key] || 0), 0);
