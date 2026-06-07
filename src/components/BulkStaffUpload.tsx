@@ -168,11 +168,13 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
         ifscCode: String(r.IFSCCode || '').trim() || undefined,
         bankName: String(r.BankName || '').trim() || undefined,
         paymentMode: String(r.PaymentMode || 'cash').toLowerCase() === 'bank' ? 'bank' : 'cash',
+        deviceId: String(r.DeviceID || r.DeviceId || r.deviceId || r.EmployeeCode || '').trim() || null,
       };
 
       const duplicate = existingNames.has(name.toLowerCase());
       let error: string | undefined;
       if (!data.location) error = 'Missing Location';
+      else if (!data.deviceId) error = 'Missing DeviceID (biometric enroll number)';
       else if (type === 'full-time' && totalSalary <= 0) error = 'Total salary required for full-time';
 
       return { rowNum: idx + 2, data, error, duplicate };
