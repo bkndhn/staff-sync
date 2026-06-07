@@ -133,7 +133,7 @@ export async function syncPendingPunches(): Promise<{ synced: number; failed: nu
         direction: punch.direction,
         device_name: punch.deviceName || 'Mobile App',
         is_manual: false,
-      }]);
+      } as any]);
 
       if (error) throw error;
 
