@@ -276,6 +276,7 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
                         <td className="px-2 py-1.5">{r.data.type}</td>
                         <td className="px-2 py-1.5 text-right">₹{r.data.totalSalary?.toLocaleString('en-IN')}</td>
                         <td className="px-2 py-1.5">{r.data.joinedDate}</td>
+                        <td className="px-2 py-1.5 font-mono">{r.data.deviceId || <span className="text-red-500">—</span>}</td>
                       </tr>
                     ))}
                   </tbody>
