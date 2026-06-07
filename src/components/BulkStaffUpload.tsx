@@ -71,6 +71,7 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
         StaffAccommodation: '',
         SundayPenalty: false,
         SalaryCalculationDays: 30,
+        DeviceID: '102',
       }
     ];
     const ws = XLSX.utils.json_to_sheet(sample);
