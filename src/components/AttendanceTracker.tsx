@@ -82,7 +82,13 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     }
     const inTime = individualTimes[staffId]?.inTime || currentData.arrivalTime;
     const outTime = individualTimes[staffId]?.outTime || currentData.leavingTime;
-    onUpdateAttendance(staffId, selectedDate, newStatus, false, undefined, shift || currentData.shift, undefined, undefined, undefined, inTime, outTime);
+    // Sanitize shift — UI uses '-' as a placeholder when there's no shift,
+    // but DB CHECK constraint only allows Morning/Evening/Both. Drop invalid values.
+    const rawShift = shift || currentData.shift;
+    const validShift = (rawShift === 'Morning' || rawShift === 'Evening' || rawShift === 'Both')
+      ? rawShift
+      : undefined;
+    onUpdateAttendance(staffId, selectedDate, newStatus, false, undefined, validShift, undefined, undefined, undefined, inTime, outTime);
   };
 
   // Load available locations and settings
