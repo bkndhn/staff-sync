@@ -259,6 +259,7 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
                       <th className="px-2 py-2 text-left">Type</th>
                       <th className="px-2 py-2 text-right">Total</th>
                       <th className="px-2 py-2 text-left">Joined</th>
+                      <th className="px-2 py-2 text-left">Device ID</th>
                     </tr>
                   </thead>
                   <tbody>
