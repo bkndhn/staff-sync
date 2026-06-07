@@ -277,7 +277,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
           halfDaySum++;
           presentSum += val;
 
-          const pm = getPunchMetrics(record, s, globalShiftWindows);
+          const pm = getPunchMetrics(record as Attendance, s, globalShiftWindows);
           if (pm.isLate) {
             lateSum++;
             if (!lateMap[s.id]) lateMap[s.id] = { staffId: s.id, count: 0, details: [] };
