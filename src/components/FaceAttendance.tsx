@@ -14,6 +14,7 @@ import QRAttendanceGenerator from './QRAttendanceGenerator';
 import { buildCentroidIndex, findBestMatch as findCosineMatch, type StaffEmbedding } from '../lib/embeddingMatcher';
 import { createLivenessState, updateLiveness, evaluateLiveness, type LivenessState } from '../lib/livenessEngine';
 import { db } from '../lib/db';
+import { customConfirm } from './CustomDialog';
 
 interface Props {
   staff: Staff[];                 // already location-scoped by App
@@ -167,7 +168,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
   const clearPunches = async (rec: Attendance) => {
     const staffName = staff.find(x => x.id === rec.staffId)?.name || rec.staffName;
-    if (!window.confirm(`Clear today's punches for ${staffName}?`)) return;
+    if (!await customConfirm(`Clear today's punches for ${staffName}?`)) return;
     try {
       const saved = await attendanceService.upsert({
         staffId: rec.staffId, date: rec.date, status: 'Absent', attendanceValue: 0,

@@ -4,6 +4,7 @@ import {
   CheckCircle2, AlertTriangle, Loader2, ChevronDown, ChevronRight,
   ExternalLink, Copy, Check, RefreshCw, Fingerprint, Server, Globe, MapPin
 } from 'lucide-react';
+import { customAlert } from './CustomDialog';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface PunchRecord {
@@ -456,7 +457,7 @@ LOCATION_NAME=${apiConfig.locationCode || ''}`;
 
               <a
                 href="/local-bridge-agent.zip"
-                onClick={e => { e.preventDefault(); alert("Bridge agent is set up in your repository's /local-bridge-agent folder. Please run it locally."); }}
+                onClick={async (e) => { e.preventDefault(); await customAlert("Bridge agent is set up in your repository's /local-bridge-agent folder. Please run it locally."); }}
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold flex items-center justify-center gap-2 hover:from-indigo-500 hover:to-purple-500 transition-all text-sm"
               >
                 <Download size={16} /> Download Bridge Agent

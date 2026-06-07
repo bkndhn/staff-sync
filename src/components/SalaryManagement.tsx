@@ -10,6 +10,7 @@ import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryServi
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
 import { appSettingsService } from '../services/appSettingsService';
 import BulkSalarySender from './BulkSalarySender';
+import { customAlert, customConfirm } from './CustomDialog';
 
 interface SalaryManagementProps {
   staff: Staff[];
@@ -650,7 +651,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       setTempAdvances({});
     } catch (error: any) {
       console.error('Error saving advances:', error);
-      alert('Error saving advances: ' + (error?.message || JSON.stringify(error)));
+      await customAlert('Error saving advances: ' + (error?.message || JSON.stringify(error)));
     } finally {
       setSaving(false);
     }
@@ -681,13 +682,13 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   };
 
   // WhatsApp share salary slip
-  const handleWhatsAppShare = (detail: SalaryDetail) => {
+  const handleWhatsAppShare = async (detail: SalaryDetail) => {
     const staffMember = staff.find(s => s.id === detail.staffId);
     if (!staffMember) return;
 
     const phoneNumber = staffMember.contactNumber?.replace(/[^0-9]/g, '');
     if (!phoneNumber) {
-      alert(`No phone number found for ${staffMember.name}. Please add contact number in Staff Management.`);
+      await customAlert(`No phone number found for ${staffMember.name}. Please add contact number in Staff Management.`);
       return;
     }
 
@@ -1377,7 +1378,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                               setShowAdvanceEntryModal(detail.staffId);
                             } catch (err) {
                               console.error('Error opening advance modal:', err);
-                              alert('Error loading advance entries');
+                              await customAlert('Error loading advance entries');
                             }
                           }} className="p-0.5 rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50" title="Add / view date-wise advance entries">
                             <Plus size={12} />
@@ -1748,7 +1749,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           });
                         }} className="p-1 text-amber-500 hover:text-amber-700" title="Edit"><Edit2 size={13} /></button>
                         <button onClick={async () => {
-                          if (!confirm('Delete this advance entry?')) return;
+                          if (!await customConfirm('Delete this advance entry?')) return;
                           await advanceEntryService.delete(entry.id);
                           const updated = await advanceEntryService.getByStaff(showAdvanceEntryModal!);
                           setModalAdvanceEntries(updated);

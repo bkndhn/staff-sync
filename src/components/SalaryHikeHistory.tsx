@@ -2,6 +2,7 @@ import React from 'react';
 import { TrendingUp, Calendar, DollarSign } from 'lucide-react';
 import { SalaryHike, Staff } from '../types';
 import { settingsService } from '../services/settingsService';
+import { customConfirm, customAlert } from './CustomDialog';
 
 interface SalaryHikeHistoryProps {
   salaryHikes: SalaryHike[];
@@ -69,7 +70,7 @@ const SalaryHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
   };
 
   const handleDeleteHike = async (hikeId: string) => {
-    if (!confirm('Are you sure you want to delete this salary record?')) return;
+    if (!await customConfirm('Are you sure you want to delete this salary record?')) return;
     try {
       const { salaryHikeService } = await import('../services/salaryHikeService');
       await salaryHikeService.delete(hikeId);
@@ -80,7 +81,7 @@ const SalaryHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
       }
     } catch (error) {
       console.error('Error deleting hike:', error);
-      alert('Failed to delete record');
+      await customAlert('Failed to delete record');
     }
   };
 
@@ -149,7 +150,7 @@ const SalaryHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
       }
     } catch (error) {
       console.error('Error saving hike:', error);
-      alert('Failed to save record');
+      await customAlert('Failed to save record');
     }
   };
 

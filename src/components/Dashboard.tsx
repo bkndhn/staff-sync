@@ -3,6 +3,7 @@ import { Staff, Attendance } from '../types';
 import { Users, Clock, Calendar, MapPin, TrendingUp, Sun, Moon, ArrowUp, ArrowDown, GripVertical, Share2, Copy, MessageCircle, AlertTriangle } from 'lucide-react';
 import { calculateLocationAttendance } from '../utils/salaryCalculations';
 import { appSettingsService } from '../services/appSettingsService';
+import { customAlert } from './CustomDialog';
 interface DashboardProps {
   staff: Staff[];
   attendance: Attendance[];
@@ -258,7 +259,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const handleCopyReport = async () => {
     const text = generateDashboardShareText();
     await navigator.clipboard.writeText(text);
-    alert('Dashboard report copied!');
+    await customAlert('Dashboard report copied!');
   };
 
   return (

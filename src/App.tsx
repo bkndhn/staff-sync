@@ -25,6 +25,7 @@ import { designationService } from './services/designationService';
 import { locationDesignationShiftService } from './services/locationDesignationShiftService';
 import { resolveActiveRule } from './utils/attendanceRules';
 import { appSettingsService } from './services/appSettingsService';
+import { CustomDialogProvider } from './components/CustomDialog';
 
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
 const SalaryManagement = React.lazy(() => import('./components/SalaryManagement'));
@@ -365,7 +366,7 @@ function App() {
     if (user?.role === 'manager') {
       const today = new Date().toISOString().split('T')[0];
       if (date !== today) {
-        alert('Managers can only edit today\'s attendance');
+        await customAlert('Managers can only edit today\'s attendance');
         return;
       }
     }
@@ -514,7 +515,7 @@ function App() {
   const bulkUpdateAttendance = async (date: string, status: 'Present' | 'Absent' | 'Half Day', shift?: 'Morning' | 'Evening', arrivalTime?: string, leavingTime?: string) => {
     // Allow both admin and managers to perform bulk updates
     if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
-      alert('Only administrators and managers can perform bulk updates');
+      await customAlert('Only administrators and managers can perform bulk updates');
       return;
     }
 
@@ -582,7 +583,7 @@ function App() {
   // Add new staff member (admin only)
   const addStaff = async (newStaff: Omit<Staff, 'id'>) => {
     if (user?.role !== 'admin') {
-      alert('Only administrators can add staff');
+      await customAlert('Only administrators can add staff');
       return;
     }
 
@@ -603,7 +604,7 @@ function App() {
   // Update staff member with salary hike tracking
   const updateStaff = async (id: string, updatedStaff: Partial<Staff>) => {
     if (user?.role !== 'admin') {
-      alert('Only administrators can update staff');
+      await customAlert('Only administrators can update staff');
       return;
     }
 
@@ -702,7 +703,7 @@ function App() {
   // Delete staff member (admin only)
   const deleteStaff = async (id: string, reason: string) => {
     if (user?.role !== 'admin') {
-      alert('Only administrators can delete staff');
+      await customAlert('Only administrators can delete staff');
       return;
     }
 
@@ -757,7 +758,7 @@ function App() {
   // Rejoin staff from old records (admin only)
   const rejoinStaff = async (record: OldStaffRecord) => {
     if (user?.role !== 'admin') {
-      alert('Only administrators can rejoin staff');
+      await customAlert('Only administrators can rejoin staff');
       return;
     }
 
@@ -813,7 +814,7 @@ function App() {
   // Permanently delete staff from old records (admin only)
   const permanentDeleteOldStaff = async (record: OldStaffRecord) => {
     if (user?.role !== 'admin') {
-      alert('Only administrators can permanently delete staff');
+      await customAlert('Only administrators can permanently delete staff');
       return;
     }
 
@@ -834,17 +835,17 @@ function App() {
       // Also remove related attendance if any
       setAttendance(prev => prev.filter(a => a.staffId !== record.originalStaffId && a.staffId !== record.id));
 
-      alert(`${record.name} has been permanently deleted.`);
+      await customAlert(`${record.name} has been permanently deleted.`);
     } catch (error) {
       console.error('Error permanently deleting staff:', error);
-      alert('Failed to delete staff. Please try again.');
+      await customAlert('Failed to delete staff. Please try again.');
     }
   };
 
   // Update advances and deductions (admin only)
   const updateAdvances = async (staffId: string, month: number, year: number, advanceData: Partial<AdvanceDeduction>) => {
     if (user?.role !== 'admin') {
-      alert('Only administrators can update advances');
+      await customAlert('Only administrators can update advances');
       return;
     }
 
@@ -892,7 +893,7 @@ function App() {
       console.error('Error updating staff order:', error);
       // Revert on error by reloading data
       loadAllData();
-      alert('Failed to save staff order. Please try again.');
+      await customAlert('Failed to save staff order. Please try again.');
     }
   };
 
@@ -1131,6 +1132,7 @@ function App() {
           onConfirm={salaryHikeModal.onConfirm}
         />
       )}
+      <CustomDialogProvider />
     </div>
   );
 }

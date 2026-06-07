@@ -8,6 +8,7 @@ import { partTimeAdvanceService } from '../services/partTimeAdvanceService';
 import { partTimeSettlementService } from '../services/partTimeSettlementService';
 import { floorService, Floor } from '../services/floorService';
 import { PartTimeAdvanceRecord } from '../types';
+import { customAlert } from './CustomDialog';
 
 interface PartTimeStaffProps {
     attendance: Attendance[];
@@ -883,7 +884,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         setBulkStaffList(newList);
     };
 
-    const handleBulkSubmit = (e: React.FormEvent) => {
+    const handleBulkSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         const errors: string[] = [];
@@ -916,7 +917,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         });
 
         if (errors.length > 0) {
-            alert(errors.join('\n'));
+            await customAlert(errors.join('\n'));
             return;
         }
 
@@ -1038,7 +1039,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         ? todayPartTimeAttendance
         : todayPartTimeAttendance.filter(record => record.location === locationFilter);
 
-    const handleAddPartTimeAttendance = (e: React.FormEvent) => {
+    const handleAddPartTimeAttendance = async (e: React.FormEvent) => {
         e.preventDefault();
 
         // Check for duplicates
@@ -1051,9 +1052,9 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             );
 
             if (isFullTimeStaff) {
-                alert(`${newStaffData.name} is already a full-time staff member. Cannot add as part-time.`);
+                await customAlert(`${newStaffData.name} is already a full-time staff member. Cannot add as part-time.`);
             } else {
-                alert(`${newStaffData.name} is already added as part-time staff today.`);
+                await customAlert(`${newStaffData.name} is already added as part-time staff today.`);
             }
             return;
         }
@@ -1123,7 +1124,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         });
     };
 
-    const handleSave = (attendanceRecord: Attendance) => {
+    const handleSave = async (attendanceRecord: Attendance) => {
         // Check for duplicates on edit
         const isDuplicate = checkDuplicate(editData.name, editData.location, editData.shift, attendanceRecord.id);
 
@@ -1134,9 +1135,9 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             );
 
             if (isFullTimeStaff) {
-                alert(`${editData.name} is already a full-time staff member. Cannot use as part-time.`);
+                await customAlert(`${editData.name} is already a full-time staff member. Cannot use as part-time.`);
             } else {
-                alert(`${editData.name} is already added as part-time staff today.`);
+                await customAlert(`${editData.name} is already added as part-time staff today.`);
             }
             return;
         }

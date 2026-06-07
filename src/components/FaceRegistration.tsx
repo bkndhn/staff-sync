@@ -5,6 +5,7 @@ import { useFaceEngine } from '../hooks/useFaceEngine';
 import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
 import { cosineDistance, computeCentroid } from '../lib/embeddingMatcher';
 import { db } from '../lib/db';
+import { customConfirm } from './CustomDialog';
 
 interface Props {
   staff: Staff;
@@ -220,7 +221,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
   }, [activeAngle, detect, staff.id, staff.name, capturedBy, loadSamples]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this face sample?')) return;
+    if (!await customConfirm('Delete this face sample?')) return;
     try {
       await faceEmbeddingService.delete(id, capturedBy);
       await loadSamples();

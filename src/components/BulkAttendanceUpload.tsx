@@ -3,6 +3,7 @@ import { Upload, X, FileSpreadsheet, AlertTriangle, Check, Download, Info } from
 import { Staff, Attendance } from '../types';
 import { isSunday } from '../utils/salaryCalculations';
 import * as XLSX from 'xlsx';
+import { customAlert } from './CustomDialog';
 
 interface BulkAttendanceUploadProps {
   staff: Staff[];
@@ -88,10 +89,10 @@ const BulkAttendanceUpload: React.FC<BulkAttendanceUploadProps> = ({ staff, onIm
     });
   };
 
-  const handleFile = (file: File) => {
+  const handleFile = async (file: File) => {
     setFileName(file.name);
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array', cellDates: false });
@@ -99,7 +100,7 @@ const BulkAttendanceUpload: React.FC<BulkAttendanceUploadProps> = ({ staff, onIm
         const json = XLSX.utils.sheet_to_json<any>(sheet, { header: 1, raw: true });
 
         if (json.length < 2) {
-          alert('File must have at least a header row and one data row.');
+          await customAlert('File must have at least a header row and one data row.');
           return;
         }
 
@@ -111,7 +112,7 @@ const BulkAttendanceUpload: React.FC<BulkAttendanceUploadProps> = ({ staff, onIm
         const locationCol = findColumn(headers, ['location', 'branch', 'shop', 'place']);
 
         if (nameCol === -1 || dateCol === -1 || statusCol === -1) {
-          alert('Could not find required columns. Please ensure your file has columns for: Staff Name, Date, and Status/Attendance.');
+          await customAlert('Could not find required columns. Please ensure your file has columns for: Staff Name, Date, and Status/Attendance.');
           return;
         }
 
@@ -152,7 +153,7 @@ const BulkAttendanceUpload: React.FC<BulkAttendanceUploadProps> = ({ staff, onIm
         setStep('preview');
       } catch (err) {
         console.error('Parse error:', err);
-        alert('Failed to parse file. Please ensure it is a valid CSV or Excel file.');
+        await customAlert('Failed to parse file. Please ensure it is a valid CSV or Excel file.');
       }
     };
     reader.readAsArrayBuffer(file);
@@ -188,7 +189,7 @@ const BulkAttendanceUpload: React.FC<BulkAttendanceUploadProps> = ({ staff, onIm
       setStep('done');
     } catch (err) {
       console.error('Import error:', err);
-      alert('Failed to import attendance records. Please try again.');
+      await customAlert('Failed to import attendance records. Please try again.');
       setStep('preview');
     }
   };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { OldStaffRecord } from '../types';
 import { Archive, Download, Eye, UserPlus, Trash2 } from 'lucide-react';
 import { exportOldStaffPDF } from '../utils/pdfExport';
+import { customConfirm } from './CustomDialog';
 
 interface OldStaffRecordsProps {
   oldStaffRecords: OldStaffRecord[];
@@ -32,8 +33,8 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
     exportOldStaffPDF(oldStaffRecords);
   };
 
-  const handleRejoin = (record: OldStaffRecord) => {
-    if (window.confirm(`Are you sure you want to rejoin ${record.name}? This will restore them to active staff with their previous salary and advance data.`)) {
+  const handleRejoin = async (record: OldStaffRecord) => {
+    if (await customConfirm(`Are you sure you want to rejoin ${record.name}? This will restore them to active staff with their previous salary and advance data.`)) {
       onRejoinStaff(record);
     }
   };
@@ -209,8 +210,8 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
                             <UserPlus size={16} />
                           </button>
                           <button
-                            onClick={() => {
-                              if (window.confirm(`PERMANENT DELETE: Are you sure you want to permanently delete ${record.name}?\n\nThis will remove ALL their data including attendance and salary history. This action CANNOT be undone.`)) {
+                            onClick={async () => {
+                              if (await customConfirm(`PERMANENT DELETE: Are you sure you want to permanently delete ${record.name}?\n\nThis will remove ALL their data including attendance and salary history. This action CANNOT be undone.`)) {
                                 onPermanentDelete(record);
                               }
                             }}

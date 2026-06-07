@@ -13,6 +13,7 @@ import { locationService, type Location } from '../services/locationService';
 import { salaryCategoryService, type SalaryCategory } from '../services/salaryCategoryService';
 import { floorService, type Floor } from '../services/floorService';
 import { designationService, type Designation } from '../services/designationService';
+import { customAlert, customConfirm } from './CustomDialog';
 
 interface StaffManagementProps {
   staff: Staff[];
@@ -242,7 +243,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
           });
         }
       } else {
-        alert("Failed to create location. It may already exist or there is a database permission error.");
+        await customAlert("Failed to create location. It may already exist or there is a database permission error.");
       }
     }
   };
@@ -270,7 +271,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
           setFloors(floors.map(f => f.locationName === loc.name ? { ...f, locationName: updated.name } : f));
           onRefreshStaff?.();
         } else {
-          alert("Failed to update location. Please try again.");
+          await customAlert("Failed to update location. Please try again.");
         }
     }
     
@@ -394,7 +395,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
           }));
           onRefreshStaff?.();
         } else {
-          alert("Failed to update floors.");
+          await customAlert("Failed to update floors.");
         }
       } else {
         const updated = await floorService.updateFloor(id, editFloorValue.trim());
@@ -402,7 +403,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
           setFloors(floors.map(f => f.id === id ? updated : f));
           onRefreshStaff?.();
         } else {
-          alert("Failed to update floor. It might already exist or you lack permission.");
+          await customAlert("Failed to update floor. It might already exist or you lack permission.");
         }
       }
     }
@@ -455,7 +456,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         setDesignations(designations.map(d => d.id === id ? updated : d));
         onRefreshStaff?.();
       } else {
-        alert("Failed to update designation. It might already exist or you lack permission.");
+        await customAlert("Failed to update designation. It might already exist or you lack permission.");
       }
     }
     setEditingDesignation(null);
@@ -560,11 +561,11 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
 
   const activeCustomCategories = salaryCategories.filter(c => !['basic', 'incentive', 'hra', 'meal_allowance'].includes(c.id) && !c.isDeleted);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const phoneDigits = formData.contactNumber.replace(/[^0-9]/g, '');
     if (phoneDigits.length !== 10) {
-      alert('Please enter a valid 10-digit mobile number');
+      await customAlert('Please enter a valid 10-digit mobile number');
       return;
     }
 
@@ -680,13 +681,13 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   };
 
   const handleResetDevice = async (staffId: string, staffName: string) => {
-    if (!window.confirm(`Are you sure you want to reset the device lock for ${staffName}? They will be able to log in from a new device.`)) return;
+    if (!await customConfirm(`Are you sure you want to reset the device lock for ${staffName}? They will be able to log in from a new device.`)) return;
     try {
       onUpdateStaff(staffId, { deviceId: null });
       await onRefreshStaff?.();
     } catch (error) {
       console.error("Error resetting device:", error);
-      alert("Failed to reset device lock.");
+      await customAlert("Failed to reset device lock.");
     }
   };
 

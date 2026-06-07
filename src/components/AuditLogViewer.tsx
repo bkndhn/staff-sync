@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AuditLog } from '../types';
 import { auditLogService } from '../services/auditLogService';
 import { Search, ShieldAlert, Clock, RefreshCw, Trash2, Filter } from 'lucide-react';
+import { customConfirm } from './CustomDialog';
 
 export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ currentUserEmail }) => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -26,7 +27,7 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
   }, []);
 
   const handleClear = async () => {
-    if (window.confirm('Are you sure you want to clear local audit trail history?')) {
+    if (await customConfirm('Are you sure you want to clear local audit trail history?')) {
       await auditLogService.clearLogs();
       setLogs([]);
     }

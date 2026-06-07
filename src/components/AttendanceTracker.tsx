@@ -10,6 +10,7 @@ import YearlyAttendanceSummary from './YearlyAttendanceSummary';
 import { appSettingsService } from '../services/appSettingsService';
 import { db } from '../lib/db';
 import { resolveActiveRule } from '../utils/attendanceRules';
+import { customConfirm, customAlert } from './CustomDialog';
 
 interface AttendanceTrackerProps {
   staff: Staff[];
@@ -74,9 +75,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     }));
   };
 
-  const confirmIndividualUpdate = (staffId: string, newStatus: 'Present' | 'Absent' | 'Half Day', currentData: any, shift?: 'Morning' | 'Evening') => {
+  const confirmIndividualUpdate = async (staffId: string, newStatus: 'Present' | 'Absent' | 'Half Day', currentData: any, shift?: 'Morning' | 'Evening') => {
     if (currentData.hasRecord && currentData.status !== newStatus) {
-      if (!window.confirm(`This staff already has an attendance record (${currentData.status}). Are you sure you want to override it with ${newStatus}?`)) {
+      if (!await customConfirm(`This staff already has an attendance record (${currentData.status}). Are you sure you want to override it with ${newStatus}?`)) {
         return;
       }
     }
@@ -738,7 +739,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
   const handleCopyAttendance = () => {
     const text = generateShareText().replace(/\*/g, '');
-    navigator.clipboard.writeText(text).then(() => alert('Attendance copied to clipboard!'));
+    navigator.clipboard.writeText(text).then(() => customAlert('Attendance copied to clipboard!'));
   };
 
   return (
@@ -821,8 +822,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               />
             </div>
             <button
-              onClick={() => {
-                if (window.confirm('Are you sure you want to mark ALL filtered staff as Present?')) {
+              onClick={async () => {
+                if (await customConfirm('Are you sure you want to mark ALL filtered staff as Present?')) {
                   onBulkUpdateAttendance(selectedDate, 'Present', undefined, bulkInTime, bulkOutTime);
                 }
               }}
@@ -839,8 +840,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               <span className="hidden xs:inline">All Half Day</span>
             </button>
             <button
-              onClick={() => {
-                if (window.confirm('Are you sure you want to mark ALL filtered staff as Absent?')) {
+              onClick={async () => {
+                if (await customConfirm('Are you sure you want to mark ALL filtered staff as Absent?')) {
                   onBulkUpdateAttendance(selectedDate, 'Absent');
                 }
               }}
@@ -1387,8 +1388,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             </div>
             <div className="flex flex-col md:flex-row gap-2 md:gap-3">
               <button
-                onClick={() => {
-                  if (window.confirm(`Are you sure you want to mark ALL filtered staff as Half Day (${bulkHalfDayShift})?`)) {
+                onClick={async () => {
+                  if (await customConfirm(`Are you sure you want to mark ALL filtered staff as Half Day (${bulkHalfDayShift})?`)) {
                     onBulkUpdateAttendance(selectedDate, 'Half Day', bulkHalfDayShift, bulkInTime, bulkOutTime);
                     setShowBulkHalfDayModal(false);
                   }

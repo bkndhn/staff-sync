@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Save, FileEdit } from 'lucide-react';
 import { appSettingsService } from '../services/appSettingsService';
+import { customAlert } from './CustomDialog';
 
 export interface SalaryOverrideConfig {
   oldAdvance: boolean;
@@ -54,10 +55,10 @@ const SalaryOverridesPanel: React.FC = () => {
     setSaving(true);
     try {
       await appSettingsService.setSetting('salary_override_config', JSON.stringify(config));
-      alert('Salary override configuration saved successfully!');
+      await customAlert('Salary override configuration saved successfully!');
     } catch (error) {
       console.error('Error saving salary override config:', error);
-      alert('Failed to save configuration.');
+      await customAlert('Failed to save configuration.');
     } finally {
       setSaving(false);
     }

@@ -9,6 +9,7 @@ import { appSettingsService } from '../services/appSettingsService';
 import { designationService, type Designation } from '../services/designationService';
 import { locationDesignationShiftService } from '../services/locationDesignationShiftService';
 import { type LocationDesignationShiftConfig } from '../types';
+import { customConfirm } from './CustomDialog';
 
 // ─── Global Settings Panel ────────────────────────────────────────────────────
 
@@ -751,7 +752,7 @@ const AttendanceRulesPanel: React.FC = () => {
   };
 
   const handleReset = async (locationName: string) => {
-    if (!window.confirm(`Reset "${locationName}" to global defaults?`)) return;
+    if (!await customConfirm(`Reset "${locationName}" to global defaults?`)) return;
     await locationShiftService.deleteByLocation(locationName);
     setConfigs(prev => {
       const next = new Map(prev);
