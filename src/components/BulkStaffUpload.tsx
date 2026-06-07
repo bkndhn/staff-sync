@@ -98,6 +98,7 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
       { Field: 'StaffAccommodation', Required: 'No', Example: 'day_scholar', Notes: 'day_scholar | accommodation | (blank)' },
       { Field: 'SundayPenalty', Required: 'No', Example: 'true', Notes: 'true / false' },
       { Field: 'SalaryCalculationDays', Required: 'No', Example: '30', Notes: 'Default 30' },
+      { Field: 'DeviceID', Required: 'Yes', Example: '101', Notes: 'Biometric enroll number / Employee Code (must match device)' },
     ];
     const wsI = XLSX.utils.json_to_sheet(instructions);
     XLSX.utils.book_append_sheet(wb, wsI, 'Instructions');
