@@ -3,11 +3,14 @@ import { useOfflineSync } from '../hooks/useOfflineSync';
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
 export const SyncBadge: React.FC = () => {
-  const { syncState, pendingCount, forceSync } = useOfflineSync();
+  const { status, runSync } = useOfflineSync();
+  const { isOnline, isSyncing, pendingCount } = status;
+  const syncState: 'online-synced' | 'online-syncing' | 'offline' =
+    !isOnline ? 'offline' : (isSyncing ? 'online-syncing' : 'online-synced');
 
   return (
     <div 
-      onClick={forceSync}
+      onClick={runSync}
       className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all border
         ${syncState === 'online-synced' 
           ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20' 
