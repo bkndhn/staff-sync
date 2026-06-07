@@ -828,7 +828,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             shift: defaultShift as 'Morning' | 'Evening' | 'Both',
             salary: 0,
             arrivalTime: defaultArrival,
-            leavingTime: defaultLeaving
+            leavingTime: defaultLeaving,
+            floor: ''
         }]);
     };
 
