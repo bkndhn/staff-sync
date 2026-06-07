@@ -319,26 +319,26 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
     };
 
     const lateComersMap = Object.entries(lateMap).map(([id, info]) => ({
-      staffId: id,
       ...info,
+      staffId: id,
       ...getStaffInfo(id)
     })).sort((a, b) => b.count - a.count);
 
     const earlyLeaversMap = Object.entries(earlyMap).map(([id, info]) => ({
-      staffId: id,
       ...info,
+      staffId: id,
       ...getStaffInfo(id)
     })).sort((a, b) => b.count - a.count);
 
     const absentsMap = Object.entries(abMap).map(([id, info]) => ({
-      staffId: id,
       ...info,
+      staffId: id,
       ...getStaffInfo(id)
     })).sort((a, b) => b.count - a.count);
 
     const onTimeMap = Object.entries(otMap).map(([id, info]) => ({
-      staffId: id,
       ...info,
+      staffId: id,
       ...getStaffInfo(id)
     })).sort((a, b) => b.count - a.count);
 
