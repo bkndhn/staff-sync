@@ -556,7 +556,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       hikeIntervalMonths: 0,
       statutoryDeductions: {},
       pfNumber: '',
-      esiNumber: ''
+      esiNumber: '',
+      deviceId: ''
     });
   };
 
