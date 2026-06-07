@@ -1147,7 +1147,25 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                   <label className="block text-sm font-medium text-white/70 mb-1">ESI Number <span className="text-white/30 text-xs">(optional)</span></label>
                   <input type="text" value={formData.esiNumber} onChange={(e) => setFormData({ ...formData, esiNumber: e.target.value })} className="input-premium" placeholder="e.g. 1234567890" />
                 </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-white/70 mb-1">
+                    Biometric Device ID / Employee Code <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.deviceId}
+                    onChange={(e) => setFormData({ ...formData, deviceId: e.target.value.replace(/\s+/g, '') })}
+                    className="input-premium"
+                    placeholder="e.g. 101 (the enroll number on the eSSL / ZKTeco device)"
+                    required
+                  />
+                  <p className="text-xs text-white/50 mt-1">
+                    Required to match punches from biometric / cloud-push devices to this staff member.
+                    Must exactly match the enroll number on the device.
+                  </p>
+                </div>
               </div>
+
             </div>
             </div>
 
