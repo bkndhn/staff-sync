@@ -32,14 +32,22 @@ export const staffService = {
       display_order: maxOrder + 1
     };
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('staff')
       .insert([dbStaff])
       .select()
       .single();
 
+    if (error && error.message && error.message.includes('employee_code')) {
+      console.warn('employee_code column missing in DB, retrying without it...');
+      delete (dbStaff as any).employee_code;
+      const retry = await supabase.from('staff').insert([dbStaff]).select().single();
+      data = retry.data;
+      error = retry.error;
+    }
+
     if (error) {
-      console.error('Error creating staff:', error);
+      console.error('Error adding staff:', error);
       throw error;
     }
 
@@ -88,12 +96,20 @@ export const staffService = {
     if (updates.deviceId !== undefined) (dbUpdates as any).device_id = updates.deviceId || null;
     if (updates.employeeCode !== undefined) (dbUpdates as any).employee_code = updates.employeeCode || null;
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('staff')
       .update(dbUpdates)
       .eq('id', id)
       .select()
       .single();
+
+    if (error && error.message && error.message.includes('employee_code')) {
+      console.warn('employee_code column missing in DB, retrying without it...');
+      delete (dbUpdates as any).employee_code;
+      const retry = await supabase.from('staff').update(dbUpdates).eq('id', id).select().single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       console.error('Error updating staff:', error);

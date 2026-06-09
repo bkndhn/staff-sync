@@ -601,8 +601,9 @@ function App() {
 
       const savedStaff = await staffService.create(staffWithInitialSalary);
       setStaff(prev => [...prev, savedStaff]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding staff:', error);
+      await customAlert(`Failed to add staff: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -678,8 +679,9 @@ function App() {
 
               setSalaryHikes(prev => [savedHike, ...prev]);
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error('Error updating staff:', error);
+            await customAlert(`Failed to save: ${error.message || 'Unknown error'}`);
           }
         }
       });
@@ -699,8 +701,9 @@ function App() {
         setStaff(prev => prev.map(member =>
           member.id === id ? savedStaff : member
         ));
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error updating staff:', error);
+        await customAlert(`Failed to save: ${error.message || 'Unknown error'}`);
       }
     }
   };
