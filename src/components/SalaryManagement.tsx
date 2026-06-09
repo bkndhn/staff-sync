@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Staff, Attendance, SalaryDetail, AdvanceDeduction, PartTimeSalaryDetail, SalaryOverride } from '../types';
+import { Staff, Attendance, SalaryDetail, AdvanceDeduction, PartTimeSalaryDetail, SalaryOverride, PayrollRun, PayrollSnapshot } from '../types';
 import { DollarSign, Download, Users, Calendar, TrendingUp, Edit2, Save, X, FileSpreadsheet, FileText, MessageCircle, Filter, Plus, Trash2 } from 'lucide-react';
 import { calculateAttendanceMetrics, calculateSalary, calculatePartTimeSalary, roundToNearest10, computeScheduledDeductions } from '../utils/salaryCalculations';
 import type { DeductionBreakdown } from '../utils/salaryCalculations';
@@ -9,6 +9,7 @@ import { salaryOverrideService } from '../services/salaryOverrideService';
 import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryService';
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
 import { appSettingsService } from '../services/appSettingsService';
+import { payrollService } from '../services/payrollService';
 import BulkSalarySender from './BulkSalarySender';
 import { customAlert, customConfirm } from './CustomDialog';
 
@@ -45,6 +46,28 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
+  
+  const [payrollRun, setPayrollRun] = useState<PayrollRun | null>(null);
+  const [snapshots, setSnapshots] = useState<PayrollSnapshot[]>([]);
+  const [generatingPayroll, setGeneratingPayroll] = useState(false);
+
+  useEffect(() => {
+    const loadPayroll = async () => {
+      try {
+        const run = await payrollService.getPayrollRun(selectedMonth, selectedYear);
+        setPayrollRun(run);
+        if (run) {
+          const snaps = await payrollService.getSnapshots(run.id);
+          setSnapshots(snaps);
+        } else {
+          setSnapshots([]);
+        }
+      } catch (error) {
+        console.error('Failed to load payroll run:', error);
+      }
+    };
+    loadPayroll();
+  }, [selectedMonth, selectedYear]);
 
   // Fetch locations on mount
   React.useEffect(() => {
@@ -292,12 +315,34 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   });
 
   // Filter staff by location and payment mode
-  const filteredStaff = activeStaff.filter(member => {
+  const getStaffForDisplay = (staffId: string) => {
+    if (payrollRun && snapshots.length > 0) {
+      const snap = snapshots.find(s => s.staffId === staffId);
+      if (snap) return snap.staffSnapshot;
+    }
+    return staff.find(s => s.id === staffId);
+  };
+
+  const getBaseStaffList = () => {
+    if (payrollRun && snapshots.length > 0) {
+      return snapshots.map(s => s.staffSnapshot);
+    }
+    return activeStaff;
+  };
+
+  const filteredStaff = getBaseStaffList().filter(member => {
     if (locationFilter !== 'All' && member.location !== locationFilter) return false;
     if (paymentModeFilter !== 'All' && (member.paymentMode || 'cash') !== paymentModeFilter) return false;
     if (floorFilter !== 'All' && (member.floor || '') !== floorFilter) return false;
     if (designationFilter !== 'All' && (member.designation || '') !== designationFilter) return false;
     if (accommodationFilter !== 'All' && (member.staffAccommodation || '') !== accommodationFilter) return false;
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      if (!member.name.toLowerCase().includes(query) && 
+          !(member.employeeCode && member.employeeCode.toLowerCase().includes(query))) {
+        return false;
+      }
+    }
     return true;
   });
 
@@ -340,6 +385,12 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
 
   const calculateSalaryDetails = (): SalaryDetail[] => {
+    if (payrollRun && snapshots.length > 0) {
+      return snapshots
+        .filter(s => filteredStaff.some(fs => fs.id === s.staffId))
+        .map(s => s.salaryDetail);
+    }
+
     return filteredStaff.map(member => {
       const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth);
       const memberAdvances = advances.find(adv =>
@@ -663,19 +714,68 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   };
 
   const handleExportExcel = () => {
-    exportSalaryToExcel(salaryDetails, partTimeSalaries, staff, selectedMonth, selectedYear);
+    if (!payrollRun) return customAlert('Please generate payroll first.');
+    exportSalaryToExcel(salaryDetails, partTimeSalaries, getBaseStaffList(), selectedMonth, selectedYear);
   };
 
   const handleExportPDF = () => {
-    exportSalaryPDF(salaryDetails, partTimeSalaries, staff, selectedMonth, selectedYear);
+    if (!payrollRun) return customAlert('Please generate payroll first.');
+    exportSalaryPDF(salaryDetails, partTimeSalaries, getBaseStaffList(), selectedMonth, selectedYear);
   };
 
   const handleDownloadAllSlips = () => {
-    exportBulkSalarySlipsPDF(salaryDetails, staff, selectedMonth, selectedYear);
+    if (!payrollRun) return customAlert('Please generate payroll first.');
+    exportBulkSalarySlipsPDF(salaryDetails, getBaseStaffList(), selectedMonth, selectedYear);
+  };
+
+  const handleGeneratePayroll = async () => {
+    if (!await customConfirm('Generate Payroll', 'Are you sure you want to generate payroll for this month? This will snapshot the current salaries and lock them.')) return;
+    setGeneratingPayroll(true);
+    try {
+      const fullDetails = activeStaff.map(member => {
+        const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth);
+        const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
+        const memberAdvanceEntries = advanceEntries[member.id] || [];
+        return calculateSalary(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides, scheduledDeductions[member.id]?.total || 0);
+      });
+
+      const run = await payrollService.generatePayroll(selectedMonth, selectedYear, activeStaff, fullDetails, 'System');
+      setPayrollRun(run);
+      const snaps = await payrollService.getSnapshots(run.id);
+      setSnapshots(snaps);
+      customAlert('Payroll generated successfully!', 'success');
+    } catch (err: any) {
+      customAlert('Failed to generate payroll: ' + err.message, 'error');
+    } finally {
+      setGeneratingPayroll(false);
+    }
+  };
+
+  const handleRegeneratePayroll = async () => {
+    if (!await customConfirm('Regenerate Payroll', 'DANGER: This will delete the current snapshot and recalculate using current master data. Are you sure?')) return;
+    setGeneratingPayroll(true);
+    try {
+      const fullDetails = activeStaff.map(member => {
+        const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth);
+        const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
+        const memberAdvanceEntries = advanceEntries[member.id] || [];
+        return calculateSalary(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides, scheduledDeductions[member.id]?.total || 0);
+      });
+
+      const run = await payrollService.regeneratePayroll(selectedMonth, selectedYear, activeStaff, fullDetails, 'System');
+      setPayrollRun(run);
+      const snaps = await payrollService.getSnapshots(run.id);
+      setSnapshots(snaps);
+      customAlert('Payroll regenerated successfully!', 'success');
+    } catch (err: any) {
+      customAlert('Failed to regenerate payroll: ' + err.message, 'error');
+    } finally {
+      setGeneratingPayroll(false);
+    }
   };
 
   const handleDownloadSingleSlip = (detail: SalaryDetail) => {
-    const staffMember = staff.find(s => s.id === detail.staffId);
+    const staffMember = getStaffForDisplay(detail.staffId);
     if (staffMember) {
       generateSalarySlipPDF(detail, staffMember, selectedMonth, selectedYear);
     }
@@ -683,7 +783,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
   // WhatsApp share salary slip
   const handleWhatsAppShare = async (detail: SalaryDetail) => {
-    const staffMember = staff.find(s => s.id === detail.staffId);
+    const staffMember = getStaffForDisplay(detail.staffId);
     if (!staffMember) return;
 
     const phoneNumber = staffMember.contactNumber?.replace(/[^0-9]/g, '');
@@ -877,7 +977,49 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4 flex-1 md:justify-end">
+      </div>
+
+      {/* Payroll Status Banner */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          {payrollRun ? (
+            <div className="flex items-center gap-2 text-green-700 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+              <span className="font-semibold text-sm">Payroll Generated & Locked</span>
+              <span className="text-xs opacity-75">
+                ({new Date(payrollRun.generatedAt).toLocaleDateString()})
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-yellow-700 bg-yellow-50 px-3 py-1.5 rounded-lg border border-yellow-200">
+              <span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
+              <span className="font-semibold text-sm">Payroll Not Generated</span>
+            </div>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {!payrollRun ? (
+            <button
+              onClick={handleGeneratePayroll}
+              disabled={generatingPayroll}
+              className="btn-premium btn-premium-primary text-sm py-1.5"
+            >
+              {generatingPayroll ? 'Generating...' : 'Generate Payroll'}
+            </button>
+          ) : (
+            <button
+              onClick={handleRegeneratePayroll}
+              disabled={generatingPayroll}
+              className="px-4 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg text-sm font-medium transition-colors"
+            >
+              {generatingPayroll ? 'Generating...' : 'Regenerate'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row gap-4 flex-1">
           {/* Search Bar */}
           <div className="relative flex-1 md:max-w-md">
             <input
@@ -1192,7 +1334,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               ) : (
                 <button
                   onClick={handleEnableEditAll}
-                  className="btn-premium flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
+                  disabled={!!payrollRun}
+                  className={`btn-premium flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm ${payrollRun ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={payrollRun ? "Cannot edit locked payroll" : ""}
                 >
                   <Edit2 size={16} />
                   <span className="hidden sm:inline">Enable Edit for All</span>
@@ -1227,6 +1371,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             <thead>
               <tr>
                 <th className="px-2 md:px-4 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
+                <th className="px-2 md:px-4 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emp Code</th>
                 <th className="px-2 md:px-4 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 z-10 bg-gray-50">Name</th>
                 {salaryVisibleCols.location !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>}
                 {salaryVisibleCols.floor !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Floor</th>}
@@ -1258,7 +1403,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {salaryDetails.map((detail, index) => {
-                const staffMember = activeStaff.find(s => s.id === detail.staffId);
+                const staffMember = getStaffForDisplay(detail.staffId);
                 const tempData = tempAdvances[detail.staffId];
 
                 return (
@@ -1270,6 +1415,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     return uninformedDays > 0 ? 'bg-orange-50 border-l-4 border-orange-400' : '';
                   })()}`}>
                     <td className="px-2 md:px-4 py-3 whitespace-nowrap text-gray-900">{index + 1}</td>
+                    <td className="px-2 md:px-4 py-3 whitespace-nowrap text-gray-500 text-sm">{staffMember?.employeeCode || '-'}</td>
                     <td className="px-2 md:px-4 py-3 whitespace-nowrap font-medium text-gray-900 sticky left-0 z-10 bg-white">
                       {staffMember?.name}
                       {(() => {
@@ -1511,6 +1657,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               <tr className="bg-gray-100 font-bold text-sm">
                 <td className="px-2 md:px-4 py-3 whitespace-nowrap" colSpan={
                   2 + // S.No + Name (always)
+                  1 + // Emp Code (always)
                   (salaryVisibleCols.location !== false ? 1 : 0) +
                   (salaryVisibleCols.floor !== false ? 1 : 0) +
                   (salaryVisibleCols.designation !== false ? 1 : 0) +

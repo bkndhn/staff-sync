@@ -17,9 +17,12 @@ import { AuditLogViewer } from './components/AuditLogViewer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { auditLogService } from './services/auditLogService';
 import { offlineSyncService } from './services/offlineSyncService';
+import { useAuthListener } from './hooks/useAuthListener';
 import { useOfflineSync } from './hooks/useOfflineSync';
+import { usePayrollAutoGenerate } from './hooks/usePayrollAutoGenerate';
 import { offlineDbService } from './services/offlineDb';
 import { db } from './lib/db';
+import Sidebar from './components/Sidebar';
 import { faceEmbeddingService } from './services/faceEmbeddingService';
 import { designationService } from './services/designationService';
 import { locationDesignationShiftService } from './services/locationDesignationShiftService';
@@ -181,7 +184,11 @@ function App() {
     setIsDarkTheme(!isDarkTheme);
   };
 
-  // ── Session is now restored synchronously in useState — no useEffect needed ─
+  // 🔄 Session is now restored synchronously in useState - no useEffect needed 🔄
+  useAuthListener(setUser);
+
+  // Auto-generate payroll on 25th of month
+  usePayrollAutoGenerate(user);
 
   useEffect(() => {
     if (user) {

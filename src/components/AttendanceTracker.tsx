@@ -391,6 +391,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               <thead>
                 <tr className="bg-gray-50">
                   <th className="px-2 md:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
+                  <th className="px-2 md:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emp Code</th>
                   <th className="px-2 md:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 z-10 bg-gray-50">Name</th>
                   <th className="px-1 md:px-2 py-3 text-center text-xs font-medium text-green-600 uppercase tracking-wider bg-green-50">P</th>
                   <th className="px-1 md:px-2 py-3 text-center text-xs font-medium text-yellow-600 uppercase tracking-wider bg-yellow-50">H</th>
@@ -419,6 +420,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   return (
                     <tr key={member.id} className="hover:bg-gray-50">
                       <td className="px-2 md:px-4 py-4 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
+                      <td className="px-2 md:px-4 py-4 whitespace-nowrap text-sm text-gray-500">{member.employeeCode || '-'}</td>
                       <td className="px-2 md:px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 z-10 bg-white">{member.name}</td>
                       <td className="px-1 md:px-2 py-4 text-center text-sm font-bold text-green-600 bg-green-50">{summary.present}</td>
                       <td className="px-1 md:px-2 py-4 text-center text-sm font-bold text-yellow-600 bg-yellow-50">{summary.halfDay}</td>
@@ -687,6 +689,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     combinedAttendanceData.push({
       id: member.id,
       serialNo: index + 1,
+      employeeCode: member.employeeCode || '',
       name: displayName,
       location: displayLocation,
       floor: member.floor || '',
@@ -967,6 +970,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">S.No</th>
+                <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Emp Code</th>
                 <th className="px-3 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider sticky left-0 z-30 bg-gray-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Name</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
@@ -983,6 +987,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               {combinedAttendanceData.map((data: any) => (
                 <tr key={data.id} className={`group hover:bg-gray-50 transition-colors ${data.isUninformed ? 'bg-orange-50 border-l-4 border-orange-500' : ''}`}>
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{data.serialNo}</td>
+                  <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">{data.employeeCode || '-'}</td>
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap sticky left-0 z-10 bg-white group-hover:bg-gray-50 transition-colors shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                     <div>
                       <div className="text-sm font-medium text-gray-900">{data.name}</div>

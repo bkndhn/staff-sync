@@ -86,6 +86,7 @@ export const staffService = {
     if (updates.pfNumber !== undefined) (dbUpdates as any).pf_number = updates.pfNumber || null;
     if (updates.esiNumber !== undefined) (dbUpdates as any).esi_number = updates.esiNumber || null;
     if (updates.deviceId !== undefined) (dbUpdates as any).device_id = updates.deviceId || null;
+    if (updates.employeeCode !== undefined) (dbUpdates as any).employee_code = updates.employeeCode || null;
 
     const { data, error } = await supabase
       .from('staff')
@@ -158,6 +159,7 @@ export const staffService = {
   mapFromDatabase(dbStaff: any): Staff {
     return {
       id: dbStaff.id,
+      employeeCode: dbStaff.employee_code ?? undefined,
       name: dbStaff.name,
       location: dbStaff.location,
       floor: dbStaff.floor || undefined,
@@ -232,6 +234,7 @@ export const staffService = {
       pf_number: staff.pfNumber || null,
       esi_number: staff.esiNumber || null,
       device_id: staff.deviceId || null,
+      employee_code: (staff as any).employeeCode || null,
     } as any;
   }
 };

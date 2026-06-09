@@ -54,6 +54,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     const saved = localStorage.getItem('staffVisibleColumns');
     if (saved) return JSON.parse(saved);
     return {
+      employeeCode: true,
       location: true, floor: true, designation: true, experience: true,
       basic: true, incentive: true, hra: true, meal: true, total: true,
       staffType: true, payment: true, bankName: false, accountNo: false,
@@ -71,6 +72,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   };
 
   const columnLabels: Record<string, string> = {
+    employeeCode: 'Emp Code',
     location: 'Location', floor: 'Floor', designation: 'Designation', experience: 'Experience',
     basic: 'Basic', incentive: 'Incentive', hra: 'HRA', meal: 'Meal Allowance', total: 'Total',
     staffType: 'Staff Type', payment: 'Payment', bankName: 'Bank Name', accountNo: 'Account No',
@@ -142,6 +144,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
 
   const [formData, setFormData] = useState({
     name: '',
+    employeeCode: '',
     location: '',
     floor: '',
     designation: '',
@@ -530,6 +533,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const resetForm = () => {
     setFormData({
       name: '',
+      employeeCode: '',
       location: locations[0]?.name || 'Big Shop',
       floor: '',
       designation: '',
@@ -629,6 +633,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     const supplements = member.salarySupplements || {};
     setFormData({
       name: member.name,
+      employeeCode: member.employeeCode || '',
       location: member.location,
       floor: member.floor || '',
       designation: member.designation || '',
@@ -935,6 +940,10 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1">Name</label>
               <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-premium" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-1">Employee Code</label>
+              <input type="text" value={formData.employeeCode} onChange={(e) => setFormData({ ...formData, employeeCode: e.target.value })} className="input-premium" placeholder="e.g. EMP001" />
             </div>
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1">Location</label>
@@ -1468,6 +1477,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               <tr>
                 <th className="w-10"></th>
                 <th className="text-center">S.No</th>
+                <th className="text-center">Emp Code</th>
                 <th className="sticky left-0">Name</th>
                 {visibleColumns.location !== false && <th className="text-center">Location</th>}
                 {visibleColumns.floor !== false && <th className="text-center">Floor</th>}
@@ -1527,6 +1537,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                       )}
                     </td>
                     <td className="px-3 py-4 text-sm text-center">{index + 1}</td>
+                    <td className="px-3 py-4 text-sm text-center">{member.employeeCode || '-'}</td>
                     <td className="px-3 py-4 sticky left-0 bg-white">
                       <div>
                         <div className="text-sm font-medium">{member.name}</div>

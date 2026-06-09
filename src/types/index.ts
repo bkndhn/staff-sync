@@ -1,5 +1,6 @@
 export interface Staff {
   id: string;
+  employeeCode?: string;
   name: string;
   location: string;
   floor?: string;
@@ -113,6 +114,23 @@ export interface SalaryDetail {
   isProcessed: boolean;
   statutoryTotal?: number;
   statutoryBreakdown?: Array<{ key: string; label: string; amount: number }>;
+}
+
+export interface PayrollRun {
+  id: string;
+  month: number;
+  year: number;
+  status: 'Generated' | 'Locked';
+  generatedAt: string;
+  generatedBy?: string;
+}
+
+export interface PayrollSnapshot {
+  id: string;
+  runId: string;
+  staffId: string;
+  staffSnapshot: Staff;
+  salaryDetail: SalaryDetail;
 }
 
 export interface PartTimeSalaryDetail {

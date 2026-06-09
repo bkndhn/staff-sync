@@ -21,6 +21,7 @@ export interface DatabaseStaff {
   salary_supplements: Record<string, number>;
   meal_allowance: number;
   display_order: number;
+  employee_code?: string | null;
   contact_number?: string | null;
   address?: string | null;
   photo_url?: string | null;
