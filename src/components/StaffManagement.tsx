@@ -1537,7 +1537,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                       )}
                     </td>
                     <td className="px-3 py-4 text-sm text-center">{index + 1}</td>
-                    <td className="px-3 py-4 text-sm text-center">{member.employeeCode || '-'}</td>
+                    <td className="px-3 py-4 text-sm text-center">{member.employeeCode || member.deviceId || '-'}</td>
                     <td className="px-3 py-4 sticky left-0 bg-white">
                       <div>
                         <div className="text-sm font-medium">{member.name}</div>

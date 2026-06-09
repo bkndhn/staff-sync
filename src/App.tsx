@@ -17,7 +17,6 @@ import { AuditLogViewer } from './components/AuditLogViewer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { auditLogService } from './services/auditLogService';
 import { offlineSyncService } from './services/offlineSyncService';
-import { useAuthListener } from './hooks/useAuthListener';
 import { useOfflineSync } from './hooks/useOfflineSync';
 import { usePayrollAutoGenerate } from './hooks/usePayrollAutoGenerate';
 import { offlineDbService } from './services/offlineDb';
@@ -185,7 +184,6 @@ function App() {
   };
 
   // 🔄 Session is now restored synchronously in useState - no useEffect needed 🔄
-  useAuthListener(setUser);
 
   // Auto-generate payroll on 25th of month
   usePayrollAutoGenerate(user);

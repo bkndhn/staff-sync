@@ -1502,7 +1502,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
-                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emp Code</th>
+
                                     <th className="sticky left-0 z-10 bg-gray-50 px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Name</th>
                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Floor</th>
@@ -1516,7 +1516,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                 {filteredTodayAttendance.map((record, index) => (
                                     <tr key={record.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(() => { const s = staff.find(s => s.id === record.staffId || s.name === record.staffName); return s?.employeeCode || '-'; })()}</td>
+
                                         <td className="sticky left-0 z-10 bg-white px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                                             {record.staffName}
                                         </td>
@@ -1892,7 +1892,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     </div>
                                 </th>
                                 <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
-                                <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emp Code</th>
+
                                 <th className="sticky left-0 z-10 bg-gray-50 px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Name</th>
                                 <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                                 <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Floor</th>
@@ -1975,7 +1975,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                 />
                                             </td>
                                             <td className="px-3 md:px-6 py-4 whitespace-nowrap text-gray-900">{index + 1}</td>
-                                            <td className="px-3 md:px-6 py-4 whitespace-nowrap text-gray-500 text-sm">{(() => { const s = staff.find(s => s.name === salary.staffName); return s?.employeeCode || '-'; })()}</td>
+
                                             <td className={`sticky left-0 z-10 px-3 md:px-6 py-4 whitespace-nowrap font-medium text-gray-900 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] ${staffSettled ? 'bg-green-200' : staffPartial ? 'bg-yellow-100' : 'bg-white'}`}>
                                                 {salary.staffName}
                                             </td>
