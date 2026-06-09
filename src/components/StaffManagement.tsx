@@ -661,7 +661,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       statutoryDeductions: member.statutoryDeductions || {},
       pfNumber: member.pfNumber || '',
       esiNumber: member.esiNumber || '',
-      deviceId: member.deviceId || ''
+      deviceId: member.deviceId?.startsWith('dev_') ? '' : (member.deviceId || '')
     });
     setEditingStaff(member);
     setShowAddForm(true);
@@ -941,10 +941,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               <label className="block text-sm font-medium text-white/70 mb-1">Name</label>
               <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-premium" required />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-white/70 mb-1">Employee Code</label>
-              <input type="text" value={formData.employeeCode} onChange={(e) => setFormData({ ...formData, employeeCode: e.target.value })} className="input-premium" placeholder="e.g. EMP001" />
-            </div>
+
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1">Location</label>
               <select value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} className="input-premium">
@@ -1173,7 +1170,10 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                   <input
                     type="text"
                     value={formData.deviceId}
-                    onChange={(e) => setFormData({ ...formData, deviceId: e.target.value.replace(/\s+/g, '') })}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\s+/g, '');
+                      setFormData({ ...formData, deviceId: val, employeeCode: val });
+                    }}
                     className="input-premium"
                     placeholder="e.g. 101 (the enroll number on the eSSL / ZKTeco device)"
                     required
