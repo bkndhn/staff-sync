@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ ok: true, inserted, skipped, errors });
+    return json({ ok: true, inserted, skipped, errors, breaksOpened, breaksClosed });
   } catch (e: any) {
     console.error("device-push error:", e);
     return json({ error: e?.message ?? "Internal error" }, 500);
