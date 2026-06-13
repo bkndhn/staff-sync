@@ -988,6 +988,13 @@ function App() {
             userRole={user?.role === 'staff' ? 'manager' : (user?.role || 'manager')}
           />
         );
+      case 'Break Management':
+        if (user?.role !== 'admin' && user?.role !== 'manager') return null;
+        return (
+          <Suspense fallback={<ComponentLoader />}>
+            <BreakManagement staff={filteredStaffData} user={user!} />
+          </Suspense>
+        );
       case 'Salary Management':
         if (user?.role !== 'admin') return null;
         return (
