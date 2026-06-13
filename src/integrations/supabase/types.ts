@@ -218,6 +218,7 @@ export type Database = {
           applied_rule_type: string | null
           arrival_time: string | null
           attendance_value: number
+          break_minutes: number
           created_at: string | null
           date: string
           floor: string | null
@@ -227,6 +228,7 @@ export type Database = {
           is_uninformed: boolean | null
           leaving_time: string | null
           location: string | null
+          net_working_minutes: number | null
           salary: number | null
           salary_override: boolean | null
           settlement_location: string | null
@@ -240,6 +242,7 @@ export type Database = {
           applied_rule_type?: string | null
           arrival_time?: string | null
           attendance_value: number
+          break_minutes?: number
           created_at?: string | null
           date: string
           floor?: string | null
@@ -249,6 +252,7 @@ export type Database = {
           is_uninformed?: boolean | null
           leaving_time?: string | null
           location?: string | null
+          net_working_minutes?: number | null
           salary?: number | null
           salary_override?: boolean | null
           settlement_location?: string | null
@@ -262,6 +266,7 @@ export type Database = {
           applied_rule_type?: string | null
           arrival_time?: string | null
           attendance_value?: number
+          break_minutes?: number
           created_at?: string | null
           date?: string
           floor?: string | null
@@ -271,6 +276,7 @@ export type Database = {
           is_uninformed?: boolean | null
           leaving_time?: string | null
           location?: string | null
+          net_working_minutes?: number | null
           salary?: number | null
           salary_override?: boolean | null
           settlement_location?: string | null
@@ -278,6 +284,166 @@ export type Database = {
           staff_id?: string
           staff_name?: string | null
           status?: string
+        }
+        Relationships: []
+      }
+      break_events: {
+        Row: {
+          break_type_code: string | null
+          break_type_id: string | null
+          created_at: string
+          created_by: string | null
+          date: string
+          device_label: string | null
+          duration_minutes: number | null
+          end_time: string | null
+          id: string
+          is_violation: boolean
+          location: string | null
+          notes: string | null
+          source: string
+          staff_id: string
+          staff_name: string | null
+          start_time: string
+          updated_at: string
+          violation_reason: string | null
+        }
+        Insert: {
+          break_type_code?: string | null
+          break_type_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          date: string
+          device_label?: string | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          id?: string
+          is_violation?: boolean
+          location?: string | null
+          notes?: string | null
+          source?: string
+          staff_id: string
+          staff_name?: string | null
+          start_time: string
+          updated_at?: string
+          violation_reason?: string | null
+        }
+        Update: {
+          break_type_code?: string | null
+          break_type_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          device_label?: string | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          id?: string
+          is_violation?: boolean
+          location?: string | null
+          notes?: string | null
+          source?: string
+          staff_id?: string
+          staff_name?: string | null
+          start_time?: string
+          updated_at?: string
+          violation_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "break_events_break_type_id_fkey"
+            columns: ["break_type_id"]
+            isOneToOne: false
+            referencedRelation: "break_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      break_policies: {
+        Row: {
+          break_type_id: string | null
+          created_at: string
+          deduct_from_hours: boolean
+          designation_id: string | null
+          grace_minutes: number
+          id: string
+          location: string | null
+          max_minutes_per_break: number
+          max_per_day: number
+          max_total_minutes_per_day: number
+          updated_at: string
+        }
+        Insert: {
+          break_type_id?: string | null
+          created_at?: string
+          deduct_from_hours?: boolean
+          designation_id?: string | null
+          grace_minutes?: number
+          id?: string
+          location?: string | null
+          max_minutes_per_break?: number
+          max_per_day?: number
+          max_total_minutes_per_day?: number
+          updated_at?: string
+        }
+        Update: {
+          break_type_id?: string | null
+          created_at?: string
+          deduct_from_hours?: boolean
+          designation_id?: string | null
+          grace_minutes?: number
+          id?: string
+          location?: string | null
+          max_minutes_per_break?: number
+          max_per_day?: number
+          max_total_minutes_per_day?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "break_policies_break_type_id_fkey"
+            columns: ["break_type_id"]
+            isOneToOne: false
+            referencedRelation: "break_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      break_types: {
+        Row: {
+          code: string
+          created_at: string
+          default_minutes: number
+          id: string
+          is_active: boolean
+          is_paid: boolean
+          max_minutes: number
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          default_minutes?: number
+          id?: string
+          is_active?: boolean
+          is_paid?: boolean
+          max_minutes?: number
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          default_minutes?: number
+          id?: string
+          is_active?: boolean
+          is_paid?: boolean
+          max_minutes?: number
+          name?: string
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }
