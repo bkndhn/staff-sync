@@ -16,6 +16,7 @@ import {
   X,
   ShieldAlert,
   TrendingUp,
+  Coffee,
 } from 'lucide-react';
 import { SyncBadge } from './SyncBadge';
 
@@ -46,6 +47,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
         { id: 'Staff Management' as NavigationTab, label: 'Staff', icon: Users },
         { id: 'Attendance' as NavigationTab, label: 'Attendance', icon: Calendar },
         { id: 'Face Attendance' as NavigationTab, label: 'Face', icon: ScanFace },
+        { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
         { id: 'Salary Management' as NavigationTab, label: 'Salary', icon: DollarSign },
         { id: 'Part-Time Staff' as NavigationTab, label: 'Part-Time', icon: Clock },
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
@@ -60,6 +62,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
       { id: 'Workforce Insights' as NavigationTab, label: 'Insights', icon: TrendingUp },
       { id: 'Attendance' as NavigationTab, label: 'Attendance', icon: Calendar },
       { id: 'Face Attendance' as NavigationTab, label: 'Face', icon: ScanFace },
+      { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
       { id: 'Part-Time Staff' as NavigationTab, label: 'Part-Time', icon: Clock },
       { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
     ];
