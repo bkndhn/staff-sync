@@ -56,10 +56,12 @@ function pickTime(p: IncomingPunch): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-function normalizeKind(raw?: string): "in" | "out" | "unknown" {
-  const v = (raw || "").toLowerCase();
-  if (v === "in" || v === "checkin" || v === "0" || v === "check-in") return "in";
-  if (v === "out" || v === "checkout" || v === "1" || v === "check-out") return "out";
+function normalizeKind(raw?: string): "in" | "out" | "break_in" | "break_out" | "unknown" {
+  const v = (raw || "").toLowerCase().replace(/[\s-]/g, "");
+  if (v === "in" || v === "checkin" || v === "0") return "in";
+  if (v === "out" || v === "checkout" || v === "1") return "out";
+  if (v === "breakin" || v === "breakstart" || v === "2" || v === "4") return "break_in";
+  if (v === "breakout" || v === "breakend" || v === "3" || v === "5") return "break_out";
   return "unknown";
 }
 
