@@ -98,7 +98,7 @@ export const staffService = {
 
     let { data, error } = await supabase
       .from('staff')
-      .update(dbUpdates)
+      .update(dbUpdates as any)
       .eq('id', id)
       .select()
       .single();
@@ -106,7 +106,7 @@ export const staffService = {
     if (error && error.message && error.message.includes('employee_code')) {
       console.warn('employee_code column missing in DB, retrying without it...');
       delete (dbUpdates as any).employee_code;
-      const retry = await supabase.from('staff').update(dbUpdates).eq('id', id).select().single();
+      const retry = await supabase.from('staff').update(dbUpdates as any).eq('id', id).select().single();
       data = retry.data;
       error = retry.error;
     }
