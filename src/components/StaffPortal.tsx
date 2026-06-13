@@ -23,6 +23,7 @@ import autoTable from 'jspdf-autotable';
 import { db } from '../lib/db';
 import { appSettingsService } from '../services/appSettingsService';
 import { resolveActiveRule, calculateAttendanceStatus } from '../utils/attendanceRules';
+import BreakControls from './BreakControls';
 
 interface StaffPortalProps {
   staff: Staff;
