@@ -22,7 +22,7 @@ export const payrollService = {
       month: data.month,
       year: data.year,
       status: data.status as 'Generated' | 'Locked',
-      generatedAt: data.generated_at,
+      generatedAt: data.generated_at || '',
       generatedBy: data.generated_by || undefined
     };
   },
@@ -94,7 +94,7 @@ export const payrollService = {
       const chunk = snapshots.slice(i, i + chunkSize);
       const { error: snapError } = await supabase
         .from('payroll_snapshots')
-        .insert(chunk);
+        .insert(chunk as any);
 
       if (snapError) {
         console.error('Error inserting payroll snapshots:', snapError);
@@ -109,7 +109,7 @@ export const payrollService = {
       month: runData.month,
       year: runData.year,
       status: runData.status as 'Generated' | 'Locked',
-      generatedAt: runData.generated_at,
+      generatedAt: runData.generated_at || '',
       generatedBy: runData.generated_by || undefined
     };
   },
