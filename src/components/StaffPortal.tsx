@@ -607,6 +607,13 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               );
             })()}
 
+            {/* Break Controls */}
+            {!isLeftStaff && (
+              <div className="mb-4">
+                <BreakControls staff={staff} source="mobile" performedBy={staff.name} />
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <InfoRow icon={MapPin} label="Location" value={staff.location} />
               {staff.floor && <InfoRow icon={MapPin} label="Floor" value={staff.floor} />}
