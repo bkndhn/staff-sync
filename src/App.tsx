@@ -21,7 +21,7 @@ import { useOfflineSync } from './hooks/useOfflineSync';
 import { usePayrollAutoGenerate } from './hooks/usePayrollAutoGenerate';
 import { offlineDbService } from './services/offlineDb';
 import { db } from './lib/db';
-import Sidebar from './components/Sidebar';
+
 import { faceEmbeddingService } from './services/faceEmbeddingService';
 import { designationService } from './services/designationService';
 import { locationDesignationShiftService } from './services/locationDesignationShiftService';
