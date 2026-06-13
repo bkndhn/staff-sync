@@ -14,72 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      payroll_runs: {
-        Row: {
-          id: string
-          month: number
-          year: number
-          status: string
-          generated_at: string | null
-          generated_by: string | null
-        }
-        Insert: {
-          id?: string
-          month: number
-          year: number
-          status: string
-          generated_at?: string | null
-          generated_by?: string | null
-        }
-        Update: {
-          id?: string
-          month?: number
-          year?: number
-          status?: string
-          generated_at?: string | null
-          generated_by?: string | null
-        }
-        Relationships: []
-      }
-      payroll_snapshots: {
-        Row: {
-          id: string
-          run_id: string
-          staff_id: string
-          staff_snapshot: Json
-          salary_detail: Json
-        }
-        Insert: {
-          id?: string
-          run_id: string
-          staff_id: string
-          staff_snapshot: Json
-          salary_detail: Json
-        }
-        Update: {
-          id?: string
-          run_id?: string
-          staff_id?: string
-          staff_snapshot?: Json
-          salary_detail?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payroll_snapshots_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "payroll_runs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payroll_snapshots_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
-            referencedRelation: "staff"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
       advance_entries: {
         Row: {
           amount: number
@@ -895,6 +829,72 @@ export type Database = {
         }
         Relationships: []
       }
+      payroll_runs: {
+        Row: {
+          generated_at: string | null
+          generated_by: string | null
+          id: string
+          month: number
+          status: string
+          year: number
+        }
+        Insert: {
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          month: number
+          status: string
+          year: number
+        }
+        Update: {
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          month?: number
+          status?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      payroll_snapshots: {
+        Row: {
+          id: string
+          run_id: string
+          salary_detail: Json
+          staff_id: string
+          staff_snapshot: Json
+        }
+        Insert: {
+          id?: string
+          run_id: string
+          salary_detail: Json
+          staff_id: string
+          staff_snapshot: Json
+        }
+        Update: {
+          id?: string
+          run_id?: string
+          salary_detail?: Json
+          staff_id?: string
+          staff_snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_snapshots_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_snapshots_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       punch_events: {
         Row: {
           created_at: string
@@ -1074,7 +1074,6 @@ export type Database = {
           designation: string | null
           device_id: string | null
           display_order: number | null
-          employee_code: string | null
           esi_number: string | null
           exempt_from_late_deduction: boolean | null
           experience: string
@@ -1116,7 +1115,6 @@ export type Database = {
           designation?: string | null
           device_id?: string | null
           display_order?: number | null
-          employee_code?: string | null
           esi_number?: string | null
           exempt_from_late_deduction?: boolean | null
           experience: string
@@ -1158,7 +1156,6 @@ export type Database = {
           designation?: string | null
           device_id?: string | null
           display_order?: number | null
-          employee_code?: string | null
           esi_number?: string | null
           exempt_from_late_deduction?: boolean | null
           experience?: string
