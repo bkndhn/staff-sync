@@ -4,6 +4,7 @@ import { Users, Clock, Calendar, MapPin, TrendingUp, Sun, Moon, ArrowUp, ArrowDo
 import { calculateLocationAttendance } from '../utils/salaryCalculations';
 import { appSettingsService } from '../services/appSettingsService';
 import { customAlert } from './CustomDialog';
+import BreaksDashboardWidget from './BreaksDashboardWidget';
 interface DashboardProps {
   staff: Staff[];
   attendance: Attendance[];
@@ -264,6 +265,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="p-1 md:p-6 space-y-6">
+      <BreaksDashboardWidget location={userRole === 'manager' ? userLocation : undefined} />
       {/* Header */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3">

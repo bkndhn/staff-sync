@@ -21,7 +21,7 @@ import { useOfflineSync } from './hooks/useOfflineSync';
 import { usePayrollAutoGenerate } from './hooks/usePayrollAutoGenerate';
 import { offlineDbService } from './services/offlineDb';
 import { db } from './lib/db';
-import Sidebar from './components/Sidebar';
+
 import { faceEmbeddingService } from './services/faceEmbeddingService';
 import { designationService } from './services/designationService';
 import { locationDesignationShiftService } from './services/locationDesignationShiftService';
@@ -37,6 +37,7 @@ const Settings = React.lazy(() => import('./components/Settings'));
 const StaffPortal = React.lazy(() => import('./components/StaffPortal'));
 const LeaveManagement = React.lazy(() => import('./components/LeaveManagement'));
 const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
+const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
 
 
@@ -986,6 +987,13 @@ function App() {
             onBulkUpdateAttendance={bulkUpdateAttendance}
             userRole={user?.role === 'staff' ? 'manager' : (user?.role || 'manager')}
           />
+        );
+      case 'Break Management':
+        if (user?.role !== 'admin' && user?.role !== 'manager') return null;
+        return (
+          <Suspense fallback={<ComponentLoader />}>
+            <BreakManagement staff={filteredStaffData} user={user!} />
+          </Suspense>
         );
       case 'Salary Management':
         if (user?.role !== 'admin') return null;

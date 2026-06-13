@@ -32,10 +32,10 @@ export const usePayrollAutoGenerate = (user: any) => {
         console.log(`Auto-generating payroll for ${targetMonth + 1}/${targetYear}...`);
         
         // Fetch all required data
-        const staffList = await staffService.getStaff();
-        const fullTimeStaff = staffList.filter(s => s.type === 'full-time');
-        
-        const attendance = await attendanceService.getAttendance(targetMonth + 1, targetYear);
+        const staffList = await staffService.getAll();
+        const fullTimeStaff = staffList.filter((s: any) => s.type === 'full-time');
+
+        const attendance = await attendanceService.getAll();
         const overrides = await salaryOverrideService.getOverrides(targetMonth + 1, targetYear);
 
         // Fetch advances
@@ -52,7 +52,9 @@ export const usePayrollAutoGenerate = (user: any) => {
           deduction: row.deduction,
           newAdvance: row.new_advance,
           month: row.month,
-          year: row.year
+          year: row.year,
+          createdAt: row.created_at || '',
+          updatedAt: row.updated_at || ''
         }));
 
         // Fetch advance entries
@@ -84,7 +86,7 @@ export const usePayrollAutoGenerate = (user: any) => {
           scheduledDeductions[staffId] = computeScheduledDeductions(entries, targetMonth, targetYear);
         });
 
-        const fullDetails = fullTimeStaff.map(member => {
+        const fullDetails = fullTimeStaff.map((member: any) => {
           const metrics = calculateAttendanceMetrics(member.id, attendance, targetYear, targetMonth);
           const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === targetMonth && adv.year === targetYear);
           const memberEntries = advanceEntries[member.id] || [];

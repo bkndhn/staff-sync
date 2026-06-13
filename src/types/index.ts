@@ -239,7 +239,51 @@ export interface SalaryOverride {
   salarySupplementsOverride?: Record<string, number>;
 }
 
-export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Salary Management' | 'Part-Time Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Audit Log' | 'Workforce Insights';
+export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Salary Management' | 'Part-Time Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Audit Log' | 'Workforce Insights' | 'Break Management';
+
+export interface BreakType {
+  id: string;
+  name: string;
+  code: string; // 'lunch' | 'tea' | 'custom' | any
+  defaultMinutes: number;
+  maxMinutes: number;
+  isPaid: boolean;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface BreakEvent {
+  id: string;
+  staffId: string;
+  staffName?: string;
+  location?: string;
+  date: string;            // YYYY-MM-DD
+  breakTypeId?: string;
+  breakTypeCode?: string;  // lunch/tea/custom
+  startTime: string;       // HH:MM:SS
+  endTime?: string | null;
+  durationMinutes?: number | null;
+  source: 'web' | 'mobile' | 'biometric' | 'manual';
+  deviceLabel?: string;
+  isViolation?: boolean;
+  violationReason?: string;
+  notes?: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BreakPolicy {
+  id: string;
+  location?: string;
+  designationId?: string;
+  breakTypeId?: string;
+  maxPerDay: number;
+  maxMinutesPerBreak: number;
+  maxTotalMinutesPerDay: number;
+  deductFromHours: boolean;
+  graceMinutes: number;
+}
 
 // Re-export AppUser from userService
 export type { AppUser } from '../services/userService';
