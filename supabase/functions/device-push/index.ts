@@ -135,6 +135,7 @@ Deno.serve(async (req) => {
 
     // --- Build inserts ---
     const rows: any[] = [];
+    const breakOps: Array<{ kind: "break_in" | "break_out"; staff: any; date: string; time: string; deviceLabel: string | null }> = [];
     const errors: any[] = [];
     let skipped = 0;
 
@@ -152,16 +153,25 @@ Deno.serve(async (req) => {
         errors.push({ device_id: dev, reason: "unknown device_id (no matching staff)" });
         continue;
       }
+      const kind = normalizeKind(p.kind ?? p.direction);
+      const date = `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
+      const time = `${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`;
+      const deviceLabel = p.device_name ?? p.deviceName ?? null;
+
       rows.push({
         staff_id: s.id,
         staff_name: s.name,
         location: p.location || s.location,
-        date: `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`,
-        event_time: `${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`,
-        kind: normalizeKind(p.kind ?? p.direction),
+        date,
+        event_time: time,
+        kind,
         source: "device-push",
-        device_label: p.device_name ?? p.deviceName ?? null,
+        device_label: deviceLabel,
       });
+
+      if (kind === "break_in" || kind === "break_out") {
+        breakOps.push({ kind, staff: s, date, time, deviceLabel });
+      }
     }
 
     let inserted = 0;
@@ -171,6 +181,41 @@ Deno.serve(async (req) => {
         return json({ error: "Insert failed", details: insErr.message, skipped, errors }, 500);
       }
       inserted = rows.length;
+    }
+
+    // Apply break events
+    let breaksOpened = 0, breaksClosed = 0;
+    for (const op of breakOps) {
+      try {
+        if (op.kind === "break_in") {
+          await admin.from("break_events").insert({
+            staff_id: op.staff.id,
+            staff_name: op.staff.name,
+            location: op.staff.location,
+            date: op.date,
+            start_time: op.time,
+            source: "biometric",
+            device_label: op.deviceLabel,
+          });
+          breaksOpened++;
+        } else {
+          const { data: open } = await admin.from("break_events").select("*")
+            .eq("staff_id", op.staff.id).is("end_time", null)
+            .order("start_time", { ascending: false }).limit(1).maybeSingle();
+          if (open) {
+            const [sh, sm, ss] = open.start_time.split(":").map(Number);
+            const [eh, em, es] = op.time.split(":").map(Number);
+            const dur = Math.max(0, Math.round(((eh * 3600 + em * 60 + (es || 0)) - (sh * 3600 + sm * 60 + (ss || 0))) / 60));
+            await admin.from("break_events").update({
+              end_time: op.time,
+              duration_minutes: dur,
+            }).eq("id", open.id);
+            breaksClosed++;
+          }
+        }
+      } catch (be) {
+        console.error("break op failed:", be);
+      }
     }
 
     return json({ ok: true, inserted, skipped, errors });
