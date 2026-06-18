@@ -86,10 +86,40 @@ const DeviceIntegration: React.FC<DeviceIntegrationProps> = ({ onImportPunches }
 
   const [bridgeExpanded, setBridgeExpanded] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   useEffect(() => {
     locationService.getLocations().then(setLocations).catch(() => setLocations([]));
   }, []);
+
+  const handleSyncNow = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const { supabase } = await import('../lib/supabase');
+      const { data, error } = await supabase.functions.invoke('device-pull', {
+        body: {
+          provider: apiConfig.provider,
+          serverUrl: apiConfig.serverUrl,
+          apiKey: apiConfig.apiKey,
+          location: apiConfig.locationCode || undefined,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const r = data as { fetched: number; inserted: number; skipped: number };
+      setSyncResult({
+        ok: true,
+        message: `Fetched ${r.fetched} punches · Inserted ${r.inserted} · Skipped ${r.skipped}`,
+      });
+    } catch (err: any) {
+      setSyncResult({ ok: false, message: err?.message || 'Sync failed. Check credentials and try again.' });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
 
   // ─── CSV Handling ───────────────────────────────────────────────────────────
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
