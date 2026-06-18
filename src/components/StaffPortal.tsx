@@ -24,6 +24,9 @@ import { db } from '../lib/db';
 import { appSettingsService } from '../services/appSettingsService';
 import { resolveActiveRule, calculateAttendanceStatus } from '../utils/attendanceRules';
 import BreakControls from './BreakControls';
+import { breakEventService } from '../services/breakService';
+import { BreakEvent } from '../types';
+import { Coffee, X } from 'lucide-react';
 
 interface StaffPortalProps {
   staff: Staff;
@@ -46,6 +49,27 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   const [leaveSubmitting, setLeaveSubmitting] = useState(false);
   const [advanceEntries, setAdvanceEntries] = useState<AdvanceEntry[]>([]);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [breakEvents, setBreakEvents] = useState<BreakEvent[]>([]);
+  const [expandedDayBreaks, setExpandedDayBreaks] = useState<string | null>(null);
+
+  useEffect(() => {
+    const monthStart = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const monthEnd = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    breakEventService.list({ staffId: staff.id, startDate: monthStart, endDate: monthEnd })
+      .then(setBreakEvents)
+      .catch(() => setBreakEvents([]));
+  }, [staff.id, selectedMonth, selectedYear]);
+
+  const breaksByDate = useMemo(() => {
+    const m = new Map<string, BreakEvent[]>();
+    for (const e of breakEvents) {
+      const arr = m.get(e.date) || [];
+      arr.push(e);
+      m.set(e.date, arr);
+    }
+    return m;
+  }, [breakEvents]);
 
   const monthName = new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long' });
 
@@ -739,9 +763,17 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                           const status = record?.status || 'Absent';
                           const isSun = isSunday(dateStr);
                           const halfCode = record?.shift === 'Morning' ? 'HM' : record?.shift === 'Evening' ? 'HE' : 'H';
+                          const dayBreaks = breaksByDate.get(dateStr) || [];
+                          const totalBreakMin = dayBreaks.reduce((a, b) => a + (b.durationMinutes || 0), 0);
+                          const hasBreaks = dayBreaks.length > 0;
 
                           return (
-                            <td key={day} className={`px-2 py-3 text-center ${isSun ? 'bg-red-500/5' : ''} ${record?.isUninformed ? 'bg-orange-500/10' : ''}`} title={`${status === 'Half Day' ? `Half Day (${record?.shift || 'N/A'})` : status}${record?.isUninformed ? ' - Uninformed' : ''}`}>
+                            <td
+                              key={day}
+                              onClick={() => hasBreaks && setExpandedDayBreaks(dateStr)}
+                              className={`px-2 py-3 text-center align-top ${isSun ? 'bg-red-500/5' : ''} ${record?.isUninformed ? 'bg-orange-500/10' : ''} ${hasBreaks ? 'cursor-pointer hover:bg-amber-500/10' : ''}`}
+                              title={`${status === 'Half Day' ? `Half Day (${record?.shift || 'N/A'})` : status}${record?.isUninformed ? ' - Uninformed' : ''}${hasBreaks ? ` · ${dayBreaks.length} break(s), ${totalBreakMin}m` : ''}`}
+                            >
                               <div className="flex flex-col items-center justify-center min-h-[48px]">
                                 <span className={`inline-flex items-center justify-center min-w-[26px] h-6 rounded text-[10px] font-bold ${
                                   record?.isUninformed
@@ -802,6 +834,11 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                                     </div>
                                   );
                                 })()}
+                                {hasBreaks && (
+                                  <div className="mt-1 inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold bg-amber-500/20 text-amber-500">
+                                    <Coffee size={8} /> {dayBreaks.length}·{totalBreakMin}m
+                                  </div>
+                                )}
                               </div>
                             </td>
                           );
@@ -813,8 +850,65 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               })()}
             </div>
           </div>
+
+          {/* Break detail modal */}
+          {expandedDayBreaks && (() => {
+            const list = breaksByDate.get(expandedDayBreaks) || [];
+            return (
+              <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setExpandedDayBreaks(null)}>
+                <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-2xl max-w-md w-full p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Coffee size={18} className="text-amber-500" />
+                      <h3 className="font-bold text-[var(--text-primary)]">
+                        Breaks on {new Date(expandedDayBreaks).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </h3>
+                    </div>
+                    <button onClick={() => setExpandedDayBreaks(null)} className="p-1.5 rounded-lg hover:bg-white/10"><X size={16} /></button>
+                  </div>
+                  <div className="space-y-2 max-h-96 overflow-auto">
+                    {list.map(ev => (
+                      <div key={ev.id} className={`p-3 rounded-xl border ${ev.isViolation ? 'border-red-500/40 bg-red-500/10' : 'border-white/10 bg-white/5'}`}>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-semibold capitalize text-[var(--text-primary)]">
+                            {ev.breakTypeCode || 'break'}
+                          </span>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-[var(--text-secondary)] capitalize">{ev.source}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
+                          <div>
+                            <div className="text-[var(--text-muted)] text-[10px] uppercase">In</div>
+                            <div className="font-mono text-emerald-500">{ev.startTime?.slice(0, 5) || '—'}</div>
+                          </div>
+                          <div>
+                            <div className="text-[var(--text-muted)] text-[10px] uppercase">Out</div>
+                            <div className="font-mono text-orange-500">{ev.endTime?.slice(0, 5) || '—'}</div>
+                          </div>
+                          <div>
+                            <div className="text-[var(--text-muted)] text-[10px] uppercase">Duration</div>
+                            <div className={`font-bold ${ev.isViolation ? 'text-red-500' : 'text-[var(--text-primary)]'}`}>{ev.durationMinutes ?? '—'}m</div>
+                          </div>
+                        </div>
+                        {ev.violationReason && (
+                          <div className="mt-2 text-[11px] text-red-400 flex items-start gap-1">
+                            <AlertTriangle size={11} className="mt-0.5 shrink-0" /> {ev.violationReason}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-3 gap-2 text-center text-xs">
+                    <div><div className="text-[var(--text-muted)] text-[10px] uppercase">Count</div><div className="font-bold">{list.length}</div></div>
+                    <div><div className="text-[var(--text-muted)] text-[10px] uppercase">Total</div><div className="font-bold">{list.reduce((a, b) => a + (b.durationMinutes || 0), 0)}m</div></div>
+                    <div><div className="text-[var(--text-muted)] text-[10px] uppercase">Violations</div><div className="font-bold text-red-500">{list.filter(b => b.isViolation).length}</div></div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
+
 
       {/* YEARLY ATTENDANCE VIEW */}
       {activeSection === 'yearly' && (
