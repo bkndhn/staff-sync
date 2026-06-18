@@ -906,17 +906,9 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               </div>
             );
           })()}
-                          );
-                        })}
-                      </tr>
-                    </tbody>
-                  </table>
-                );
-              })()}
-            </div>
-          </div>
         </div>
       )}
+
 
       {/* YEARLY ATTENDANCE VIEW */}
       {activeSection === 'yearly' && (
