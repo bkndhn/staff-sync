@@ -49,6 +49,27 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   const [leaveSubmitting, setLeaveSubmitting] = useState(false);
   const [advanceEntries, setAdvanceEntries] = useState<AdvanceEntry[]>([]);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [breakEvents, setBreakEvents] = useState<BreakEvent[]>([]);
+  const [expandedDayBreaks, setExpandedDayBreaks] = useState<string | null>(null);
+
+  useEffect(() => {
+    const monthStart = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const monthEnd = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    breakEventService.list({ staffId: staff.id, startDate: monthStart, endDate: monthEnd })
+      .then(setBreakEvents)
+      .catch(() => setBreakEvents([]));
+  }, [staff.id, selectedMonth, selectedYear]);
+
+  const breaksByDate = useMemo(() => {
+    const m = new Map<string, BreakEvent[]>();
+    for (const e of breakEvents) {
+      const arr = m.get(e.date) || [];
+      arr.push(e);
+      m.set(e.date, arr);
+    }
+    return m;
+  }, [breakEvents]);
 
   const monthName = new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long' });
 
