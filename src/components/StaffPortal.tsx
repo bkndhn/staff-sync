@@ -763,9 +763,17 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                           const status = record?.status || 'Absent';
                           const isSun = isSunday(dateStr);
                           const halfCode = record?.shift === 'Morning' ? 'HM' : record?.shift === 'Evening' ? 'HE' : 'H';
+                          const dayBreaks = breaksByDate.get(dateStr) || [];
+                          const totalBreakMin = dayBreaks.reduce((a, b) => a + (b.durationMinutes || 0), 0);
+                          const hasBreaks = dayBreaks.length > 0;
 
                           return (
-                            <td key={day} className={`px-2 py-3 text-center ${isSun ? 'bg-red-500/5' : ''} ${record?.isUninformed ? 'bg-orange-500/10' : ''}`} title={`${status === 'Half Day' ? `Half Day (${record?.shift || 'N/A'})` : status}${record?.isUninformed ? ' - Uninformed' : ''}`}>
+                            <td
+                              key={day}
+                              onClick={() => hasBreaks && setExpandedDayBreaks(dateStr)}
+                              className={`px-2 py-3 text-center align-top ${isSun ? 'bg-red-500/5' : ''} ${record?.isUninformed ? 'bg-orange-500/10' : ''} ${hasBreaks ? 'cursor-pointer hover:bg-amber-500/10' : ''}`}
+                              title={`${status === 'Half Day' ? `Half Day (${record?.shift || 'N/A'})` : status}${record?.isUninformed ? ' - Uninformed' : ''}${hasBreaks ? ` · ${dayBreaks.length} break(s), ${totalBreakMin}m` : ''}`}
+                            >
                               <div className="flex flex-col items-center justify-center min-h-[48px]">
                                 <span className={`inline-flex items-center justify-center min-w-[26px] h-6 rounded text-[10px] font-bold ${
                                   record?.isUninformed
