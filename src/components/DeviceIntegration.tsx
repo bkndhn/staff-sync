@@ -85,6 +85,11 @@ const DeviceIntegration: React.FC<DeviceIntegrationProps> = ({ onImportPunches }
   const [copied, setCopied] = useState<string | null>(null);
 
   const [bridgeExpanded, setBridgeExpanded] = useState(false);
+  const [locations, setLocations] = useState<Location[]>([]);
+
+  useEffect(() => {
+    locationService.getLocations().then(setLocations).catch(() => setLocations([]));
+  }, []);
 
   // ─── CSV Handling ───────────────────────────────────────────────────────────
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
