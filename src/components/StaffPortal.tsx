@@ -24,6 +24,9 @@ import { db } from '../lib/db';
 import { appSettingsService } from '../services/appSettingsService';
 import { resolveActiveRule, calculateAttendanceStatus } from '../utils/attendanceRules';
 import BreakControls from './BreakControls';
+import { breakEventService } from '../services/breakService';
+import { BreakEvent } from '../types';
+import { Coffee, X } from 'lucide-react';
 
 interface StaffPortalProps {
   staff: Staff;
