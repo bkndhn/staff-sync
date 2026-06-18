@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Cpu, Wifi, WifiOff, Upload, Download, FileSpreadsheet, Settings2,
   CheckCircle2, AlertTriangle, Loader2, ChevronDown, ChevronRight,
   ExternalLink, Copy, Check, RefreshCw, Fingerprint, Server, Globe, MapPin
 } from 'lucide-react';
 import { customAlert } from './CustomDialog';
+import { locationService, type Location } from '../services/locationService';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface PunchRecord {
