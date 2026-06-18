@@ -565,7 +565,12 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               </div>
               <div>
                 <h2 className="text-xl font-bold text-[var(--text-primary)]">{staff.name}</h2>
-                <p className="text-sm text-[var(--text-muted)]">{staff.type === 'full-time' ? 'Full-Time' : 'Part-Time'} Staff</p>
+                <p className="text-sm text-[var(--text-muted)]">
+                  {staff.employeeCode && (
+                    <span className="font-mono text-indigo-400 mr-2">#{staff.employeeCode}</span>
+                  )}
+                  {staff.type === 'full-time' ? 'Full-Time' : 'Part-Time'} Staff
+                </p>
               </div>
               {!isLeftStaff && (
                 <div className="ml-auto flex items-center gap-2">
