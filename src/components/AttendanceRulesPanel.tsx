@@ -773,9 +773,9 @@ const AttendanceRulesPanel: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Tabs */}
-      <div className="flex gap-2">
+    <div className="space-y-4 min-w-0 max-w-full">
+      {/* Tabs - horizontally scrollable on mobile */}
+      <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1 scrollbar-thin">
         {([
           { id: 'global', label: 'Global Rules', icon: Sun },
           { id: 'designations', label: 'Designation Rules', icon: Briefcase },
@@ -784,7 +784,7 @@ const AttendanceRulesPanel: React.FC = () => {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap shrink-0 ${
               tab === t.id
                 ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
                 : 'bg-white/5 border border-white/10 text-white/60 hover:text-white hover:border-white/20'

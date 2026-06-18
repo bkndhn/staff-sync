@@ -565,7 +565,12 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               </div>
               <div>
                 <h2 className="text-xl font-bold text-[var(--text-primary)]">{staff.name}</h2>
-                <p className="text-sm text-[var(--text-muted)]">{staff.type === 'full-time' ? 'Full-Time' : 'Part-Time'} Staff</p>
+                <p className="text-sm text-[var(--text-muted)]">
+                  {staff.employeeCode && (
+                    <span className="font-mono text-indigo-400 mr-2">#{staff.employeeCode}</span>
+                  )}
+                  {staff.type === 'full-time' ? 'Full-Time' : 'Part-Time'} Staff
+                </p>
               </div>
               {!isLeftStaff && (
                 <div className="ml-auto flex items-center gap-2">
@@ -716,7 +721,12 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                     </thead>
                     <tbody>
                       <tr className="border-t border-[var(--glass-border)]">
-                        <td className="px-3 py-3 text-sm font-semibold text-[var(--text-primary)]">{staff.name}</td>
+                        <td className="px-3 py-3 text-sm font-semibold text-[var(--text-primary)] whitespace-nowrap">
+                          {staff.name}
+                          {staff.employeeCode && (
+                            <span className="block text-[10px] font-mono text-indigo-400 font-normal">#{staff.employeeCode}</span>
+                          )}
+                        </td>
                         <td className="px-2 py-3 text-center text-sm font-bold text-emerald-600 bg-emerald-500/5">{metrics.presentDays}</td>
                         <td className="px-2 py-3 text-center text-sm font-bold text-amber-600 bg-amber-500/5">{metrics.halfDays}</td>
                         <td className="px-2 py-3 text-center text-sm font-bold text-red-600 bg-red-500/5">{metrics.leaveDays}</td>

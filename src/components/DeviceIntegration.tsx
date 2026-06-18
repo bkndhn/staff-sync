@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Cpu, Wifi, WifiOff, Upload, Download, FileSpreadsheet, Settings2,
   CheckCircle2, AlertTriangle, Loader2, ChevronDown, ChevronRight,
   ExternalLink, Copy, Check, RefreshCw, Fingerprint, Server, Globe, MapPin
 } from 'lucide-react';
 import { customAlert } from './CustomDialog';
+import { locationService, type Location } from '../services/locationService';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface PunchRecord {
@@ -84,6 +85,11 @@ const DeviceIntegration: React.FC<DeviceIntegrationProps> = ({ onImportPunches }
   const [copied, setCopied] = useState<string | null>(null);
 
   const [bridgeExpanded, setBridgeExpanded] = useState(false);
+  const [locations, setLocations] = useState<Location[]>([]);
+
+  useEffect(() => {
+    locationService.getLocations().then(setLocations).catch(() => setLocations([]));
+  }, []);
 
   // ─── CSV Handling ───────────────────────────────────────────────────────────
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -354,14 +360,28 @@ LOCATION_NAME=${apiConfig.locationCode || ''}`;
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Location / Branch Code <span className="text-white/30">(optional)</span></label>
-              <input
-                type="text"
-                value={apiConfig.locationCode}
-                onChange={e => setApiConfig(c => ({ ...c, locationCode: e.target.value }))}
-                placeholder="e.g. BRANCH01 or leave empty for all"
-                className="input-premium text-sm"
-              />
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Location / Branch <span className="text-white/30">(optional)</span></label>
+              {locations.length > 0 ? (
+                <select
+                  value={apiConfig.locationCode}
+                  onChange={e => setApiConfig(c => ({ ...c, locationCode: e.target.value }))}
+                  className="input-premium text-sm w-full"
+                >
+                  <option value="">All locations</option>
+                  {locations.map(loc => (
+                    <option key={loc.id} value={loc.name}>{loc.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={apiConfig.locationCode}
+                  onChange={e => setApiConfig(c => ({ ...c, locationCode: e.target.value }))}
+                  placeholder="e.g. BRANCH01 or leave empty for all"
+                  className="input-premium text-sm"
+                />
+              )}
+              <p className="text-[10px] text-white/40 mt-1">{locations.length > 0 ? `${locations.length} configured location${locations.length === 1 ? '' : 's'} — leave empty to sync all.` : 'No locations configured yet. Add locations in Settings.'}</p>
             </div>
 
             <button
