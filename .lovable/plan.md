@@ -1,82 +1,101 @@
-# Break Management — Implementation Plan
+# Security Hardening & Auth Migration Plan
 
-A complete Break Management module integrated with Attendance, Payroll, Shift, Biometric Sync, and Dashboard.
+This is a large, multi-phase effort spanning documentation, UI, backend, and DevOps. I want to confirm scope and sequencing before writing code, because two of the items (Supabase Auth migration + edge-function API layer) are weeks of work that will break the app if rushed, and one (dep upgrades) needs your call on risk tolerance.
 
-## 1. Database (Supabase migration)
+---
 
-**New tables**
-- `break_types` — id, name, code (`lunch` | `tea` | `custom`), default_minutes, max_minutes, is_paid, is_active, sort_order
-- `break_events` — id, staff_id, staff_name, location, date, break_type_id, start_time, end_time, duration_minutes (generated), source (`web`|`mobile`|`biometric`|`manual`), device_label, is_violation, violation_reason, notes, created_by, created_at, updated_at
-- `break_policies` — id, location, designation_id (nullable), break_type_id, max_per_day, max_minutes_per_break, max_total_minutes_per_day, deduct_from_hours (bool), grace_minutes
+## Phase 1 — Deliverable now (low risk, ~1 turn)
 
-**Extends**
-- `attendance` → add `break_minutes int default 0`, `net_working_minutes int`
-- `punch_events.kind` accept `break_in` / `break_out` (no schema change — `kind` is text)
+### 1.1 Security audit report
+Create `SECURITY_AUDIT.md` at repo root listing all 25 `internal_id`s from the last request with:
+- Current status (all 25 are **ignored** — none code-fixable without the auth migration or vendor action)
+- Scanner name
+- One-paragraph justification tied to the custom-auth architecture (anon role hits Supabase; standard "authenticated only" RLS is inapplicable until Supabase Auth is in place)
+- Action owner: Lovable agent / user / Supabase vendor
 
-RLS: admin full, manager scoped to their location, staff read own + insert own break for self.
-Seed: Lunch (30m, paid=false), Tea (15m, paid=true), Custom (paid=true).
+### 1.2 In-app Security Findings page
+- New route `/security` (admin-only, gated in `Navigation.tsx`)
+- New component `src/components/SecurityFindings.tsx`
+- Reads findings from a new static JSON file `src/data/securityFindings.json` (seeded from the audit report — no live scan API exposed to client)
+- Features: search box filtering by `internal_id` / title / scanner; status badge (Open / Ignored / Fixed); expandable row with full justification; **"Copy justification" button** per row using `navigator.clipboard`
+- Admin-only via existing role gate in `App.tsx`
 
-## 2. Services (`src/services/`)
-- `breakTypeService.ts` — CRUD
-- `breakPolicyService.ts` — CRUD + resolve(staff)
-- `breakEventService.ts` — start/end/list/upsert/delete + violation evaluator + offline-queue (mirror `punchEventService`)
+---
 
-## 3. UI Components
-- `BreakControls.tsx` — Start/End buttons with break-type picker (used inside StaffPortal, FaceAttendance, QRAttendanceScanner)
-- `BreakManager.tsx` (Admin/HR) — table with filters (date, location, staff, type), inline edit/add/delete, export CSV/PDF
-- `BreakTypesSettings.tsx` + `BreakPoliciesSettings.tsx` in Settings
-- Dashboard widget `BreaksToday.tsx`: on-break-now list, total break minutes, avg duration, violation count
-- `BreakReports.tsx` — by employee / location / date range, with charts
+## Phase 2 — Migration plan document (no code, ~1 turn)
 
-## 4. Integrations
-- **Biometric / device-push edge function**: map device punch codes (configurable per device) to `break_in` / `break_out`, insert into `punch_events` and `break_events`
-- **Local bridge agent**: same mapping; pulls break punches from eSSL/ZKTeco "function key" events
-- **Attendance calc** (`salaryCalculations.ts` + `AttendanceTracker`): subtract unpaid break minutes from working hours; expose break columns
-- **Payroll**: late deduction logic already exists — extend to include "exceeded break minutes" as configurable deduction
+### 2.1 `AUTH_MIGRATION_PLAN.md`
+Step-by-step plan covering:
 
-## 5. Alerts & Audit
-- Toast + dashboard banner when break exceeds policy or end-of-shift reached with open break (auto-close + flag violation)
-- All add/edit/delete writes to existing `audit_logs` via `auditLogService`
+1. **Pre-flight**: enable Supabase Auth email/password, decide whether managers self-register or admin invites
+2. **User backfill script**: edge function `auth-migrate-users` that iterates `app_users`, calls `supabase.auth.admin.createUser({ email, email_confirm: true })`, and stores the new `auth.users.id` on `app_users.supabase_user_id`. Issue password-reset emails (existing bcrypt hashes aren't portable)
+3. **Profile bridge**: add `user_profiles` row keyed by `auth.users.id`, copy role + location
+4. **Role storage**: ensure `user_roles` table + `has_role()` SECURITY DEFINER function exists (per platform user-roles guide)
+5. **RLS rewrite per table** (staff, attendance, punch_events, breaks, leave_requests, advances, payroll_*, salary_*, face_*, locations_device_config): policies use `auth.uid()` + `has_role()` + location-scoped manager rule
+6. **GRANT changes**: revoke from `anon`, grant to `authenticated`
+7. **Client cutover**: replace custom `Login.tsx` flow with `supabase.auth.signInWithPassword`; replace `app_sessions` token plumbing with `supabase.auth.getSession()`
+8. **Edge function cutover**: every function switches from `x-session-token` validation to `getClaims()`
+9. **Decommission**: drop `app_sessions`; archive `app_users` (keep 30 days); remove `auth-login`/`auth-create-user` functions
+10. **Verification checklist**: re-run security scan, expect public_exposure findings to clear
 
-## 6. Role-based permissions
-- Admin: full
-- Manager: full within own location(s)
-- Staff: start/end own break only; read own history
+---
 
-## 7. Files to create / edit
+## Phase 3 — Edge-function API layer (high effort, needs your go-ahead)
 
-```text
-NEW  supabase/migrations/<ts>_break_management.sql
-NEW  src/services/breakTypeService.ts
-NEW  src/services/breakPolicyService.ts
-NEW  src/services/breakEventService.ts
-NEW  src/components/BreakControls.tsx
-NEW  src/components/BreakManager.tsx
-NEW  src/components/BreakTypesSettings.tsx
-NEW  src/components/BreakPoliciesSettings.tsx
-NEW  src/components/BreakReports.tsx
-NEW  src/components/dashboard/BreaksToday.tsx
-EDIT src/components/StaffPortal.tsx          (add BreakControls)
-EDIT src/components/FaceAttendance.tsx       (break mode)
-EDIT src/components/QRAttendanceScanner.tsx  (break mode)
-EDIT src/components/AttendanceTracker.tsx    (break col + net hours)
-EDIT src/components/Dashboard.tsx            (BreaksToday widget)
-EDIT src/components/Settings.tsx             (break types/policies tabs)
-EDIT src/components/Navigation.tsx + App.tsx (Break Manager route)
-EDIT src/utils/salaryCalculations.ts         (subtract unpaid breaks)
-EDIT supabase/functions/device-push/index.ts (break_in/out mapping)
-EDIT local-bridge-agent/index.js             (break code mapping)
-EDIT src/types/index.ts                      (BreakType, BreakEvent, BreakPolicy)
-```
+Goal: stop the browser from talking to Postgres directly for sensitive tables, so we can revoke `anon` grants without waiting for the full auth migration.
 
-## 8. Rollout order
-1. Migration + seed + types
-2. Services + offline queue
-3. Staff-facing BreakControls (web/mobile)
-4. Admin BreakManager + Settings
-5. Attendance/payroll integration
-6. Device-push + bridge mapping
-7. Dashboard widget + reports + alerts
-8. Audit + RBAC verification
+### 3.1 New shared helper
+`supabase/functions/_shared/session.ts` — validates `x-session-token` against `app_sessions` and returns `{ userId, role, locationId }`. Used by every protected function.
 
-This is a large module (~15 new files, ~10 edits, 1 migration). Approve and I'll build it end-to-end in this task.
+### 3.2 New edge functions (one per resource)
+- `staff-api` (GET list/get, POST create, PATCH update, DELETE)
+- `attendance-api`
+- `punch-events-api`
+- `breaks-api`
+- `leave-api`
+- `advances-api`
+- `payroll-api`
+- `salary-api`
+- `face-api`
+
+Each function:
+- Validates session
+- Enforces role: admin = all locations; manager = own `location_id` only
+- Uses `supabaseAdmin` (service role) internally for the actual DB call
+- Returns sanitized rows
+
+### 3.3 Client refactor
+Rewrite every service in `src/services/*` to call `supabase.functions.invoke('<resource>-api', ...)` instead of `supabase.from('<table>')`.
+
+### 3.4 Lock down database
+Migration that `REVOKE ALL ... FROM anon` on all sensitive tables, leaves `SELECT` only on truly public ones.
+
+**Reality check**: this is ~25-30 service files and ~9 edge functions of work — a multi-day effort. If we do this *and then* the full auth migration in Phase 2, we'll be redoing it. **Recommendation**: skip Phase 3 and go straight to Phase 2 (Supabase Auth + RLS), which solves the same problem in a way the platform supports natively.
+
+---
+
+## Phase 4 — Dependency upgrade workflow
+
+### 4.1 GitHub Action `.github/workflows/security-upgrades.yml`
+- Weekly cron + manual dispatch
+- Runs `bun audit --json`, uploads as artifact
+- Runs `bunx npm-check-updates -u --target minor` for minor/patch bumps only
+- Runs `bun install && bun run build` to verify
+- Opens PR with the changes (uses `peter-evans/create-pull-request`)
+- Major bumps stay manual to avoid breaking changes
+
+### 4.2 Re-run security scan
+After upgrades land, call the scanner and write a delta report to `SECURITY_AUDIT.md` (`## Scan Delta YYYY-MM-DD` section).
+
+**Caveat**: I can write the workflow, but I cannot merge PRs or wait a week for cron. The first run only happens once you push to GitHub. I can run `bun audit` + targeted upgrades **right now** in-sandbox as a one-shot, then commit the workflow for ongoing runs.
+
+---
+
+## Questions before I proceed
+
+1. **Phase 3**: do you want the edge-function API layer (weeks of churn, throwaway work) **or** skip it and jump to Phase 2 Supabase Auth migration?
+2. **Phase 2 execution**: do you want me to start *implementing* the migration in this same task, or only deliver the `AUTH_MIGRATION_PLAN.md` document for review first? (Implementing it touches every screen.)
+3. **Phase 4 immediate run**: should I run `bun audit` + minor/patch upgrades right now as part of this task, or only commit the workflow?
+4. **In-app Security page**: admin-only, or should managers also see it (read-only)?
+
+Once you answer, I'll execute. If you want me to just "do everything sensible", I'll: ship Phase 1 + Phase 2 doc + Phase 4 workflow + immediate dep upgrade run, and **defer** Phase 3 in favor of the real auth migration.
