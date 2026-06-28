@@ -1,0 +1,86 @@
+name: Security Upgrades
+
+on:
+  schedule:
+    - cron: '0 3 * * 1' # Weekly: Mondays 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Upgrade target (minor or patch)'
+        required: false
+        default: 'minor'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  audit-and-upgrade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Audit (before)
+        id: audit_before
+        run: |
+          mkdir -p .security
+          bun audit --json > .security/audit-before.json || true
+          echo "Audit (before):"
+          bun audit || true
+
+      - name: Upgrade minor/patch
+        run: |
+          bunx --bun npm-check-updates -u --target ${{ github.event.inputs.target || 'minor' }}
+          bun install
+
+      - name: Audit (after)
+        run: |
+          bun audit --json > .security/audit-after.json || true
+          echo "Audit (after):"
+          bun audit || true
+
+      - name: Build verification
+        run: bun run build
+
+      - name: Upload audit artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit-${{ github.run_id }}
+          path: .security/
+
+      - name: Compute diff summary
+        id: diff
+        run: |
+          {
+            echo "## Dependency upgrade summary"
+            echo ""
+            echo "Target: ${{ github.event.inputs.target || 'minor' }}"
+            echo ""
+            echo "### package.json diff"
+            echo '```diff'
+            git diff -- package.json || true
+            echo '```'
+          } > .security/PR_BODY.md
+          cat .security/PR_BODY.md
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: chore/security-upgrades
+          title: 'chore(deps): weekly security upgrades'
+          body-path: .security/PR_BODY.md
+          commit-message: 'chore(deps): weekly security upgrades'
+          delete-branch: true
+          labels: |
+            security
+            dependencies
+            automated

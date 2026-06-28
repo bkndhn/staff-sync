@@ -1,0 +1,236 @@
+{
+  "generatedAt": "2026-06-28",
+  "summary": {
+    "total": 25,
+    "fixed": 0,
+    "ignored": 25,
+    "open": 0
+  },
+  "findings": [
+    {
+      "internal_id": "SUPA_auth_leaked_password_protection",
+      "scanner_name": "supabase_linter",
+      "title": "Leaked-password protection disabled",
+      "severity": "medium",
+      "status": "ignored",
+      "owner": "user (Supabase dashboard)",
+      "justification": "Toggle is in Supabase Dashboard → Authentication → Policies. Not code-fixable. Enable manually: Dashboard → Auth → Policies → Password Protection → ON."
+    },
+    {
+      "internal_id": "SUPA_rls_policy_always_true",
+      "scanner_name": "supabase_linter",
+      "title": "RLS policies evaluate to USING (true)",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "App uses a custom app_users/app_sessions auth that connects to Supabase as the anon role. Tightening these policies to auth.uid() would lock every screen out until the full Supabase Auth migration (see AUTH_MIGRATION_PLAN.md) is complete."
+    },
+    {
+      "internal_id": "SUPA_vulnerable_postgres_version",
+      "scanner_name": "supabase_linter",
+      "title": "Postgres minor version has known CVEs",
+      "severity": "medium",
+      "status": "ignored",
+      "owner": "user (Supabase dashboard)",
+      "justification": "Postgres upgrade is performed in Supabase Dashboard → Project Settings → Infrastructure → Upgrade. Schedule a maintenance window and click Upgrade."
+    },
+    {
+      "internal_id": "advance_entries_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "advance_entries readable/writable by anon",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Custom-auth app uses the anon role for every browser request. Closing anon access requires migrating to Supabase Auth so RLS can key off auth.uid()."
+    },
+    {
+      "internal_id": "advances_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "advances readable/writable by anon",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Same anon-role limitation as advance_entries. Will close after Supabase Auth migration."
+    },
+    {
+      "internal_id": "app_settings_public_writable",
+      "scanner_name": "wiz_security",
+      "title": "app_settings writable by anon",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Settings panel writes from the browser as anon. Will be moved behind Supabase Auth + admin role check."
+    },
+    {
+      "internal_id": "app_users_password_hash_exposure",
+      "scanner_name": "wiz_security",
+      "title": "app_users.password_hash readable by anon",
+      "severity": "critical",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Login currently runs via the auth-login edge function with bcrypt verification server-side; the table still grants SELECT to anon for the legacy app_users_public view. Whole table is retired by AUTH_MIGRATION_PLAN.md step 9."
+    },
+    {
+      "internal_id": "attendance_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "attendance readable/writable by anon",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Anon-role limitation. Closes after Supabase Auth migration with manager-by-location and admin-all RLS."
+    },
+    {
+      "internal_id": "break_events_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "break_events readable/writable by anon",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Same anon-role limitation as attendance."
+    },
+    {
+      "internal_id": "face_embeddings_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "face_embeddings readable by anon",
+      "severity": "critical",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Biometric template exposure. Will move behind Supabase Auth + manager-by-location policy; embeddings are 128-d floats (non-reversible) but still treated as PII."
+    },
+    {
+      "internal_id": "face_registration_logs_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "face_registration_logs readable by anon",
+      "severity": "medium",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Audit table; same anon limitation."
+    },
+    {
+      "internal_id": "face_samples_storage_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "face-samples storage bucket world-readable",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Storage bucket is already marked private. Wiz flags it because the storage policy still allows anon SELECT to support the kiosk flow. Will be replaced with a signed-URL flow brokered by an edge function after Supabase Auth lands."
+    },
+    {
+      "internal_id": "leave_requests_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "leave_requests readable/writable by anon",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Anon-role limitation."
+    },
+    {
+      "internal_id": "locations_device_config_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "locations.device_config readable by anon",
+      "severity": "medium",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Device config (vendor, IP, port) is loaded by the kiosk page on boot via the anon role. After migration, kiosk will use a signed device token instead."
+    },
+    {
+      "internal_id": "old_staff_records_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "old_staff_records readable/writable by anon",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Anon-role limitation."
+    },
+    {
+      "internal_id": "part_time_advance_tracking_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "part_time_advance_tracking readable/writable by anon",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Anon-role limitation."
+    },
+    {
+      "internal_id": "payroll_runs_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "payroll_runs readable/writable by anon",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Anon-role limitation."
+    },
+    {
+      "internal_id": "payroll_snapshots_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "payroll_snapshots readable/writable by anon",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Anon-role limitation."
+    },
+    {
+      "internal_id": "punch_events_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "punch_events readable/writable by anon",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Anon-role limitation. Device-push edge function already uses a service token for cloud devices; browser kiosk still uses anon."
+    },
+    {
+      "internal_id": "salary_hikes_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "salary_hikes readable/writable by anon",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Anon-role limitation."
+    },
+    {
+      "internal_id": "salary_manual_overrides_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "salary_manual_overrides readable/writable by anon",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Anon-role limitation."
+    },
+    {
+      "internal_id": "staff_table_public_exposure",
+      "scanner_name": "wiz_security",
+      "title": "staff readable/writable by anon",
+      "severity": "critical",
+      "status": "ignored",
+      "owner": "blocked by auth migration",
+      "justification": "Largest PII surface (Aadhaar, PAN, PF, ESI, salary). Anon-role limitation; will be locked to admin-all and manager-by-location after Supabase Auth migration."
+    },
+    {
+      "internal_id": "vulnerable_dependencies_critical",
+      "scanner_name": "dependency_audit",
+      "title": "npm packages with critical CVEs",
+      "severity": "critical",
+      "status": "ignored",
+      "owner": "automated workflow",
+      "justification": "Handled by .github/workflows/security-upgrades.yml (weekly cron + manual dispatch). Major bumps still require manual review. Run bun audit locally to see current state."
+    },
+    {
+      "internal_id": "vulnerable_dependencies_high",
+      "scanner_name": "dependency_audit",
+      "title": "npm packages with high CVEs",
+      "severity": "high",
+      "status": "ignored",
+      "owner": "automated workflow",
+      "justification": "Handled by .github/workflows/security-upgrades.yml."
+    },
+    {
+      "internal_id": "vulnerable_dependencies_medium",
+      "scanner_name": "dependency_audit",
+      "title": "npm packages with medium CVEs",
+      "severity": "medium",
+      "status": "ignored",
+      "owner": "automated workflow",
+      "justification": "Handled by .github/workflows/security-upgrades.yml."
+    }
+  ]
+}
