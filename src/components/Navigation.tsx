@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
   X,
   ShieldAlert,
+  Shield,
   TrendingUp,
   Coffee,
 } from 'lucide-react';
@@ -53,6 +54,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
         { id: 'Old Staff Records' as NavigationTab, label: 'Archive', icon: Archive },
         { id: 'Audit Log' as NavigationTab, label: 'Audit Log', icon: ShieldAlert },
+        { id: 'Security' as NavigationTab, label: 'Security', icon: Shield },
         { id: 'Settings' as NavigationTab, label: 'Settings', icon: SettingsIcon },
       ];
     }
