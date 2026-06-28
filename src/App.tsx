@@ -39,6 +39,7 @@ const LeaveManagement = React.lazy(() => import('./components/LeaveManagement'))
 const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
+const SecurityFindings = React.lazy(() => import('./components/SecurityFindings'));
 
 
 // ─── Prefetch all lazy chunks in the background after login ───────────────────
@@ -205,7 +206,7 @@ function App() {
     const validForRole = (tab: NavigationTab | null): boolean => {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
-      if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal';
+      if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security';
       return tab !== 'My Portal';
     };
     if (validForRole(saved)) {
@@ -1070,6 +1071,15 @@ function App() {
         return (
           <ErrorBoundary moduleName="Audit Log">
             <AuditLogViewer currentUserEmail={user?.email || ''} />
+          </ErrorBoundary>
+        );
+      case 'Security':
+        if (user?.role !== 'admin') return null;
+        return (
+          <ErrorBoundary moduleName="Security">
+            <Suspense fallback={<div className="p-6 text-sm text-gray-500">Loading…</div>}>
+              <SecurityFindings />
+            </Suspense>
           </ErrorBoundary>
         );
       default:
