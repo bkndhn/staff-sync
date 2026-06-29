@@ -1,3 +1,5 @@
 project_id = "nsmppwnpdxomjmgrtqka"
 [functions.device-push]
 verify_jwt = false
+[functions.data-api]
+verify_jwt = false
