@@ -7,20 +7,20 @@ export default {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
       colors: {
-        // Premium Dark Theme Colors
+        // Premium Blue/White Theme
         dark: {
-          primary: '#0f0f1a',
-          secondary: '#1a1a2e',
-          tertiary: '#16213e',
+          primary: '#0B1220',
+          secondary: '#111a2e',
+          tertiary: '#17223b',
         },
         accent: {
-          primary: '#667eea',
-          secondary: '#764ba2',
-          success: '#38ef7d',
-          warning: '#fbbf24',
-          danger: '#ff416c',
-          info: '#4facfe',
-          purple: '#a855f7',
+          primary: '#3B82F6',
+          secondary: '#2563EB',
+          success: '#22C55E',
+          warning: '#F59E0B',
+          danger: '#EF4444',
+          info: '#60A5FA',
+          purple: '#3B82F6',
         },
       },
       animation: {
