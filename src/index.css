@@ -68,42 +68,42 @@
    LIGHT THEME OVERRIDE (Material 3 Light)
    ============================================ */
 body.light-theme {
-  --bg-primary: #FEF7FF; /* Material 3 Light Surface */
-  --bg-secondary: #F3EDF7; /* Surface Variant */
-  --bg-tertiary: #E8DEF8;
+  --bg-primary: #F8FAFC; /* Slate 50 */
+  --bg-secondary: #EEF2F7;
+  --bg-tertiary: #E2E8F0;
   --bg-card: #FFFFFF;
-  --bg-card-hover: #F9F9F9;
+  --bg-card-hover: #F5F8FC;
 
   /* Text Colors */
-  --text-primary: #1C1B1F;
-  --text-secondary: #49454F;
-  --text-muted: #79747E;
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
 
   /* Solid Colors */
-  --primary-gradient: #6750A4; /* Material Primary Light */
-  --success-gradient: #146C2E;
-  --warning-gradient: #7D5260;
-  --danger-gradient: #B3261E;
-  --info-gradient: #0061A4;
-  --purple-gradient: #6750A4;
+  --primary-gradient: #2563EB; /* Blue-600 */
+  --success-gradient: #16A34A;
+  --warning-gradient: #D97706;
+  --danger-gradient: #DC2626;
+  --info-gradient: #0284C7;
+  --purple-gradient: #2563EB;
 
-  /* Button text colors for light mode (dark button = light text) */
+  /* Button text */
   --on-primary: #FFFFFF;
   --on-success: #FFFFFF;
   --on-danger: #FFFFFF;
 
-  /* Surface Enhancements */
+  /* Surfaces */
   --glass-bg: #FFFFFF;
-  --glass-bg-strong: #F3EDF7;
-  --glass-border: #E7E0EC;
-  --glass-border-strong: #CAC4D0;
+  --glass-bg-strong: #F1F5F9;
+  --glass-border: #E2E8F0;
+  --glass-border-strong: #CBD5E1;
 
-  /* Shadows - Lighter for light theme */
-  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
-  --shadow-strong: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
-  --shadow-glow-primary: 0 4px 12px rgba(103, 80, 164, 0.2);
-  --shadow-glow-success: 0 4px 12px rgba(20, 108, 46, 0.2);
+  /* Shadows */
+  --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --shadow-medium: 0 4px 10px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.05);
+  --shadow-strong: 0 12px 24px rgba(15, 23, 42, 0.10), 0 4px 8px rgba(15, 23, 42, 0.06);
+  --shadow-glow-primary: 0 4px 16px rgba(37, 99, 235, 0.20);
+  --shadow-glow-success: 0 4px 16px rgba(22, 163, 74, 0.20);
 }
 
 /* Light theme border overrides */
