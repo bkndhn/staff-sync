@@ -1272,8 +1272,7 @@ option {
    ============================================ */
 .section-card {
   background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-medium);
   border: 1px solid var(--glass-border);
   border-radius: 20px;
   overflow: hidden;
