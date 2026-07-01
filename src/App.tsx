@@ -1145,9 +1145,9 @@ function App() {
         toggleTheme={toggleTheme}
       />
       <main
-        className="w-full px-4 sm:px-6 lg:px-8 flex-1 pb-24 md:pb-8 md:pt-20"
-        style={{ marginLeft: 'var(--sidebar-w, 0px)' }}
+        className="w-full px-4 sm:px-6 lg:px-8 flex-1 pb-24 md:pb-8 md:pt-20 ml-0 md:ml-[var(--sidebar-w,232px)] transition-[margin] duration-200"
       >
+
         <ErrorBoundary moduleName={activeTab}>
           {renderContent()}
         </ErrorBoundary>
