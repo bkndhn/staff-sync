@@ -1,23 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationTab, User } from '../types';
 import {
-  BarChart3,
-  Users,
-  Calendar,
-  DollarSign,
-  Clock,
-  Archive,
-  LogOut,
-  AlertTriangle,
-  Settings as SettingsIcon,
-  FileText,
-  ScanFace,
-  MoreHorizontal,
-  X,
-  ShieldAlert,
-  Shield,
-  TrendingUp,
-  Coffee,
+  BarChart3, Users, Calendar, DollarSign, Clock, Archive, LogOut,
+  AlertTriangle, Settings as SettingsIcon, FileText, ScanFace,
+  ShieldAlert, Shield, TrendingUp, Coffee, Sun, Moon,
+  PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { SyncBadge } from './SyncBadge';
 
@@ -26,20 +13,32 @@ interface NavigationProps {
   setActiveTab: (tab: NavigationTab) => void;
   user: User;
   onLogout: () => void;
+  isDarkTheme?: boolean;
+  toggleTheme?: () => void;
 }
 
-const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, onLogout }) => {
+const Navigation: React.FC<NavigationProps> = ({
+  activeTab, setActiveTab, user, onLogout, isDarkTheme = true, toggleTheme,
+}) => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem('sidebarCollapsed') === '1'; } catch { return false; }
+  });
 
-  const handleLogoutClick = () => setShowLogoutModal(true);
-  const handleLogoutConfirm = () => { setShowLogoutModal(false); onLogout(); };
-  const handleLogoutCancel = () => setShowLogoutModal(false);
+  useEffect(() => {
+    try { localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0'); } catch {}
+    document.documentElement.style.setProperty('--sidebar-w', collapsed ? '68px' : '232px');
+  }, [collapsed]);
+
+  useEffect(() => {
+    // Initialize CSS var on mount
+    document.documentElement.style.setProperty('--sidebar-w', collapsed ? '68px' : '232px');
+    return () => { document.documentElement.style.setProperty('--sidebar-w', '0px'); };
+  }, []);
 
   const getAvailableTabs = () => {
     if (user.role === 'staff') {
-      return [
-        { id: 'My Portal' as NavigationTab, label: 'My Portal', icon: Users },
-      ];
+      return [{ id: 'My Portal' as NavigationTab, label: 'My Portal', icon: Users }];
     }
     if (user.role === 'admin') {
       return [
@@ -58,7 +57,6 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
         { id: 'Settings' as NavigationTab, label: 'Settings', icon: SettingsIcon },
       ];
     }
-    // Manager
     return [
       { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
       { id: 'Workforce Insights' as NavigationTab, label: 'Insights', icon: TrendingUp },
@@ -71,70 +69,99 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
   };
 
   const tabs = getAvailableTabs();
-  const handleTabSelect = (tab: NavigationTab) => {
-    setActiveTab(tab);
-  };
+
+  const themeBtn = toggleTheme && (
+    <button
+      onClick={toggleTheme}
+      title={isDarkTheme ? 'Switch to light' : 'Switch to dark'}
+      className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-all"
+    >
+      {isDarkTheme ? <Sun size={18} /> : <Moon size={18} />}
+    </button>
+  );
+
+  const logoutBtn = (
+    <button
+      onClick={() => setShowLogoutModal(true)}
+      className="flex items-center gap-2 px-3 py-2 rounded-lg text-white/70 hover:text-red-400 hover:bg-red-500/10 transition-all"
+      title="Logout"
+    >
+      <LogOut size={18} />
+      <span className="text-sm hidden sm:inline">Logout</span>
+    </button>
+  );
 
   return (
     <>
-      {/* ── Desktop Navigation ─────────────────────────────────────────────── */}
-      <div className="hidden md:block nav-premium px-6 py-4 sticky top-0 z-50">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-8">
-            <h1 className="text-xl font-bold text-gradient">Staff Management</h1>
-            <nav className="flex items-center gap-1">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`nav-tab ${isActive ? 'nav-tab-active' : ''}`}
-                  >
-                    <Icon size={18} />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <SyncBadge />
-            <div className="text-right">
-              <div className="text-sm font-medium text-white">
-                {user.role === 'admin' ? 'Administrator' : user.role === 'staff' ? (user.staffName || 'Staff') : `${user.location} Manager`}
-              </div>
-              <div className="text-xs text-white/50">{user.role === 'staff' ? 'Staff Portal' : user.email}</div>
-            </div>
-            <button
-              onClick={handleLogoutClick}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-all"
-            >
-              <LogOut size={18} />
-              <span className="text-sm">Logout</span>
-            </button>
-          </div>
+      {/* ── Desktop/Tablet Sidebar ─────────────────────────────────────── */}
+      <aside
+        className={`hidden md:flex fixed top-0 left-0 h-screen z-40 flex-col nav-premium border-r border-white/10 transition-[width] duration-200 ${collapsed ? 'w-[68px]' : 'w-[232px]'}`}
+      >
+        <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'} px-3 h-16 border-b border-white/10`}>
+          {!collapsed && <span className="text-sm font-bold text-gradient truncate">Staff Mgmt</span>}
+          <button
+            onClick={() => setCollapsed(v => !v)}
+            className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-all"
+            title={collapsed ? 'Expand' : 'Collapse'}
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
+        <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                title={tab.label}
+                className={`w-full flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  isActive
+                    ? 'bg-blue-500/20 text-white shadow-sm'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                {!collapsed && <span className="truncate">{tab.label}</span>}
+              </button>
+            );
+          })}
+        </nav>
+        {!collapsed && (
+          <div className="p-3 border-t border-white/10 text-xs text-white/40 truncate">
+            {user.role === 'admin' ? 'Administrator' : user.role === 'staff' ? (user.staffName || 'Staff') : `${user.location} Manager`}
+          </div>
+        )}
+      </aside>
+
+      {/* ── Desktop/Tablet Top Bar (theme + logout, always visible) ────── */}
+      <div
+        className="hidden md:flex fixed top-0 right-0 h-16 z-30 items-center justify-end gap-2 px-4 nav-premium border-b border-white/10"
+        style={{ left: 'var(--sidebar-w, 232px)' }}
+      >
+        <SyncBadge />
+        <div className="text-right hidden lg:block mr-2">
+          <div className="text-xs font-medium text-white/80 leading-tight">
+            {user.role === 'admin' ? 'Administrator' : user.role === 'staff' ? (user.staffName || 'Staff') : `${user.location} Manager`}
+          </div>
+          <div className="text-[10px] text-white/40">{user.role === 'staff' ? 'Staff Portal' : user.email}</div>
+        </div>
+        {themeBtn}
+        {logoutBtn}
       </div>
 
-      {/* ── Mobile Top Bar ─────────────────────────────────────────────────── */}
-      <nav className="md:hidden sticky top-0 z-50 px-3 py-2.5 nav-premium">
-        <div className="flex items-center justify-between">
-          <h1 className="text-base font-bold text-gradient truncate max-w-[140px]">Staff Management</h1>
-          <div className="flex items-center gap-2">
+      {/* ── Mobile Top Bar ─────────────────────────────────────────────── */}
+      <nav className="md:hidden sticky top-0 z-50 px-3 py-2.5 nav-premium border-b border-white/10">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-base font-bold text-gradient truncate">Staff Mgmt</h1>
+          <div className="flex items-center gap-1">
             <SyncBadge />
-            <div className="text-right hidden sm:block">
-              <div className="text-[10px] font-bold text-white/40 uppercase tracking-tight">
-                {user.role === 'admin' ? 'Role' : user.role === 'staff' ? 'Staff' : 'Location'}
-              </div>
-              <div className="text-xs font-semibold text-white">
-                {user.role === 'admin' ? 'Admin' : user.role === 'staff' ? (user.staffName || 'Staff') : user.location}
-              </div>
-            </div>
+            {themeBtn}
             <button
-              onClick={handleLogoutClick}
-              className="p-2 text-white/50 hover:text-red-400 rounded-lg transition-all duration-200 active:scale-90 bg-red-500/10"
+              onClick={() => setShowLogoutModal(true)}
+              className="p-2 text-white/60 hover:text-red-400 rounded-lg bg-red-500/10"
+              title="Logout"
             >
               <LogOut size={16} />
             </button>
@@ -142,34 +169,27 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
         </div>
       </nav>
 
-      {/* ── Mobile Bottom Navigation ───────────────────────────────────────── */}
+      {/* ── Mobile Bottom Navigation ───────────────────────────────────── */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 mobile-nav safe-area-padding overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <style>{`.mobile-nav::-webkit-scrollbar { display: none; }`}</style>
         <div className="flex items-end px-2 pt-2 pb-2 w-max min-w-full justify-around gap-2" style={{ minHeight: '68px' }}>
-          {tabs.map((tab) => {
+          {tabs.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => handleTabSelect(tab.id)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`mobile-nav-item flex-shrink-0 min-w-[60px] ${isActive ? 'mobile-nav-item-active' : ''}`}
               >
-                <Icon
-                  size={22}
-                  className={`transition-all duration-300 ${isActive ? 'text-white' : 'text-white/50'}`}
-                  strokeWidth={isActive ? 2.5 : 2}
-                />
-                <span className={`text-[10px] font-semibold mt-1 transition-all duration-300 ${isActive ? 'text-white' : 'text-white/50'}`}>
-                  {tab.label}
-                </span>
+                <Icon size={22} className={`transition-all ${isActive ? 'text-white' : 'text-white/50'}`} strokeWidth={isActive ? 2.5 : 2} />
+                <span className={`text-[10px] font-semibold mt-1 ${isActive ? 'text-white' : 'text-white/50'}`}>{tab.label}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* ── Logout Confirmation Modal ───────────────────────────────────────── */}
       {showLogoutModal && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -182,10 +202,10 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user, 
                 <p className="text-white/50 text-sm">You'll need to sign in again</p>
               </div>
             </div>
-            <p className="text-white/70 mb-6">Are you sure you want to logout from the Staff Management System?</p>
+            <p className="text-white/70 mb-6">Are you sure you want to logout?</p>
             <div className="flex gap-3">
-              <button onClick={handleLogoutCancel} className="flex-1 btn-ghost">Cancel</button>
-              <button onClick={handleLogoutConfirm} className="flex-1 btn-premium btn-premium-danger">Logout</button>
+              <button onClick={() => setShowLogoutModal(false)} className="flex-1 btn-ghost">Cancel</button>
+              <button onClick={() => { setShowLogoutModal(false); onLogout(); }} className="flex-1 btn-premium btn-premium-danger">Logout</button>
             </div>
           </div>
         </div>
