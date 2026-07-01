@@ -1141,12 +1141,18 @@ function App() {
         setActiveTab={setActiveTab}
         user={user}
         onLogout={handleLogout}
+        isDarkTheme={isDarkTheme}
+        toggleTheme={toggleTheme}
       />
-      <main className="w-full px-4 sm:px-6 lg:px-8 flex-1">
+      <main
+        className="w-full px-4 sm:px-6 lg:px-8 flex-1 pb-24 md:pb-8 md:pt-20"
+        style={{ marginLeft: 'var(--sidebar-w, 0px)' }}
+      >
         <ErrorBoundary moduleName={activeTab}>
           {renderContent()}
         </ErrorBoundary>
       </main>
+
 
       {salaryHikeModal && (
         <SalaryHikeModal
