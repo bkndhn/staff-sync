@@ -127,14 +127,13 @@ body.light-theme .divide-white\/10>*+* {
   border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Light theme body background */
+/* Light theme body background - clean premium blue-white */
 body.light-theme {
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+  background: #F8FAFC;
 }
 
 body.light-theme::before {
-  background: radial-gradient(ellipse at top left, rgba(102, 126, 234, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom right, rgba(168, 85, 247, 0.08) 0%, transparent 50%);
+  background: none;
 }
 
 /* Light theme text color overrides */
