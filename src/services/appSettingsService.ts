@@ -8,7 +8,10 @@ import { dataApi } from '../lib/dataApi';
 const USE_DATA_API =
   (import.meta.env.VITE_USE_DATA_API_APP_SETTINGS ?? '1') !== '0';
 
-const client = () => (USE_DATA_API ? dataApi : supabase);
+// Both clients expose the same chainable surface used below (.from().select().eq().maybeSingle().upsert().in()).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const client = (): any => (USE_DATA_API ? dataApi : supabase);
+
 
 export const appSettingsService = {
   async getSetting(key: string): Promise<string | null> {
