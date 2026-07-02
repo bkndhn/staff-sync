@@ -691,7 +691,11 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Breaks widget moved to bottom */}
+      <BreaksDashboardWidget location={userRole === 'manager' ? userLocation : undefined} />
     </div>
+
   );
 };
 
