@@ -1164,7 +1164,30 @@ option {
     font-size: 1.25rem !important;
     font-weight: 600;
   }
+
+  /* ── Mobile safety net: any bare table becomes horizontally scrollable ── */
+  .glass-card table,
+  .glass-card-static table,
+  .section-body table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  /* Prevent horizontal page overflow from wide flex/grid rows */
+  main, .glass-card, .glass-card-static, .section-body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  .table-container { overflow-x: auto; }
+
+  /* Modal bodies scroll instead of clipping */
+  .modal-content > * { max-width: 100%; }
+  .modal-content form,
+  .modal-content .grid { grid-template-columns: 1fr !important; }
 }
+
 
 @media screen and (max-width: 480px) {
   .page-title {
