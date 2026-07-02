@@ -265,8 +265,8 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="p-1 md:p-6 space-y-6">
-      <BreaksDashboardWidget location={userRole === 'manager' ? userLocation : undefined} />
       {/* Header */}
+
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="stat-icon stat-icon-primary shrink-0">
@@ -691,7 +691,11 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Breaks widget moved to bottom */}
+      <BreaksDashboardWidget location={userRole === 'manager' ? userLocation : undefined} />
     </div>
+
   );
 };
 
