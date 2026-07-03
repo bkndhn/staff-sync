@@ -96,6 +96,28 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(false);
   };
 
+  const handleStatutorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    await new Promise(r => setTimeout(r, 250));
+
+    const enteredUser = email.trim().toLowerCase();
+    if (enteredUser !== STATUTORY_USERNAME.toLowerCase() || password !== STATUTORY_PASSWORD) {
+      setError('Invalid statutory credentials.');
+      setLoading(false);
+      return;
+    }
+    const session = {
+      user: { email: STATUTORY_USERNAME, role: 'statutory' },
+      expiresAt: Date.now() + (12 * 60 * 60 * 1000),
+    };
+    localStorage.setItem('staffManagementLogin', JSON.stringify(session));
+    onLogin({ email: STATUTORY_USERNAME, role: 'statutory' });
+    setLoading(false);
+  };
+
+
   const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
