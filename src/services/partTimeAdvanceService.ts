@@ -1,8 +1,12 @@
-import { supabase } from '../lib/supabase';
+import { dataApi } from '../lib/dataApi';
 import { PartTimeAdvanceRecord } from '../types';
 
+// Routed through the session-validated `data-api` edge function; direct anon
+// access to `part_time_advance_tracking` has been revoked at the database level.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const api: any = dataApi;
+
 export const partTimeAdvanceService = {
-    // Get advance record for a specific week
     async getRecord(
         staffName: string,
         location: string,
@@ -10,7 +14,7 @@ export const partTimeAdvanceService = {
         month: number,
         weekNumber: number
     ): Promise<PartTimeAdvanceRecord | null> {
-        const { data, error } = await supabase
+        const { data, error } = await api
             .from('part_time_advance_tracking')
             .select('*')
             .eq('staff_name', staffName)
@@ -28,7 +32,6 @@ export const partTimeAdvanceService = {
         return data ? this.mapFromDatabase(data) : null;
     },
 
-    // Get previous week's closing balance (opening balance for current week)
     async getOpeningBalance(
         staffName: string,
         location: string,
@@ -36,85 +39,41 @@ export const partTimeAdvanceService = {
         month: number,
         weekNumber: number
     ): Promise<number> {
-        // Logic to find previous week
         const prevWeek = weekNumber - 1;
-        let prevMonth = month;
-        let prevYear = year;
 
-        if (prevWeek < 0) {
-            // Go to last week of previous month
-            prevMonth = month - 1;
-            if (prevMonth < 0) {
-                prevMonth = 11;
-                prevYear = year - 1;
-            }
-            // We generally assume 4 or 5 weeks. safer to check the latest record for that month?
-            // Or simply query for the *latest* record before this date.
-            // A better approach for simplified week logic:
-            // Just query order by year desc, month desc, week_number desc limit 1
-            // where date < current_week_date
-
-            const { data, error } = await supabase
-                .from('part_time_advance_tracking')
-                .select('closing_balance')
-                .eq('staff_name', staffName)
-                .eq('location', location)
-                .or(`year.lt.${year},and(year.eq.${year},month.lt.${month}),and(year.eq.${year},month.eq.${month},week_number.lt.${weekNumber})`)
-                .order('year', { ascending: false })
-                .order('month', { ascending: false })
-                .order('week_number', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            if (error || !data) return 0;
-            return data.closing_balance || 0;
+        if (prevWeek >= 0) {
+            const prevRecord = await this.getRecord(staffName, location, year, month, prevWeek);
+            return prevRecord?.closingBalance || 0;
         }
 
-        const prevRecord = await this.getRecord(staffName, location, prevYear, prevMonth, prevWeek);
-        return prevRecord?.closingBalance || 0;
+        // Need the most recent record strictly before (year, month, weekNumber).
+        // dataApi doesn't support `.or()`, so we pull recent rows for this staff
+        // + location and filter client-side. Volume is tiny (weekly ledger rows).
+        const { data, error } = await api
+            .from('part_time_advance_tracking')
+            .select('year, month, week_number, closing_balance')
+            .eq('staff_name', staffName)
+            .eq('location', location)
+            .order('year', { ascending: false })
+            .limit(50);
+
+        if (error || !data) return 0;
+
+        const rank = (y: number, m: number, w: number) => y * 10000 + m * 100 + w;
+        const currentRank = rank(year, month, weekNumber);
+        const previous = (data as Array<{ year: number; month: number; week_number: number; closing_balance: number }>)
+            .filter(r => rank(r.year, r.month, r.week_number) < currentRank)
+            .sort((a, b) =>
+                rank(b.year, b.month, b.week_number) - rank(a.year, a.month, a.week_number)
+            )[0];
+
+        return previous?.closing_balance || 0;
     },
 
-    // Save or update a record
     async upsert(record: Omit<PartTimeAdvanceRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<PartTimeAdvanceRecord | null> {
-        // Recalculate balances to ensure integrity
         const openingBalance = record.openingBalance;
         const advanceGiven = record.advanceGiven;
         const earnings = record.earnings;
-
-        // Logic from requirements:
-        // adjustment = min(advanceGiven, earnings) ?? Wait, no.
-        // Scenario 1: Earned 1000, Advance 1200. Taken 200 extra. 
-        // Adjustment needs to cover the earnings if advance is sufficient? 
-        // Or rather: Adjustment is how much of the salary is used to pay back advance?
-        // Let's stick to standard ledger logic:
-        // Net Due = (Opening Balance + Advance Given) - Earnings
-        // If Net Due > 0, then Closing Balance (Staff Owes) = Net Due, Pending Salary = 0
-        // If Net Due < 0, then Closing Balance = 0, Pending Salary (We Owe) = Math.abs(Net Due)
-
-        // User logic:
-        // S1: Earned 1000, Adv 1200. Extra 200. Carry 200.
-        // Opening=0. Adv=1200. Earn=1000. Total Due from Staff = 1200. Paid by work = 1000. Remaining Due = 200.
-        // Closing = 200. Pending = 0.
-
-        // S2: Earned 1000, Adv 800. Eligible 200.
-        // Opening=0. Adv=800. Earn=1000. Total Due from Staff = 800. Paid by work = 1000. 
-        // Remaining Due = -200 (We owe).
-        // Closing = 0. Pending = 200.
-
-        // General Formulae:
-        // Total Debt = Opening Balance + Advance Given
-        // Balance After Work = Total Debt - Earnings
-
-        // If Balance After Work > 0:
-        //   Closing Balance = Balance After Work
-        //   Pending Salary = 0
-        //   Adjustment (Amount deduced from salary) = Earnings
-
-        // If Balance After Work < 0:
-        //   Closing Balance = 0
-        //   Pending Salary = Math.abs(Balance After Work)
-        //   Adjustment (Amount deduced from salary) = Total Debt (we recovered everything they owed)
-
 
         const totalDebt = openingBalance + advanceGiven;
         const balanceAfterWork = totalDebt - earnings;
@@ -142,22 +101,20 @@ export const partTimeAdvanceService = {
             week_number: record.weekNumber,
             opening_balance: openingBalance,
             advance_given: advanceGiven,
-            earnings: earnings,
-            adjustment: adjustment,
+            earnings,
+            adjustment,
             pending_salary: pendingSalary,
             closing_balance: closingBalance,
             notes: record.notes
         };
 
-        const { data, error } = await supabase
+        const { data, error } = await api
             .from('part_time_advance_tracking')
-            .upsert([dbRecord], {
-                onConflict: 'staff_name,location,year,month,week_number'
-            })
+            .upsert([dbRecord], { onConflict: 'staff_name,location,year,month,week_number' })
             .select()
             .single();
 
-        if (error) {
+        if (error || !data) {
             console.error('Error upserting part-time advance:', error);
             return null;
         }
@@ -165,13 +122,12 @@ export const partTimeAdvanceService = {
         return this.mapFromDatabase(data);
     },
 
-    // Get report data
     async getReport(
         staffName: string | undefined,
         startDate: string,
         endDate: string
     ): Promise<PartTimeAdvanceRecord[]> {
-        let query = supabase
+        let query = api
             .from('part_time_advance_tracking')
             .select('*')
             .gte('week_start_date', startDate)
@@ -184,12 +140,12 @@ export const partTimeAdvanceService = {
 
         const { data, error } = await query;
 
-        if (error) {
+        if (error || !data) {
             console.error('Error fetching advance report:', error);
             return [];
         }
 
-        return data.map(this.mapFromDatabase);
+        return (data as any[]).map(this.mapFromDatabase);
     },
 
     mapFromDatabase(dbRecord: any): PartTimeAdvanceRecord {
