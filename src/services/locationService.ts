@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { dataApi } from '../lib/dataApi';
 
 export interface Location {
     id: string;
@@ -9,9 +9,15 @@ export interface Location {
     last_sync_time?: string;
 }
 
+// All reads/writes to `locations` go through the session-validated `data-api`
+// edge function. Direct anon/authenticated access to this table has been
+// revoked to prevent public exposure of device IPs and connection strings.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const api: any = dataApi;
+
 export const locationService = {
     async getLocations(): Promise<Location[]> {
-        const { data, error } = await supabase
+        const { data, error } = await api
             .from('locations')
             .select('id, display_name, is_active, device_ip, device_port, last_sync_time')
             .eq('is_active', true)
@@ -22,7 +28,7 @@ export const locationService = {
             return [];
         }
 
-        return (data || []).map(loc => ({
+        return (data || []).map((loc: any) => ({
             id: loc.id,
             name: loc.display_name,
             is_active: loc.is_active ?? undefined,
@@ -33,13 +39,13 @@ export const locationService = {
     },
 
     async addLocation(name: string): Promise<{ location: Location | null; credentials?: { email: string; password: string } }> {
-        const { data, error } = await supabase
+        const { data, error } = await api
             .from('locations')
             .insert([{ name: name.toLowerCase().replace(/\s+/g, '_'), display_name: name, is_active: true }])
             .select()
             .single();
 
-        if (error) {
+        if (error || !data) {
             console.error('Error adding location:', error);
             return { location: null };
         }
@@ -53,7 +59,6 @@ export const locationService = {
             last_sync_time: data.last_sync_time || undefined
         };
 
-        // Auto-create manager user for the new location
         try {
             const { userService } = await import('./userService');
             const { credentials } = await userService.createManagerForLocation(name);
@@ -65,62 +70,44 @@ export const locationService = {
     },
 
     async updateLocation(id: string, name: string): Promise<Location | null> {
-        // First get the old location name
-        const { data: oldData, error: fetchError } = await supabase
+        const { data: oldData, error: fetchError } = await api
             .from('locations')
             .select('display_name')
             .eq('id', id)
             .single();
 
-        if (fetchError) {
+        if (fetchError || !oldData) {
             console.error('Error fetching old location:', fetchError);
             return null;
         }
 
         const oldName = oldData.display_name;
 
-        // Update the location
-        const { data, error } = await supabase
+        const { data, error } = await api
             .from('locations')
             .update({ display_name: name })
             .eq('id', id)
             .select()
             .single();
 
-        if (error) {
+        if (error || !data) {
             console.error('Error updating location:', error);
             return null;
         }
 
-        // If name changed, update all staff with the old location name
         if (oldName && oldName !== name) {
-            const { error: staffError } = await supabase
-                .from('staff')
-                .update({ location: name })
-                .eq('location', oldName);
+            const staffRes = await api.from('staff').update({ location: name }).eq('location', oldName);
+            if (staffRes.error) console.error('Error updating staff locations:', staffRes.error);
 
-            if (staffError) {
-                console.error('Error updating staff locations:', staffError);
-            }
-
-            const { error: floorError } = await supabase
-                .from('floors')
-                .update({ location_name: name })
-                .eq('location_name', oldName);
-
-            if (floorError) {
-                console.error('Error updating floor locations:', floorError);
-            }
+            const floorRes = await api.from('floors').update({ location_name: name }).eq('location_name', oldName);
+            if (floorRes.error) console.error('Error updating floor locations:', floorRes.error);
         }
 
-        return {
-            id: data.id,
-            name: data.display_name
-        };
+        return { id: data.id, name: data.display_name };
     },
 
     async updateLocationDevice(id: string, ip: string, port: number): Promise<boolean> {
-        const { error } = await supabase
+        const { error } = await api
             .from('locations')
             .update({ device_ip: ip, device_port: port })
             .eq('id', id);
@@ -133,20 +120,18 @@ export const locationService = {
     },
 
     async deleteLocation(id: string): Promise<boolean> {
-        // First, get the location name to deactivate its manager
-        const { data: locationData, error: fetchError } = await supabase
+        const { data: locationData, error: fetchError } = await api
             .from('locations')
             .select('display_name')
             .eq('id', id)
             .single();
 
-        if (fetchError) {
+        if (fetchError || !locationData) {
             console.error('Error fetching location:', fetchError);
             return false;
         }
 
-        // Soft delete the location by setting is_active to false
-        const { error } = await supabase
+        const { error } = await api
             .from('locations')
             .update({ is_active: false })
             .eq('id', id);
@@ -156,13 +141,11 @@ export const locationService = {
             return false;
         }
 
-        // Deactivate the associated manager user
         try {
             const { userService } = await import('./userService');
             await userService.deactivateManagerByLocationName(locationData.display_name);
         } catch (err) {
             console.error('Error deactivating manager for location:', err);
-            // Don't fail the location delete if manager deactivation fails
         }
 
         return true;

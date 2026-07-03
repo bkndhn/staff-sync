@@ -1,10 +1,14 @@
-import { supabase } from '../lib/supabase';
+import { dataApi } from '../lib/dataApi';
 import type { PartTimeSettlement as _PartTimeSettlement } from '../types';
 
+// Routed through the session-validated `data-api` edge function; direct anon
+// access to `part_time_settlements` has been revoked at the database level.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const api: any = dataApi;
+
 export const partTimeSettlementService = {
-    // Get all settlement records (or filter by list of keys for efficiency if needed, but for now simple)
     async getSettlements(): Promise<Set<string>> {
-        const { data, error } = await supabase
+        const { data, error } = await api
             .from('part_time_settlements')
             .select('settlement_key')
             .eq('is_settled', true);
@@ -14,27 +18,24 @@ export const partTimeSettlementService = {
             return new Set();
         }
 
-        return new Set(data.map(d => d.settlement_key));
+        return new Set((data || []).map((d: any) => d.settlement_key));
     },
 
-    // Toggle settlement status
     async toggleSettlement(
         staffName: string,
         location: string,
         settlementKey: string,
         isSettled: boolean
     ): Promise<boolean> {
-        const { error } = await supabase
+        const { error } = await api
             .from('part_time_settlements')
             .upsert([{
                 staff_name: staffName,
-                location: location,
+                location,
                 settlement_key: settlementKey,
                 is_settled: isSettled,
                 settled_at: isSettled ? new Date().toISOString() : null
-            }], {
-                onConflict: 'settlement_key'
-            });
+            }], { onConflict: 'settlement_key' });
 
         if (error) {
             console.error('Error toggling settlement:', error);
@@ -43,13 +44,11 @@ export const partTimeSettlementService = {
         return true;
     },
 
-    // Bulk update (for monthly/date range toggles)
     async updateSettlementsBulk(
         updates: { staffName: string; location: string; settlementKey: string; isSettled: boolean }[]
     ): Promise<boolean> {
         if (updates.length === 0) return true;
 
-        // Transform to DB format
         const dbUpdates = updates.map(u => ({
             staff_name: u.staffName,
             location: u.location,
@@ -58,11 +57,9 @@ export const partTimeSettlementService = {
             settled_at: u.isSettled ? new Date().toISOString() : null
         }));
 
-        const { error } = await supabase
+        const { error } = await api
             .from('part_time_settlements')
-            .upsert(dbUpdates, {
-                onConflict: 'settlement_key'
-            });
+            .upsert(dbUpdates, { onConflict: 'settlement_key' });
 
         if (error) {
             console.error('Error bulk updating settlements:', error);
