@@ -609,11 +609,21 @@ function App() {
 
       const savedStaff = await staffService.create(staffWithInitialSalary);
       setStaff(prev => [...prev, savedStaff]);
+
+      auditLogService.log({
+        action: 'staff_create',
+        staffId: savedStaff.id,
+        staffName: savedStaff.name,
+        details: `Created new staff ${savedStaff.name} (${savedStaff.type}) at ${savedStaff.location}`,
+        performedBy: user?.email || 'admin',
+        after: savedStaff as any,
+      });
     } catch (error: any) {
       console.error('Error adding staff:', error);
       await customAlert(`Failed to add staff: ${error.message || 'Unknown error'}`);
     }
   };
+
 
   // Update staff member with salary hike tracking
   const updateStaff = async (id: string, updatedStaff: Partial<Staff>) => {
