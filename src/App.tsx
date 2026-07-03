@@ -943,7 +943,8 @@ function App() {
             attendance={attendance}
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
-            userRole={user?.role === 'staff' ? 'manager' : (user?.role || 'manager')}
+            userRole={user?.role === 'admin' ? 'admin' : 'manager'}
+
             userLocation={user?.location || ''}
             isDarkTheme={isDarkTheme}
             toggleTheme={toggleTheme}
@@ -986,7 +987,7 @@ function App() {
             onDateChange={setSelectedDate}
             onUpdateAttendance={updateAttendance}
             onBulkUpdateAttendance={bulkUpdateAttendance}
-            userRole={user?.role === 'staff' ? 'manager' : (user?.role || 'manager')}
+            userRole={user?.role === 'admin' ? 'admin' : 'manager'}
           />
         );
       case 'Break Management':
