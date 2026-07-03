@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Lock, AlertCircle, Eye, EyeOff, Sparkles, Users, ShieldCheck, QrCode, XCircle, Loader2, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Lock, AlertCircle, Eye, EyeOff, Sparkles, Users, ShieldCheck, ScrollText } from 'lucide-react';
 import {
   isRateLimited,
   recordFailedAttempt,
@@ -16,11 +16,14 @@ interface LoginProps {
   onLogin: (user: { email: string; role: string; location?: string; staffId?: string; staffName?: string }) => void;
 }
 
-
+// Hardcoded Statutory Compliance credential (single fixed account).
+// Provided to the customer separately — see login instructions in the response.
+const STATUTORY_USERNAME = 'statutory';
+const STATUTORY_PASSWORD = 'Comply@2026';
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const staffLoginEnabled = localStorage.getItem('staffLoginEnabled') !== 'false';
-  const [loginMode, setLoginMode] = useState<'admin' | 'staff'>(staffLoginEnabled ? 'staff' : 'admin');
+  const [loginMode, setLoginMode] = useState<'admin' | 'staff' | 'statutory'>(staffLoginEnabled ? 'staff' : 'admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
@@ -28,6 +31,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +95,28 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
     setLoading(false);
   };
+
+  const handleStatutorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    await new Promise(r => setTimeout(r, 250));
+
+    const enteredUser = email.trim().toLowerCase();
+    if (enteredUser !== STATUTORY_USERNAME.toLowerCase() || password !== STATUTORY_PASSWORD) {
+      setError('Invalid statutory credentials.');
+      setLoading(false);
+      return;
+    }
+    const session = {
+      user: { email: STATUTORY_USERNAME, role: 'statutory' },
+      expiresAt: Date.now() + (12 * 60 * 60 * 1000),
+    };
+    localStorage.setItem('staffManagementLogin', JSON.stringify(session));
+    onLogin({ email: STATUTORY_USERNAME, role: 'statutory' });
+    setLoading(false);
+  };
+
 
   const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -222,35 +248,47 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <p className="text-[var(--text-muted)]">Sign in to your account</p>
           </div>
 
-          {/* Login Mode Toggle */}
-          {staffLoginEnabled ? (
-            <div className="flex gap-2 mb-6 p-1 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)]">
-              <button
-                type="button"
-                onClick={() => { setLoginMode('admin'); setError(''); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  loginMode === 'admin'
-                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                <ShieldCheck size={16} />
-                Admin / Manager
-              </button>
+          {/* Login Mode Toggle — always show three tabs so Statutory portal is discoverable */}
+          <div className="grid grid-cols-3 gap-1 mb-6 p-1 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)]">
+            <button
+              type="button"
+              onClick={() => { setLoginMode('admin'); setError(''); }}
+              className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                loginMode === 'admin'
+                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <ShieldCheck size={14} />
+              <span className="hidden sm:inline">Admin/Mgr</span><span className="sm:hidden">Admin</span>
+            </button>
+            {staffLoginEnabled && (
               <button
                 type="button"
                 onClick={() => { setLoginMode('staff'); setError(''); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                   loginMode === 'staff'
                     ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg'
                     : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                 }`}
               >
-                <Users size={16} />
-                Staff
+                <Users size={14} /> Staff
               </button>
-            </div>
-          ) : null}
+            )}
+            <button
+              type="button"
+              onClick={() => { setLoginMode('statutory'); setError(''); }}
+              className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                loginMode === 'statutory'
+                  ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <ScrollText size={14} />
+              <span className="hidden sm:inline">Statutory</span><span className="sm:hidden">Stat.</span>
+            </button>
+          </div>
+
 
           {/* Admin Login Form */}
           {loginMode === 'admin' && (
@@ -359,9 +397,72 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             </div>
           )}
 
+          {/* Statutory Compliance Login */}
+          {loginMode === 'statutory' && (
+            <form onSubmit={handleStatutorySubmit} className="space-y-5">
+              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/25 text-xs text-blue-200/90 leading-relaxed">
+                Read-only portal for statutory compliance officers. Access is limited to full-time employee statutory records and downloadable reports.
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Username</label>
+                <input
+                  type="text"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input-premium"
+                  placeholder="statutory"
+                  autoComplete="username"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="input-premium pr-12"
+                    placeholder="Enter password"
+                    autoComplete="current-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 z-20 p-2 rounded-lg bg-blue-600 hover:bg-blue-500 transition-colors"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={18} color="#ffffff" /> : <Eye size={18} color="#ffffff" />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+                  <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
+                  <span className="text-red-600 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{error}</span>
+                </div>
+              )}
+
+              <button type="submit" disabled={loading} className="w-full py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold text-white bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 transition-all shadow-lg">
+                <span className="flex items-center justify-center gap-2">
+                  {loading ? (
+                    <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Signing in...</>
+                  ) : (
+                    <><Lock size={18} />Statutory Sign In</>
+                  )}
+                </span>
+              </button>
+            </form>
+          )}
+
           <p className="text-center text-[var(--text-muted)] text-xs mt-6">
-            {loginMode === 'admin' ? 'Secure login for authorized personnel only' : 'View-only access to your own records'}
+            {loginMode === 'admin' ? 'Secure login for authorized personnel only'
+              : loginMode === 'statutory' ? 'Compliance portal · read-only access'
+              : 'View-only access to your own records'}
           </p>
+
         </div>
       </div>
     </div>

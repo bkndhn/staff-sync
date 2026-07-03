@@ -40,6 +40,8 @@ const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
 const SecurityFindings = React.lazy(() => import('./components/SecurityFindings'));
+const StatutoryDashboard = React.lazy(() => import('./components/StatutoryDashboard'));
+
 
 
 // ─── Prefetch all lazy chunks in the background after login ───────────────────
@@ -206,18 +208,22 @@ function App() {
     const validForRole = (tab: NavigationTab | null): boolean => {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
-      if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security';
-      return tab !== 'My Portal';
+      if (user.role === 'statutory') return tab === 'Statutory Dashboard';
+      if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security' && tab !== 'Statutory Dashboard';
+      return tab !== 'My Portal' && tab !== 'Statutory Dashboard';
     };
     if (validForRole(saved)) {
       setActiveTab(saved!);
     } else if (user.role === 'staff') {
       setActiveTab('My Portal');
+    } else if (user.role === 'statutory') {
+      setActiveTab('Statutory Dashboard');
     } else if (user.role === 'manager') {
       setActiveTab('Face Attendance');
     } else {
       setActiveTab('Dashboard');
     }
+
   }, [user]);
 
   // ─── Stale-while-revalidate: always-fresh, never-blocking ─────────────────
@@ -481,16 +487,31 @@ function App() {
     };
 
     try {
+      const previousAttendance = attendance.find(a =>
+        a.staffId === staffId && a.date === date && !!a.isPartTime === !!isPartTime
+      );
       const savedAttendance = await attendanceService.upsert(attendanceRecord);
 
-      // Record secure audit log
       auditLogService.log({
         action: 'attendance_override',
         staffId,
         staffName: finalStaffName || 'Staff',
         details: `Marked attendance as ${status} for ${date} (${shift || 'Morning'})`,
-        performedBy: user?.email || 'manager'
+        performedBy: user?.email || 'manager',
+        before: previousAttendance ? {
+          status: previousAttendance.status,
+          shift: previousAttendance.shift,
+          arrivalTime: previousAttendance.arrivalTime,
+          leavingTime: previousAttendance.leavingTime,
+        } : { status: 'None' },
+        after: {
+          status,
+          shift,
+          arrivalTime: finalArrivalTime,
+          leavingTime: finalLeavingTime,
+        },
       });
+
 
       // Zero-latency optimistic update — no network wait
       patchAttendance(savedAttendance);
@@ -603,11 +624,21 @@ function App() {
 
       const savedStaff = await staffService.create(staffWithInitialSalary);
       setStaff(prev => [...prev, savedStaff]);
+
+      auditLogService.log({
+        action: 'staff_create',
+        staffId: savedStaff.id,
+        staffName: savedStaff.name,
+        details: `Created new staff ${savedStaff.name} (${savedStaff.type}) at ${savedStaff.location}`,
+        performedBy: user?.email || 'admin',
+        after: savedStaff as any,
+      });
     } catch (error: any) {
       console.error('Error adding staff:', error);
       await customAlert(`Failed to add staff: ${error.message || 'Unknown error'}`);
     }
   };
+
 
   // Update staff member with salary hike tracking
   const updateStaff = async (id: string, updatedStaff: Partial<Staff>) => {
@@ -676,8 +707,23 @@ function App() {
                 staffId: id,
                 staffName: currentStaff.name,
                 details: `Updated total salary from ₹${currentStaff.totalSalary} to ₹${updatedStaff.totalSalary}`,
-                performedBy: user?.email || 'admin'
+                performedBy: user?.email || 'admin',
+                before: {
+                  totalSalary: currentStaff.totalSalary,
+                  basicSalary: currentStaff.basicSalary,
+                  hra: currentStaff.hra,
+                  incentive: currentStaff.incentive,
+                  mealAllowance: currentStaff.mealAllowance ?? 0,
+                },
+                after: {
+                  totalSalary: updatedStaff.totalSalary,
+                  basicSalary: updatedStaff.basicSalary ?? currentStaff.basicSalary,
+                  hra: updatedStaff.hra ?? currentStaff.hra,
+                  incentive: updatedStaff.incentive ?? currentStaff.incentive,
+                  mealAllowance: updatedStaff.mealAllowance ?? currentStaff.mealAllowance ?? 0,
+                },
               });
+
 
               setSalaryHikes(prev => [savedHike, ...prev]);
             }
@@ -692,17 +738,28 @@ function App() {
       try {
         const savedStaff = await staffService.update(id, updatedStaff);
 
+        // Build before/after subsets for the fields being changed
+        const beforeSubset: Record<string, any> = {};
+        const afterSubset: Record<string, any> = {};
+        Object.keys(updatedStaff).forEach(k => {
+          beforeSubset[k] = (currentStaff as any)[k];
+          afterSubset[k] = (updatedStaff as any)[k];
+        });
+
         auditLogService.log({
           action: 'staff_update',
           staffId: id,
           staffName: currentStaff.name,
-          details: `Updated record properties`,
-          performedBy: user?.email || 'admin'
+          details: `Updated staff record for ${currentStaff.name}`,
+          performedBy: user?.email || 'admin',
+          before: beforeSubset,
+          after: afterSubset,
         });
 
         setStaff(prev => prev.map(member =>
           member.id === id ? savedStaff : member
         ));
+
       } catch (error: any) {
         console.error('Error updating staff:', error);
         await customAlert(`Failed to save: ${error.message || 'Unknown error'}`);
@@ -943,7 +1000,8 @@ function App() {
             attendance={attendance}
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
-            userRole={user?.role === 'staff' ? 'manager' : (user?.role || 'manager')}
+            userRole={user?.role === 'admin' ? 'admin' : 'manager'}
+
             userLocation={user?.location || ''}
             isDarkTheme={isDarkTheme}
             toggleTheme={toggleTheme}
@@ -986,7 +1044,7 @@ function App() {
             onDateChange={setSelectedDate}
             onUpdateAttendance={updateAttendance}
             onBulkUpdateAttendance={bulkUpdateAttendance}
-            userRole={user?.role === 'staff' ? 'manager' : (user?.role || 'manager')}
+            userRole={user?.role === 'admin' ? 'admin' : 'manager'}
           />
         );
       case 'Break Management':
@@ -1133,6 +1191,26 @@ function App() {
   if (!user) {
     return <Login onLogin={handleLogin} />;
   }
+
+  // Statutory portal: fully isolated read-only view. No Navigation, no HR modules.
+  if (user.role === 'statutory') {
+    return (
+      <>
+        <Suspense fallback={<SkeletonLoader />}>
+          <StatutoryDashboard
+            staff={staff}
+            onLogout={handleLogout}
+            isDarkTheme={isDarkTheme}
+            toggleTheme={toggleTheme}
+            userEmail={user.email}
+          />
+        </Suspense>
+        <CustomDialogProvider />
+      </>
+    );
+  }
+
+
 
   return (
     <div className="min-h-screen flex flex-col">
