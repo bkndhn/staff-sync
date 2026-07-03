@@ -487,16 +487,31 @@ function App() {
     };
 
     try {
+      const previousAttendance = attendance.find(a =>
+        a.staffId === staffId && a.date === date && !!a.isPartTime === !!isPartTime
+      );
       const savedAttendance = await attendanceService.upsert(attendanceRecord);
 
-      // Record secure audit log
       auditLogService.log({
         action: 'attendance_override',
         staffId,
         staffName: finalStaffName || 'Staff',
         details: `Marked attendance as ${status} for ${date} (${shift || 'Morning'})`,
-        performedBy: user?.email || 'manager'
+        performedBy: user?.email || 'manager',
+        before: previousAttendance ? {
+          status: previousAttendance.status,
+          shift: previousAttendance.shift,
+          arrivalTime: previousAttendance.arrivalTime,
+          leavingTime: previousAttendance.leavingTime,
+        } : { status: 'None' },
+        after: {
+          status,
+          shift,
+          arrivalTime: finalArrivalTime,
+          leavingTime: finalLeavingTime,
+        },
       });
+
 
       // Zero-latency optimistic update — no network wait
       patchAttendance(savedAttendance);
