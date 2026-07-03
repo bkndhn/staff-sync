@@ -226,35 +226,47 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <p className="text-[var(--text-muted)]">Sign in to your account</p>
           </div>
 
-          {/* Login Mode Toggle */}
-          {staffLoginEnabled ? (
-            <div className="flex gap-2 mb-6 p-1 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)]">
-              <button
-                type="button"
-                onClick={() => { setLoginMode('admin'); setError(''); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  loginMode === 'admin'
-                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                <ShieldCheck size={16} />
-                Admin / Manager
-              </button>
+          {/* Login Mode Toggle — always show three tabs so Statutory portal is discoverable */}
+          <div className="grid grid-cols-3 gap-1 mb-6 p-1 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)]">
+            <button
+              type="button"
+              onClick={() => { setLoginMode('admin'); setError(''); }}
+              className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                loginMode === 'admin'
+                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <ShieldCheck size={14} />
+              <span className="hidden sm:inline">Admin/Mgr</span><span className="sm:hidden">Admin</span>
+            </button>
+            {staffLoginEnabled && (
               <button
                 type="button"
                 onClick={() => { setLoginMode('staff'); setError(''); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                   loginMode === 'staff'
                     ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg'
                     : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                 }`}
               >
-                <Users size={16} />
-                Staff
+                <Users size={14} /> Staff
               </button>
-            </div>
-          ) : null}
+            )}
+            <button
+              type="button"
+              onClick={() => { setLoginMode('statutory'); setError(''); }}
+              className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                loginMode === 'statutory'
+                  ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <ScrollText size={14} />
+              <span className="hidden sm:inline">Statutory</span><span className="sm:hidden">Stat.</span>
+            </button>
+          </div>
+
 
           {/* Admin Login Form */}
           {loginMode === 'admin' && (
