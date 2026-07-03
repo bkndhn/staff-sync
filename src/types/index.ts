@@ -212,11 +212,12 @@ export interface SalaryHike {
 
 export interface User {
   email: string;
-  role: 'admin' | 'manager' | 'staff';
+  role: 'admin' | 'manager' | 'staff' | 'statutory';
   location?: string;
   staffId?: string;
   staffName?: string;
 }
+
 
 export interface SalaryCategory {
   id: string;
@@ -239,7 +240,7 @@ export interface SalaryOverride {
   salarySupplementsOverride?: Record<string, number>;
 }
 
-export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Salary Management' | 'Part-Time Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Audit Log' | 'Workforce Insights' | 'Break Management' | 'Security';
+export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Salary Management' | 'Part-Time Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Audit Log' | 'Workforce Insights' | 'Break Management' | 'Security' | 'Statutory Dashboard';
 
 export interface BreakType {
   id: string;
@@ -327,15 +328,27 @@ export interface PartTimeSettlement {
   updatedAt: string;
 }
 
+export interface AuditLogChange {
+  field: string;
+  label?: string;
+  oldValue: any;
+  newValue: any;
+}
+
 export interface AuditLog {
   id: string;
-  action: 'attendance_override' | 'salary_edit' | 'staff_update' | 'bulk_update';
+  action: 'attendance_override' | 'salary_edit' | 'staff_update' | 'bulk_update' | 'settings_update' | 'staff_create' | 'staff_delete';
   staffId?: string;
   staffName?: string;
   details: string;
   performedBy: string;
   timestamp: string;
+  /** Structured before/after diff for role-based audit view */
+  changes?: AuditLogChange[];
+  before?: Record<string, any>;
+  after?: Record<string, any>;
 }
+
 
 export interface Designation {
   id: string;
