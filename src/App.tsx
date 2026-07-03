@@ -723,17 +723,28 @@ function App() {
       try {
         const savedStaff = await staffService.update(id, updatedStaff);
 
+        // Build before/after subsets for the fields being changed
+        const beforeSubset: Record<string, any> = {};
+        const afterSubset: Record<string, any> = {};
+        Object.keys(updatedStaff).forEach(k => {
+          beforeSubset[k] = (currentStaff as any)[k];
+          afterSubset[k] = (updatedStaff as any)[k];
+        });
+
         auditLogService.log({
           action: 'staff_update',
           staffId: id,
           staffName: currentStaff.name,
-          details: `Updated record properties`,
-          performedBy: user?.email || 'admin'
+          details: `Updated staff record for ${currentStaff.name}`,
+          performedBy: user?.email || 'admin',
+          before: beforeSubset,
+          after: afterSubset,
         });
 
         setStaff(prev => prev.map(member =>
           member.id === id ? savedStaff : member
         ));
+
       } catch (error: any) {
         console.error('Error updating staff:', error);
         await customAlert(`Failed to save: ${error.message || 'Unknown error'}`);
