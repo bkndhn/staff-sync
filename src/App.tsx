@@ -40,6 +40,8 @@ const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
 const SecurityFindings = React.lazy(() => import('./components/SecurityFindings'));
+const StatutoryDashboard = React.lazy(() => import('./components/StatutoryDashboard'));
+
 
 
 // ─── Prefetch all lazy chunks in the background after login ───────────────────
