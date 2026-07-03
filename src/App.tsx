@@ -692,8 +692,23 @@ function App() {
                 staffId: id,
                 staffName: currentStaff.name,
                 details: `Updated total salary from ₹${currentStaff.totalSalary} to ₹${updatedStaff.totalSalary}`,
-                performedBy: user?.email || 'admin'
+                performedBy: user?.email || 'admin',
+                before: {
+                  totalSalary: currentStaff.totalSalary,
+                  basicSalary: currentStaff.basicSalary,
+                  hra: currentStaff.hra,
+                  incentive: currentStaff.incentive,
+                  mealAllowance: currentStaff.mealAllowance ?? 0,
+                },
+                after: {
+                  totalSalary: updatedStaff.totalSalary,
+                  basicSalary: updatedStaff.basicSalary ?? currentStaff.basicSalary,
+                  hra: updatedStaff.hra ?? currentStaff.hra,
+                  incentive: updatedStaff.incentive ?? currentStaff.incentive,
+                  mealAllowance: updatedStaff.mealAllowance ?? currentStaff.mealAllowance ?? 0,
+                },
               });
+
 
               setSalaryHikes(prev => [savedHike, ...prev]);
             }
