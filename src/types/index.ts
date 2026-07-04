@@ -53,6 +53,8 @@ export interface Staff {
   /** Bound physical device ID for anti-buddy punching */
   deviceId?: string | null;
   exemptFromLateDeduction?: boolean;
+  /** Marks employee as covered under statutory compliance (PF/ESI). */
+  isStatutory?: boolean;
 }
 
 export type DeductionBase = 'basic' | 'basic_hra' | 'gross' | 'fixed';
