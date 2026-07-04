@@ -562,7 +562,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       statutoryDeductions: {},
       pfNumber: '',
       esiNumber: '',
-      deviceId: ''
+      deviceId: '',
+      isStatutory: false
     });
   };
 
