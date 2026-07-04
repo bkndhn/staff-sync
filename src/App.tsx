@@ -208,16 +208,13 @@ function App() {
     const validForRole = (tab: NavigationTab | null): boolean => {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
-      if (user.role === 'statutory') return tab === 'Statutory Dashboard';
-      if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security' && tab !== 'Statutory Dashboard';
-      return tab !== 'My Portal' && tab !== 'Statutory Dashboard';
+      if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security';
+      return tab !== 'My Portal';
     };
     if (validForRole(saved)) {
       setActiveTab(saved!);
     } else if (user.role === 'staff') {
       setActiveTab('My Portal');
-    } else if (user.role === 'statutory') {
-      setActiveTab('Statutory Dashboard');
     } else if (user.role === 'manager') {
       setActiveTab('Face Attendance');
     } else {
