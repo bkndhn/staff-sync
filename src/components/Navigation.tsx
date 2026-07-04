@@ -192,6 +192,19 @@ const Navigation: React.FC<NavigationProps> = ({
           <h1 className="text-base font-bold text-gradient truncate">Staff Mgmt</h1>
           <div className="flex items-center gap-1">
             <SyncBadge />
+            {canToggleScope && (
+              <button
+                onClick={() => onStatutoryScopeChange!(statutoryScope === 'statutory' ? 'all' : 'statutory')}
+                className={`p-2 rounded-lg text-[10px] font-semibold ${
+                  statutoryScope === 'statutory'
+                    ? 'bg-emerald-500/20 text-emerald-300'
+                    : 'bg-indigo-500/20 text-indigo-200'
+                }`}
+                title={statutoryScope === 'statutory' ? 'Statutory only — tap for all' : 'All staff — tap for statutory'}
+              >
+                {statutoryScope === 'statutory' ? 'STAT' : 'ALL'}
+              </button>
+            )}
             {themeBtn}
             <button
               onClick={() => setShowLogoutModal(true)}
