@@ -1189,23 +1189,8 @@ function App() {
     return <Login onLogin={handleLogin} />;
   }
 
-  // Statutory portal: fully isolated read-only view. No Navigation, no HR modules.
-  if (user.role === 'statutory') {
-    return (
-      <>
-        <Suspense fallback={<SkeletonLoader />}>
-          <StatutoryDashboard
-            staff={staff}
-            onLogout={handleLogout}
-            isDarkTheme={isDarkTheme}
-            toggleTheme={toggleTheme}
-            userEmail={user.email}
-          />
-        </Suspense>
-        <CustomDialogProvider />
-      </>
-    );
-  }
+
+
 
 
 
