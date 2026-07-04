@@ -148,55 +148,35 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 300));
 
     try {
-      const { data: staffData, error: fetchError } = await supabase
-        .from('staff')
-        .select('*')
-        .eq('contact_number', trimmedMobile);
-
-      if (fetchError || !staffData || staffData.length === 0) {
-        setError('Invalid mobile number or joined date. Please check your credentials.');
-        setLoading(false);
-        return;
-      }
-
-      const enteredDay = trimmedDate.substring(0, 2);
-      const enteredMonth = trimmedDate.substring(2, 4);
-      const enteredYear = trimmedDate.substring(4, 8);
-
-      const matchedStaff = staffData.find(s => {
-        const jd = s.joined_date;
-        if (!jd) return false;
-        const joinedParsed = new Date(jd);
-        if (isNaN(joinedParsed.getTime())) return false;
-        const jDay = String(joinedParsed.getDate()).padStart(2, '0');
-        const jMonth = String(joinedParsed.getMonth() + 1).padStart(2, '0');
-        const jYear = String(joinedParsed.getFullYear());
-        return enteredDay === jDay && enteredMonth === jMonth && enteredYear === jYear;
-      });
-
-      if (!matchedStaff) {
-        setError('Invalid mobile number or joined date. Please check your credentials.');
-        setLoading(false);
-        return;
-      }
-
-      // DEVICE BINDING LOGIC
       const currentFingerprint = await generateDeviceFingerprint();
-      
-      if (!matchedStaff.device_id) {
-        const { error: updateError } = await supabase
-          .from('staff')
-          .update({ device_id: currentFingerprint })
-          .eq('id', matchedStaff.id);
-          
-        if (updateError) {
-          console.error("Failed to bind device:", updateError);
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-login`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            contactNumber: trimmedMobile,
+            joinedDate: trimmedDate,
+            deviceFingerprint: currentFingerprint,
+          }),
+        },
+      );
+      const payload = await res.json();
+
+      if (!res.ok) {
+        if (payload?.error === 'device_locked') {
+          setError('This account is already registered to another device. Please contact Admin to reset your device lock.');
+        } else {
+          setError('Invalid mobile number or joined date. Please check your credentials.');
         }
-      } else if (matchedStaff.device_id !== currentFingerprint) {
-        setError('This account is already registered to another device. Please contact Admin to reset your device lock.');
         setLoading(false);
         return;
       }
+
+      const matchedStaff = payload.staff;
 
       const session = {
         user: {
