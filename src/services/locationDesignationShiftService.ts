@@ -36,7 +36,7 @@ export const locationDesignationShiftService = {
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('location_designation_shift_config')
       .select('*')
       .order('location_name');
@@ -71,7 +71,7 @@ export const locationDesignationShiftService = {
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('location_designation_shift_config')
       .select('*')
       .eq('location_name', locationName);
@@ -108,7 +108,7 @@ export const locationDesignationShiftService = {
       (payload as any).id = config.id;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('location_designation_shift_config')
       .upsert(payload, { onConflict: 'location_name,designation_id' })
       .select()
@@ -133,7 +133,7 @@ export const locationDesignationShiftService = {
 
   /** Delete a config */
   async delete(id: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await dataApi
       .from('location_designation_shift_config')
       .delete()
       .eq('id', id);

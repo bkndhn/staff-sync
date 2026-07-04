@@ -74,7 +74,7 @@ export const offlineDbService = {
    */
   async pullStaffFromCloud(): Promise<void> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await dataApi
         .from('staff')
         .select('id, name, location, designation, is_active, face_descriptors, updated_at')
         .eq('is_active', true);

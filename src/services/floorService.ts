@@ -11,7 +11,7 @@ export interface Floor {
 
 export const floorService = {
     async getFloors(): Promise<Floor[]> {
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('floors')
             .select('*')
             .eq('is_active', true)
@@ -33,7 +33,7 @@ export const floorService = {
     },
 
     async getFloorsByLocation(locationName: string): Promise<Floor[]> {
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('floors')
             .select('*')
             .eq('location_name', locationName)
@@ -56,7 +56,7 @@ export const floorService = {
     },
 
     async addFloor(locationName: string, name: string): Promise<Floor | null> {
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('floors')
             .insert([{ location_name: locationName, name, is_active: true }])
             .select()
@@ -86,7 +86,7 @@ export const floorService = {
             updateData.location_name = locationName;
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('floors')
             .update(updateData)
             .eq('id', id)
@@ -99,7 +99,7 @@ export const floorService = {
         }
 
         if (oldName && oldName !== name) {
-            const { error: staffError } = await supabase
+            const { error: staffError } = await dataApi
                 .from('staff')
                 .update({ floor: name })
                 .eq('floor', oldName);
@@ -116,7 +116,7 @@ export const floorService = {
     },
 
     async deleteFloor(id: string): Promise<boolean> {
-        const { error } = await supabase
+        const { error } = await dataApi
             .from('floors')
             .update({ is_active: false, updated_at: new Date().toISOString() })
             .eq('id', id);
