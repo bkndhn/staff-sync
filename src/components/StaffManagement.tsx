@@ -1398,6 +1398,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 </button>
               </div>
             </div>
+            )}
 
             <div className="md:col-span-2 lg:col-span-3 flex gap-3">
               <button type="submit" className="btn-premium px-6 py-2">{editingStaff ? 'Update Staff' : 'Add Staff'}</button>
