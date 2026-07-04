@@ -175,6 +175,7 @@ const Navigation: React.FC<NavigationProps> = ({
         style={{ left: 'var(--sidebar-w, 232px)' }}
       >
         <SyncBadge />
+        {scopePill}
         <div className="text-right hidden lg:block mr-2">
           <div className="text-xs font-medium text-white/80 leading-tight">
             {user.role === 'admin' ? 'Administrator' : user.role === 'staff' ? (user.staffName || 'Staff') : `${user.location} Manager`}
