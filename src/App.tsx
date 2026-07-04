@@ -979,8 +979,21 @@ function App() {
       return <SkeletonLoader />;
     }
 
-    const filteredStaffData = filteredStaff;
-    const filteredAttendanceData = filteredAttendance;
+    // Base filtered set (role/location scoped).
+    const baseFilteredStaff = filteredStaff;
+    const baseFilteredAttendance = filteredAttendance;
+
+    // When admin/manager has "statutory only" on, narrow the 4 focal pages.
+    const applyStatutoryScope = statutoryScope === 'statutory' && (user?.role === 'admin' || user?.role === 'manager');
+    const statutoryStaffIds = applyStatutoryScope
+      ? new Set(baseFilteredStaff.filter(s => s.isStatutory).map(s => s.id))
+      : null;
+    const filteredStaffData = applyStatutoryScope
+      ? baseFilteredStaff.filter(s => s.isStatutory)
+      : baseFilteredStaff;
+    const filteredAttendanceData = applyStatutoryScope && statutoryStaffIds
+      ? baseFilteredAttendance.filter(r => r.isPartTime ? false : statutoryStaffIds.has(r.staffId))
+      : baseFilteredAttendance;
 
     switch (activeTab) {
       case 'My Portal':
