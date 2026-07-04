@@ -1,3 +1,4 @@
+import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
 import { type Designation } from '../types';
 
@@ -72,7 +73,7 @@ export const designationService = {
     },
 
     async updateDesignation(id: string, displayName: string): Promise<Designation | null> {
-        const { data: oldDesig } = await supabase.from('designations').select('display_name').eq('id', id).single();
+        const { data: oldDesig } = await dataApi.from('designations').select('display_name').eq('id', id).single();
         const oldDisplayName = oldDesig?.display_name;
 
         const name = displayName.toLowerCase().replace(/[^a-z0-9]/g, '_');

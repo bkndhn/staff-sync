@@ -1,3 +1,4 @@
+import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
 
 export interface Floor {
@@ -77,7 +78,7 @@ export const floorService = {
 
     async updateFloor(id: string, name: string, locationName?: string): Promise<Floor | null> {
         // Fetch old floor to get its old name
-        const { data: oldFloor } = await supabase.from('floors').select('name').eq('id', id).single();
+        const { data: oldFloor } = await dataApi.from('floors').select('name').eq('id', id).single();
         const oldName = oldFloor?.name;
 
         const updateData: any = { name, updated_at: new Date().toISOString() };

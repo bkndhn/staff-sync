@@ -3,6 +3,7 @@
  * Uses Dexie.js (IndexedDB wrapper, already installed) to persist
  * attendance punches locally on the device. Syncs to Supabase when online.
  */
+import { dataApi } from '../lib/dataApi';
 import Dexie, { Table } from 'dexie';
 import { supabase } from '../lib/supabase';
 
