@@ -210,8 +210,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <p className="text-[var(--text-muted)]">Sign in to your account</p>
           </div>
 
-          {/* Login Mode Toggle — always show three tabs so Statutory portal is discoverable */}
-          <div className="grid grid-cols-3 gap-1 mb-6 p-1 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)]">
+          {/* Login Mode Toggle */}
+          <div className={`grid ${staffLoginEnabled ? 'grid-cols-2' : 'grid-cols-1'} gap-1 mb-6 p-1 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)]`}>
             <button
               type="button"
               onClick={() => { setLoginMode('admin'); setError(''); }}
@@ -237,18 +237,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <Users size={14} /> Staff
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => { setLoginMode('statutory'); setError(''); }}
-              className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                loginMode === 'statutory'
-                  ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              <ScrollText size={14} />
-              <span className="hidden sm:inline">Statutory</span><span className="sm:hidden">Stat.</span>
-            </button>
           </div>
 
 
