@@ -1016,8 +1016,8 @@ function App() {
       case 'Dashboard':
         return (
           <Dashboard
-            staff={staff}
-            attendance={attendance}
+            staff={filteredStaffData}
+            attendance={filteredAttendanceData}
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
             userRole={user?.role === 'admin' ? 'admin' : 'manager'}
