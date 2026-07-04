@@ -65,12 +65,18 @@ class QueryBuilder<T = any> implements PromiseLike<{ data: T | null; error: Erro
   ): Promise<TR1 | TR2> {
     try {
       const token = localStorage.getItem("sessionToken");
+      if (!token) {
+        // Not logged in yet — short-circuit so screens render empty
+        // instead of throwing on a 401 from the edge function.
+        const empty = { data: (this.state.single ? null : []) as unknown as T, error: null };
+        return onFulfilled ? onFulfilled(empty) : (empty as unknown as TR1);
+      }
       const res = await fetch(FUNCTION_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          ...(token ? { "x-session-token": token } : {}),
+          "x-session-token": token,
         },
         body: JSON.stringify(this.state),
       });
