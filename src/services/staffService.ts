@@ -100,6 +100,7 @@ export const staffService = {
     if (updates.esiNumber !== undefined) (dbUpdates as any).esi_number = updates.esiNumber || null;
     if (updates.deviceId !== undefined) (dbUpdates as any).device_id = updates.deviceId || null;
     if (updates.employeeCode !== undefined) (dbUpdates as any).employee_code = updates.employeeCode || null;
+    if (updates.isStatutory !== undefined) (dbUpdates as any).is_statutory = !!updates.isStatutory;
 
     let { data, error } = await api
       .from('staff')
