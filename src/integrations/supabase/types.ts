@@ -1251,6 +1251,7 @@ export type Database = {
           incentive: number
           initial_salary: number | null
           is_active: boolean
+          is_statutory: boolean
           joined_date: string
           location: string
           meal_allowance: number | null
@@ -1292,6 +1293,7 @@ export type Database = {
           incentive?: number
           initial_salary?: number | null
           is_active?: boolean
+          is_statutory?: boolean
           joined_date: string
           location: string
           meal_allowance?: number | null
@@ -1333,6 +1335,7 @@ export type Database = {
           incentive?: number
           initial_salary?: number | null
           is_active?: boolean
+          is_statutory?: boolean
           joined_date?: string
           location?: string
           meal_allowance?: number | null
