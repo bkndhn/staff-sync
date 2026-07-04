@@ -214,6 +214,7 @@ export const staffService = {
       pfNumber: dbStaff.pf_number ?? undefined,
       esiNumber: dbStaff.esi_number ?? undefined,
       deviceId: dbStaff.device_id ?? null,
+      isStatutory: !!dbStaff.is_statutory,
     };
   },
 
