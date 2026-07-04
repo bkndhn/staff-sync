@@ -53,6 +53,8 @@ export interface Staff {
   /** Bound physical device ID for anti-buddy punching */
   deviceId?: string | null;
   exemptFromLateDeduction?: boolean;
+  /** Marks employee as covered under statutory compliance (PF/ESI). */
+  isStatutory?: boolean;
 }
 
 export type DeductionBase = 'basic' | 'basic_hra' | 'gross' | 'fixed';
@@ -212,7 +214,7 @@ export interface SalaryHike {
 
 export interface User {
   email: string;
-  role: 'admin' | 'manager' | 'staff' | 'statutory';
+  role: 'admin' | 'manager' | 'staff';
   location?: string;
   staffId?: string;
   staffName?: string;
@@ -240,7 +242,7 @@ export interface SalaryOverride {
   salarySupplementsOverride?: Record<string, number>;
 }
 
-export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Salary Management' | 'Part-Time Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Audit Log' | 'Workforce Insights' | 'Break Management' | 'Security' | 'Statutory Dashboard';
+export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Salary Management' | 'Part-Time Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Audit Log' | 'Workforce Insights' | 'Break Management' | 'Security';
 
 export interface BreakType {
   id: string;

@@ -40,7 +40,7 @@ const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
 const SecurityFindings = React.lazy(() => import('./components/SecurityFindings'));
-const StatutoryDashboard = React.lazy(() => import('./components/StatutoryDashboard'));
+// StatutoryDashboard component retained on disk but no longer mounted; statutory features are now inline in the main pages.
 
 
 
@@ -100,6 +100,16 @@ function App() {
   const setActiveTab = (tab: NavigationTab) => {
     setActiveTabState(tab);
     try { localStorage.setItem('activeTab', tab); } catch {}
+  };
+
+  // Statutory scope toggle: defaults to statutory-only so admins land on the compliance view.
+  const [statutoryScope, setStatutoryScopeState] = useState<'statutory' | 'all'>(() => {
+    const saved = localStorage.getItem('statutoryScope');
+    return (saved === 'all' || saved === 'statutory') ? saved : 'statutory';
+  });
+  const setStatutoryScope = (scope: 'statutory' | 'all') => {
+    setStatutoryScopeState(scope);
+    try { localStorage.setItem('statutoryScope', scope); } catch {}
   };
 
   // ── Pre-hydrate from localStorage cache — instant first render ───────────
@@ -208,16 +218,13 @@ function App() {
     const validForRole = (tab: NavigationTab | null): boolean => {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
-      if (user.role === 'statutory') return tab === 'Statutory Dashboard';
-      if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security' && tab !== 'Statutory Dashboard';
-      return tab !== 'My Portal' && tab !== 'Statutory Dashboard';
+      if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security';
+      return tab !== 'My Portal';
     };
     if (validForRole(saved)) {
       setActiveTab(saved!);
     } else if (user.role === 'staff') {
       setActiveTab('My Portal');
-    } else if (user.role === 'statutory') {
-      setActiveTab('Statutory Dashboard');
     } else if (user.role === 'manager') {
       setActiveTab('Face Attendance');
     } else {
@@ -972,8 +979,21 @@ function App() {
       return <SkeletonLoader />;
     }
 
-    const filteredStaffData = filteredStaff;
-    const filteredAttendanceData = filteredAttendance;
+    // Base filtered set (role/location scoped).
+    const baseFilteredStaff = filteredStaff;
+    const baseFilteredAttendance = filteredAttendance;
+
+    // When admin/manager has "statutory only" on, narrow the 4 focal pages.
+    const applyStatutoryScope = statutoryScope === 'statutory' && (user?.role === 'admin' || user?.role === 'manager');
+    const statutoryStaffIds = applyStatutoryScope
+      ? new Set(baseFilteredStaff.filter(s => s.isStatutory).map(s => s.id))
+      : null;
+    const filteredStaffData = applyStatutoryScope
+      ? baseFilteredStaff.filter(s => s.isStatutory)
+      : baseFilteredStaff;
+    const filteredAttendanceData = applyStatutoryScope && statutoryStaffIds
+      ? baseFilteredAttendance.filter(r => r.isPartTime ? false : statutoryStaffIds.has(r.staffId))
+      : baseFilteredAttendance;
 
     switch (activeTab) {
       case 'My Portal':
@@ -996,8 +1016,8 @@ function App() {
       case 'Dashboard':
         return (
           <Dashboard
-            staff={staff}
-            attendance={attendance}
+            staff={filteredStaffData}
+            attendance={filteredAttendanceData}
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
             userRole={user?.role === 'admin' ? 'admin' : 'manager'}
@@ -1192,23 +1212,8 @@ function App() {
     return <Login onLogin={handleLogin} />;
   }
 
-  // Statutory portal: fully isolated read-only view. No Navigation, no HR modules.
-  if (user.role === 'statutory') {
-    return (
-      <>
-        <Suspense fallback={<SkeletonLoader />}>
-          <StatutoryDashboard
-            staff={staff}
-            onLogout={handleLogout}
-            isDarkTheme={isDarkTheme}
-            toggleTheme={toggleTheme}
-            userEmail={user.email}
-          />
-        </Suspense>
-        <CustomDialogProvider />
-      </>
-    );
-  }
+
+
 
 
 
@@ -1221,6 +1226,8 @@ function App() {
         onLogout={handleLogout}
         isDarkTheme={isDarkTheme}
         toggleTheme={toggleTheme}
+        statutoryScope={statutoryScope}
+        onStatutoryScopeChange={setStatutoryScope}
       />
       <main
         className="w-full px-4 sm:px-6 lg:px-8 flex-1 pb-24 md:pb-8 md:pt-20 ml-0 md:ml-[var(--sidebar-w,232px)] transition-[margin] duration-200"

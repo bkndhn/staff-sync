@@ -4,7 +4,7 @@ import {
   BarChart3, Users, Calendar, DollarSign, Clock, Archive, LogOut,
   AlertTriangle, Settings as SettingsIcon, FileText, ScanFace,
   ShieldAlert, Shield, TrendingUp, Coffee, Sun, Moon,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, ScrollText,
 } from 'lucide-react';
 import { SyncBadge } from './SyncBadge';
 
@@ -15,10 +15,13 @@ interface NavigationProps {
   onLogout: () => void;
   isDarkTheme?: boolean;
   toggleTheme?: () => void;
+  statutoryScope?: 'statutory' | 'all';
+  onStatutoryScopeChange?: (scope: 'statutory' | 'all') => void;
 }
 
 const Navigation: React.FC<NavigationProps> = ({
   activeTab, setActiveTab, user, onLogout, isDarkTheme = true, toggleTheme,
+  statutoryScope = 'statutory', onStatutoryScopeChange,
 }) => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -91,6 +94,37 @@ const Navigation: React.FC<NavigationProps> = ({
     </button>
   );
 
+  const canToggleScope = (user.role === 'admin' || user.role === 'manager') && !!onStatutoryScopeChange;
+  const scopePill = canToggleScope && (
+    <div
+      className="hidden sm:flex items-center rounded-full bg-white/5 border border-white/10 p-0.5 text-[11px] font-medium overflow-hidden"
+      title="Switch between statutory-only view and all staff"
+    >
+      <button
+        onClick={() => onStatutoryScopeChange!('statutory')}
+        className={`flex items-center gap-1 px-2.5 py-1 rounded-full transition-all ${
+          statutoryScope === 'statutory'
+            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow'
+            : 'text-white/60 hover:text-white'
+        }`}
+      >
+        <ScrollText size={12} /> Statutory
+      </button>
+      <button
+        onClick={() => onStatutoryScopeChange!('all')}
+        className={`flex items-center gap-1 px-2.5 py-1 rounded-full transition-all ${
+          statutoryScope === 'all'
+            ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow'
+            : 'text-white/60 hover:text-white'
+        }`}
+      >
+        <Users size={12} /> All staff
+      </button>
+    </div>
+  );
+
+
+
   return (
     <>
       {/* ── Desktop/Tablet Sidebar ─────────────────────────────────────── */}
@@ -141,6 +175,7 @@ const Navigation: React.FC<NavigationProps> = ({
         style={{ left: 'var(--sidebar-w, 232px)' }}
       >
         <SyncBadge />
+        {scopePill}
         <div className="text-right hidden lg:block mr-2">
           <div className="text-xs font-medium text-white/80 leading-tight">
             {user.role === 'admin' ? 'Administrator' : user.role === 'staff' ? (user.staffName || 'Staff') : `${user.location} Manager`}
@@ -157,6 +192,19 @@ const Navigation: React.FC<NavigationProps> = ({
           <h1 className="text-base font-bold text-gradient truncate">Staff Mgmt</h1>
           <div className="flex items-center gap-1">
             <SyncBadge />
+            {canToggleScope && (
+              <button
+                onClick={() => onStatutoryScopeChange!(statutoryScope === 'statutory' ? 'all' : 'statutory')}
+                className={`p-2 rounded-lg text-[10px] font-semibold ${
+                  statutoryScope === 'statutory'
+                    ? 'bg-emerald-500/20 text-emerald-300'
+                    : 'bg-indigo-500/20 text-indigo-200'
+                }`}
+                title={statutoryScope === 'statutory' ? 'Statutory only — tap for all' : 'All staff — tap for statutory'}
+              >
+                {statutoryScope === 'statutory' ? 'STAT' : 'ALL'}
+              </button>
+            )}
             {themeBtn}
             <button
               onClick={() => setShowLogoutModal(true)}

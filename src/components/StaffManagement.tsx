@@ -172,7 +172,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     statutoryDeductions: {} as Record<string, StatutoryDeduction>,
     pfNumber: '',
     esiNumber: '',
-    deviceId: ''
+    deviceId: '',
+    isStatutory: false
   });
 
   // Set default location when locations load
@@ -561,7 +562,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       statutoryDeductions: {},
       pfNumber: '',
       esiNumber: '',
-      deviceId: ''
+      deviceId: '',
+      isStatutory: false
     });
   };
 
@@ -607,9 +609,10 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         paymentMode: formData.paymentMode,
         nextHikeDate: formData.nextHikeDate || undefined,
         hikeIntervalMonths: formData.hikeIntervalMonths || undefined,
-        statutoryDeductions: formData.statutoryDeductions,
-        pfNumber: formData.pfNumber || undefined,
-        esiNumber: formData.esiNumber || undefined
+        statutoryDeductions: formData.isStatutory ? formData.statutoryDeductions : {},
+        pfNumber: formData.isStatutory ? (formData.pfNumber || undefined) : undefined,
+        esiNumber: formData.isStatutory ? (formData.esiNumber || undefined) : undefined,
+        isStatutory: !!formData.isStatutory
       });
       setEditingStaff(null);
     } else {
@@ -661,7 +664,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       statutoryDeductions: member.statutoryDeductions || {},
       pfNumber: member.pfNumber || '',
       esiNumber: member.esiNumber || '',
-      deviceId: member.deviceId?.startsWith('dev_') ? '' : (member.deviceId || '')
+      deviceId: member.deviceId?.startsWith('dev_') ? '' : (member.deviceId || ''),
+      isStatutory: !!member.isStatutory
     });
     setEditingStaff(member);
     setShowAddForm(true);
@@ -1155,14 +1159,18 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                   <input type="text" value={formData.ifscCode} onChange={(e) => setFormData({ ...formData, ifscCode: e.target.value.toUpperCase() })} className="input-premium" placeholder="e.g. SBIN0001234" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1">PF Number <span className="text-white/30 text-xs">(optional)</span></label>
-                  <input type="text" value={formData.pfNumber} onChange={(e) => setFormData({ ...formData, pfNumber: e.target.value })} className="input-premium" placeholder="e.g. AB/CDE/1234567/000/0000001" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1">ESI Number <span className="text-white/30 text-xs">(optional)</span></label>
-                  <input type="text" value={formData.esiNumber} onChange={(e) => setFormData({ ...formData, esiNumber: e.target.value })} className="input-premium" placeholder="e.g. 1234567890" />
-                </div>
+                {formData.isStatutory && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-1">PF Number <span className="text-white/30 text-xs">(optional)</span></label>
+                      <input type="text" value={formData.pfNumber} onChange={(e) => setFormData({ ...formData, pfNumber: e.target.value })} className="input-premium" placeholder="e.g. AB/CDE/1234567/000/0000001" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-1">ESI Number <span className="text-white/30 text-xs">(optional)</span></label>
+                      <input type="text" value={formData.esiNumber} onChange={(e) => setFormData({ ...formData, esiNumber: e.target.value })} className="input-premium" placeholder="e.g. 1234567890" />
+                    </div>
+                  </>
+                )}
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-white/70 mb-1">
                     Biometric Device ID / Employee Code <span className="text-red-400">*</span>
@@ -1205,7 +1213,24 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
             </div>
 
-            {/* Statutory / Government Deductions */}
+            {/* Statutory Compliance */}
+            <div className="md:col-span-2 lg:col-span-3">
+              <label className="flex items-center gap-3 p-3 rounded-lg border border-emerald-500/25 bg-emerald-500/5 cursor-pointer mb-4">
+                <input
+                  type="checkbox"
+                  checked={!!formData.isStatutory}
+                  onChange={(e) => setFormData({ ...formData, isStatutory: e.target.checked })}
+                  className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 border-white/30 bg-white/10"
+                />
+                <Shield size={16} className="text-emerald-400" />
+                <div>
+                  <div className="text-sm font-semibold text-white">Statutory Employee</div>
+                  <div className="text-xs text-white/50">Covered under statutory compliance — enables PF / ESI numbers and per-staff deductions.</div>
+                </div>
+              </label>
+            </div>
+
+            {formData.isStatutory && (
             <div className="md:col-span-2 lg:col-span-3">
               <h3 className="text-sm font-semibold text-white/60 mb-3 border-b border-white/10 pb-2 flex items-center gap-2">
                 <Shield size={16} className="text-emerald-400" />
@@ -1373,6 +1398,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 </button>
               </div>
             </div>
+            )}
 
             <div className="md:col-span-2 lg:col-span-3 flex gap-3">
               <button type="submit" className="btn-premium px-6 py-2">{editingStaff ? 'Update Staff' : 'Add Staff'}</button>

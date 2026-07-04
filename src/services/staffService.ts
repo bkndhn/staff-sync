@@ -100,6 +100,7 @@ export const staffService = {
     if (updates.esiNumber !== undefined) (dbUpdates as any).esi_number = updates.esiNumber || null;
     if (updates.deviceId !== undefined) (dbUpdates as any).device_id = updates.deviceId || null;
     if (updates.employeeCode !== undefined) (dbUpdates as any).employee_code = updates.employeeCode || null;
+    if (updates.isStatutory !== undefined) (dbUpdates as any).is_statutory = !!updates.isStatutory;
 
     let { data, error } = await api
       .from('staff')
@@ -213,6 +214,7 @@ export const staffService = {
       pfNumber: dbStaff.pf_number ?? undefined,
       esiNumber: dbStaff.esi_number ?? undefined,
       deviceId: dbStaff.device_id ?? null,
+      isStatutory: !!dbStaff.is_statutory,
     };
   },
 
@@ -253,6 +255,7 @@ export const staffService = {
       esi_number: staff.esiNumber || null,
       device_id: staff.deviceId || null,
       employee_code: (staff as any).employeeCode || null,
+      is_statutory: !!(staff as any).isStatutory,
     } as any;
   }
 };
