@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, AlertCircle, Eye, EyeOff, Sparkles, Users, ShieldCheck, ScrollText } from 'lucide-react';
+import { Lock, AlertCircle, Eye, EyeOff, Sparkles, Users, ShieldCheck } from 'lucide-react';
 import {
   isRateLimited,
   recordFailedAttempt,
@@ -16,14 +16,10 @@ interface LoginProps {
   onLogin: (user: { email: string; role: string; location?: string; staffId?: string; staffName?: string }) => void;
 }
 
-// Hardcoded Statutory Compliance credential (single fixed account).
-// Provided to the customer separately — see login instructions in the response.
-const STATUTORY_USERNAME = 'statutory';
-const STATUTORY_PASSWORD = 'Comply@2026';
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const staffLoginEnabled = localStorage.getItem('staffLoginEnabled') !== 'false';
-  const [loginMode, setLoginMode] = useState<'admin' | 'staff' | 'statutory'>(staffLoginEnabled ? 'staff' : 'admin');
+  const [loginMode, setLoginMode] = useState<'admin' | 'staff'>(staffLoginEnabled ? 'staff' : 'admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
