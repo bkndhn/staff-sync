@@ -1213,7 +1213,24 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
             </div>
 
-            {/* Statutory / Government Deductions */}
+            {/* Statutory Compliance */}
+            <div className="md:col-span-2 lg:col-span-3">
+              <label className="flex items-center gap-3 p-3 rounded-lg border border-emerald-500/25 bg-emerald-500/5 cursor-pointer mb-4">
+                <input
+                  type="checkbox"
+                  checked={!!formData.isStatutory}
+                  onChange={(e) => setFormData({ ...formData, isStatutory: e.target.checked })}
+                  className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 border-white/30 bg-white/10"
+                />
+                <Shield size={16} className="text-emerald-400" />
+                <div>
+                  <div className="text-sm font-semibold text-white">Statutory Employee</div>
+                  <div className="text-xs text-white/50">Covered under statutory compliance — enables PF / ESI numbers and per-staff deductions.</div>
+                </div>
+              </label>
+            </div>
+
+            {formData.isStatutory && (
             <div className="md:col-span-2 lg:col-span-3">
               <h3 className="text-sm font-semibold text-white/60 mb-3 border-b border-white/10 pb-2 flex items-center gap-2">
                 <Shield size={16} className="text-emerald-400" />
