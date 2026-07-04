@@ -1,3 +1,4 @@
+import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
 import { type Designation } from '../types';
 
@@ -25,7 +26,7 @@ const mapFromDb = (d: any): Designation => ({
 
 export const designationService = {
     async getDesignations(): Promise<Designation[]> {
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('designations')
             .select('*')
             .eq('is_active', true)
@@ -41,7 +42,7 @@ export const designationService = {
     },
 
     async getAllDesignations(): Promise<Designation[]> {
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('designations')
             .select('*')
             .order('sort_order')
@@ -57,7 +58,7 @@ export const designationService = {
 
     async addDesignation(displayName: string): Promise<Designation | null> {
         const name = displayName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('designations')
             .insert([{ name, display_name: displayName, is_active: true }])
             .select()
@@ -72,11 +73,11 @@ export const designationService = {
     },
 
     async updateDesignation(id: string, displayName: string): Promise<Designation | null> {
-        const { data: oldDesig } = await supabase.from('designations').select('display_name').eq('id', id).single();
+        const { data: oldDesig } = await dataApi.from('designations').select('display_name').eq('id', id).single();
         const oldDisplayName = oldDesig?.display_name;
 
         const name = displayName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('designations')
             .update({ name, display_name: displayName, updated_at: new Date().toISOString() })
             .eq('id', id)
@@ -89,7 +90,7 @@ export const designationService = {
         }
 
         if (oldDisplayName && oldDisplayName !== displayName) {
-            const { error: staffError } = await supabase
+            const { error: staffError } = await dataApi
                 .from('staff')
                 .update({ designation: displayName })
                 .eq('designation', oldDisplayName);
@@ -116,7 +117,7 @@ export const designationService = {
             updated_at: new Date().toISOString()
         };
 
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('designations')
             .update(payload)
             .eq('id', id)
@@ -132,7 +133,7 @@ export const designationService = {
     },
 
     async deleteDesignation(id: string): Promise<boolean> {
-        const { error } = await supabase
+        const { error } = await dataApi
             .from('designations')
             .update({ is_active: false, updated_at: new Date().toISOString() })
             .eq('id', id);
@@ -145,7 +146,7 @@ export const designationService = {
     },
 
     async restoreDesignation(id: string): Promise<boolean> {
-        const { error } = await supabase
+        const { error } = await dataApi
             .from('designations')
             .update({ is_active: true, updated_at: new Date().toISOString() })
             .eq('id', id);

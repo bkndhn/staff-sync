@@ -1,3 +1,4 @@
+import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
 
 export interface SalaryCategoryDB {
@@ -59,7 +60,7 @@ export const salaryCategoryService = {
 
     // Get custom from Supabase
     try {
-      const { data, error } = await supabase
+      const { data, error } = await dataApi
         .from('salary_categories')
         .select('*')
         .order('sort_order', { ascending: true });
@@ -106,7 +107,7 @@ export const salaryCategoryService = {
     const key = displayName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
 
     // Get current max sort_order
-    const { data: existing } = await supabase
+    const { data: existing } = await dataApi
       .from('salary_categories')
       .select('sort_order')
       .order('sort_order', { ascending: false })
@@ -114,7 +115,7 @@ export const salaryCategoryService = {
 
     const maxOrder = existing?.[0]?.sort_order ?? 0;
 
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('salary_categories')
       .insert([{
         name: key,
@@ -153,7 +154,7 @@ export const salaryCategoryService = {
       return true;
     }
 
-    const { error } = await supabase
+    const { error } = await dataApi
       .from('salary_categories')
       .update({ display_name: displayName })
       .eq('id', id);
@@ -178,7 +179,7 @@ export const salaryCategoryService = {
       return true;
     }
 
-    const { error } = await supabase
+    const { error } = await dataApi
       .from('salary_categories')
       .update({ is_active: false })
       .eq('id', id);
@@ -203,7 +204,7 @@ export const salaryCategoryService = {
       return true;
     }
 
-    const { error } = await supabase
+    const { error } = await dataApi
       .from('salary_categories')
       .update({ is_active: true })
       .eq('id', id);

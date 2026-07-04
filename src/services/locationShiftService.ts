@@ -1,3 +1,4 @@
+import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
 import { appSettingsService } from './appSettingsService';
 
@@ -95,7 +96,7 @@ export const locationShiftService = {
 
   /** Fetch all location configs (admin view). */
   async listAll(): Promise<LocationShiftConfig[]> {
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('location_shift_config')
       .select('*')
       .order('location_name');
@@ -112,7 +113,7 @@ export const locationShiftService = {
    */
   async getForLocation(locationName: string): Promise<LocationShiftConfig> {
     const [row, globalDefs] = await Promise.all([
-      supabase
+      dataApi
         .from('location_shift_config')
         .select('*')
         .eq('location_name', locationName)
@@ -151,7 +152,7 @@ export const locationShiftService = {
       allow_manager_override: config.allowManagerOverride,
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('location_shift_config')
       .upsert(payload, { onConflict: 'location_name' })
       .select()
@@ -166,7 +167,7 @@ export const locationShiftService = {
 
   /** Delete a location config (resets it to global defaults). */
   async deleteByLocation(locationName: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await dataApi
       .from('location_shift_config')
       .delete()
       .eq('location_name', locationName);

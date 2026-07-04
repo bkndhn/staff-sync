@@ -1,3 +1,4 @@
+import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
 import { BreakType, BreakEvent, BreakPolicy } from '../types';
 import { auditLogService } from './auditLogService';
@@ -66,7 +67,7 @@ const minutesBetween = (start: string, end: string) => {
 
 export const breakTypeService = {
   async list(activeOnly = false): Promise<BreakType[]> {
-    let q = supabase.from('break_types' as any).select('*').order('sort_order', { ascending: true });
+    let q = dataApi.from('break_types').select('*').order('sort_order', { ascending: true });
     if (activeOnly) q = q.eq('is_active', true);
     const { data, error } = await q;
     if (error) { console.error(error); return []; }
@@ -83,12 +84,12 @@ export const breakTypeService = {
       sort_order: t.sortOrder ?? 0,
     };
     if (t.id) payload.id = t.id;
-    const { data, error } = await (supabase as any).from('break_types').upsert(payload).select().single();
+    const { data, error } = await dataApi.from('break_types').upsert(payload).select().single();
     if (error) { console.error(error); return null; }
     return mapType(data);
   },
   async remove(id: string): Promise<boolean> {
-    const { error } = await (supabase as any).from('break_types').delete().eq('id', id);
+    const { error } = await dataApi.from('break_types').delete().eq('id', id);
     return !error;
   },
 };
@@ -256,7 +257,7 @@ export const breakEventService = {
 
 export const breakPolicyService = {
   async list(): Promise<BreakPolicy[]> {
-    const { data, error } = await (supabase as any).from('break_policies').select('*');
+    const { data, error } = await dataApi.from('break_policies').select('*');
     if (error) { console.error(error); return []; }
     return (data || []).map(mapPolicy);
   },
@@ -272,12 +273,12 @@ export const breakPolicyService = {
       grace_minutes: p.graceMinutes ?? 5,
     };
     if (p.id) payload.id = p.id;
-    const { data, error } = await (supabase as any).from('break_policies').upsert(payload).select().single();
+    const { data, error } = await dataApi.from('break_policies').upsert(payload).select().single();
     if (error) { console.error(error); return null; }
     return mapPolicy(data);
   },
   async remove(id: string): Promise<boolean> {
-    const { error } = await (supabase as any).from('break_policies').delete().eq('id', id);
+    const { error } = await dataApi.from('break_policies').delete().eq('id', id);
     return !error;
   },
 };

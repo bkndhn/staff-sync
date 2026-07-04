@@ -1,3 +1,4 @@
+import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
 
 export interface Floor {
@@ -10,7 +11,7 @@ export interface Floor {
 
 export const floorService = {
     async getFloors(): Promise<Floor[]> {
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('floors')
             .select('*')
             .eq('is_active', true)
@@ -32,7 +33,7 @@ export const floorService = {
     },
 
     async getFloorsByLocation(locationName: string): Promise<Floor[]> {
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('floors')
             .select('*')
             .eq('location_name', locationName)
@@ -55,7 +56,7 @@ export const floorService = {
     },
 
     async addFloor(locationName: string, name: string): Promise<Floor | null> {
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('floors')
             .insert([{ location_name: locationName, name, is_active: true }])
             .select()
@@ -77,7 +78,7 @@ export const floorService = {
 
     async updateFloor(id: string, name: string, locationName?: string): Promise<Floor | null> {
         // Fetch old floor to get its old name
-        const { data: oldFloor } = await supabase.from('floors').select('name').eq('id', id).single();
+        const { data: oldFloor } = await dataApi.from('floors').select('name').eq('id', id).single();
         const oldName = oldFloor?.name;
 
         const updateData: any = { name, updated_at: new Date().toISOString() };
@@ -85,7 +86,7 @@ export const floorService = {
             updateData.location_name = locationName;
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('floors')
             .update(updateData)
             .eq('id', id)
@@ -98,7 +99,7 @@ export const floorService = {
         }
 
         if (oldName && oldName !== name) {
-            const { error: staffError } = await supabase
+            const { error: staffError } = await dataApi
                 .from('staff')
                 .update({ floor: name })
                 .eq('floor', oldName);
@@ -115,7 +116,7 @@ export const floorService = {
     },
 
     async deleteFloor(id: string): Promise<boolean> {
-        const { error } = await supabase
+        const { error } = await dataApi
             .from('floors')
             .update({ is_active: false, updated_at: new Date().toISOString() })
             .eq('id', id);

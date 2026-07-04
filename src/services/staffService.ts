@@ -1,38 +1,43 @@
 import { supabase } from '../lib/supabase';
+import { dataApi } from '../lib/dataApi';
 import { Staff } from '../types';
 import type { DatabaseStaff } from '../lib/supabase';
 
+// NOTE: `staff` table is locked down to service_role only. All reads/writes
+// must go through the session-validated `data-api` edge function.
+const api = dataApi;
+
 export const staffService = {
   async getAll(): Promise<Staff[]> {
-    const { data, error } = await supabase
+    const { data, error } = await api
       .from('staff')
       .select('*')
-      .order('display_order', { ascending: true, nullsFirst: false })
-      .order('created_at', { ascending: true });
+      .order('display_order', { ascending: true });
 
     if (error) {
       console.error('Error fetching staff:', error);
       throw error;
     }
 
-    return data.map((d: any) => this.mapFromDatabase(d));
+    const rows = (data as any[]) || [];
+    return rows.map((d: any) => this.mapFromDatabase(d));
   },
 
   async create(staff: Omit<Staff, 'id'>): Promise<Staff> {
-    // Get max display_order to set the new staff at the end
-    const { data: maxData } = await supabase
+    const { data: maxData } = await api
       .from('staff')
       .select('display_order')
       .order('display_order', { ascending: false })
       .limit(1);
 
-    const maxOrder = maxData && maxData.length > 0 ? (maxData[0].display_order || 0) : 0;
+    const maxRows = (maxData as any[]) || [];
+    const maxOrder = maxRows.length > 0 ? (maxRows[0].display_order || 0) : 0;
     const dbStaff = {
       ...this.mapToDatabase(staff),
       display_order: maxOrder + 1
     };
 
-    let { data, error } = await supabase
+    let { data, error } = await api
       .from('staff')
       .insert([dbStaff] as any)
       .select()
@@ -41,8 +46,8 @@ export const staffService = {
     if (error && error.message && error.message.includes('employee_code')) {
       console.warn('employee_code column missing in DB, retrying without it...');
       delete (dbStaff as any).employee_code;
-      const retry = await supabase.from('staff').insert([dbStaff] as any).select().single();
-      data = retry.data;
+      const retry = await api.from('staff').insert([dbStaff] as any).select().single();
+      data = retry.data as any;
       error = retry.error;
     }
 
@@ -51,11 +56,11 @@ export const staffService = {
       throw error;
     }
 
-    return this.mapFromDatabase(data as any);
+    const row = Array.isArray(data) ? (data as any[])[0] : data;
+    return this.mapFromDatabase(row as any);
   },
 
   async update(id: string, updates: Partial<Staff>): Promise<Staff> {
-    // Map camelCase properties to snake_case database column names
     const dbUpdates: Partial<Omit<DatabaseStaff, 'id' | 'created_at'>> = {
       updated_at: new Date().toISOString()
     };
@@ -96,7 +101,7 @@ export const staffService = {
     if (updates.deviceId !== undefined) (dbUpdates as any).device_id = updates.deviceId || null;
     if (updates.employeeCode !== undefined) (dbUpdates as any).employee_code = updates.employeeCode || null;
 
-    let { data, error } = await supabase
+    let { data, error } = await api
       .from('staff')
       .update(dbUpdates as any)
       .eq('id', id)
@@ -106,8 +111,8 @@ export const staffService = {
     if (error && error.message && error.message.includes('employee_code')) {
       console.warn('employee_code column missing in DB, retrying without it...');
       delete (dbUpdates as any).employee_code;
-      const retry = await supabase.from('staff').update(dbUpdates as any).eq('id', id).select().single();
-      data = retry.data;
+      const retry = await api.from('staff').update(dbUpdates as any).eq('id', id).select().single();
+      data = retry.data as any;
       error = retry.error;
     }
 
@@ -116,11 +121,12 @@ export const staffService = {
       throw error;
     }
 
-    return this.mapFromDatabase(data as any);
+    const row = Array.isArray(data) ? (data as any[])[0] : data;
+    return this.mapFromDatabase(row as any);
   },
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await api
       .from('staff')
       .update({ is_active: false })
       .eq('id', id);
@@ -132,8 +138,7 @@ export const staffService = {
   },
 
   async permanentDelete(id: string): Promise<void> {
-    // Hard delete - permanently removes staff record from database
-    const { error } = await supabase
+    const { error } = await api
       .from('staff')
       .delete()
       .eq('id', id);
@@ -144,19 +149,16 @@ export const staffService = {
     }
   },
 
-  // Update staff order - batch update display_order for all staff
   async updateStaffOrder(staffIds: string[]): Promise<void> {
     try {
-      // Update each staff member's display_order based on their position in the array
       const updates = staffIds.map((id, index) => ({
         id,
         display_order: index + 1,
         updated_at: new Date().toISOString()
       }));
 
-      // Use upsert to update all records
       for (const update of updates) {
-        const { error } = await supabase
+        const { error } = await api
           .from('staff')
           .update({ display_order: update.display_order, updated_at: update.updated_at })
           .eq('id', update.id);
@@ -254,3 +256,6 @@ export const staffService = {
     } as any;
   }
 };
+
+// keep original supabase import referenced so linter doesn't complain if reintroduced
+void supabase;

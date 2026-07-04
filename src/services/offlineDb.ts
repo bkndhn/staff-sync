@@ -3,6 +3,7 @@
  * Uses Dexie.js (IndexedDB wrapper, already installed) to persist
  * attendance punches locally on the device. Syncs to Supabase when online.
  */
+import { dataApi } from '../lib/dataApi';
 import Dexie, { Table } from 'dexie';
 import { supabase } from '../lib/supabase';
 
@@ -73,7 +74,7 @@ export const offlineDbService = {
    */
   async pullStaffFromCloud(): Promise<void> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await dataApi
         .from('staff')
         .select('id, name, location, designation, is_active, face_descriptors, updated_at')
         .eq('is_active', true);
