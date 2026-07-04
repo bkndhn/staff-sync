@@ -663,7 +663,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       statutoryDeductions: member.statutoryDeductions || {},
       pfNumber: member.pfNumber || '',
       esiNumber: member.esiNumber || '',
-      deviceId: member.deviceId?.startsWith('dev_') ? '' : (member.deviceId || '')
+      deviceId: member.deviceId?.startsWith('dev_') ? '' : (member.deviceId || ''),
+      isStatutory: !!member.isStatutory
     });
     setEditingStaff(member);
     setShowAddForm(true);
