@@ -21,6 +21,7 @@ interface NavigationProps {
 
 const Navigation: React.FC<NavigationProps> = ({
   activeTab, setActiveTab, user, onLogout, isDarkTheme = true, toggleTheme,
+  statutoryScope = 'statutory', onStatutoryScopeChange,
 }) => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [collapsed, setCollapsed] = useState<boolean>(() => {
