@@ -23,7 +23,7 @@ export const floorService = {
             return [];
         }
 
-        return (data || []).map(f => ({
+        return (data || []).map((f: any) => ({
             id: f.id,
             locationName: f.location_name,
             name: f.name,
@@ -46,7 +46,7 @@ export const floorService = {
             return [];
         }
 
-        return (data || []).map(f => ({
+        return (data || []).map((f: any) => ({
             id: f.id,
             locationName: f.location_name,
             name: f.name,

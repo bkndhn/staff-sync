@@ -24,7 +24,7 @@ interface BuilderState {
   single?: boolean;
 }
 
-class QueryBuilder<T = unknown> implements PromiseLike<{ data: T | null; error: Error | null }> {
+class QueryBuilder<T = any> implements PromiseLike<{ data: T | null; error: Error | null }> {
   constructor(private state: BuilderState) {}
 
   private filter(col: string, op: string, val: unknown) {
