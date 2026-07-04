@@ -102,6 +102,16 @@ function App() {
     try { localStorage.setItem('activeTab', tab); } catch {}
   };
 
+  // Statutory scope toggle: defaults to statutory-only so admins land on the compliance view.
+  const [statutoryScope, setStatutoryScopeState] = useState<'statutory' | 'all'>(() => {
+    const saved = localStorage.getItem('statutoryScope');
+    return (saved === 'all' || saved === 'statutory') ? saved : 'statutory';
+  });
+  const setStatutoryScope = (scope: 'statutory' | 'all') => {
+    setStatutoryScopeState(scope);
+    try { localStorage.setItem('statutoryScope', scope); } catch {}
+  };
+
   // ── Pre-hydrate from localStorage cache — instant first render ───────────
   // Data is already in state when first paint happens; Supabase refreshes in bg.
   const [staff, setStaff] = useState<Staff[]>(() => cacheService.get<Staff[]>(CACHE_KEYS.STAFF) ?? []);
