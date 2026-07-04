@@ -609,9 +609,10 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         paymentMode: formData.paymentMode,
         nextHikeDate: formData.nextHikeDate || undefined,
         hikeIntervalMonths: formData.hikeIntervalMonths || undefined,
-        statutoryDeductions: formData.statutoryDeductions,
-        pfNumber: formData.pfNumber || undefined,
-        esiNumber: formData.esiNumber || undefined
+        statutoryDeductions: formData.isStatutory ? formData.statutoryDeductions : {},
+        pfNumber: formData.isStatutory ? (formData.pfNumber || undefined) : undefined,
+        esiNumber: formData.isStatutory ? (formData.esiNumber || undefined) : undefined,
+        isStatutory: !!formData.isStatutory
       });
       setEditingStaff(null);
     } else {
