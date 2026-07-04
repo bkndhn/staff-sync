@@ -67,7 +67,7 @@ export const salaryCategoryService = {
 
       if (error) throw error;
 
-      const custom: SalaryCategory[] = (data || []).map(row => ({
+      const custom: SalaryCategory[] = (data || []).map((row: any) => ({
         id: row.id,
         name: row.display_name,
         key: row.name, // 'name' field stores the key
