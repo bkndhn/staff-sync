@@ -4,7 +4,7 @@ import {
   BarChart3, Users, Calendar, DollarSign, Clock, Archive, LogOut,
   AlertTriangle, Settings as SettingsIcon, FileText, ScanFace,
   ShieldAlert, Shield, TrendingUp, Coffee, Sun, Moon,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, ScrollText,
 } from 'lucide-react';
 import { SyncBadge } from './SyncBadge';
 
@@ -15,6 +15,8 @@ interface NavigationProps {
   onLogout: () => void;
   isDarkTheme?: boolean;
   toggleTheme?: () => void;
+  statutoryScope?: 'statutory' | 'all';
+  onStatutoryScopeChange?: (scope: 'statutory' | 'all') => void;
 }
 
 const Navigation: React.FC<NavigationProps> = ({
