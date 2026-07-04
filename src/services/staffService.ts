@@ -255,6 +255,7 @@ export const staffService = {
       esi_number: staff.esiNumber || null,
       device_id: staff.deviceId || null,
       employee_code: (staff as any).employeeCode || null,
+      is_statutory: !!(staff as any).isStatutory,
     } as any;
   }
 };
