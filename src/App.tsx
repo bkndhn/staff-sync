@@ -1226,6 +1226,8 @@ function App() {
         onLogout={handleLogout}
         isDarkTheme={isDarkTheme}
         toggleTheme={toggleTheme}
+        statutoryScope={statutoryScope}
+        onStatutoryScopeChange={setStatutoryScope}
       />
       <main
         className="w-full px-4 sm:px-6 lg:px-8 flex-1 pb-24 md:pb-8 md:pt-20 ml-0 md:ml-[var(--sidebar-w,232px)] transition-[margin] duration-200"
