@@ -1357,6 +1357,33 @@ export type Database = {
         }
         Relationships: []
       }
+      statutory_portal_config: {
+        Row: {
+          created_at: string | null
+          dashboard_widgets: Json
+          data_visibility: Json
+          id: string
+          updated_at: string | null
+          visible_pages: Json
+        }
+        Insert: {
+          created_at?: string | null
+          dashboard_widgets?: Json
+          data_visibility?: Json
+          id?: string
+          updated_at?: string | null
+          visible_pages?: Json
+        }
+        Update: {
+          created_at?: string | null
+          dashboard_widgets?: Json
+          data_visibility?: Json
+          id?: string
+          updated_at?: string | null
+          visible_pages?: Json
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           created_at: string | null
