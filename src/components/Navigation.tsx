@@ -94,34 +94,10 @@ const Navigation: React.FC<NavigationProps> = ({
     </button>
   );
 
-  const canToggleScope = (user.role === 'admin' || user.role === 'manager') && !!onStatutoryScopeChange;
-  const scopePill = canToggleScope && (
-    <div
-      className="hidden sm:flex items-center rounded-full bg-white/5 border border-white/10 p-0.5 text-[11px] font-medium overflow-hidden"
-      title="Switch between statutory-only view and all staff"
-    >
-      <button
-        onClick={() => onStatutoryScopeChange!('statutory')}
-        className={`flex items-center gap-1 px-2.5 py-1 rounded-full transition-all ${
-          statutoryScope === 'statutory'
-            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow'
-            : 'text-white/60 hover:text-white'
-        }`}
-      >
-        <ScrollText size={12} /> Statutory
-      </button>
-      <button
-        onClick={() => onStatutoryScopeChange!('all')}
-        className={`flex items-center gap-1 px-2.5 py-1 rounded-full transition-all ${
-          statutoryScope === 'all'
-            ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow'
-            : 'text-white/60 hover:text-white'
-        }`}
-      >
-        <Users size={12} /> All staff
-      </button>
-    </div>
-  );
+  // Statutory scope toggle removed — app always shows statutory staff only.
+  const canToggleScope = false;
+  const scopePill = null;
+  void statutoryScope; void onStatutoryScopeChange;
 
 
 
