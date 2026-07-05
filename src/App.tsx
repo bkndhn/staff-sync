@@ -982,8 +982,8 @@ function App() {
     const baseFilteredStaff = filteredStaff;
     const baseFilteredAttendance = filteredAttendance;
 
-    // When admin/manager has "statutory only" on, narrow the 4 focal pages.
-    const applyStatutoryScope = statutoryScope === 'statutory' && (user?.role === 'admin' || user?.role === 'manager');
+    // Statutory scope narrows to isStatutory staff for the statutory admin login.
+    const applyStatutoryScope = user?.role === 'statutory_admin';
     const statutoryStaffIds = applyStatutoryScope
       ? new Set(baseFilteredStaff.filter(s => s.isStatutory).map(s => s.id))
       : null;
@@ -993,6 +993,7 @@ function App() {
     const filteredAttendanceData = applyStatutoryScope && statutoryStaffIds
       ? baseFilteredAttendance.filter(r => r.isPartTime ? false : statutoryStaffIds.has(r.staffId))
       : baseFilteredAttendance;
+
 
     switch (activeTab) {
       case 'My Portal':
