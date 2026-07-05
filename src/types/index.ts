@@ -214,7 +214,7 @@ export interface SalaryHike {
 
 export interface User {
   email: string;
-  role: 'admin' | 'manager' | 'staff';
+  role: 'admin' | 'manager' | 'staff' | 'statutory_admin';
   location?: string;
   staffId?: string;
   staffName?: string;

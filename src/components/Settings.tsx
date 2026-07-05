@@ -8,6 +8,7 @@ import ShiftWindowsPanel from './ShiftWindowsPanel';
 import AttendanceRulesPanel from './AttendanceRulesPanel';
 import DeviceIntegration from './DeviceIntegration';
 import SalaryOverridesPanel from './SalaryOverridesPanel';
+import StatutoryPortalSettingsPanel from './StatutoryPortalSettingsPanel';
 
 interface SettingsProps {
     userRole: string;
@@ -513,6 +514,10 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                     </div>
                 </div>
             )}
+
+            {/* Statutory Portal Configuration (admin only) */}
+            {userRole === 'admin' && <StatutoryPortalSettingsPanel />}
+
 
             {/* Backup all data (admin only) */}
             {userRole === 'admin' && (

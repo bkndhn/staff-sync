@@ -209,9 +209,11 @@ function App() {
   useEffect(() => {
     if (!user) return;
     const saved = localStorage.getItem('activeTab') as NavigationTab | null;
+    const statutoryAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Salary Management', 'Leave Management', 'Settings'];
     const validForRole = (tab: NavigationTab | null): boolean => {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
+      if (user.role === 'statutory_admin') return statutoryAllowed.includes(tab);
       if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security';
       return tab !== 'My Portal';
     };
@@ -226,6 +228,7 @@ function App() {
     }
 
   }, [user]);
+
 
   // ─── Stale-while-revalidate: always-fresh, never-blocking ─────────────────
   // Fetches fresh data from Supabase in the background without setting any
@@ -322,7 +325,7 @@ function App() {
 
   // Filter staff based on user role and location - memoized for performance
   const filteredStaff = useMemo(() => {
-    if (user?.role === 'admin') {
+    if (user?.role === 'admin' || user?.role === 'statutory_admin') {
       return staff;
     } else if (user?.role === 'manager' && user.location) {
       return staff.filter(member => member.location === user.location);
@@ -330,9 +333,10 @@ function App() {
     return [];
   }, [staff, user?.role, user?.location]);
 
+
   // Filter attendance based on user role and location - memoized for performance
   const filteredAttendance = useMemo(() => {
-    if (user?.role === 'admin') {
+    if (user?.role === 'admin' || user?.role === 'statutory_admin') {
       return attendance;
     } else if (user?.role === 'manager' && user.location) {
       const locationStaffIds = staff
@@ -347,6 +351,7 @@ function App() {
     }
     return [];
   }, [attendance, staff, user?.role, user?.location]);
+
 
   // Auto-carry forward advances from previous month
   useEffect(() => {
@@ -977,8 +982,8 @@ function App() {
     const baseFilteredStaff = filteredStaff;
     const baseFilteredAttendance = filteredAttendance;
 
-    // When admin/manager has "statutory only" on, narrow the 4 focal pages.
-    const applyStatutoryScope = statutoryScope === 'statutory' && (user?.role === 'admin' || user?.role === 'manager');
+    // Statutory scope narrows to isStatutory staff for the statutory admin login.
+    const applyStatutoryScope = user?.role === 'statutory_admin';
     const statutoryStaffIds = applyStatutoryScope
       ? new Set(baseFilteredStaff.filter(s => s.isStatutory).map(s => s.id))
       : null;
@@ -988,6 +993,7 @@ function App() {
     const filteredAttendanceData = applyStatutoryScope && statutoryStaffIds
       ? baseFilteredAttendance.filter(r => r.isPartTime ? false : statutoryStaffIds.has(r.staffId))
       : baseFilteredAttendance;
+
 
     switch (activeTab) {
       case 'My Portal':
@@ -1014,13 +1020,15 @@ function App() {
             attendance={filteredAttendanceData}
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
-            userRole={user?.role === 'admin' ? 'admin' : 'manager'}
+            userRole={user?.role === 'admin' || user?.role === 'statutory_admin' ? 'admin' : 'manager'}
 
             userLocation={user?.location || ''}
             isDarkTheme={isDarkTheme}
             toggleTheme={toggleTheme}
+            statutoryMode={user?.role === 'statutory_admin'}
           />
         );
+
       case 'Workforce Insights':
         if (user?.role !== 'admin' && user?.role !== 'manager') return null;
         return (
@@ -1035,8 +1043,9 @@ function App() {
           </Suspense>
         );
       case 'Staff Management':
-        if (user?.role !== 'admin') return null;
+        if (user?.role !== 'admin' && user?.role !== 'statutory_admin') return null;
         return (
+
           <Suspense fallback={<ComponentLoader />}>
             <StaffManagement
               staff={filteredStaffData}
@@ -1069,7 +1078,8 @@ function App() {
           </Suspense>
         );
       case 'Salary Management':
-        if (user?.role !== 'admin') return null;
+        if (user?.role !== 'admin' && user?.role !== 'statutory_admin') return null;
+
         return (
           <Suspense fallback={<ComponentLoader />}>
             <SalaryManagement
@@ -1104,14 +1114,15 @@ function App() {
           </Suspense>
         );
       case 'Settings':
-        if (user?.role !== 'admin') return null;
+        if (user?.role !== 'admin' && user?.role !== 'statutory_admin') return null;
         return (
           <Suspense fallback={<ComponentLoader />}>
             <Settings userRole={user?.role || 'manager'} />
           </Suspense>
         );
       case 'Leave Management':
-        if (user?.role !== 'admin' && user?.role !== 'manager') return null;
+        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'statutory_admin') return null;
+
         return (
           <Suspense fallback={<ComponentLoader />}>
             <LeaveManagement

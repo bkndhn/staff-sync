@@ -4,9 +4,10 @@ import {
   BarChart3, Users, Calendar, DollarSign, Clock, Archive, LogOut,
   AlertTriangle, Settings as SettingsIcon, FileText, ScanFace,
   ShieldAlert, Shield, TrendingUp, Coffee, Sun, Moon,
-  PanelLeftClose, PanelLeftOpen, ScrollText,
+  PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { SyncBadge } from './SyncBadge';
+import { statutoryPortalService, StatutoryPortalConfig, DEFAULT_STATUTORY_CONFIG } from '../services/statutoryPortalService';
 
 interface NavigationProps {
   activeTab: NavigationTab;
@@ -27,6 +28,15 @@ const Navigation: React.FC<NavigationProps> = ({
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem('sidebarCollapsed') === '1'; } catch { return false; }
   });
+  const [portalCfg, setPortalCfg] = useState<StatutoryPortalConfig>(() =>
+    user.role === 'statutory_admin' ? statutoryPortalService.loadCached() : DEFAULT_STATUTORY_CONFIG
+  );
+
+  useEffect(() => {
+    if (user.role === 'statutory_admin') {
+      statutoryPortalService.load().then(setPortalCfg).catch(() => {});
+    }
+  }, [user.role]);
 
   useEffect(() => {
     try { localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0'); } catch {}
@@ -42,6 +52,17 @@ const Navigation: React.FC<NavigationProps> = ({
   const getAvailableTabs = () => {
     if (user.role === 'staff') {
       return [{ id: 'My Portal' as NavigationTab, label: 'My Portal', icon: Users }];
+    }
+    if (user.role === 'statutory_admin') {
+      const map: Array<{ id: NavigationTab; label: string; icon: any; key: keyof StatutoryPortalConfig['visiblePages'] }> = [
+        { id: 'Dashboard', label: 'Dashboard', icon: BarChart3, key: 'dashboard' },
+        { id: 'Staff Management', label: 'Staff', icon: Users, key: 'staff' },
+        { id: 'Attendance', label: 'Attendance', icon: Calendar, key: 'attendance' },
+        { id: 'Salary Management', label: 'Salary', icon: DollarSign, key: 'salary' },
+        { id: 'Leave Management', label: 'Leave', icon: FileText, key: 'leave' },
+        { id: 'Settings', label: 'Settings', icon: SettingsIcon, key: 'settings' },
+      ];
+      return map.filter(t => portalCfg.visiblePages[t.key]).map(({ id, label, icon }) => ({ id, label, icon }));
     }
     if (user.role === 'admin') {
       return [
@@ -72,6 +93,7 @@ const Navigation: React.FC<NavigationProps> = ({
   };
 
   const tabs = getAvailableTabs();
+
 
   const themeBtn = toggleTheme && (
     <button

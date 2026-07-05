@@ -14,7 +14,9 @@ interface DashboardProps {
   userLocation?: string;
   isDarkTheme: boolean;
   toggleTheme: () => void;
+  statutoryMode?: boolean;
 }
+
 
 const LOCATION_ORDER_KEY = 'dashboard_location_order';
 
@@ -26,8 +28,10 @@ const Dashboard: React.FC<DashboardProps> = ({
   userRole = 'manager',
   userLocation = '',
   isDarkTheme,
-  toggleTheme
+  toggleTheme,
+  statutoryMode = false,
 }) => {
+
   const todayAttendance = attendance.filter(record => record.date === selectedDate);
   const filteredStaff = userRole === 'admin' ? staff : staff.filter(member => member.location === userLocation);
   const allActiveStaff = staff.filter(member => member.isActive);
@@ -390,22 +394,25 @@ const Dashboard: React.FC<DashboardProps> = ({
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-1">
-            <div className="stat-card stat-card-purple card-animate">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-[var(--text-secondary)] mb-1">Part-Time Today</p>
-                  <div className="flex items-end gap-3">
-                    <p className="text-3xl font-bold text-purple-400">{partTimeTotal}</p>
-                    <p className="text-sm text-white/50 mb-1">
-                      (Both: {partTimeBoth}, Morning: {partTimeMorning}, Evening: {partTimeEvening})
-                    </p>
+          {!statutoryMode && (
+            <div className="grid grid-cols-1">
+              <div className="stat-card stat-card-purple card-animate">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-[var(--text-secondary)] mb-1">Part-Time Today</p>
+                    <div className="flex items-end gap-3">
+                      <p className="text-3xl font-bold text-purple-400">{partTimeTotal}</p>
+                      <p className="text-sm text-white/50 mb-1">
+                        (Both: {partTimeBoth}, Morning: {partTimeMorning}, Evening: {partTimeEvening})
+                      </p>
+                    </div>
                   </div>
+                  <div className="stat-icon stat-icon-purple"><Clock size={22} /></div>
                 </div>
-                <div className="stat-icon stat-icon-purple"><Clock size={22} /></div>
               </div>
             </div>
-          </div>
+          )}
+
         </div>
       )}
 
@@ -693,7 +700,10 @@ const Dashboard: React.FC<DashboardProps> = ({
       )}
 
       {/* Breaks widget moved to bottom */}
-      <BreaksDashboardWidget location={userRole === 'manager' ? userLocation : undefined} />
+      {!statutoryMode && (
+        <BreaksDashboardWidget location={userRole === 'manager' ? userLocation : undefined} />
+      )}
+
     </div>
 
   );
