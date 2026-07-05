@@ -14,7 +14,9 @@ interface DashboardProps {
   userLocation?: string;
   isDarkTheme: boolean;
   toggleTheme: () => void;
+  statutoryMode?: boolean;
 }
+
 
 const LOCATION_ORDER_KEY = 'dashboard_location_order';
 
