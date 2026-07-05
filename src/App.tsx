@@ -1078,7 +1078,8 @@ function App() {
           </Suspense>
         );
       case 'Salary Management':
-        if (user?.role !== 'admin') return null;
+        if (user?.role !== 'admin' && user?.role !== 'statutory_admin') return null;
+
         return (
           <Suspense fallback={<ComponentLoader />}>
             <SalaryManagement
