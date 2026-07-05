@@ -336,7 +336,7 @@ function App() {
 
   // Filter attendance based on user role and location - memoized for performance
   const filteredAttendance = useMemo(() => {
-    if (user?.role === 'admin') {
+    if (user?.role === 'admin' || user?.role === 'statutory_admin') {
       return attendance;
     } else if (user?.role === 'manager' && user.location) {
       const locationStaffIds = staff
@@ -351,6 +351,7 @@ function App() {
     }
     return [];
   }, [attendance, staff, user?.role, user?.location]);
+
 
   // Auto-carry forward advances from previous month
   useEffect(() => {
