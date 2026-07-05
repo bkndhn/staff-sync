@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { dataApi } from '../lib/dataApi';
 
 export interface StatutoryPortalConfig {
   id?: string;
@@ -50,11 +50,14 @@ export const DEFAULT_STATUTORY_CONFIG: StatutoryPortalConfig = {
 
 const LS_KEY = 'statutoryPortalConfig';
 
+// All reads/writes go through the session-validated data-api edge function.
+// Direct anon writes to statutory_portal_config are blocked by RLS — only
+// admin sessions can mutate the row.
 export const statutoryPortalService = {
   async load(): Promise<StatutoryPortalConfig> {
     try {
-      const { data } = await supabase
-        .from('statutory_portal_config' as any)
+      const { data } = await dataApi
+        .from('statutory_portal_config')
         .select('id, visible_pages, dashboard_widgets, data_visibility')
         .limit(1)
         .maybeSingle();
@@ -93,9 +96,13 @@ export const statutoryPortalService = {
       data_visibility: cfg.dataVisibility,
     };
     if (cfg.id) {
-      await supabase.from('statutory_portal_config' as any).update(payload).eq('id', cfg.id);
+      await dataApi.from('statutory_portal_config').update(payload).eq('id', cfg.id);
     } else {
-      const { data } = await supabase.from('statutory_portal_config' as any).insert(payload).select('id').single();
+      const { data } = await dataApi
+        .from('statutory_portal_config')
+        .insert(payload)
+        .select()
+        .single();
       if (data) cfg.id = (data as any).id;
     }
     try { localStorage.setItem(LS_KEY, JSON.stringify(cfg)); } catch {}

@@ -27,7 +27,7 @@ const corsHeaders = {
 //                    (using the column name supplied — usually 'location' or
 //                    'location_id')
 // ---------------------------------------------------------------------------
-type Role = "admin" | "manager" | "staff";
+type Role = "admin" | "manager" | "staff" | "statutory_admin";
 type Op = "select" | "insert" | "update" | "upsert" | "delete";
 
 interface TableAcl {
@@ -62,6 +62,7 @@ const ACL: Record<string, TableAcl> = {
   salary_categories:              { read: ["admin", "manager", "staff"], write: ["admin"] },
   location_shift_config:          { read: ["admin", "manager", "staff"], write: ["admin"] },
   location_designation_shift_config: { read: ["admin", "manager", "staff"], write: ["admin"] },
+  statutory_portal_config:        { read: ["admin", "manager", "staff", "statutory_admin" as Role], write: ["admin"] },
 };
 
 interface Filter { col: string; op: string; val: unknown }
