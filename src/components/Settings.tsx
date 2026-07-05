@@ -8,6 +8,7 @@ import ShiftWindowsPanel from './ShiftWindowsPanel';
 import AttendanceRulesPanel from './AttendanceRulesPanel';
 import DeviceIntegration from './DeviceIntegration';
 import SalaryOverridesPanel from './SalaryOverridesPanel';
+import StatutoryPortalSettingsPanel from './StatutoryPortalSettingsPanel';
 
 interface SettingsProps {
     userRole: string;
