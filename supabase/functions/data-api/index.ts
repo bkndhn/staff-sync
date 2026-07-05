@@ -58,8 +58,9 @@ const ACL: Record<string, TableAcl> = {
   app_settings:                   { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
   locations:                      { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
   designations:                   { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
-  floors:                         { read: ["admin", "manager", "staff"], write: ["admin"] },
-  salary_categories:              { read: ["admin", "manager", "staff"], write: ["admin"] },
+  floors:                         { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
+  salary_categories:              { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
+
   location_shift_config:          { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
   location_designation_shift_config: { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
 
