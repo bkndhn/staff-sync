@@ -515,6 +515,10 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                 </div>
             )}
 
+            {/* Statutory Portal Configuration (admin only) */}
+            {userRole === 'admin' && <StatutoryPortalSettingsPanel />}
+
+
             {/* Backup all data (admin only) */}
             {userRole === 'admin' && (
                 <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">
