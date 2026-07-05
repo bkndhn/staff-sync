@@ -196,7 +196,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (body.single) query = query.single();
+    if (body.single) query = query.maybeSingle();
 
     const { data, error } = await query;
     if (error) {
