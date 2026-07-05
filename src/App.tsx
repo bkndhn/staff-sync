@@ -1043,8 +1043,9 @@ function App() {
           </Suspense>
         );
       case 'Staff Management':
-        if (user?.role !== 'admin') return null;
+        if (user?.role !== 'admin' && user?.role !== 'statutory_admin') return null;
         return (
+
           <Suspense fallback={<ComponentLoader />}>
             <StaffManagement
               staff={filteredStaffData}
