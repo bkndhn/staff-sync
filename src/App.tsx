@@ -325,13 +325,14 @@ function App() {
 
   // Filter staff based on user role and location - memoized for performance
   const filteredStaff = useMemo(() => {
-    if (user?.role === 'admin') {
+    if (user?.role === 'admin' || user?.role === 'statutory_admin') {
       return staff;
     } else if (user?.role === 'manager' && user.location) {
       return staff.filter(member => member.location === user.location);
     }
     return [];
   }, [staff, user?.role, user?.location]);
+
 
   // Filter attendance based on user role and location - memoized for performance
   const filteredAttendance = useMemo(() => {
