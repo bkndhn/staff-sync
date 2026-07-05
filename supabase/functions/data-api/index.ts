@@ -27,7 +27,7 @@ const corsHeaders = {
 //                    (using the column name supplied — usually 'location' or
 //                    'location_id')
 // ---------------------------------------------------------------------------
-type Role = "admin" | "manager" | "staff";
+type Role = "admin" | "manager" | "staff" | "statutory_admin";
 type Op = "select" | "insert" | "update" | "upsert" | "delete";
 
 interface TableAcl {
