@@ -209,9 +209,11 @@ function App() {
   useEffect(() => {
     if (!user) return;
     const saved = localStorage.getItem('activeTab') as NavigationTab | null;
+    const statutoryAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Salary Management', 'Leave Management', 'Settings'];
     const validForRole = (tab: NavigationTab | null): boolean => {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
+      if (user.role === 'statutory_admin') return statutoryAllowed.includes(tab);
       if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security';
       return tab !== 'My Portal';
     };
@@ -226,6 +228,7 @@ function App() {
     }
 
   }, [user]);
+
 
   // ─── Stale-while-revalidate: always-fresh, never-blocking ─────────────────
   // Fetches fresh data from Supabase in the background without setting any
