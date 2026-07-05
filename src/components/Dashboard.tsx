@@ -28,8 +28,10 @@ const Dashboard: React.FC<DashboardProps> = ({
   userRole = 'manager',
   userLocation = '',
   isDarkTheme,
-  toggleTheme
+  toggleTheme,
+  statutoryMode = false,
 }) => {
+
   const todayAttendance = attendance.filter(record => record.date === selectedDate);
   const filteredStaff = userRole === 'admin' ? staff : staff.filter(member => member.location === userLocation);
   const allActiveStaff = staff.filter(member => member.isActive);
