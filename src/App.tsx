@@ -1020,13 +1020,15 @@ function App() {
             attendance={filteredAttendanceData}
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
-            userRole={user?.role === 'admin' ? 'admin' : 'manager'}
+            userRole={user?.role === 'admin' || user?.role === 'statutory_admin' ? 'admin' : 'manager'}
 
             userLocation={user?.location || ''}
             isDarkTheme={isDarkTheme}
             toggleTheme={toggleTheme}
+            statutoryMode={user?.role === 'statutory_admin'}
           />
         );
+
       case 'Workforce Insights':
         if (user?.role !== 'admin' && user?.role !== 'manager') return null;
         return (
