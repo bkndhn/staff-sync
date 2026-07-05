@@ -1114,14 +1114,15 @@ function App() {
           </Suspense>
         );
       case 'Settings':
-        if (user?.role !== 'admin') return null;
+        if (user?.role !== 'admin' && user?.role !== 'statutory_admin') return null;
         return (
           <Suspense fallback={<ComponentLoader />}>
             <Settings userRole={user?.role || 'manager'} />
           </Suspense>
         );
       case 'Leave Management':
-        if (user?.role !== 'admin' && user?.role !== 'manager') return null;
+        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'statutory_admin') return null;
+
         return (
           <Suspense fallback={<ComponentLoader />}>
             <LeaveManagement
