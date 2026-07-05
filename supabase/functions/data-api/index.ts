@@ -37,7 +37,7 @@ interface TableAcl {
 }
 
 const ACL: Record<string, TableAcl> = {
-  staff:                          { read: ["admin", "manager", "staff"], write: ["admin", "manager"], locationCol: "location" },
+  staff:                          { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin", "manager"], locationCol: "location" },
   attendance:                     { read: ["admin", "manager", "staff"], write: ["admin", "manager"], locationCol: "location" },
   punch_events:                   { read: ["admin", "manager", "staff"], write: ["admin", "manager"], locationCol: "location" },
   break_events:                   { read: ["admin", "manager", "staff"], write: ["admin", "manager", "staff"], locationCol: "location" },
@@ -55,13 +55,14 @@ const ACL: Record<string, TableAcl> = {
   old_staff_records:              { read: ["admin"],                     write: ["admin"] },
   part_time_advance_tracking:     { read: ["admin", "manager"],          write: ["admin", "manager"] },
   part_time_settlements:          { read: ["admin", "manager"],          write: ["admin", "manager"] },
-  app_settings:                   { read: ["admin", "manager", "staff"], write: ["admin"] },
-  locations:                      { read: ["admin", "manager", "staff"], write: ["admin"] },
-  designations:                   { read: ["admin", "manager", "staff"], write: ["admin"] },
+  app_settings:                   { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
+  locations:                      { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
+  designations:                   { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
   floors:                         { read: ["admin", "manager", "staff"], write: ["admin"] },
   salary_categories:              { read: ["admin", "manager", "staff"], write: ["admin"] },
-  location_shift_config:          { read: ["admin", "manager", "staff"], write: ["admin"] },
-  location_designation_shift_config: { read: ["admin", "manager", "staff"], write: ["admin"] },
+  location_shift_config:          { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
+  location_designation_shift_config: { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
+
   statutory_portal_config:        { read: ["admin", "manager", "staff", "statutory_admin" as Role], write: ["admin"] },
 };
 
