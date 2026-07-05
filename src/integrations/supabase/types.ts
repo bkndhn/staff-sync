@@ -1240,6 +1240,7 @@ export type Database = {
           designation: string | null
           device_id: string | null
           display_order: number | null
+          employee_code: string | null
           esi_number: string | null
           exempt_from_late_deduction: boolean | null
           experience: string
@@ -1282,6 +1283,7 @@ export type Database = {
           designation?: string | null
           device_id?: string | null
           display_order?: number | null
+          employee_code?: string | null
           esi_number?: string | null
           exempt_from_late_deduction?: boolean | null
           experience: string
@@ -1324,6 +1326,7 @@ export type Database = {
           designation?: string | null
           device_id?: string | null
           display_order?: number | null
+          employee_code?: string | null
           esi_number?: string | null
           exempt_from_late_deduction?: boolean | null
           experience?: string
