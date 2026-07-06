@@ -208,7 +208,6 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
             <table className="w-full text-sm">
               <thead className="bg-white/5 text-[11px] uppercase tracking-wider text-white/60">
                 <tr>
-                  <th className="text-left p-3">Emp Code</th>
                   <th className="text-left p-3">Name</th>
                   <th className="text-left p-3">Designation</th>
                   <th className="text-left p-3">Location</th>
