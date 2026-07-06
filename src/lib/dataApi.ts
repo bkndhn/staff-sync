@@ -10,7 +10,9 @@
 
 type Filter = { col: string; op: string; val: unknown };
 
-const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/data-api`;
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || "https://nsmppwnpdxomjmgrtqka.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zbXBwd25wZHhvbWptZ3J0cWthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1NDM3NjksImV4cCI6MjA2NzExOTc2OX0.gVzJ4uPAmFT5yngvdcFsHXHH1cUL-nIq0e71Gx8ALOk";
+const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/data-api`;
 
 interface BuilderState {
   table: string;
@@ -84,7 +86,7 @@ class QueryBuilder<T = any> implements PromiseLike<{ data: T | null; error: Erro
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: SUPABASE_PUBLISHABLE_KEY,
           "x-session-token": token,
         },
         body: JSON.stringify(this.state),
