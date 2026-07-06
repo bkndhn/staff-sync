@@ -93,7 +93,6 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
     if (!win) return;
     const rowsHtml = rows.map(s => `
       <tr>
-        <td>${s.employeeCode || '—'}</td>
         <td>${s.name}</td>
         <td>${s.designation || '—'}</td>
         <td>${s.location}</td>
