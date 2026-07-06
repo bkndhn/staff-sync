@@ -223,10 +223,9 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
               </thead>
               <tbody className="divide-y divide-white/5">
                 {rows.length === 0 ? (
-                  <tr><td colSpan={12} className="p-8 text-center text-white/40">No records match your filters.</td></tr>
+                  <tr><td colSpan={11} className="p-8 text-center text-white/40">No records match your filters.</td></tr>
                 ) : rows.map(s => (
                   <tr key={s.id} className="hover:bg-white/[0.03]">
-                    <td className="p-3 font-mono text-xs text-white/70">{s.employeeCode || '—'}</td>
                     <td className="p-3 font-medium">{s.name}</td>
                     <td className="p-3 text-white/70">{s.designation || '—'}</td>
                     <td className="p-3 text-white/70">{s.location}</td>
