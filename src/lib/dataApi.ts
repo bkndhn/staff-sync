@@ -86,7 +86,7 @@ class QueryBuilder<T = any> implements PromiseLike<{ data: T | null; error: Erro
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: SUPABASE_PUBLISHABLE_KEY,
           "x-session-token": token,
         },
         body: JSON.stringify(this.state),
