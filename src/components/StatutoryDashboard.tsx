@@ -66,14 +66,14 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
 
   const exportCSV = () => {
     const headers = [
-      'Employee Code', 'Name', 'Designation', 'Location', 'Joined Date',
+      'Name', 'Designation', 'Location', 'Joined Date',
       'PF Number', 'ESI Number', 'Basic', 'HRA', 'Incentive', 'Gross Salary',
       'PF Contribution', 'ESI Contribution',
     ];
     const lines = [headers.join(',')];
     rows.forEach(s => {
       lines.push([
-        s.employeeCode || '', s.name, s.designation || '', s.location, s.joinedDate,
+        s.name, s.designation || '', s.location, s.joinedDate,
         s.pfNumber || '', s.esiNumber || '',
         s.basicSalary, s.hra, s.incentive, s.totalSalary,
         statutoryValueFor(s, 'pf'), statutoryValueFor(s, 'esi'),
@@ -93,7 +93,6 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
     if (!win) return;
     const rowsHtml = rows.map(s => `
       <tr>
-        <td>${s.employeeCode || '—'}</td>
         <td>${s.name}</td>
         <td>${s.designation || '—'}</td>
         <td>${s.location}</td>
@@ -119,7 +118,7 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
       <h1>Statutory Compliance Report</h1>
       <div class="sub">Generated ${new Date().toLocaleString('en-IN')} · Full-time employees only · ${rows.length} records</div>
       <table><thead><tr>
-        <th>Emp Code</th><th>Name</th><th>Designation</th><th>Location</th><th>Joined</th>
+        <th>Name</th><th>Designation</th><th>Location</th><th>Joined</th>
         <th>PF No</th><th>ESI No</th><th>Basic</th><th>HRA</th><th>Gross</th>
         <th>PF Cont.</th><th>ESI Cont.</th>
       </tr></thead><tbody>${rowsHtml}</tbody></table>
@@ -208,7 +207,6 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
             <table className="w-full text-sm">
               <thead className="bg-white/5 text-[11px] uppercase tracking-wider text-white/60">
                 <tr>
-                  <th className="text-left p-3">Emp Code</th>
                   <th className="text-left p-3">Name</th>
                   <th className="text-left p-3">Designation</th>
                   <th className="text-left p-3">Location</th>
@@ -224,10 +222,9 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
               </thead>
               <tbody className="divide-y divide-white/5">
                 {rows.length === 0 ? (
-                  <tr><td colSpan={12} className="p-8 text-center text-white/40">No records match your filters.</td></tr>
+                  <tr><td colSpan={11} className="p-8 text-center text-white/40">No records match your filters.</td></tr>
                 ) : rows.map(s => (
                   <tr key={s.id} className="hover:bg-white/[0.03]">
-                    <td className="p-3 font-mono text-xs text-white/70">{s.employeeCode || '—'}</td>
                     <td className="p-3 font-medium">{s.name}</td>
                     <td className="p-3 text-white/70">{s.designation || '—'}</td>
                     <td className="p-3 text-white/70">{s.location}</td>
