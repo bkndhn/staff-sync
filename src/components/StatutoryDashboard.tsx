@@ -118,7 +118,7 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
       <h1>Statutory Compliance Report</h1>
       <div class="sub">Generated ${new Date().toLocaleString('en-IN')} · Full-time employees only · ${rows.length} records</div>
       <table><thead><tr>
-        <th>Emp Code</th><th>Name</th><th>Designation</th><th>Location</th><th>Joined</th>
+        <th>Name</th><th>Designation</th><th>Location</th><th>Joined</th>
         <th>PF No</th><th>ESI No</th><th>Basic</th><th>HRA</th><th>Gross</th>
         <th>PF Cont.</th><th>ESI Cont.</th>
       </tr></thead><tbody>${rowsHtml}</tbody></table>
