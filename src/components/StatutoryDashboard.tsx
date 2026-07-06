@@ -66,14 +66,14 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
 
   const exportCSV = () => {
     const headers = [
-      'Employee Code', 'Name', 'Designation', 'Location', 'Joined Date',
+      'Name', 'Designation', 'Location', 'Joined Date',
       'PF Number', 'ESI Number', 'Basic', 'HRA', 'Incentive', 'Gross Salary',
       'PF Contribution', 'ESI Contribution',
     ];
     const lines = [headers.join(',')];
     rows.forEach(s => {
       lines.push([
-        s.employeeCode || '', s.name, s.designation || '', s.location, s.joinedDate,
+        s.name, s.designation || '', s.location, s.joinedDate,
         s.pfNumber || '', s.esiNumber || '',
         s.basicSalary, s.hra, s.incentive, s.totalSalary,
         statutoryValueFor(s, 'pf'), statutoryValueFor(s, 'esi'),
