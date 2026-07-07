@@ -1055,6 +1055,7 @@ function App() {
               onDeleteStaff={deleteStaff}
               onUpdateStaffOrder={handleUpdateStaffOrder}
               onRefreshStaff={forceRefreshData}
+              userRole={user?.role}
             />
           </Suspense>
         );
