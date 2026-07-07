@@ -1055,6 +1055,7 @@ function App() {
               onDeleteStaff={deleteStaff}
               onUpdateStaffOrder={handleUpdateStaffOrder}
               onRefreshStaff={forceRefreshData}
+              userRole={user?.role}
             />
           </Suspense>
         );
@@ -1068,6 +1069,7 @@ function App() {
             onUpdateAttendance={updateAttendance}
             onBulkUpdateAttendance={bulkUpdateAttendance}
             userRole={user?.role === 'admin' ? 'admin' : 'manager'}
+            actualRole={user?.role}
           />
         );
       case 'Break Management':
@@ -1087,6 +1089,7 @@ function App() {
               attendance={filteredAttendanceData}
               advances={advances}
               onUpdateAdvances={updateAdvances}
+              userRole={user?.role}
             />
           </Suspense>
         );

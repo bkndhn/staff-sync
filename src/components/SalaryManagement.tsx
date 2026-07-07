@@ -12,12 +12,14 @@ import { appSettingsService } from '../services/appSettingsService';
 import { payrollService } from '../services/payrollService';
 import BulkSalarySender from './BulkSalarySender';
 import { customAlert, customConfirm } from './CustomDialog';
+import { canSeeEmployeeCode, type AppRole } from '../lib/roleVisibility';
 
 interface SalaryManagementProps {
   staff: Staff[];
   attendance: Attendance[];
   advances: AdvanceDeduction[];
   onUpdateAdvances: (staffId: string, month: number, year: number, advances: Partial<AdvanceDeduction>) => void;
+  userRole?: AppRole;
 }
 
 interface TempSalaryData {
@@ -41,8 +43,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   staff,
   attendance,
   advances,
-  onUpdateAdvances
+  onUpdateAdvances,
+  userRole
 }) => {
+  const showEmpCode = canSeeEmployeeCode(userRole);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
@@ -1371,7 +1375,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             <thead>
               <tr>
                 <th className="px-2 md:px-4 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
-                <th className="px-2 md:px-4 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emp Code</th>
+                {showEmpCode && <th className="px-2 md:px-4 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emp Code</th>}
                 <th className="px-2 md:px-4 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 z-10 bg-gray-50">Name</th>
                 {salaryVisibleCols.location !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>}
                 {salaryVisibleCols.floor !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Floor</th>}
@@ -1415,7 +1419,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     return uninformedDays > 0 ? 'bg-orange-50 border-l-4 border-orange-400' : '';
                   })()}`}>
                     <td className="px-2 md:px-4 py-3 whitespace-nowrap text-gray-900">{index + 1}</td>
-                    <td className="px-2 md:px-4 py-3 whitespace-nowrap text-gray-500 text-sm">{staffMember?.employeeCode || (staffMember?.deviceId?.startsWith('dev_') ? null : staffMember?.deviceId) || '-'}</td>
+                    {showEmpCode && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-gray-500 text-sm">{staffMember?.employeeCode || (staffMember?.deviceId?.startsWith('dev_') ? null : staffMember?.deviceId) || '-'}</td>}
                     <td className="px-2 md:px-4 py-3 whitespace-nowrap font-medium text-gray-900 sticky left-0 z-10 bg-white">
                       {staffMember?.name}
                       {(() => {
@@ -1658,6 +1662,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 <td className="px-2 md:px-4 py-3 whitespace-nowrap" colSpan={
                   2 + // S.No + Name (always)
                   1 + // Emp Code (always)
+                  (showEmpCode ? 0 : -1) +
                   (salaryVisibleCols.location !== false ? 1 : 0) +
                   (salaryVisibleCols.floor !== false ? 1 : 0) +
                   (salaryVisibleCols.designation !== false ? 1 : 0) +
