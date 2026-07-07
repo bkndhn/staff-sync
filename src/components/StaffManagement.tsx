@@ -14,6 +14,7 @@ import { salaryCategoryService, type SalaryCategory } from '../services/salaryCa
 import { floorService, type Floor } from '../services/floorService';
 import { designationService, type Designation } from '../services/designationService';
 import { customAlert, customConfirm } from './CustomDialog';
+import { canSeeEmployeeCode, type AppRole } from '../lib/roleVisibility';
 
 interface StaffManagementProps {
   staff: Staff[];
@@ -23,6 +24,7 @@ interface StaffManagementProps {
   onDeleteStaff: (id: string, reason: string) => void;
   onUpdateStaffOrder?: (newOrder: Staff[]) => void;
   onRefreshStaff?: () => Promise<void>;
+  userRole?: AppRole;
 }
 
 const StaffManagement: React.FC<StaffManagementProps> = ({
@@ -32,8 +34,10 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   onUpdateStaff,
   onDeleteStaff,
   onUpdateStaffOrder,
-  onRefreshStaff
+  onRefreshStaff,
+  userRole
 }) => {
+  const showEmpCode = canSeeEmployeeCode(userRole);
   const formRef = useRef<HTMLDivElement>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
@@ -1480,7 +1484,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               {showColumnPicker && (
                 <div className="absolute right-0 top-full mt-1 z-50 glass-card-static p-3 rounded-xl shadow-xl min-w-[200px] max-h-[400px] overflow-y-auto">
                   <p className="text-xs font-semibold text-white/70 mb-2">Show/Hide Columns</p>
-                  {Object.entries(columnLabels).map(([key, label]) => (
+                  {Object.entries(columnLabels)
+                    .filter(([key]) => showEmpCode || key !== 'employeeCode')
+                    .map(([key, label]) => (
                     <label key={key} className="flex items-center gap-2 py-1 cursor-pointer text-sm text-white/80 hover:text-white">
                       <input type="checkbox" checked={visibleColumns[key] !== false} onChange={() => toggleColumn(key)} className="rounded" />
                       {label}
@@ -1503,7 +1509,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               <tr>
                 <th className="w-10"></th>
                 <th className="text-center">S.No</th>
-                <th className="text-center">Emp Code</th>
+                {showEmpCode && <th className="text-center">Emp Code</th>}
                 <th className="sticky left-0">Name</th>
                 {visibleColumns.location !== false && <th className="text-center">Location</th>}
                 {visibleColumns.floor !== false && <th className="text-center">Floor</th>}
@@ -1563,7 +1569,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                       )}
                     </td>
                     <td className="px-3 py-4 text-sm text-center">{index + 1}</td>
-                    <td className="px-3 py-4 text-sm text-center">{member.employeeCode || (member.deviceId?.startsWith('dev_') ? null : member.deviceId) || '-'}</td>
+                    {showEmpCode && <td className="px-3 py-4 text-sm text-center">{member.employeeCode || (member.deviceId?.startsWith('dev_') ? null : member.deviceId) || '-'}</td>}
                     <td className="px-3 py-4 sticky left-0 bg-white">
                       <div>
                         <div className="text-sm font-medium">{member.name}</div>
