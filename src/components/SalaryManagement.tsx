@@ -12,12 +12,14 @@ import { appSettingsService } from '../services/appSettingsService';
 import { payrollService } from '../services/payrollService';
 import BulkSalarySender from './BulkSalarySender';
 import { customAlert, customConfirm } from './CustomDialog';
+import { canSeeEmployeeCode, type AppRole } from '../lib/roleVisibility';
 
 interface SalaryManagementProps {
   staff: Staff[];
   attendance: Attendance[];
   advances: AdvanceDeduction[];
   onUpdateAdvances: (staffId: string, month: number, year: number, advances: Partial<AdvanceDeduction>) => void;
+  userRole?: AppRole;
 }
 
 interface TempSalaryData {
@@ -41,8 +43,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   staff,
   attendance,
   advances,
-  onUpdateAdvances
+  onUpdateAdvances,
+  userRole
 }) => {
+  const showEmpCode = canSeeEmployeeCode(userRole);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
