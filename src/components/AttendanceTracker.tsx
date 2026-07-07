@@ -20,6 +20,7 @@ interface AttendanceTrackerProps {
   onUpdateAttendance: (staffId: string, date: string, status: 'Present' | 'Half Day' | 'Absent', isPartTime?: boolean, staffName?: string, shift?: 'Morning' | 'Evening' | 'Both', location?: string, salary?: number, salaryOverride?: boolean, arrivalTime?: string, leavingTime?: string) => void;
   onBulkUpdateAttendance: (date: string, status: 'Present' | 'Absent' | 'Half Day', shift?: 'Morning' | 'Evening', arrivalTime?: string, leavingTime?: string) => void;
   userRole: 'admin' | 'manager';
+  actualRole?: string;
 }
 
 const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
@@ -29,8 +30,10 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   onDateChange,
   onUpdateAttendance,
   onBulkUpdateAttendance,
-  userRole
+  userRole,
+  actualRole
 }) => {
+  const showEmpCode = actualRole !== 'statutory_admin';
   const [view, setView] = useState<'daily' | 'monthly' | 'yearly'>('daily');
   const [monthlyDate, setMonthlyDate] = useState({
     month: new Date().getMonth(),
