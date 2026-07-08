@@ -636,7 +636,16 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end gap-2">
             {error && (
               <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm flex items-center gap-2 shadow-xl max-w-sm">
-                <AlertTriangle size={16} /> {error}
+                <AlertTriangle size={16} />
+                <span className="flex-1">{error}</span>
+                <button onClick={reloadEmbeddings} className="p-1 rounded hover:bg-white/20" aria-label="Retry">
+                  <RefreshCw size={14} />
+                </button>
+              </div>
+            )}
+            {!isOnline && (
+              <div className="p-3 rounded-xl bg-amber-500/90 backdrop-blur border border-amber-400/50 text-white text-sm flex items-center gap-2 shadow-xl">
+                <WifiOff size={16} /> Offline — punches will sync when the connection returns.
               </div>
             )}
             {(loading || loadingEmbeddings) && (
@@ -645,14 +654,27 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                 {loading ? 'Loading face models…' : `Loading ${allEmbeddings.length} face samples…`}
               </div>
             )}
-            {!loadingEmbeddings && scopedEmbeddings.length === 0 && (
+            {embeddingsError && !loadingEmbeddings && (
+              <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm flex items-center gap-2 shadow-xl max-w-sm">
+                <AlertTriangle size={16} />
+                <span className="flex-1">{embeddingsError}</span>
+                <button onClick={reloadEmbeddings} className="p-1 rounded hover:bg-white/20" aria-label="Retry">
+                  <RefreshCw size={14} />
+                </button>
+              </div>
+            )}
+            {!loadingEmbeddings && !embeddingsError && scopedEmbeddings.length === 0 && (
               <div className="p-3 rounded-xl bg-amber-500/90 backdrop-blur border border-amber-400/50 text-white text-sm flex items-center gap-2 shadow-xl max-w-sm">
-                <AlertTriangle size={16} /> No face samples enrolled for this location.
+                <UserPlus size={16} /> Enroll staff faces in Staff Management to enable recognition.
               </div>
             )}
             {cameraError && (
-              <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm shadow-xl">
-                {cameraError}
+              <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm flex items-center gap-2 shadow-xl">
+                <AlertTriangle size={16} />
+                <span className="flex-1">{cameraError}</span>
+                <button onClick={startCamera} className="p-1 rounded hover:bg-white/20" aria-label="Retry camera">
+                  <RefreshCw size={14} />
+                </button>
               </div>
             )}
             {message && (
