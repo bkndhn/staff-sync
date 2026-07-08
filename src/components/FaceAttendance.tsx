@@ -562,8 +562,56 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             <>
               <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
               {!cameraOn && (
-                <div className="absolute inset-0 flex items-center justify-center text-[var(--text-secondary)] text-sm z-10 bg-black/80">
-                  {cameraError ? 'Camera blocked' : 'Starting camera…'}
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] text-sm z-10 bg-black/80 p-4 text-center">
+                  {cameraError ? (
+                    <>
+                      <XCircle size={40} className="text-red-400" />
+                      <div className="text-red-300 font-semibold">Camera unavailable</div>
+                      <div className="text-white/60 max-w-sm text-xs">{cameraError}</div>
+                      <button
+                        onClick={startCamera}
+                        className="mt-1 px-4 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-xs font-semibold inline-flex items-center gap-2"
+                      >
+                        <RefreshCw size={14} /> Retry camera
+                      </button>
+                    </>
+                  ) : loading ? (
+                    <>
+                      <Loader2 size={32} className="animate-spin text-indigo-300" />
+                      <div>Loading face recognition models…</div>
+                      <div className="text-[11px] text-white/50">First load can take a few seconds on slower networks.</div>
+                    </>
+                  ) : loadingEmbeddings ? (
+                    <>
+                      <Loader2 size={32} className="animate-spin text-indigo-300" />
+                      <div>Loading enrolled staff…</div>
+                    </>
+                  ) : embeddingsError ? (
+                    <>
+                      <AlertTriangle size={36} className="text-red-400" />
+                      <div className="text-red-300 font-semibold">Failed to load face data</div>
+                      <div className="text-white/60 text-xs max-w-sm">{embeddingsError}</div>
+                      <button
+                        onClick={reloadEmbeddings}
+                        className="mt-1 px-4 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-xs font-semibold inline-flex items-center gap-2"
+                      >
+                        <RefreshCw size={14} /> Retry
+                      </button>
+                    </>
+                  ) : scopedEmbeddings.length === 0 ? (
+                    <>
+                      <UserPlus size={40} className="text-amber-300" />
+                      <div className="text-white font-semibold">No enrolled staff for this location</div>
+                      <div className="text-white/60 text-xs max-w-sm">
+                        Go to Staff Management → Face Registration to capture face samples.
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Loader2 size={28} className="animate-spin text-indigo-300" />
+                      <div>Starting camera…</div>
+                    </>
+                  )}
                 </div>
               )}
               {cameraOn && lastMatch && (
