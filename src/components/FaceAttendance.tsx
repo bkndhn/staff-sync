@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity, Zap, QrCode } from 'lucide-react';
+import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity, Zap, QrCode, UserPlus, RefreshCw, WifiOff } from 'lucide-react';
 import { Staff, Attendance, Designation, LocationDesignationShiftConfig } from '../types';
 import { useFaceEngine } from '../hooks/useFaceEngine';
 import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
@@ -15,6 +15,10 @@ import { buildCentroidIndex, findBestMatch as findCosineMatch, type StaffEmbeddi
 import { createLivenessState, updateLiveness, evaluateLiveness, type LivenessState } from '../lib/livenessEngine';
 import { db } from '../lib/db';
 import { customConfirm } from './CustomDialog';
+import { SkeletonList } from './ui/Skeleton';
+import PerfOverlay from './ui/PerfOverlay';
+import { perfStart, perfRecord } from '../lib/perfProfiler';
+import { getDeviceProfile } from '../lib/deviceProfile';
 
 interface Props {
   staff: Staff[];                 // already location-scoped by App
