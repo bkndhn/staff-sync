@@ -547,9 +547,9 @@ function App() {
 
   // Bulk update attendance (admin only)
   const bulkUpdateAttendance = async (date: string, status: 'Present' | 'Absent' | 'Half Day', shift?: 'Morning' | 'Evening', arrivalTime?: string, leavingTime?: string) => {
-    // Allow both admin and managers to perform bulk updates
-    if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
-      await customAlert('Only administrators and managers can perform bulk updates');
+    // Allow admin, statutory_admin and managers to perform bulk updates
+    if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'statutory_admin')) {
+      await customAlert('You do not have permission to perform bulk updates');
       return;
     }
 
