@@ -715,8 +715,16 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         {/* Recent events */}
         <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6 shrink-0">
           <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Recent punches</h4>
-          {recent.length === 0 ? (
-            <p className="text-sm text-[var(--text-secondary)]">Nothing yet — recognized staff will appear here.</p>
+          {loadingEmbeddings ? (
+            <SkeletonList rows={3} />
+          ) : recent.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-6 text-center">
+              <ScanFace size={28} className="text-[var(--text-secondary)] opacity-60" />
+              <p className="text-sm text-[var(--text-secondary)]">No recognitions yet</p>
+              <p className="text-[11px] text-[var(--text-secondary)] opacity-70">
+                Point the camera at an enrolled staff member to record a punch.
+              </p>
+            </div>
           ) : (
             <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1 custom-scrollbar">
               {recent.map((r, idx) => (
