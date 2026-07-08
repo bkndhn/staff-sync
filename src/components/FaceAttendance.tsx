@@ -375,13 +375,15 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     }
   }, [attendance, today, onAttendancePatch, shiftWindows]);
 
-  // ---- Continuous recognition loop (requestAnimationFrame, frame-skipped) ---
+  // ---- Continuous recognition loop (time-throttled per device profile) -----
   useEffect(() => {
     if (!ready || !cameraOn || allEmbeddings.length === 0) return;
     let cancelled = false;
     let rafId = 0;
-    let frameCount = 0;
     let processing = false;
+    let lastRun = 0;
+    const dev = getDeviceProfile();
+    const minGap = dev.minDetectIntervalMs;
 
     const resetLiveness = (staffId: string | null = null) => {
       livenessRef.current = { staffId, state: createLivenessState() };
@@ -389,10 +391,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
     const onFrame = async () => {
       if (cancelled) return;
-      frameCount++;
-      // Every 4th frame (~7.5 fps at 30fps) — fast enough, less CPU heat
-      if (frameCount % 4 === 0 && !processing && videoRef.current && videoRef.current.readyState >= 2) {
+      const now = performance.now();
+      if (!processing && now - lastRun >= minGap && videoRef.current && videoRef.current.readyState >= 2) {
         processing = true;
+        lastRun = now;
         try {
           const r = await detect(videoRef.current, { scoreThreshold: 0.35, withLandmarks: true });
 
@@ -400,8 +402,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             setLastMatch(null);
             resetLiveness();
           } else {
+            const endMatch = perfStart('face.match');
             const desc32 = new Float32Array(r.descriptor);
             const { staffId, distance } = findBestMatch(desc32);
+            endMatch();
 
             if (!staffId) {
               setLastMatch({ name: 'Unknown face', distance, ts: Date.now(), status: 'unknown' });
@@ -417,10 +421,8 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                 setLastMatch({ name: 'Inactive staff', distance, ts: Date.now(), status: 'unknown' });
                 resetLiveness();
               } else {
-                // Reset if different person detected
                 if (livenessRef.current.staffId !== staffId) resetLiveness(staffId);
 
-                // ── Update multi-layer liveness engine ─────────────────────
                 livenessRef.current.state = updateLiveness(
                   livenessRef.current.state,
                   videoRef.current!,
@@ -440,9 +442,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                   resetLiveness();
                 } else if (liveness.isLive) {
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'ok' });
+                  const endPunch = perfStart('face.punch');
                   await punch(s, distance, liveness.score);
+                  endPunch();
                   resetLiveness();
-                  // Brief pause so the success animation shows
                   await new Promise(res => setTimeout(res, 1800));
                 }
               }
@@ -457,6 +460,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     rafId = requestAnimationFrame(onFrame);
     return () => { cancelled = true; cancelAnimationFrame(rafId); };
   }, [ready, cameraOn, allEmbeddings, detect, findBestMatch, staffById, allowedStaffIds, punch]);
+
 
   const enrolledCount = enrolledStaffIds.size;
   const totalActive = staff.filter(s => s.isActive).length;
