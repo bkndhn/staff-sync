@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity, Zap, QrCode } from 'lucide-react';
+import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity, Zap, QrCode, UserPlus, RefreshCw, WifiOff } from 'lucide-react';
 import { Staff, Attendance, Designation, LocationDesignationShiftConfig } from '../types';
 import { useFaceEngine } from '../hooks/useFaceEngine';
 import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
@@ -15,6 +15,10 @@ import { buildCentroidIndex, findBestMatch as findCosineMatch, type StaffEmbeddi
 import { createLivenessState, updateLiveness, evaluateLiveness, type LivenessState } from '../lib/livenessEngine';
 import { db } from '../lib/db';
 import { customConfirm } from './CustomDialog';
+import { SkeletonList } from './ui/Skeleton';
+import PerfOverlay from './ui/PerfOverlay';
+import { perfStart, perfRecord } from '../lib/perfProfiler';
+import { getDeviceProfile } from '../lib/deviceProfile';
 
 interface Props {
   staff: Staff[];                 // already location-scoped by App
@@ -65,6 +69,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [allEmbeddings, setAllEmbeddings] = useState<FaceEmbedding[]>([]);
   const [loadingEmbeddings, setLoadingEmbeddings] = useState(true);
+  const [embeddingsError, setEmbeddingsError] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator === 'undefined' ? true : navigator.onLine);
   const [shiftWindows, setShiftWindows] = useState<ShiftWindows | null>(null);
   const [locationConfig, setLocationConfig] = useState<LocationShiftConfig | null>(null);
   const [managerCanOverride, setManagerCanOverride] = useState(true);
@@ -188,46 +195,64 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const endLoad = perfStart('face.load');
       try {
         setLoadingEmbeddings(true);
-        // Determine the location for this session
+        setEmbeddingsError(null);
         const locationName = selectedLocation;
-        
-        // Fetch all offline-cached data from Dexie
+
         const [list, sw, locCfgArr, kioskSettings, desigs, locDesigConfigs] = await Promise.all([
           db.faceEmbeddings.toArray(),
-          shiftService.loadGlobal(true), // TODO: shiftService could also use Dexie, but keeping for now as config
+          shiftService.loadGlobal(true),
           db.locationShiftConfig.where('locationName').equals(locationName).toArray(),
           appSettingsService.getKioskGlobalSettings(),
           db.designations.toArray(),
           db.locationDesignationShiftConfig.toArray(),
         ]);
-        
-        // Ensure format matches expected
+
         const filteredList = list.filter(e => e.isApproved !== false);
         const locCfg = locCfgArr.length > 0 ? locCfgArr[0] : null;
 
         if (!cancelled) {
           setAllEmbeddings(filteredList);
+          perfRecord('face.embeddings.count', filteredList.length);
           setShiftWindows(sw);
           setLocationConfig(locCfg || { ...DEFAULT_LOCATION_CONFIG, locationName });
           setManagerCanOverride(kioskSettings.managerCanOverride);
           setDesignations(desigs);
           setLocationDesignationConfigs(locDesigConfigs);
           setGlobalKioskSettingsState(kioskSettings);
-          // Cosine threshold: settings value is in Euclidean space (0.6), convert roughly
-          // Cosine ~0.38 ≈ Euclidean ~0.60 for 128-dim ResNet embeddings
           const rawThreshold = kioskSettings.matchThreshold || 0.60;
           COSINE_THRESHOLD = rawThreshold <= 1.0 ? Math.min(0.50, rawThreshold * 0.63) : 0.38;
         }
       } catch (e: any) {
-        if (!cancelled) setMessage({ kind: 'err', text: e?.message || 'Failed to load face data' });
+        if (!cancelled) {
+          const msg = e?.message || 'Failed to load face data';
+          setEmbeddingsError(msg);
+          setMessage({ kind: 'err', text: msg });
+        }
       } finally {
         if (!cancelled) setLoadingEmbeddings(false);
+        endLoad();
       }
     })();
     return () => { cancelled = true; };
-  }, [staff, selectedLocation]);
+  }, [staff, selectedLocation, reloadTick]);
+
+  // Online / offline listener — surface a small banner when offline
+  useEffect(() => {
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
+
+  const reloadEmbeddings = useCallback(() => setReloadTick(t => t + 1), []);
+
 
   // ---- Camera ---------------------------------------------------------------
   const startCamera = useCallback(async () => {
@@ -350,13 +375,15 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     }
   }, [attendance, today, onAttendancePatch, shiftWindows]);
 
-  // ---- Continuous recognition loop (requestAnimationFrame, frame-skipped) ---
+  // ---- Continuous recognition loop (time-throttled per device profile) -----
   useEffect(() => {
     if (!ready || !cameraOn || allEmbeddings.length === 0) return;
     let cancelled = false;
     let rafId = 0;
-    let frameCount = 0;
     let processing = false;
+    let lastRun = 0;
+    const dev = getDeviceProfile();
+    const minGap = dev.minDetectIntervalMs;
 
     const resetLiveness = (staffId: string | null = null) => {
       livenessRef.current = { staffId, state: createLivenessState() };
@@ -364,10 +391,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
     const onFrame = async () => {
       if (cancelled) return;
-      frameCount++;
-      // Every 4th frame (~7.5 fps at 30fps) — fast enough, less CPU heat
-      if (frameCount % 4 === 0 && !processing && videoRef.current && videoRef.current.readyState >= 2) {
+      const now = performance.now();
+      if (!processing && now - lastRun >= minGap && videoRef.current && videoRef.current.readyState >= 2) {
         processing = true;
+        lastRun = now;
         try {
           const r = await detect(videoRef.current, { scoreThreshold: 0.35, withLandmarks: true });
 
@@ -375,8 +402,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             setLastMatch(null);
             resetLiveness();
           } else {
+            const endMatch = perfStart('face.match');
             const desc32 = new Float32Array(r.descriptor);
             const { staffId, distance } = findBestMatch(desc32);
+            endMatch();
 
             if (!staffId) {
               setLastMatch({ name: 'Unknown face', distance, ts: Date.now(), status: 'unknown' });
@@ -392,10 +421,8 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                 setLastMatch({ name: 'Inactive staff', distance, ts: Date.now(), status: 'unknown' });
                 resetLiveness();
               } else {
-                // Reset if different person detected
                 if (livenessRef.current.staffId !== staffId) resetLiveness(staffId);
 
-                // ── Update multi-layer liveness engine ─────────────────────
                 livenessRef.current.state = updateLiveness(
                   livenessRef.current.state,
                   videoRef.current!,
@@ -415,9 +442,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                   resetLiveness();
                 } else if (liveness.isLive) {
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'ok' });
+                  const endPunch = perfStart('face.punch');
                   await punch(s, distance, liveness.score);
+                  endPunch();
                   resetLiveness();
-                  // Brief pause so the success animation shows
                   await new Promise(res => setTimeout(res, 1800));
                 }
               }
@@ -432,6 +460,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     rafId = requestAnimationFrame(onFrame);
     return () => { cancelled = true; cancelAnimationFrame(rafId); };
   }, [ready, cameraOn, allEmbeddings, detect, findBestMatch, staffById, allowedStaffIds, punch]);
+
 
   const enrolledCount = enrolledStaffIds.size;
   const totalActive = staff.filter(s => s.isActive).length;
@@ -459,7 +488,8 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 w-full min-h-[calc(100vh-80px)] py-4 max-w-[1920px] mx-auto">
+    <div className="flex flex-col lg:flex-row gap-3 md:gap-4 w-full min-h-[calc(100vh-80px)] py-2 md:py-4 max-w-[1920px] mx-auto px-2 md:px-0">
+      <PerfOverlay />
       {/* ── Left Side: Full Height Camera Feed ── */}
       <div className="flex-1 min-h-[500px] md:min-h-[600px] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
         {/* HUD Overlay */}
@@ -532,8 +562,56 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             <>
               <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
               {!cameraOn && (
-                <div className="absolute inset-0 flex items-center justify-center text-[var(--text-secondary)] text-sm z-10 bg-black/80">
-                  {cameraError ? 'Camera blocked' : 'Starting camera…'}
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] text-sm z-10 bg-black/80 p-4 text-center">
+                  {cameraError ? (
+                    <>
+                      <XCircle size={40} className="text-red-400" />
+                      <div className="text-red-300 font-semibold">Camera unavailable</div>
+                      <div className="text-white/60 max-w-sm text-xs">{cameraError}</div>
+                      <button
+                        onClick={startCamera}
+                        className="mt-1 px-4 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-xs font-semibold inline-flex items-center gap-2"
+                      >
+                        <RefreshCw size={14} /> Retry camera
+                      </button>
+                    </>
+                  ) : loading ? (
+                    <>
+                      <Loader2 size={32} className="animate-spin text-indigo-300" />
+                      <div>Loading face recognition models…</div>
+                      <div className="text-[11px] text-white/50">First load can take a few seconds on slower networks.</div>
+                    </>
+                  ) : loadingEmbeddings ? (
+                    <>
+                      <Loader2 size={32} className="animate-spin text-indigo-300" />
+                      <div>Loading enrolled staff…</div>
+                    </>
+                  ) : embeddingsError ? (
+                    <>
+                      <AlertTriangle size={36} className="text-red-400" />
+                      <div className="text-red-300 font-semibold">Failed to load face data</div>
+                      <div className="text-white/60 text-xs max-w-sm">{embeddingsError}</div>
+                      <button
+                        onClick={reloadEmbeddings}
+                        className="mt-1 px-4 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-xs font-semibold inline-flex items-center gap-2"
+                      >
+                        <RefreshCw size={14} /> Retry
+                      </button>
+                    </>
+                  ) : scopedEmbeddings.length === 0 ? (
+                    <>
+                      <UserPlus size={40} className="text-amber-300" />
+                      <div className="text-white font-semibold">No enrolled staff for this location</div>
+                      <div className="text-white/60 text-xs max-w-sm">
+                        Go to Staff Management → Face Registration to capture face samples.
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Loader2 size={28} className="animate-spin text-indigo-300" />
+                      <div>Starting camera…</div>
+                    </>
+                  )}
                 </div>
               )}
               {cameraOn && lastMatch && (
@@ -558,7 +636,16 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end gap-2">
             {error && (
               <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm flex items-center gap-2 shadow-xl max-w-sm">
-                <AlertTriangle size={16} /> {error}
+                <AlertTriangle size={16} />
+                <span className="flex-1">{error}</span>
+                <button onClick={reloadEmbeddings} className="p-1 rounded hover:bg-white/20" aria-label="Retry">
+                  <RefreshCw size={14} />
+                </button>
+              </div>
+            )}
+            {!isOnline && (
+              <div className="p-3 rounded-xl bg-amber-500/90 backdrop-blur border border-amber-400/50 text-white text-sm flex items-center gap-2 shadow-xl">
+                <WifiOff size={16} /> Offline — punches will sync when the connection returns.
               </div>
             )}
             {(loading || loadingEmbeddings) && (
@@ -567,14 +654,27 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                 {loading ? 'Loading face models…' : `Loading ${allEmbeddings.length} face samples…`}
               </div>
             )}
-            {!loadingEmbeddings && scopedEmbeddings.length === 0 && (
+            {embeddingsError && !loadingEmbeddings && (
+              <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm flex items-center gap-2 shadow-xl max-w-sm">
+                <AlertTriangle size={16} />
+                <span className="flex-1">{embeddingsError}</span>
+                <button onClick={reloadEmbeddings} className="p-1 rounded hover:bg-white/20" aria-label="Retry">
+                  <RefreshCw size={14} />
+                </button>
+              </div>
+            )}
+            {!loadingEmbeddings && !embeddingsError && scopedEmbeddings.length === 0 && (
               <div className="p-3 rounded-xl bg-amber-500/90 backdrop-blur border border-amber-400/50 text-white text-sm flex items-center gap-2 shadow-xl max-w-sm">
-                <AlertTriangle size={16} /> No face samples enrolled for this location.
+                <UserPlus size={16} /> Enroll staff faces in Staff Management to enable recognition.
               </div>
             )}
             {cameraError && (
-              <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm shadow-xl">
-                {cameraError}
+              <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm flex items-center gap-2 shadow-xl">
+                <AlertTriangle size={16} />
+                <span className="flex-1">{cameraError}</span>
+                <button onClick={startCamera} className="p-1 rounded hover:bg-white/20" aria-label="Retry camera">
+                  <RefreshCw size={14} />
+                </button>
               </div>
             )}
             {message && (
@@ -615,8 +715,16 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         {/* Recent events */}
         <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6 shrink-0">
           <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Recent punches</h4>
-          {recent.length === 0 ? (
-            <p className="text-sm text-[var(--text-secondary)]">Nothing yet — recognized staff will appear here.</p>
+          {loadingEmbeddings ? (
+            <SkeletonList rows={3} />
+          ) : recent.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-6 text-center">
+              <ScanFace size={28} className="text-[var(--text-secondary)] opacity-60" />
+              <p className="text-sm text-[var(--text-secondary)]">No recognitions yet</p>
+              <p className="text-[11px] text-[var(--text-secondary)] opacity-70">
+                Point the camera at an enrolled staff member to record a punch.
+              </p>
+            </div>
           ) : (
             <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1 custom-scrollbar">
               {recent.map((r, idx) => (
@@ -649,8 +757,16 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
               </h4>
               <span className="text-xs text-[var(--text-secondary)]">{todaysPunches.length} record(s)</span>
             </div>
-            {todaysPunches.length === 0 ? (
-              <p className="text-sm text-[var(--text-secondary)]">No punches recorded today yet.</p>
+            {loadingEmbeddings ? (
+              <SkeletonList rows={4} />
+            ) : todaysPunches.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-8 text-center">
+                <Activity size={26} className="text-[var(--text-secondary)] opacity-60" />
+                <p className="text-sm text-[var(--text-secondary)]">No punches recorded today</p>
+                <p className="text-[11px] text-[var(--text-secondary)] opacity-70">
+                  Records will appear here as staff punch in.
+                </p>
+              </div>
             ) : (
               <div className="space-y-2 overflow-y-auto pr-1 flex-1 custom-scrollbar">
                 {todaysPunches.map(rec => {

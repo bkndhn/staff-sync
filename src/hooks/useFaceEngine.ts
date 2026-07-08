@@ -16,6 +16,8 @@
 import { useEffect, useRef, useState } from 'react';
 import * as faceapi from '@vladmandic/face-api';
 import { preloadDetector } from '../lib/onnxFaceDetector';
+import { getDeviceProfile } from '../lib/deviceProfile';
+import { perfStart } from '../lib/perfProfiler';
 
 const MODEL_URL = '/models';
 const MODEL_URL_V2 = '/models-v2';
@@ -97,17 +99,46 @@ export const useFaceEngine = (autoLoad = true) => {
     opts?: { scoreThreshold?: number; withLandmarks?: boolean },
   ): Promise<DetectionResult | null> => {
     await ensureModelsLoaded();
+    const endDetect = perfStart('face.detect');
+    const dev = getDeviceProfile();
+
+    // Downscale the input frame on low-end/mobile — dramatically faster with negligible
+    // accuracy loss at kiosk range. Skip when input is already small enough.
+    let source: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement = input;
+    let scale = 1;
+    try {
+      const srcW = (input as HTMLVideoElement).videoWidth
+        || (input as HTMLImageElement).naturalWidth
+        || (input as HTMLCanvasElement).width
+        || 0;
+      const srcH = (input as HTMLVideoElement).videoHeight
+        || (input as HTMLImageElement).naturalHeight
+        || (input as HTMLCanvasElement).height
+        || 0;
+      if (srcW > dev.detectionMaxWidth && srcW > 0 && srcH > 0) {
+        scale = dev.detectionMaxWidth / srcW;
+        const c = document.createElement('canvas');
+        c.width = Math.round(srcW * scale);
+        c.height = Math.round(srcH * scale);
+        const ctx = c.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(input as any, 0, 0, c.width, c.height);
+          source = c;
+        }
+      }
+    } catch { /* fall back to original */ }
 
     const options = new faceapi.TinyFaceDetectorOptions({
-      inputSize: 608, // Increased from 416/512 to 608 for vastly superior accuracy on small/far faces
-      scoreThreshold: opts?.scoreThreshold ?? 0.35, // Balanced threshold to prevent false positives but catch real faces
+      inputSize: dev.detectorInputSize,
+      scoreThreshold: opts?.scoreThreshold ?? 0.35,
     });
 
     const results = await faceapi
-      .detectAllFaces(input, options)
+      .detectAllFaces(source, options)
       .withFaceLandmarks()
       .withFaceDescriptors();
 
+    endDetect();
     if (!results || results.length === 0) return null;
 
     // Pick face with largest area (closest to camera)
@@ -115,12 +146,14 @@ export const useFaceEngine = (autoLoad = true) => {
       a.detection.box.area > b.detection.box.area ? a : b
     );
 
+    // Rescale box back to source coordinates
     const box = best.detection.box;
+    const inv = scale === 1 ? 1 : 1 / scale;
     return {
       descriptor: Array.from(best.descriptor),
       qualityScore: best.detection.score,
       faceCount: results.length,
-      box: { x: box.x, y: box.y, width: box.width, height: box.height },
+      box: { x: box.x * inv, y: box.y * inv, width: box.width * inv, height: box.height * inv },
       landmarks: opts?.withLandmarks === false ? undefined : best.landmarks,
     };
   };

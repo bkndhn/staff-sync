@@ -1138,19 +1138,20 @@ function App() {
       case 'Face Attendance':
         if (user?.role !== 'admin' && user?.role !== 'manager') return null;
         return (
-          <Suspense fallback={<ComponentLoader />}>
-            <FaceAttendance
-              staff={filteredStaffData}
-              attendance={filteredAttendanceData}
-              onAttendancePatch={patchAttendance}
-              onAttendanceUpdated={() => {
-                // Only invalidate cache — UI is already updated via onAttendancePatch
-                cacheService.invalidate(CACHE_KEYS.ATTENDANCE);
-              }}
-              userRole={user?.role as 'admin' | 'manager'}
-              userLocation={user?.location}
-            />
-          </Suspense>
+          <ErrorBoundary moduleName="Face Attendance">
+            <Suspense fallback={<ComponentLoader />}>
+              <FaceAttendance
+                staff={filteredStaffData}
+                attendance={filteredAttendanceData}
+                onAttendancePatch={patchAttendance}
+                onAttendanceUpdated={() => {
+                  cacheService.invalidate(CACHE_KEYS.ATTENDANCE);
+                }}
+                userRole={user?.role as 'admin' | 'manager'}
+                userLocation={user?.location}
+              />
+            </Suspense>
+          </ErrorBoundary>
         );
       case 'Audit Log':
         if (user?.role !== 'admin') return null;
