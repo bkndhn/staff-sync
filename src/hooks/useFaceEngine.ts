@@ -16,6 +16,8 @@
 import { useEffect, useRef, useState } from 'react';
 import * as faceapi from '@vladmandic/face-api';
 import { preloadDetector } from '../lib/onnxFaceDetector';
+import { getDeviceProfile } from '../lib/deviceProfile';
+import { perfStart } from '../lib/perfProfiler';
 
 const MODEL_URL = '/models';
 const MODEL_URL_V2 = '/models-v2';
