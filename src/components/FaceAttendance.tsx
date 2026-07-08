@@ -195,46 +195,64 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const endLoad = perfStart('face.load');
       try {
         setLoadingEmbeddings(true);
-        // Determine the location for this session
+        setEmbeddingsError(null);
         const locationName = selectedLocation;
-        
-        // Fetch all offline-cached data from Dexie
+
         const [list, sw, locCfgArr, kioskSettings, desigs, locDesigConfigs] = await Promise.all([
           db.faceEmbeddings.toArray(),
-          shiftService.loadGlobal(true), // TODO: shiftService could also use Dexie, but keeping for now as config
+          shiftService.loadGlobal(true),
           db.locationShiftConfig.where('locationName').equals(locationName).toArray(),
           appSettingsService.getKioskGlobalSettings(),
           db.designations.toArray(),
           db.locationDesignationShiftConfig.toArray(),
         ]);
-        
-        // Ensure format matches expected
+
         const filteredList = list.filter(e => e.isApproved !== false);
         const locCfg = locCfgArr.length > 0 ? locCfgArr[0] : null;
 
         if (!cancelled) {
           setAllEmbeddings(filteredList);
+          perfRecord('face.embeddings.count', filteredList.length);
           setShiftWindows(sw);
           setLocationConfig(locCfg || { ...DEFAULT_LOCATION_CONFIG, locationName });
           setManagerCanOverride(kioskSettings.managerCanOverride);
           setDesignations(desigs);
           setLocationDesignationConfigs(locDesigConfigs);
           setGlobalKioskSettingsState(kioskSettings);
-          // Cosine threshold: settings value is in Euclidean space (0.6), convert roughly
-          // Cosine ~0.38 ≈ Euclidean ~0.60 for 128-dim ResNet embeddings
           const rawThreshold = kioskSettings.matchThreshold || 0.60;
           COSINE_THRESHOLD = rawThreshold <= 1.0 ? Math.min(0.50, rawThreshold * 0.63) : 0.38;
         }
       } catch (e: any) {
-        if (!cancelled) setMessage({ kind: 'err', text: e?.message || 'Failed to load face data' });
+        if (!cancelled) {
+          const msg = e?.message || 'Failed to load face data';
+          setEmbeddingsError(msg);
+          setMessage({ kind: 'err', text: msg });
+        }
       } finally {
         if (!cancelled) setLoadingEmbeddings(false);
+        endLoad();
       }
     })();
     return () => { cancelled = true; };
-  }, [staff, selectedLocation]);
+  }, [staff, selectedLocation, reloadTick]);
+
+  // Online / offline listener — surface a small banner when offline
+  useEffect(() => {
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
+
+  const reloadEmbeddings = useCallback(() => setReloadTick(t => t + 1), []);
+
 
   // ---- Camera ---------------------------------------------------------------
   const startCamera = useCallback(async () => {
