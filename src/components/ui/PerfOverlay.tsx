@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { perfEnabled, perfSnapshot, perfSubscribe, readHeapMB, type PerfSnapshot } from '../lib/perfProfiler';
-import { getDeviceProfile } from '../lib/deviceProfile';
+import { perfEnabled, perfSnapshot, perfSubscribe, readHeapMB, type PerfSnapshot } from '../../lib/perfProfiler';
+import { getDeviceProfile } from '../../lib/deviceProfile';
 
 /**
  * PerfOverlay — floating chip visible only when ?perf=1 is set.
