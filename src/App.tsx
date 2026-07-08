@@ -1068,7 +1068,7 @@ function App() {
             onDateChange={setSelectedDate}
             onUpdateAttendance={updateAttendance}
             onBulkUpdateAttendance={bulkUpdateAttendance}
-            userRole={user?.role === 'admin' ? 'admin' : 'manager'}
+            userRole={user?.role === 'admin' || user?.role === 'statutory_admin' ? 'admin' : 'manager'}
             actualRole={user?.role}
           />
         );
