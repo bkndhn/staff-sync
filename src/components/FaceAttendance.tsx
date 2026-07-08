@@ -757,8 +757,16 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
               </h4>
               <span className="text-xs text-[var(--text-secondary)]">{todaysPunches.length} record(s)</span>
             </div>
-            {todaysPunches.length === 0 ? (
-              <p className="text-sm text-[var(--text-secondary)]">No punches recorded today yet.</p>
+            {loadingEmbeddings ? (
+              <SkeletonList rows={4} />
+            ) : todaysPunches.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-8 text-center">
+                <Activity size={26} className="text-[var(--text-secondary)] opacity-60" />
+                <p className="text-sm text-[var(--text-secondary)]">No punches recorded today</p>
+                <p className="text-[11px] text-[var(--text-secondary)] opacity-70">
+                  Records will appear here as staff punch in.
+                </p>
+              </div>
             ) : (
               <div className="space-y-2 overflow-y-auto pr-1 flex-1 custom-scrollbar">
                 {todaysPunches.map(rec => {
