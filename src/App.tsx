@@ -915,10 +915,10 @@ function App() {
     }
   };
 
-  // Update advances and deductions (admin only)
+  // Update advances and deductions (admin + statutory_admin)
   const updateAdvances = async (staffId: string, month: number, year: number, advanceData: Partial<AdvanceDeduction>) => {
-    if (user?.role !== 'admin') {
-      await customAlert('Only administrators can update advances');
+    if (user?.role !== 'admin' && user?.role !== 'statutory_admin') {
+      await customAlert('You do not have permission to update advances');
       return;
     }
 
