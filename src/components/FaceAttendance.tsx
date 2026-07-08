@@ -69,6 +69,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [allEmbeddings, setAllEmbeddings] = useState<FaceEmbedding[]>([]);
   const [loadingEmbeddings, setLoadingEmbeddings] = useState(true);
+  const [embeddingsError, setEmbeddingsError] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator === 'undefined' ? true : navigator.onLine);
   const [shiftWindows, setShiftWindows] = useState<ShiftWindows | null>(null);
   const [locationConfig, setLocationConfig] = useState<LocationShiftConfig | null>(null);
   const [managerCanOverride, setManagerCanOverride] = useState(true);
