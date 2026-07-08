@@ -547,9 +547,9 @@ function App() {
 
   // Bulk update attendance (admin only)
   const bulkUpdateAttendance = async (date: string, status: 'Present' | 'Absent' | 'Half Day', shift?: 'Morning' | 'Evening', arrivalTime?: string, leavingTime?: string) => {
-    // Allow both admin and managers to perform bulk updates
-    if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
-      await customAlert('Only administrators and managers can perform bulk updates');
+    // Allow admin, statutory_admin and managers to perform bulk updates
+    if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'statutory_admin')) {
+      await customAlert('You do not have permission to perform bulk updates');
       return;
     }
 
@@ -915,10 +915,10 @@ function App() {
     }
   };
 
-  // Update advances and deductions (admin only)
+  // Update advances and deductions (admin + statutory_admin)
   const updateAdvances = async (staffId: string, month: number, year: number, advanceData: Partial<AdvanceDeduction>) => {
-    if (user?.role !== 'admin') {
-      await customAlert('Only administrators can update advances');
+    if (user?.role !== 'admin' && user?.role !== 'statutory_admin') {
+      await customAlert('You do not have permission to update advances');
       return;
     }
 
@@ -1068,7 +1068,7 @@ function App() {
             onDateChange={setSelectedDate}
             onUpdateAttendance={updateAttendance}
             onBulkUpdateAttendance={bulkUpdateAttendance}
-            userRole={user?.role === 'admin' ? 'admin' : 'manager'}
+            userRole={user?.role === 'admin' || user?.role === 'statutory_admin' ? 'admin' : 'manager'}
             actualRole={user?.role}
           />
         );
