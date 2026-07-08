@@ -176,7 +176,7 @@ const Navigation: React.FC<NavigationProps> = ({
         {scopePill}
         <div className="text-right hidden lg:block mr-2">
           <div className="text-xs font-medium text-white/80 leading-tight">
-            {user.role === 'admin' ? 'Administrator' : user.role === 'staff' ? (user.staffName || 'Staff') : `${user.location} Manager`}
+            {user.role === 'admin' ? 'Administrator' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'staff' ? (user.staffName || 'Staff') : `${user.location || ''} Manager`.trim()}
           </div>
           <div className="text-[10px] text-white/40">{user.role === 'staff' ? 'Staff Portal' : user.email}</div>
         </div>
