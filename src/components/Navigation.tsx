@@ -162,7 +162,7 @@ const Navigation: React.FC<NavigationProps> = ({
         </nav>
         {!collapsed && (
           <div className="p-3 border-t border-white/10 text-xs text-white/40 truncate">
-            {user.role === 'admin' ? 'Administrator' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'staff' ? (user.staffName || 'Staff') : `${user.location || ''} Manager`.trim()}
+            {user.role === 'admin' || user.role === 'statutory_admin' ? 'Administrator' : user.role === 'staff' ? (user.staffName || 'Staff') : `${user.location || ''} Manager`.trim()}
           </div>
         )}
       </aside>
