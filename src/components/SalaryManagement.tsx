@@ -175,7 +175,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     location: 'Location', type: 'Type', payment: 'Payment', floor: 'Floor', designation: 'Designation',
     present: 'Present', leave: 'Leave', sunAbs: 'Sun Abs', oldAdv: 'Old Adv', curAdv: 'Cur Adv',
     deduction: 'Deduction', basic: 'Basic', incentive: 'Incentive', hra: 'HRA', meal: 'Meal',
-    sunPenalty: 'Sun Penalty', lateComingDeduction: 'Late Coming Ded.', earlyLeaveDeduction: 'Early Leave Ded.', statutory: 'ESI/PF/Statutory', esi: 'ESI', pf: 'PF', gross: 'Gross', net: 'Net Salary', newAdv: 'New Adv'
+    sunPenalty: 'Sun Penalty', lateComingDeduction: 'Late Coming Ded.', earlyLeaveDeduction: 'Early Leave Ded.', statutory: hideStatutoryExtras(userRole) ? 'Deductions' : 'ESI/PF/Statutory', esi: 'ESI', pf: 'PF', gross: 'Gross', net: 'Net Salary', newAdv: 'New Adv'
   };
   const [salaryCategories, setSalaryCategories] = useState<SalaryCategory[]>(() => salaryCategoryService.getCategoriesSync());
   const [showBulkSender, setShowBulkSender] = useState(false);
