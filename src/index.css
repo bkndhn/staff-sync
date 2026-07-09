@@ -2554,3 +2554,58 @@ body.light-theme button[class*="text-emerald"] svg {
     top: calc(env(safe-area-inset-top, 0) + 64px) !important;
   }
 }
+
+@media (max-width: 767px) {
+  .face-mobile-sheet-wrap {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 55;
+    background: linear-gradient(180deg, rgba(11,18,32,0.94) 0%, rgba(11,18,32,0.99) 100%);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-top: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -12px 40px rgba(0,0,0,0.45);
+    max-height: 72px;
+    overflow: hidden;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    transition: max-height 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .face-mobile-sheet-wrap[data-open='true'] {
+    max-height: 68dvh;
+  }
+  .face-mobile-sheet-handle {
+    width: 100%;
+    padding: 14px 16px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    position: relative;
+  }
+  .face-mobile-sheet-handle::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.28);
+  }
+  .face-mobile-sheet-wrap .face-mobile-sheet-body {
+    max-height: calc(68dvh - 56px);
+    overflow-y: auto;
+    padding: 8px 12px calc(20px + env(safe-area-inset-bottom, 0));
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
