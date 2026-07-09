@@ -516,7 +516,23 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-3 md:gap-4 w-full min-h-[calc(100vh-80px)] py-2 md:py-4 max-w-[1920px] mx-auto px-2 md:px-0">
+    <div className={`flex flex-col lg:flex-row gap-3 md:gap-4 w-full min-h-[calc(100vh-80px)] py-2 md:py-4 max-w-[1920px] mx-auto px-2 md:px-0 ${isMobile ? 'face-mobile-shell' : ''}`}>
+      {isMobile && viewMode === 'camera' && (
+        <div className="face-mobile-tabs">
+          <button data-active={mobileTab === 'camera'} onClick={() => setMobileTab('camera')}>
+            <Camera size={14} /> Live
+          </button>
+          <button data-active={mobileTab === 'recent'} onClick={() => setMobileTab('recent')}>
+            <Activity size={14} /> Recent
+          </button>
+          {userRole === 'admin' && (
+            <button data-active={mobileTab === 'admin'} onClick={() => setMobileTab('admin')}>
+              <ShieldCheck size={14} /> Admin
+            </button>
+          )}
+        </div>
+      )}
+
       <PerfOverlay />
       {/* ── Left Side: Full Height Camera Feed ── */}
       <div className="flex-1 min-h-[500px] md:min-h-[600px] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
