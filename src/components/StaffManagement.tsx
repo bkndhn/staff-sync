@@ -1237,7 +1237,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             )}
 
 
-            {formData.isStatutory && (
+            {!hideStatutoryExtras(userRole) && formData.isStatutory && (
+
             <div className="md:col-span-2 lg:col-span-3">
               <h3 className="text-sm font-semibold text-white/60 mb-3 border-b border-white/10 pb-2 flex items-center gap-2">
                 <Shield size={16} className="text-emerald-400" />
