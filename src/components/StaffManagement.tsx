@@ -14,7 +14,7 @@ import { salaryCategoryService, type SalaryCategory } from '../services/salaryCa
 import { floorService, type Floor } from '../services/floorService';
 import { designationService, type Designation } from '../services/designationService';
 import { customAlert, customConfirm } from './CustomDialog';
-import { canSeeEmployeeCode, type AppRole } from '../lib/roleVisibility';
+import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/roleVisibility';
 
 interface StaffManagementProps {
   staff: Staff[];
@@ -1218,6 +1218,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
 
             {/* Statutory Compliance */}
+            {!hideStatutoryExtras(userRole) && (
             <div className="md:col-span-2 lg:col-span-3">
               <label className="flex items-center gap-3 p-3 rounded-lg border border-emerald-500/25 bg-emerald-500/5 cursor-pointer mb-4">
                 <input
@@ -1233,6 +1234,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 </div>
               </label>
             </div>
+            )}
+
 
             {formData.isStatutory && (
             <div className="md:col-span-2 lg:col-span-3">
