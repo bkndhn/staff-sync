@@ -535,7 +535,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
       <PerfOverlay />
       {/* ── Left Side: Full Height Camera Feed ── */}
-      <div className="flex-1 min-h-[500px] md:min-h-[600px] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
+      <div className="face-camera-panel flex-1 min-h-[500px] md:min-h-[600px] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
         {/* HUD Overlay */}
         <div className="absolute top-0 left-0 right-0 z-30 p-4 md:p-6 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between gap-3 flex-wrap pointer-events-none">
           <div>
@@ -604,7 +604,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         <div className="relative flex-1 bg-black w-full h-full flex items-center justify-center">
           {viewMode === 'camera' ? (
             <>
-              <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
+              <video ref={videoRef} onTouchEnd={isMobile ? onVideoDoubleTap : undefined} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
               {!cameraOn && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] text-sm z-10 bg-black/80 p-4 text-center">
                   {cameraError ? (
