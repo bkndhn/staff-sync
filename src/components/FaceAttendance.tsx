@@ -59,6 +59,11 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const lastPunchRef = useRef<Record<string, { ts: number; kind: 'in' | 'out' }>>({});
+  const isMobile = useIsMobile();
+  const haptics = useHaptics();
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [mobileTab, setMobileTab] = useState<'camera' | 'recent' | 'admin'>('camera');
+
   // Centroid index — rebuilt when embeddings change (cosine similarity matcher)
   const centroidIndexRef = useRef<Map<string, StaffEmbedding>>(new Map());
   // Per-candidate liveness state (new multi-layer engine)
