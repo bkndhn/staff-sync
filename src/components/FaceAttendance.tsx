@@ -19,6 +19,8 @@ import { SkeletonList } from './ui/Skeleton';
 import PerfOverlay from './ui/PerfOverlay';
 import { perfStart, perfRecord } from '../lib/perfProfiler';
 import { getDeviceProfile } from '../lib/deviceProfile';
+import { useIsMobile, useHaptics, useDoubleTap } from './face/mobileFace';
+
 
 interface Props {
   staff: Staff[];                 // already location-scoped by App
