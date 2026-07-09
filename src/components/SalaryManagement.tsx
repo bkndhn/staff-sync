@@ -1052,6 +1052,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               <span className="hidden sm:inline">Export PDF</span>
               <span className="sm:hidden">PDF</span>
             </button>
+            {!hideStatutoryExtras(userRole) && (
             <div className="relative group">
               <button
                 className="btn-premium whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
@@ -1067,6 +1068,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 <button onClick={() => exportStatutoryToExcel(salaryDetails, activeStaff, selectedMonth, selectedYear, 'pf')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">PF Only</button>
               </div>
             </div>
+            )}
+
             <button
               onClick={handleDownloadAllSlips}
               className="btn-premium whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
