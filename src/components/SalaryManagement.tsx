@@ -12,7 +12,7 @@ import { appSettingsService } from '../services/appSettingsService';
 import { payrollService } from '../services/payrollService';
 import BulkSalarySender from './BulkSalarySender';
 import { customAlert, customConfirm } from './CustomDialog';
-import { canSeeEmployeeCode, type AppRole } from '../lib/roleVisibility';
+import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/roleVisibility';
 
 interface SalaryManagementProps {
   staff: Staff[];
