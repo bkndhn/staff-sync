@@ -930,8 +930,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
+
   );
 };
 
