@@ -1163,7 +1163,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                   <input type="text" value={formData.ifscCode} onChange={(e) => setFormData({ ...formData, ifscCode: e.target.value.toUpperCase() })} className="input-premium" placeholder="e.g. SBIN0001234" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                {formData.isStatutory && (
+                {!hideStatutoryExtras(userRole) && formData.isStatutory && (
                   <>
                     <div>
                       <label className="block text-sm font-medium text-white/70 mb-1">PF Number <span className="text-white/30 text-xs">(optional)</span></label>
