@@ -22,3 +22,15 @@ export const canSeeEmployeeCode = (role: AppRole): boolean => {
 
 /** Convenience inverse used in JSX. */
 export const hideEmployeeCode = (role: AppRole): boolean => !canSeeEmployeeCode(role);
+
+/**
+ * Statutory admins should look identical to a normal admin. Any UI that
+ * explicitly names "Statutory" (buttons, badges, section titles, statutory-only
+ * exports) must be hidden for them so the login purpose isn't leaked.
+ * Data-level filtering happens elsewhere; this gate is purely visual.
+ */
+export const hideStatutoryExtras = (role: AppRole): boolean => role === 'statutory_admin';
+
+/** True when the user is a statutory admin masquerading as a regular admin. */
+export const isDisguisedAdmin = (role: AppRole): boolean => role === 'statutory_admin';
+

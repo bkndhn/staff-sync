@@ -19,6 +19,8 @@ import { SkeletonList } from './ui/Skeleton';
 import PerfOverlay from './ui/PerfOverlay';
 import { perfStart, perfRecord } from '../lib/perfProfiler';
 import { getDeviceProfile } from '../lib/deviceProfile';
+import { useIsMobile, useHaptics, useDoubleTap } from './face/mobileFace';
+
 
 interface Props {
   staff: Staff[];                 // already location-scoped by App
@@ -57,6 +59,11 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const lastPunchRef = useRef<Record<string, { ts: number; kind: 'in' | 'out' }>>({});
+  const isMobile = useIsMobile();
+  const haptics = useHaptics();
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [mobileTab, setMobileTab] = useState<'camera' | 'recent' | 'admin'>('camera');
+
   // Centroid index — rebuilt when embeddings change (cosine similarity matcher)
   const centroidIndexRef = useRef<Map<string, StaffEmbedding>>(new Map());
   // Per-candidate liveness state (new multi-layer engine)
@@ -260,7 +267,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     try {
       // 1080p for 10m range detection — allows finding small faces far away
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
+        video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false,
       });
       streamRef.current = stream;
@@ -273,7 +280,21 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       setCameraError(e?.message || 'Camera access denied');
       setCameraOn(false);
     }
-  }, []);
+  }, [facingMode]);
+
+  /** Flip between front / rear cameras (mobile double-tap gesture). */
+  const flipCamera = useCallback(() => {
+    haptics.tap();
+    setFacingMode(m => (m === 'user' ? 'environment' : 'user'));
+    // Re-acquire stream with the new facing mode
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+    // startCamera will pick up the new facingMode on next tick (state update)
+    setTimeout(() => startCamera(), 50);
+  }, [haptics, startCamera]);
+
+  const onVideoDoubleTap = useDoubleTap(flipCamera);
+
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach(t => t.stop());
@@ -366,14 +387,17 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       onAttendancePatch?.(saved);
       lastPunchRef.current[s.id] = { ts: Date.now(), kind };
       setRecent(prev => [{ staffId: s.id, staffName: s.name, kind, time, distance }, ...prev].slice(0, 20));
+      haptics.success();
       setMessage({
         kind: autoStatus === 'Absent' ? 'warn' : 'ok',
         text: `${kind === 'in' ? 'Punched IN' : 'Punched OUT'}: ${s.name} @ ${formatTime12h(time)} · ${autoStatus} · ${summary.count} event(s)`,
       });
     } catch (e: any) {
+      haptics.error();
       setMessage({ kind: 'err', text: `Failed to punch ${s.name}: ${e?.message || e}` });
     }
-  }, [attendance, today, onAttendancePatch, shiftWindows]);
+  }, [attendance, today, onAttendancePatch, shiftWindows, haptics]);
+
 
   // ---- Continuous recognition loop (time-throttled per device profile) -----
   useEffect(() => {
@@ -413,7 +437,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             } else if (!allowedStaffIds.has(staffId)) {
               const wrongStaff = allEmbeddings.find(e => e.staffId === staffId);
               setLastMatch({ name: wrongStaff?.staffName || 'Other location', distance, ts: Date.now(), status: 'wrong-loc' });
+              haptics.error();
               setMessage({ kind: 'err', text: `${wrongStaff?.staffName || 'This staff'} does not belong to this location.` });
+
               resetLiveness();
             } else {
               const s = staffById.get(staffId);
@@ -438,7 +464,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'blink-please' });
                 } else if (liveness.reason === 'spoof') {
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'spoof' });
+                  haptics.error();
                   setMessage({ kind: 'err', text: `Spoof detected for ${s.name}. Blink naturally and try again.` });
+
                   resetLiveness();
                 } else if (liveness.isLive) {
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'ok' });
@@ -488,10 +516,26 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-3 md:gap-4 w-full min-h-[calc(100vh-80px)] py-2 md:py-4 max-w-[1920px] mx-auto px-2 md:px-0">
+    <div className={`flex flex-col lg:flex-row gap-3 md:gap-4 w-full min-h-[calc(100vh-80px)] py-2 md:py-4 max-w-[1920px] mx-auto px-2 md:px-0 ${isMobile ? 'face-mobile-shell' : ''}`}>
+      {isMobile && viewMode === 'camera' && (
+        <div className="face-mobile-tabs">
+          <button data-active={mobileTab === 'camera'} onClick={() => setMobileTab('camera')}>
+            <Camera size={14} /> Live
+          </button>
+          <button data-active={mobileTab === 'recent'} onClick={() => setMobileTab('recent')}>
+            <Activity size={14} /> Recent
+          </button>
+          {userRole === 'admin' && (
+            <button data-active={mobileTab === 'admin'} onClick={() => setMobileTab('admin')}>
+              <ShieldCheck size={14} /> Admin
+            </button>
+          )}
+        </div>
+      )}
+
       <PerfOverlay />
       {/* ── Left Side: Full Height Camera Feed ── */}
-      <div className="flex-1 min-h-[500px] md:min-h-[600px] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
+      <div className="face-camera-panel flex-1 min-h-[500px] md:min-h-[600px] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
         {/* HUD Overlay */}
         <div className="absolute top-0 left-0 right-0 z-30 p-4 md:p-6 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between gap-3 flex-wrap pointer-events-none">
           <div>
@@ -560,7 +604,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         <div className="relative flex-1 bg-black w-full h-full flex items-center justify-center">
           {viewMode === 'camera' ? (
             <>
-              <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
+              <video ref={videoRef} onTouchEnd={isMobile ? onVideoDoubleTap : undefined} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
               {!cameraOn && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] text-sm z-10 bg-black/80 p-4 text-center">
                   {cameraError ? (
@@ -710,8 +754,61 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         )}
       </div>
 
-      {/* ── Right Side: Logs & Overrides Sidebar ── */}
-      <div className="w-full lg:w-96 flex flex-col gap-4 overflow-y-auto shrink-0">
+      {/* Mobile sticky CTA — thumb-reachable primary action */}
+      {isMobile && viewMode === 'camera' && (
+        <div className="face-mobile-cta">
+          {!cameraOn ? (
+            <button
+              onClick={() => { haptics.tap(); startCamera(); }}
+              disabled={!ready || scopedEmbeddings.length === 0}
+              className="px-6 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold flex items-center gap-2 shadow-2xl text-sm"
+            >
+              <Camera size={16} /> Start Camera
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => { haptics.tap(); flipCamera(); }}
+                className="px-4 py-3 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white font-semibold flex items-center gap-2 shadow-2xl text-sm"
+                aria-label="Flip camera"
+              >
+                <RefreshCw size={16} />
+              </button>
+              <button
+                onClick={() => { haptics.tap(); stopCamera(); }}
+                className="px-6 py-3 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white font-semibold flex items-center gap-2 shadow-2xl text-sm"
+              >
+                <XCircle size={16} /> Stop
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Right Side: Logs & Overrides Sidebar (desktop) / Bottom Sheet (mobile) ── */}
+      <div
+        className={isMobile ? 'face-mobile-sheet-wrap' : 'w-full lg:w-96 flex flex-col gap-4 overflow-y-auto shrink-0'}
+        data-open={isMobile ? (mobileTab !== 'camera' ? 'true' : 'false') : undefined}
+      >
+        {isMobile && (
+          <button
+            type="button"
+            onClick={() => setMobileTab(mobileTab === 'camera' ? 'recent' : 'camera')}
+            className="face-mobile-sheet-handle"
+            aria-label="Toggle bottom sheet"
+          >
+            <span className="text-sm font-semibold text-white flex items-center gap-2">
+              {mobileTab === 'admin' ? <ShieldCheck size={14} className="text-emerald-400" /> : <Activity size={14} className="text-indigo-400" />}
+              {mobileTab === 'admin' ? 'Override panel' : mobileTab === 'recent' ? 'Recent activity' : 'Tap to view activity'}
+            </span>
+            <span className="text-[11px] text-white/50">
+              {mobileTab === 'admin' ? `${todaysPunches.length} today` : `${recent.length} recent`}
+            </span>
+          </button>
+        )}
+        <div className={isMobile ? 'face-mobile-sheet-body' : 'contents'}>
+
+
         {/* Recent events */}
         <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6 shrink-0">
           <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Recent punches</h4>
@@ -833,8 +930,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
+
   );
 };
 

@@ -12,7 +12,7 @@ import { appSettingsService } from '../services/appSettingsService';
 import { payrollService } from '../services/payrollService';
 import BulkSalarySender from './BulkSalarySender';
 import { customAlert, customConfirm } from './CustomDialog';
-import { canSeeEmployeeCode, type AppRole } from '../lib/roleVisibility';
+import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/roleVisibility';
 
 interface SalaryManagementProps {
   staff: Staff[];
@@ -175,7 +175,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     location: 'Location', type: 'Type', payment: 'Payment', floor: 'Floor', designation: 'Designation',
     present: 'Present', leave: 'Leave', sunAbs: 'Sun Abs', oldAdv: 'Old Adv', curAdv: 'Cur Adv',
     deduction: 'Deduction', basic: 'Basic', incentive: 'Incentive', hra: 'HRA', meal: 'Meal',
-    sunPenalty: 'Sun Penalty', lateComingDeduction: 'Late Coming Ded.', earlyLeaveDeduction: 'Early Leave Ded.', statutory: 'ESI/PF/Statutory', esi: 'ESI', pf: 'PF', gross: 'Gross', net: 'Net Salary', newAdv: 'New Adv'
+    sunPenalty: 'Sun Penalty', lateComingDeduction: 'Late Coming Ded.', earlyLeaveDeduction: 'Early Leave Ded.', statutory: hideStatutoryExtras(userRole) ? 'Deductions' : 'ESI/PF/Statutory', esi: 'ESI', pf: 'PF', gross: 'Gross', net: 'Net Salary', newAdv: 'New Adv'
   };
   const [salaryCategories, setSalaryCategories] = useState<SalaryCategory[]>(() => salaryCategoryService.getCategoriesSync());
   const [showBulkSender, setShowBulkSender] = useState(false);
@@ -1052,6 +1052,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               <span className="hidden sm:inline">Export PDF</span>
               <span className="sm:hidden">PDF</span>
             </button>
+            {!hideStatutoryExtras(userRole) && (
             <div className="relative group">
               <button
                 className="btn-premium whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
@@ -1067,6 +1068,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 <button onClick={() => exportStatutoryToExcel(salaryDetails, activeStaff, selectedMonth, selectedYear, 'pf')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">PF Only</button>
               </div>
             </div>
+            )}
+
             <button
               onClick={handleDownloadAllSlips}
               className="btn-premium whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
@@ -1292,11 +1295,12 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               <div>
                 <p className="text-xs text-white/50 font-semibold uppercase tracking-wider mb-1">ESI + PF Total</p>
                 <p className="text-2xl font-bold text-purple-400">₹{(totals.totalESI + totals.totalPF).toLocaleString()}</p>
-                <p className="text-xs text-white/40 mt-1">Monthly statutory liability</p>
+                <p className="text-xs text-white/40 mt-1">{hideStatutoryExtras(userRole) ? 'Monthly deductions total' : 'Monthly statutory liability'}</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                <span className="text-purple-400 font-black text-xs">STAT</span>
+                <span className="text-purple-400 font-black text-xs">{hideStatutoryExtras(userRole) ? 'DED' : 'STAT'}</span>
               </div>
+
             </div>
           </div>
         </div>
@@ -1396,7 +1400,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 {salaryVisibleCols.sunPenalty !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sun Penalty</th>}
                 {salaryVisibleCols.lateComingDeduction !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Late Coming Ded.</th>}
                 {salaryVisibleCols.earlyLeaveDeduction !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Early Leave Ded.</th>}
-                {salaryVisibleCols.statutory !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ESI/PF/Stat</th>}
+                {salaryVisibleCols.statutory !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{hideStatutoryExtras(userRole) ? 'Deductions' : 'ESI/PF/Stat'}</th>}
                 {salaryVisibleCols.esi !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider text-red-500">ESI</th>}
                 {salaryVisibleCols.pf !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider text-red-500">PF</th>}
                 {salaryVisibleCols.gross !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Gross</th>}
