@@ -267,7 +267,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     try {
       // 1080p for 10m range detection — allows finding small faces far away
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
+        video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false,
       });
       streamRef.current = stream;
@@ -280,7 +280,21 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       setCameraError(e?.message || 'Camera access denied');
       setCameraOn(false);
     }
-  }, []);
+  }, [facingMode]);
+
+  /** Flip between front / rear cameras (mobile double-tap gesture). */
+  const flipCamera = useCallback(() => {
+    haptics.tap();
+    setFacingMode(m => (m === 'user' ? 'environment' : 'user'));
+    // Re-acquire stream with the new facing mode
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+    // startCamera will pick up the new facingMode on next tick (state update)
+    setTimeout(() => startCamera(), 50);
+  }, [haptics, startCamera]);
+
+  const onVideoDoubleTap = useDoubleTap(flipCamera);
+
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach(t => t.stop());
