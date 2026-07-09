@@ -754,8 +754,52 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         )}
       </div>
 
-      {/* ── Right Side: Logs & Overrides Sidebar ── */}
-      <div className="w-full lg:w-96 flex flex-col gap-4 overflow-y-auto shrink-0">
+      {/* Mobile sticky CTA — thumb-reachable primary action */}
+      {isMobile && viewMode === 'camera' && (
+        <div className="face-mobile-cta">
+          {!cameraOn ? (
+            <button
+              onClick={() => { haptics.tap(); startCamera(); }}
+              disabled={!ready || scopedEmbeddings.length === 0}
+              className="px-6 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold flex items-center gap-2 shadow-2xl text-sm"
+            >
+              <Camera size={16} /> Start Camera
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => { haptics.tap(); flipCamera(); }}
+                className="px-4 py-3 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white font-semibold flex items-center gap-2 shadow-2xl text-sm"
+                aria-label="Flip camera"
+              >
+                <RefreshCw size={16} />
+              </button>
+              <button
+                onClick={() => { haptics.tap(); stopCamera(); }}
+                className="px-6 py-3 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white font-semibold flex items-center gap-2 shadow-2xl text-sm"
+              >
+                <XCircle size={16} /> Stop
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Right Side: Logs & Overrides Sidebar (desktop) / Bottom Sheet (mobile) ── */}
+      {isMobile ? (
+        <details className="face-mobile-sheet" open={mobileTab !== 'camera'}>
+          <summary>
+            <span className="text-sm font-semibold text-white flex items-center gap-2">
+              {mobileTab === 'admin' ? <ShieldCheck size={14} className="text-emerald-400" /> : <Activity size={14} className="text-indigo-400" />}
+              {mobileTab === 'admin' ? 'Override panel' : 'Recent activity'}
+            </span>
+            <span className="text-[11px] text-white/50">
+              {mobileTab === 'admin' ? `${todaysPunches.length} today` : `${recent.length} recent`}
+            </span>
+          </summary>
+          <div className="face-mobile-sheet-body">
+            <div className="w-full flex flex-col gap-3">
+
         {/* Recent events */}
         <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6 shrink-0">
           <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Recent punches</h4>
