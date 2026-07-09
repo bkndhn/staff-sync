@@ -786,19 +786,28 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       )}
 
       {/* ── Right Side: Logs & Overrides Sidebar (desktop) / Bottom Sheet (mobile) ── */}
-      {isMobile ? (
-        <details className="face-mobile-sheet" open={mobileTab !== 'camera'}>
-          <summary>
+      <div
+        className={isMobile ? 'face-mobile-sheet-wrap' : 'w-full lg:w-96 flex flex-col gap-4 overflow-y-auto shrink-0'}
+        data-open={isMobile ? (mobileTab !== 'camera' ? 'true' : 'false') : undefined}
+      >
+        {isMobile && (
+          <button
+            type="button"
+            onClick={() => setMobileTab(mobileTab === 'camera' ? 'recent' : 'camera')}
+            className="face-mobile-sheet-handle"
+            aria-label="Toggle bottom sheet"
+          >
             <span className="text-sm font-semibold text-white flex items-center gap-2">
               {mobileTab === 'admin' ? <ShieldCheck size={14} className="text-emerald-400" /> : <Activity size={14} className="text-indigo-400" />}
-              {mobileTab === 'admin' ? 'Override panel' : 'Recent activity'}
+              {mobileTab === 'admin' ? 'Override panel' : mobileTab === 'recent' ? 'Recent activity' : 'Tap to view activity'}
             </span>
             <span className="text-[11px] text-white/50">
               {mobileTab === 'admin' ? `${todaysPunches.length} today` : `${recent.length} recent`}
             </span>
-          </summary>
-          <div className="face-mobile-sheet-body">
-            <div className="w-full flex flex-col gap-3">
+          </button>
+        )}
+        <div className={isMobile ? 'face-mobile-sheet-body' : 'contents'}>
+
 
         {/* Recent events */}
         <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6 shrink-0">
