@@ -1507,7 +1507,71 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             )}
           </div>
         </div>
-        <div className="overflow-x-auto w-full max-w-full pb-4">
+        {/* Mobile card list — thumb-friendly, no horizontal scroll */}
+        <div className="md:hidden space-y-2 pb-4">
+          {activeStaff.length === 0 ? (
+            <div className="p-8 text-center text-sm text-white/60">No staff to display.</div>
+          ) : activeStaff.map((member, index) => (
+            <div
+              key={member.id}
+              className="p-3 rounded-xl bg-[var(--bg-card)] border border-[var(--glass-border)] active:opacity-80"
+              onClick={(e) => {
+                const t = e.target as HTMLElement;
+                if (t.closest('button') || t.closest('a')) return;
+                handleEdit(member);
+              }}
+            >
+              <div className="flex items-start gap-3">
+                {member.photo ? (
+                  <img src={member.photo} alt={member.name} className="w-12 h-12 rounded-full object-cover border border-white/10 shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white/50 shrink-0">
+                    <Users size={18} />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-[var(--text-primary)] truncate">
+                        <span className="text-[var(--text-secondary)] mr-1.5">#{index + 1}</span>{member.name}
+                      </div>
+                      <div className="text-[11px] text-[var(--text-secondary)] truncate">
+                        {member.designation || '—'} · <span className={getLocationColor(member.location)}>{member.location}</span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-sm font-bold text-emerald-400">₹{calculateMemberTotalSalary(member).toLocaleString()}</div>
+                      <div className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wide">{member.paymentMode === 'bank' ? 'Bank' : 'Cash'}</div>
+                    </div>
+                  </div>
+                  {showEmpCode && member.employeeCode && (
+                    <div className="mt-1 text-[11px] text-[var(--text-secondary)]">Emp: <span className="font-mono text-white/80">{member.employeeCode}</span></div>
+                  )}
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <div className="text-[11px] text-[var(--text-secondary)]">
+                      Joined {new Date(member.joinedDate).toLocaleDateString()}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button onClick={(e) => { e.stopPropagation(); handleEdit(member); }} className="p-2 rounded-lg bg-indigo-500/15 text-indigo-300 active:bg-indigo-500/30" aria-label="Edit">
+                        <Edit2 size={14} />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); setFaceModalStaff(member); }} className="p-2 rounded-lg bg-purple-500/15 text-purple-300 active:bg-purple-500/30" aria-label="Face samples">
+                        <Camera size={14} />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); handleDelete(member); }} className="p-2 rounded-lg bg-red-500/15 text-red-300 active:bg-red-500/30" aria-label="Archive">
+                        <Archive size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto w-full max-w-full pb-4">
+
           <table className="table-premium">
             <thead>
               <tr>
