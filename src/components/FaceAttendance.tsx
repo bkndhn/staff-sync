@@ -437,7 +437,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             } else if (!allowedStaffIds.has(staffId)) {
               const wrongStaff = allEmbeddings.find(e => e.staffId === staffId);
               setLastMatch({ name: wrongStaff?.staffName || 'Other location', distance, ts: Date.now(), status: 'wrong-loc' });
+              haptics.error();
               setMessage({ kind: 'err', text: `${wrongStaff?.staffName || 'This staff'} does not belong to this location.` });
+
               resetLiveness();
             } else {
               const s = staffById.get(staffId);
@@ -462,7 +464,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'blink-please' });
                 } else if (liveness.reason === 'spoof') {
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'spoof' });
+                  haptics.error();
                   setMessage({ kind: 'err', text: `Spoof detected for ${s.name}. Blink naturally and try again.` });
+
                   resetLiveness();
                 } else if (liveness.isLive) {
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'ok' });
