@@ -387,14 +387,17 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       onAttendancePatch?.(saved);
       lastPunchRef.current[s.id] = { ts: Date.now(), kind };
       setRecent(prev => [{ staffId: s.id, staffName: s.name, kind, time, distance }, ...prev].slice(0, 20));
+      haptics.success();
       setMessage({
         kind: autoStatus === 'Absent' ? 'warn' : 'ok',
         text: `${kind === 'in' ? 'Punched IN' : 'Punched OUT'}: ${s.name} @ ${formatTime12h(time)} · ${autoStatus} · ${summary.count} event(s)`,
       });
     } catch (e: any) {
+      haptics.error();
       setMessage({ kind: 'err', text: `Failed to punch ${s.name}: ${e?.message || e}` });
     }
-  }, [attendance, today, onAttendancePatch, shiftWindows]);
+  }, [attendance, today, onAttendancePatch, shiftWindows, haptics]);
+
 
   // ---- Continuous recognition loop (time-throttled per device profile) -----
   useEffect(() => {
