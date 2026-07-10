@@ -381,7 +381,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           )}
 
           {/* Staff Login Form */}
-          {loginMode === 'staff' && (
+          {loginMode === 'staff' && !mustSetPassword && (
             <div className="space-y-4">
                 <form onSubmit={handleStaffSubmit} className="space-y-4">
                   <div>
@@ -394,21 +394,35 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       placeholder="Enter your 10-digit mobile number"
                       maxLength={10}
                       required
+                      autoComplete="username"
                     />
                     <p className="text-xs text-[var(--text-muted)] mt-1">Username is your registered mobile number</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Joined Date (DDMMYYYY)</label>
-                    <input
-                      type="text"
-                      value={joinedDate}
-                      onChange={(e) => setJoinedDate(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                      className="input-premium"
-                      placeholder="e.g. 15032024"
-                      maxLength={8}
-                      required
-                    />
-                    <p className="text-xs text-[var(--text-muted)] mt-1">Password is your joining date in DDMMYYYY format</p>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Password</label>
+                    <div className="relative">
+                      <input
+                        type={showStaffPassword ? 'text' : 'password'}
+                        value={staffPassword}
+                        onChange={(e) => setStaffPassword(e.target.value.slice(0, 128))}
+                        className="input-premium pr-12"
+                        placeholder="Your password (or DDMMYYYY joined date)"
+                        maxLength={128}
+                        required
+                        autoComplete="current-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowStaffPassword(v => !v)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 transition-colors"
+                        aria-label={showStaffPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showStaffPassword ? <EyeOff size={18} color="#ffffff" /> : <Eye size={18} color="#ffffff" />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">
+                      First-time login: use your joined date in DDMMYYYY format (e.g. 15032024). You'll be asked to set a new password.
+                    </p>
                   </div>
 
                   {error && (
@@ -429,6 +443,61 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   </button>
               </form>
             </div>
+          )}
+
+          {/* Forced first-login / reset password flow */}
+          {loginMode === 'staff' && mustSetPassword && (
+            <form onSubmit={handleStaffSetPassword} className="space-y-4">
+              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                <p className="text-sm font-medium text-[var(--text-primary)]">
+                  Welcome {mustSetPassword.staff.name}! Please set a new password to continue.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">New Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value.slice(0, 128))}
+                  className="input-premium"
+                  placeholder="At least 6 characters"
+                  minLength={6}
+                  maxLength={128}
+                  required
+                  autoComplete="new-password"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value.slice(0, 128))}
+                  className="input-premium"
+                  placeholder="Re-enter new password"
+                  minLength={6}
+                  maxLength={128}
+                  required
+                  autoComplete="new-password"
+                />
+              </div>
+              {error && (
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+                  <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
+                  <span className="text-red-600 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{error}</span>
+                </div>
+              )}
+              <button type="submit" disabled={loading} className="w-full py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg">
+                {loading ? 'Saving...' : 'Save Password & Continue'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMustSetPassword(null); setNewPassword(''); setConfirmPassword(''); setStaffPassword(''); setError(''); }}
+                className="w-full py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              >
+                Cancel
+              </button>
+            </form>
           )}
 
           <p className="text-center text-[var(--text-muted)] text-xs mt-6">
