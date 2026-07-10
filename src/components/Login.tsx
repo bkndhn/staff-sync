@@ -107,13 +107,34 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
 
 
+  const finalizeStaffSession = (matchedStaff: any) => {
+    const session = {
+      user: {
+        email: `staff_${matchedStaff.id}`,
+        role: 'staff',
+        location: matchedStaff.location,
+        staffId: matchedStaff.id,
+        staffName: matchedStaff.name
+      },
+      expiresAt: Date.now() + (24 * 60 * 60 * 1000)
+    };
+    localStorage.setItem('staffManagementLogin', JSON.stringify(session));
+    onLogin({
+      email: `staff_${matchedStaff.id}`,
+      role: 'staff',
+      location: matchedStaff.location,
+      staffId: matchedStaff.id,
+      staffName: matchedStaff.name
+    });
+  };
+
   const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     const trimmedMobile = mobileNumber.trim();
-    const trimmedDate = joinedDate.trim();
+    const trimmedPassword = staffPassword.trim();
 
     if (!trimmedMobile || trimmedMobile.length < 10) {
       setError('Please enter a valid 10-digit mobile number');
@@ -121,8 +142,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       return;
     }
 
-    if (!trimmedDate || trimmedDate.length !== 8) {
-      setError('Please enter joined date in DDMMYYYY format');
+    if (!trimmedPassword) {
+      setError('Please enter your password (first-time users: use your joined date as DDMMYYYY)');
       setLoading(false);
       return;
     }
@@ -138,6 +159,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
     try {
       const currentFingerprint = await generateDeviceFingerprint();
+      // Send both `password` and `joinedDate` when the input looks like a
+      // DDMMYYYY string — the server will accept whichever matches. Otherwise
+      // only send it as `password`.
+      const looksLikeDate = /^\d{8}$/.test(trimmedPassword);
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-login`,
         {
@@ -148,7 +173,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           },
           body: JSON.stringify({
             contactNumber: trimmedMobile,
-            joinedDate: trimmedDate,
+            password: trimmedPassword,
+            ...(looksLikeDate ? { joinedDate: trimmedPassword } : {}),
             deviceFingerprint: currentFingerprint,
           }),
         },
@@ -159,7 +185,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         if (payload?.error === 'device_locked') {
           setError('This account is already registered to another device. Please contact Admin to reset your device lock.');
         } else {
-          setError('Invalid mobile number or joined date. Please check your credentials.');
+          setError('Invalid mobile number or password. Please check your credentials.');
         }
         setLoading(false);
         return;
@@ -167,31 +193,82 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       const matchedStaff = payload.staff;
 
-      const session = {
-        user: {
-          email: `staff_${matchedStaff.id}`,
-          role: 'staff',
-          location: matchedStaff.location,
-          staffId: matchedStaff.id,
-          staffName: matchedStaff.name
-        },
-        expiresAt: Date.now() + (24 * 60 * 60 * 1000)
-      };
+      if (payload.mustChangePassword) {
+        // Do not create a session yet — force the staff member to pick a real
+        // password first. finalizeStaffSession runs only after the set-password
+        // call succeeds.
+        setMustSetPassword({
+          contactNumber: trimmedMobile,
+          currentCredential: trimmedPassword,
+          deviceFingerprint: currentFingerprint,
+          staff: matchedStaff,
+        });
+        setLoading(false);
+        return;
+      }
 
-      localStorage.setItem('staffManagementLogin', JSON.stringify(session));
-
-      onLogin({
-        email: `staff_${matchedStaff.id}`,
-        role: 'staff',
-        location: matchedStaff.location,
-        staffId: matchedStaff.id,
-        staffName: matchedStaff.name
-      });
+      finalizeStaffSession(matchedStaff);
     } catch (err) {
       console.error('Staff login error:', err);
       setError('Unable to connect to server. Please try again.');
     }
 
+    setLoading(false);
+  };
+
+  const handleStaffSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mustSetPassword) return;
+    setError('');
+
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    // Refuse letting them "reuse" the joined-date fallback as their new password.
+    if (/^\d{8}$/.test(newPassword) && newPassword === mustSetPassword.currentCredential) {
+      setError('Please choose a new password different from your joined date');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const looksLikeDate = /^\d{8}$/.test(mustSetPassword.currentCredential);
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-set-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            contactNumber: mustSetPassword.contactNumber,
+            deviceFingerprint: mustSetPassword.deviceFingerprint,
+            ...(looksLikeDate
+              ? { joinedDate: mustSetPassword.currentCredential }
+              : { currentPassword: mustSetPassword.currentCredential }),
+            newPassword,
+          }),
+        },
+      );
+      const payload = await res.json();
+      if (!res.ok) {
+        setError(payload?.error === 'device_locked'
+          ? 'Device mismatch — contact Admin.'
+          : 'Could not update password. Please try again.');
+        setLoading(false);
+        return;
+      }
+      finalizeStaffSession(mustSetPassword.staff);
+    } catch (err) {
+      console.error('Set password error:', err);
+      setError('Unable to reach server. Please try again.');
+    }
     setLoading(false);
   };
 
