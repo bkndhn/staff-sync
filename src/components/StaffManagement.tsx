@@ -15,6 +15,7 @@ import { floorService, type Floor } from '../services/floorService';
 import { designationService, type Designation } from '../services/designationService';
 import { customAlert, customConfirm } from './CustomDialog';
 import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/roleVisibility';
+import { userService } from '../services/userService';
 
 interface StaffManagementProps {
   staff: Staff[];
@@ -716,6 +717,34 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       await customAlert("Failed to reset device lock.");
     }
   };
+
+  const handleResetStaffPassword = async (staffId: string, staffName: string) => {
+    if (!await customConfirm(`Reset login password for ${staffName}? They will need to log in with their joined date (DDMMYYYY) and set a new password.`)) return;
+    try {
+      const sessionToken = userService.getSessionToken();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-reset-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
+          },
+          body: JSON.stringify({ staffId }),
+        },
+      );
+      if (!res.ok) {
+        await customAlert('Failed to reset password. Check your admin session and try again.');
+        return;
+      }
+      await customAlert(`Password reset for ${staffName}. They can now log in with their joined date (DDMMYYYY).`);
+    } catch (error) {
+      console.error('Error resetting staff password:', error);
+      await customAlert('Failed to reset password.');
+    }
+  };
+
 
   return (
     <div className="p-1 md:p-6 space-y-6">
@@ -1746,6 +1775,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                             <ShieldOff size={16} />
                           </button>
                         )}
+                        <button onClick={() => handleResetStaffPassword(member.id, member.name)} className="text-amber-600 hover:text-amber-800 p-1 rounded hover:bg-amber-50" title="Reset Password">
+                          <RotateCcw size={16} />
+                        </button>
                         <button onClick={() => handleDelete(member)} className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50" title="Archive">
                           <Archive size={16} />
                         </button>

@@ -1257,8 +1257,11 @@ export type Database = {
           location: string
           meal_allowance: number | null
           meal_allowance_threshold: number | null
+          must_change_password: boolean
           name: string
           next_hike_date: string | null
+          password_hash: string | null
+          password_updated_at: string | null
           payment_mode: string | null
           pf_number: string | null
           photo_url: string | null
@@ -1300,8 +1303,11 @@ export type Database = {
           location: string
           meal_allowance?: number | null
           meal_allowance_threshold?: number | null
+          must_change_password?: boolean
           name: string
           next_hike_date?: string | null
+          password_hash?: string | null
+          password_updated_at?: string | null
           payment_mode?: string | null
           pf_number?: string | null
           photo_url?: string | null
@@ -1343,8 +1349,11 @@ export type Database = {
           location?: string
           meal_allowance?: number | null
           meal_allowance_threshold?: number | null
+          must_change_password?: boolean
           name?: string
           next_hike_date?: string | null
+          password_hash?: string | null
+          password_updated_at?: string | null
           payment_mode?: string | null
           pf_number?: string | null
           photo_url?: string | null

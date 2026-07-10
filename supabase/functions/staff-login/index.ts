@@ -1,12 +1,21 @@
-// Staff pre-auth lookup + device-bind.
-// The staff table is locked down to service_role only, so client cannot query it
-// directly. This function validates the mobile + joined_date credential pair,
-// performs the device-binding check, and returns a limited staff record.
+// Staff pre-auth lookup + device-bind + password verification.
 //
-// POST /functions/v1/staff-login
-// Body: { contactNumber: string, joinedDate: 'DDMMYYYY', deviceFingerprint: string }
+// The staff table is service_role only, so client cannot query it directly.
+// This function validates one of two credential pairs, performs device-binding,
+// and returns a limited staff record + password-status flag.
+//
+// Auth modes:
+//   1. Password mode (preferred once staff sets one):
+//      body: { contactNumber, password, deviceFingerprint }
+//   2. Legacy / first-login mode (joined_date DDMMYYYY as temp password):
+//      body: { contactNumber, joinedDate, deviceFingerprint }
+//
+// Response: { staff, mustChangePassword }.
+// When mustChangePassword=true the client MUST redirect to the "set password"
+// screen before granting a session.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,16 +23,34 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+const joinedDateMatches = (staffJoinedDate: string | null, ddmmyyyy: string): boolean => {
+  if (!staffJoinedDate) return false;
+  const d = new Date(staffJoinedDate);
+  if (isNaN(d.getTime())) return false;
+  const day = ddmmyyyy.substring(0, 2);
+  const month = ddmmyyyy.substring(2, 4);
+  const year = ddmmyyyy.substring(4, 8);
+  return (
+    String(d.getDate()).padStart(2, "0") === day &&
+    String(d.getMonth() + 1).padStart(2, "0") === month &&
+    String(d.getFullYear()) === year
+  );
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { contactNumber, joinedDate, deviceFingerprint } = await req.json();
+    const { contactNumber, joinedDate, password, deviceFingerprint } = await req.json();
 
-    if (!contactNumber || !joinedDate || !deviceFingerprint) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!contactNumber || !deviceFingerprint || (!joinedDate && !password)) {
+      return json({ error: "Missing required fields" }, 400);
     }
 
     const admin = createClient(
@@ -33,45 +60,59 @@ Deno.serve(async (req) => {
 
     const { data: rows, error } = await admin
       .from("staff")
-      .select("id, name, location, floor, designation, type, joined_date, device_id, is_active, contact_number")
+      .select("id, name, location, floor, designation, type, joined_date, device_id, is_active, contact_number, password_hash, must_change_password")
       .eq("contact_number", String(contactNumber).trim());
 
     if (error || !rows || rows.length === 0) {
-      return new Response(JSON.stringify({ error: "invalid_credentials" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "invalid_credentials" }, 401);
     }
 
-    const day = joinedDate.substring(0, 2);
-    const month = joinedDate.substring(2, 4);
-    const year = joinedDate.substring(4, 8);
+    // Locate the staff row that matches the supplied credential.
+    let match: any = null;
+    let usedTempPassword = false;
 
-    const match = rows.find((s: any) => {
-      if (!s.joined_date) return false;
-      const d = new Date(s.joined_date);
-      if (isNaN(d.getTime())) return false;
-      return (
-        String(d.getDate()).padStart(2, "0") === day &&
-        String(d.getMonth() + 1).padStart(2, "0") === month &&
-        String(d.getFullYear()) === year
-      );
-    });
+    if (password && typeof password === "string" && password.length > 0) {
+      // Password mode: hash may or may not be set. If unset, treat the joined_date
+      // (DDMMYYYY) as a fallback temporary password so first-login still works
+      // even if the UI calls the password endpoint.
+      for (const s of rows as any[]) {
+        if (s.password_hash) {
+          try {
+            const ok = await bcrypt.compare(password, s.password_hash);
+            if (ok) { match = s; break; }
+          } catch { /* ignore */ }
+        } else if (/^\d{8}$/.test(password) && joinedDateMatches(s.joined_date, password)) {
+          match = s;
+          usedTempPassword = true;
+          break;
+        }
+      }
+    } else if (joinedDate && /^\d{8}$/.test(String(joinedDate))) {
+      // Legacy path: joined_date only. Only allowed if the staff has NOT yet set
+      // a custom password — once a password exists, joined_date stops working.
+      for (const s of rows as any[]) {
+        if (!s.password_hash && joinedDateMatches(s.joined_date, String(joinedDate))) {
+          match = s;
+          usedTempPassword = true;
+          break;
+        }
+      }
+    }
 
     if (!match || !match.is_active) {
-      return new Response(JSON.stringify({ error: "invalid_credentials" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "invalid_credentials" }, 401);
     }
 
     if (!match.device_id) {
       await admin.from("staff").update({ device_id: deviceFingerprint }).eq("id", match.id);
     } else if (match.device_id !== deviceFingerprint) {
-      return new Response(JSON.stringify({ error: "device_locked" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "device_locked" }, 403);
     }
 
-    return new Response(JSON.stringify({
+    // Anyone still on the temp password (joined_date) must set a real one.
+    const mustChangePassword = Boolean(match.must_change_password) || usedTempPassword || !match.password_hash;
+
+    return json({
       staff: {
         id: match.id,
         name: match.name,
@@ -80,13 +121,10 @@ Deno.serve(async (req) => {
         designation: match.designation,
         type: match.type,
       },
-    }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      mustChangePassword,
     });
   } catch (err) {
     console.error("staff-login error:", err);
-    return new Response(JSON.stringify({ error: (err as Error).message ?? "internal_error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: (err as Error).message ?? "internal_error" }, 500);
   }
 });

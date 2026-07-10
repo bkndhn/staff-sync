@@ -23,10 +23,21 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
-  const [joinedDate, setJoinedDate] = useState('');
+  const [staffPassword, setStaffPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showStaffPassword, setShowStaffPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // First-login / forced password change flow
+  const [mustSetPassword, setMustSetPassword] = useState<null | {
+    contactNumber: string;
+    currentCredential: string; // joined_date or current password used to log in
+    deviceFingerprint: string;
+    staff: any;
+  }>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
@@ -96,13 +107,34 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
 
 
+  const finalizeStaffSession = (matchedStaff: any) => {
+    const session = {
+      user: {
+        email: `staff_${matchedStaff.id}`,
+        role: 'staff',
+        location: matchedStaff.location,
+        staffId: matchedStaff.id,
+        staffName: matchedStaff.name
+      },
+      expiresAt: Date.now() + (24 * 60 * 60 * 1000)
+    };
+    localStorage.setItem('staffManagementLogin', JSON.stringify(session));
+    onLogin({
+      email: `staff_${matchedStaff.id}`,
+      role: 'staff',
+      location: matchedStaff.location,
+      staffId: matchedStaff.id,
+      staffName: matchedStaff.name
+    });
+  };
+
   const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     const trimmedMobile = mobileNumber.trim();
-    const trimmedDate = joinedDate.trim();
+    const trimmedPassword = staffPassword.trim();
 
     if (!trimmedMobile || trimmedMobile.length < 10) {
       setError('Please enter a valid 10-digit mobile number');
@@ -110,8 +142,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       return;
     }
 
-    if (!trimmedDate || trimmedDate.length !== 8) {
-      setError('Please enter joined date in DDMMYYYY format');
+    if (!trimmedPassword) {
+      setError('Please enter your password (first-time users: use your joined date as DDMMYYYY)');
       setLoading(false);
       return;
     }
@@ -127,6 +159,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
     try {
       const currentFingerprint = await generateDeviceFingerprint();
+      // Send both `password` and `joinedDate` when the input looks like a
+      // DDMMYYYY string — the server will accept whichever matches. Otherwise
+      // only send it as `password`.
+      const looksLikeDate = /^\d{8}$/.test(trimmedPassword);
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-login`,
         {
@@ -137,7 +173,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           },
           body: JSON.stringify({
             contactNumber: trimmedMobile,
-            joinedDate: trimmedDate,
+            password: trimmedPassword,
+            ...(looksLikeDate ? { joinedDate: trimmedPassword } : {}),
             deviceFingerprint: currentFingerprint,
           }),
         },
@@ -148,7 +185,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         if (payload?.error === 'device_locked') {
           setError('This account is already registered to another device. Please contact Admin to reset your device lock.');
         } else {
-          setError('Invalid mobile number or joined date. Please check your credentials.');
+          setError('Invalid mobile number or password. Please check your credentials.');
         }
         setLoading(false);
         return;
@@ -156,31 +193,82 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       const matchedStaff = payload.staff;
 
-      const session = {
-        user: {
-          email: `staff_${matchedStaff.id}`,
-          role: 'staff',
-          location: matchedStaff.location,
-          staffId: matchedStaff.id,
-          staffName: matchedStaff.name
-        },
-        expiresAt: Date.now() + (24 * 60 * 60 * 1000)
-      };
+      if (payload.mustChangePassword) {
+        // Do not create a session yet — force the staff member to pick a real
+        // password first. finalizeStaffSession runs only after the set-password
+        // call succeeds.
+        setMustSetPassword({
+          contactNumber: trimmedMobile,
+          currentCredential: trimmedPassword,
+          deviceFingerprint: currentFingerprint,
+          staff: matchedStaff,
+        });
+        setLoading(false);
+        return;
+      }
 
-      localStorage.setItem('staffManagementLogin', JSON.stringify(session));
-
-      onLogin({
-        email: `staff_${matchedStaff.id}`,
-        role: 'staff',
-        location: matchedStaff.location,
-        staffId: matchedStaff.id,
-        staffName: matchedStaff.name
-      });
+      finalizeStaffSession(matchedStaff);
     } catch (err) {
       console.error('Staff login error:', err);
       setError('Unable to connect to server. Please try again.');
     }
 
+    setLoading(false);
+  };
+
+  const handleStaffSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mustSetPassword) return;
+    setError('');
+
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    // Refuse letting them "reuse" the joined-date fallback as their new password.
+    if (/^\d{8}$/.test(newPassword) && newPassword === mustSetPassword.currentCredential) {
+      setError('Please choose a new password different from your joined date');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const looksLikeDate = /^\d{8}$/.test(mustSetPassword.currentCredential);
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-set-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            contactNumber: mustSetPassword.contactNumber,
+            deviceFingerprint: mustSetPassword.deviceFingerprint,
+            ...(looksLikeDate
+              ? { joinedDate: mustSetPassword.currentCredential }
+              : { currentPassword: mustSetPassword.currentCredential }),
+            newPassword,
+          }),
+        },
+      );
+      const payload = await res.json();
+      if (!res.ok) {
+        setError(payload?.error === 'device_locked'
+          ? 'Device mismatch — contact Admin.'
+          : 'Could not update password. Please try again.');
+        setLoading(false);
+        return;
+      }
+      finalizeStaffSession(mustSetPassword.staff);
+    } catch (err) {
+      console.error('Set password error:', err);
+      setError('Unable to reach server. Please try again.');
+    }
     setLoading(false);
   };
 
@@ -293,7 +381,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           )}
 
           {/* Staff Login Form */}
-          {loginMode === 'staff' && (
+          {loginMode === 'staff' && !mustSetPassword && (
             <div className="space-y-4">
                 <form onSubmit={handleStaffSubmit} className="space-y-4">
                   <div>
@@ -306,21 +394,35 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       placeholder="Enter your 10-digit mobile number"
                       maxLength={10}
                       required
+                      autoComplete="username"
                     />
                     <p className="text-xs text-[var(--text-muted)] mt-1">Username is your registered mobile number</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Joined Date (DDMMYYYY)</label>
-                    <input
-                      type="text"
-                      value={joinedDate}
-                      onChange={(e) => setJoinedDate(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                      className="input-premium"
-                      placeholder="e.g. 15032024"
-                      maxLength={8}
-                      required
-                    />
-                    <p className="text-xs text-[var(--text-muted)] mt-1">Password is your joining date in DDMMYYYY format</p>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Password</label>
+                    <div className="relative">
+                      <input
+                        type={showStaffPassword ? 'text' : 'password'}
+                        value={staffPassword}
+                        onChange={(e) => setStaffPassword(e.target.value.slice(0, 128))}
+                        className="input-premium pr-12"
+                        placeholder="Your password (or DDMMYYYY joined date)"
+                        maxLength={128}
+                        required
+                        autoComplete="current-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowStaffPassword(v => !v)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 transition-colors"
+                        aria-label={showStaffPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showStaffPassword ? <EyeOff size={18} color="#ffffff" /> : <Eye size={18} color="#ffffff" />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">
+                      First-time login: use your joined date in DDMMYYYY format (e.g. 15032024). You'll be asked to set a new password.
+                    </p>
                   </div>
 
                   {error && (
@@ -341,6 +443,61 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   </button>
               </form>
             </div>
+          )}
+
+          {/* Forced first-login / reset password flow */}
+          {loginMode === 'staff' && mustSetPassword && (
+            <form onSubmit={handleStaffSetPassword} className="space-y-4">
+              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                <p className="text-sm font-medium text-[var(--text-primary)]">
+                  Welcome {mustSetPassword.staff.name}! Please set a new password to continue.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">New Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value.slice(0, 128))}
+                  className="input-premium"
+                  placeholder="At least 6 characters"
+                  minLength={6}
+                  maxLength={128}
+                  required
+                  autoComplete="new-password"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value.slice(0, 128))}
+                  className="input-premium"
+                  placeholder="Re-enter new password"
+                  minLength={6}
+                  maxLength={128}
+                  required
+                  autoComplete="new-password"
+                />
+              </div>
+              {error && (
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+                  <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
+                  <span className="text-red-600 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{error}</span>
+                </div>
+              )}
+              <button type="submit" disabled={loading} className="w-full py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg">
+                {loading ? 'Saving...' : 'Save Password & Continue'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMustSetPassword(null); setNewPassword(''); setConfirmPassword(''); setStaffPassword(''); setError(''); }}
+                className="w-full py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              >
+                Cancel
+              </button>
+            </form>
           )}
 
           <p className="text-center text-[var(--text-muted)] text-xs mt-6">
