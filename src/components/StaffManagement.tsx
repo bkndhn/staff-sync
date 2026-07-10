@@ -1775,6 +1775,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                             <ShieldOff size={16} />
                           </button>
                         )}
+                        <button onClick={() => handleResetStaffPassword(member.id, member.name)} className="text-amber-600 hover:text-amber-800 p-1 rounded hover:bg-amber-50" title="Reset Password">
+                          <RotateCcw size={16} />
+                        </button>
                         <button onClick={() => handleDelete(member)} className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50" title="Archive">
                           <Archive size={16} />
                         </button>
