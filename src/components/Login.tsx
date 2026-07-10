@@ -23,10 +23,21 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
-  const [joinedDate, setJoinedDate] = useState('');
+  const [staffPassword, setStaffPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showStaffPassword, setShowStaffPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // First-login / forced password change flow
+  const [mustSetPassword, setMustSetPassword] = useState<null | {
+    contactNumber: string;
+    currentCredential: string; // joined_date or current password used to log in
+    deviceFingerprint: string;
+    staff: any;
+  }>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
