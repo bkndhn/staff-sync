@@ -128,14 +128,15 @@ body.light-theme .divide-white\/10>*+* {
   border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Light theme body background - clean premium blue-white */
+/* Light theme body background - pure white */
 body.light-theme {
-  background: #F8FAFC;
+  background: #FFFFFF;
 }
 
 body.light-theme::before {
   background: none;
 }
+
 
 /* Light theme text color overrides */
 body.light-theme h1,
