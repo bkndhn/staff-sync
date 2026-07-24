@@ -2722,3 +2722,32 @@ body.light-theme .mobile-nav-item-active {
   background: rgba(37, 99, 235, 0.08);
   border-radius: 12px;
 }
+
+/* Light theme: keep white text on solid blue/sky buttons and pills */
+body.light-theme .bg-blue-500,
+body.light-theme .bg-blue-600,
+body.light-theme .bg-blue-700,
+body.light-theme .bg-sky-500,
+body.light-theme .bg-sky-600,
+body.light-theme [class*="bg-blue-6"] .text-white,
+body.light-theme [class*="bg-blue-6"] span,
+body.light-theme [class*="bg-blue-6"] svg,
+body.light-theme [class*="bg-sky-5"] .text-white,
+body.light-theme [class*="bg-sky-5"] span,
+body.light-theme [class*="bg-sky-5"] svg {
+  color: #ffffff !important;
+}
+body.light-theme .bg-blue-500,
+body.light-theme .bg-blue-600,
+body.light-theme .bg-blue-700,
+body.light-theme .bg-sky-500,
+body.light-theme .bg-sky-600 {
+  /* Ensure direct text children stay white */
+}
+body.light-theme .bg-blue-500 *,
+body.light-theme .bg-blue-600 *,
+body.light-theme .bg-blue-700 *,
+body.light-theme .bg-sky-500 *,
+body.light-theme .bg-sky-600 * {
+  color: #ffffff !important;
+}
