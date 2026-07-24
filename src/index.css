@@ -68,23 +68,23 @@
    LIGHT THEME OVERRIDE (Material 3 Light)
    ============================================ */
 body.light-theme {
-  --bg-primary: #F8FAFC; /* Slate 50 */
-  --bg-secondary: #EEF2F7;
-  --bg-tertiary: #E2E8F0;
+  --bg-primary: #FFFFFF; /* Pure white */
+  --bg-secondary: #F5F8FF; /* Faint blue-tinted surface */
+  --bg-tertiary: #EAF2FF;
   --bg-card: #FFFFFF;
-  --bg-card-hover: #F5F8FC;
+  --bg-card-hover: #F5F8FF;
 
   /* Text Colors */
-  --text-primary: #0F172A;
-  --text-secondary: #334155;
-  --text-muted: #64748B;
+  --text-primary: #0B1220;
+  --text-secondary: #1E293B;
+  --text-muted: #475569;
 
-  /* Solid Colors */
+  /* Solid Colors - Blue theme */
   --primary-gradient: #2563EB; /* Blue-600 */
   --success-gradient: #16A34A;
   --warning-gradient: #D97706;
   --danger-gradient: #DC2626;
-  --info-gradient: #0284C7;
+  --info-gradient: #2563EB;
   --purple-gradient: #2563EB;
 
   /* Button text */
@@ -94,9 +94,10 @@ body.light-theme {
 
   /* Surfaces */
   --glass-bg: #FFFFFF;
-  --glass-bg-strong: #F1F5F9;
+  --glass-bg-strong: #F5F8FF;
   --glass-border: #E2E8F0;
   --glass-border-strong: #CBD5E1;
+
 
   /* Shadows */
   --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.05);
