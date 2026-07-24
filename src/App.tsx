@@ -156,14 +156,13 @@ function App() {
     };
   }, []);
 
-  // Theme state - Lifted from Dashboard
+  // Theme state - Lifted from Dashboard.
+  // Default = LIGHT (pure white background + blue accents). Users can still opt into dark.
   const [isDarkTheme, setIsDarkTheme] = useState(() => {
-    // Only respect saved theme if the user explicitly toggled it.
-    // Otherwise default to dark mode across all pages, including login.
     const userSet = localStorage.getItem('themeUserSet') === '1';
     const savedTheme = localStorage.getItem('theme');
-    if (userSet && savedTheme === 'light') return false;
-    return true;
+    if (userSet && savedTheme === 'dark') return true;
+    return false;
   });
 
   useEffect(() => {
@@ -172,19 +171,18 @@ function App() {
     if (isDarkTheme) {
       document.body.classList.remove('light-theme');
       localStorage.setItem('theme', 'dark');
-      // Update status bar color for Material 3 dark theme
       if (metaThemeColor) {
-        metaThemeColor.setAttribute('content', '#121212');
+        metaThemeColor.setAttribute('content', '#0B1220');
       }
     } else {
       document.body.classList.add('light-theme');
       localStorage.setItem('theme', 'light');
-      // Update status bar color for Material 3 light theme
       if (metaThemeColor) {
-        metaThemeColor.setAttribute('content', '#FEF7FF');
+        metaThemeColor.setAttribute('content', '#FFFFFF');
       }
     }
   }, [isDarkTheme]);
+
 
   const toggleTheme = () => {
     localStorage.setItem('themeUserSet', '1');

@@ -68,23 +68,23 @@
    LIGHT THEME OVERRIDE (Material 3 Light)
    ============================================ */
 body.light-theme {
-  --bg-primary: #F8FAFC; /* Slate 50 */
-  --bg-secondary: #EEF2F7;
-  --bg-tertiary: #E2E8F0;
+  --bg-primary: #FFFFFF; /* Pure white */
+  --bg-secondary: #F5F8FF; /* Faint blue-tinted surface */
+  --bg-tertiary: #EAF2FF;
   --bg-card: #FFFFFF;
-  --bg-card-hover: #F5F8FC;
+  --bg-card-hover: #F5F8FF;
 
   /* Text Colors */
-  --text-primary: #0F172A;
-  --text-secondary: #334155;
-  --text-muted: #64748B;
+  --text-primary: #0B1220;
+  --text-secondary: #1E293B;
+  --text-muted: #475569;
 
-  /* Solid Colors */
+  /* Solid Colors - Blue theme */
   --primary-gradient: #2563EB; /* Blue-600 */
   --success-gradient: #16A34A;
   --warning-gradient: #D97706;
   --danger-gradient: #DC2626;
-  --info-gradient: #0284C7;
+  --info-gradient: #2563EB;
   --purple-gradient: #2563EB;
 
   /* Button text */
@@ -94,9 +94,10 @@ body.light-theme {
 
   /* Surfaces */
   --glass-bg: #FFFFFF;
-  --glass-bg-strong: #F1F5F9;
+  --glass-bg-strong: #F5F8FF;
   --glass-border: #E2E8F0;
   --glass-border-strong: #CBD5E1;
+
 
   /* Shadows */
   --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.05);
@@ -127,14 +128,15 @@ body.light-theme .divide-white\/10>*+* {
   border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Light theme body background - clean premium blue-white */
+/* Light theme body background - pure white */
 body.light-theme {
-  background: #F8FAFC;
+  background: #FFFFFF;
 }
 
 body.light-theme::before {
   background: none;
 }
+
 
 /* Light theme text color overrides */
 body.light-theme h1,
@@ -2608,4 +2610,115 @@ body.light-theme button[class*="text-emerald"] svg {
     flex-direction: column;
     gap: 12px;
   }
+}
+
+/* ============================================
+   MOBILE-FIRST REFINEMENTS (light theme + all)
+   Real native-app feel across all pages
+   ============================================ */
+@media screen and (max-width: 768px) {
+  /* Prevent iOS input zoom */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Tighter page padding on phones */
+  main, .page-shell {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  /* Cards + tables: crisp edges, no wasted padding */
+  .glass-card, .glass-card-static, .stat-card {
+    border-radius: 14px !important;
+  }
+
+  /* Tables that must scroll horizontally: give scroll cue + sticky first col shadow */
+  .table-container {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    background: var(--bg-card);
+  }
+  .table-container > .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .table-container table {
+    font-size: 12px;
+  }
+  .table-container th,
+  .table-container td {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+  .table-container th.sticky,
+  .table-container td.sticky {
+    box-shadow: 2px 0 4px -2px rgba(15, 23, 42, 0.15);
+  }
+
+  /* Buttons: min 44px thumb target */
+  button, .btn-premium, .btn-ghost {
+    min-height: 44px;
+  }
+  .btn-premium {
+    padding: 10px 18px;
+    font-size: 0.9rem;
+  }
+
+  /* Modals fit viewport */
+  .modal-content {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100vh - 96px) !important;
+    overflow-y: auto;
+    border-radius: 18px !important;
+  }
+
+  /* Section headers */
+  h1 { font-size: 1.375rem !important; }
+  h2 { font-size: 1.125rem !important; }
+  h3 { font-size: 1rem !important; }
+
+  /* Filter/toolbar rows wrap cleanly */
+  .filter-row, .toolbar-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+/* Light theme: crisp white cards + blue focus ring across the app */
+body.light-theme .glass-card,
+body.light-theme .glass-card-static,
+body.light-theme .stat-card {
+  background: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+}
+
+body.light-theme input:focus,
+body.light-theme select:focus,
+body.light-theme textarea:focus {
+  outline: none;
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+}
+
+body.light-theme .btn-premium {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+}
+body.light-theme .btn-premium:hover {
+  background: #1D4ED8 !important;
+}
+
+/* Light theme mobile nav: crisp white with blue active */
+body.light-theme .mobile-nav {
+  background: #FFFFFF !important;
+  border-top: 1px solid #E2E8F0 !important;
+  box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.06);
+}
+body.light-theme .mobile-nav-item-active {
+  background: rgba(37, 99, 235, 0.08);
+  border-radius: 12px;
 }
