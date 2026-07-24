@@ -353,7 +353,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 z-20 p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-colors"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 z-20 p-2 rounded-lg bg-blue-600 hover:bg-blue-500 transition-colors"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff size={18} color="#ffffff" /> : <Eye size={18} color="#ffffff" />}
@@ -415,7 +415,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       <button
                         type="button"
                         onClick={() => setShowStaffPassword(v => !v)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 transition-colors"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-lg bg-blue-600 hover:bg-blue-500 transition-colors"
                         aria-label={showStaffPassword ? 'Hide password' : 'Show password'}
                       >
                         {showStaffPassword ? <EyeOff size={18} color="#ffffff" /> : <Eye size={18} color="#ffffff" />}
@@ -433,7 +433,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     </div>
                   )}
 
-                  <button type="submit" disabled={loading} className="w-full py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg">
+                  <button type="submit" disabled={loading} className="w-full py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg">
                     <span className="relative z-10 flex items-center justify-center gap-2">
                       {loading ? (
                         <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Signing in...</>
@@ -449,7 +449,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           {/* Forced first-login / reset password flow */}
           {loginMode === 'staff' && mustSetPassword && (
             <form onSubmit={handleStaffSetPassword} className="space-y-4">
-              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+              <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
                 <p className="text-sm font-medium text-[var(--text-primary)]">
                   Welcome {mustSetPassword.staff.name}! Please set a new password to continue.
                 </p>
@@ -488,7 +488,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   <span className="text-red-600 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{error}</span>
                 </div>
               )}
-              <button type="submit" disabled={loading} className="w-full py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg">
+              <button type="submit" disabled={loading} className="w-full py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg">
                 {loading ? 'Saving...' : 'Save Password & Continue'}
               </button>
               <button
