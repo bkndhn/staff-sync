@@ -132,10 +132,10 @@ export const exportDashboardPDF = (opts: DashboardExportOptions) => {
       const locPt = dayAtt.filter(r => r.isPartTime && r.status === 'Present' && r.location === loc.name).length;
       return [
         loc.name,
-        s.totalStaff ?? activeStaff.filter(a => a.location === loc.name).length,
-        s.present ?? 0,
-        s.halfDay ?? 0,
-        s.absent ?? 0,
+        s.total,
+        s.present,
+        s.halfDay,
+        s.absent,
         locPt,
       ];
     });
