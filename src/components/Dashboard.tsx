@@ -1,10 +1,11 @@
 import React from 'react';
 import { Staff, Attendance } from '../types';
-import { Users, Clock, Calendar, MapPin, TrendingUp, Sun, Moon, ArrowUp, ArrowDown, GripVertical, Share2, Copy, MessageCircle, AlertTriangle } from 'lucide-react';
+import { Users, Clock, Calendar, MapPin, TrendingUp, Sun, Moon, ArrowUp, ArrowDown, GripVertical, Share2, Copy, MessageCircle, AlertTriangle, FileText } from 'lucide-react';
 import { calculateLocationAttendance } from '../utils/salaryCalculations';
 import { appSettingsService } from '../services/appSettingsService';
 import { customAlert } from './CustomDialog';
 import BreaksDashboardWidget from './BreaksDashboardWidget';
+import { exportDashboardPDF } from '../utils/dashboardPdfExport';
 interface DashboardProps {
   staff: Staff[];
   attendance: Attendance[];
