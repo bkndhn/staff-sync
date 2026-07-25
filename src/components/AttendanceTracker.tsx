@@ -395,7 +395,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 <tr className="bg-gray-50">
                   <th className="px-2 md:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
                   {showEmpCode && <th className="px-2 md:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emp Code</th>}
-                  <th className="px-2 md:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 z-10 bg-gray-50">Name</th>
+                  <th className="px-2 md:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 z-30 bg-gray-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">Name</th>
                   <th className="px-1 md:px-2 py-3 text-center text-xs font-medium text-green-600 uppercase tracking-wider bg-green-50">P</th>
                   <th className="px-1 md:px-2 py-3 text-center text-xs font-medium text-yellow-600 uppercase tracking-wider bg-yellow-50">H</th>
                   <th className="px-1 md:px-2 py-3 text-center text-xs font-medium text-red-600 uppercase tracking-wider bg-red-50">A</th>
@@ -424,7 +424,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     <tr key={member.id} className="hover:bg-gray-50">
                       <td className="px-2 md:px-4 py-4 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
                       {showEmpCode && <td className="px-2 md:px-4 py-4 whitespace-nowrap text-sm text-gray-500">{member.employeeCode || (member.deviceId?.startsWith('dev_') ? null : member.deviceId) || '-'}</td>}
-                      <td className="px-2 md:px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 z-10 bg-white">{member.name}</td>
+                      <td className="px-2 md:px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 z-10 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">{member.name}</td>
                       <td className="px-1 md:px-2 py-4 text-center text-sm font-bold text-green-600 bg-green-50">{summary.present}</td>
                       <td className="px-1 md:px-2 py-4 text-center text-sm font-bold text-yellow-600 bg-yellow-50">{summary.halfDay}</td>
                       <td className="px-1 md:px-2 py-4 text-center text-sm font-bold text-red-600 bg-red-50">{summary.absent}</td>
