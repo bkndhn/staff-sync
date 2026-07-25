@@ -218,7 +218,7 @@ const Navigation: React.FC<NavigationProps> = ({
       {/* ── Mobile Bottom Navigation ───────────────────────────────────── */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 mobile-nav safe-area-padding overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <style>{`.mobile-nav::-webkit-scrollbar { display: none; }`}</style>
-        <div className="flex items-end px-2 pt-2 pb-2 w-max min-w-full justify-around gap-2" style={{ minHeight: '68px' }}>
+        <div className="flex items-end px-1 pt-1 pb-1 w-max min-w-full justify-around gap-1" style={{ minHeight: '54px' }}>
           {tabs.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -226,10 +226,10 @@ const Navigation: React.FC<NavigationProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`mobile-nav-item flex-shrink-0 min-w-[60px] ${isActive ? 'mobile-nav-item-active' : ''}`}
+                className={`mobile-nav-item flex-shrink-0 min-w-[52px] ${isActive ? 'mobile-nav-item-active' : ''}`}
               >
-                <Icon size={22} className={`transition-all ${isActive ? 'text-white' : 'text-white/50'}`} strokeWidth={isActive ? 2.5 : 2} />
-                <span className={`text-[10px] font-semibold mt-1 ${isActive ? 'text-white' : 'text-white/50'}`}>{tab.label}</span>
+                <Icon size={18} className={`transition-all ${isActive ? 'text-white' : 'text-white/50'}`} strokeWidth={isActive ? 2.5 : 2} />
+                <span className={`text-[9px] font-semibold mt-0.5 ${isActive ? 'text-white' : 'text-white/50'}`}>{tab.label}</span>
               </button>
             );
           })}
