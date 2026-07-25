@@ -268,6 +268,43 @@ const Dashboard: React.FC<DashboardProps> = ({
     await customAlert('Dashboard report copied!');
   };
 
+  const handleExportPDF = (scope: 'overall' | string = 'overall') => {
+    exportDashboardPDF({
+      staff,
+      attendance,
+      selectedDate,
+      locations: locations.map(l => ({ name: l.name })),
+      scope,
+    });
+  };
+
+  const generateLocationShareText = (locName: string) => {
+    const date = new Date(selectedDate + 'T00:00:00');
+    const dateStr = date.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+    const locStaff = activeStaff.filter(s => s.location === locName);
+    const locAtt = fullTimeAttendance.filter(r => {
+      const s = activeStaff.find(st => st.id === r.staffId);
+      return s?.location === locName;
+    });
+    const p = locAtt.filter(r => r.status === 'Present').length;
+    const h = locAtt.filter(r => r.status === 'Half Day').length;
+    const a = locAtt.filter(r => r.status === 'Absent').length;
+    const pt = filteredTodayAttendance.filter(r => r.isPartTime && r.status === 'Present' && r.location === locName).length;
+    let text = `📍 *${locName} — ${dateStr}*\n\n`;
+    text += `👥 Staff: ${locStaff.length}\n`;
+    text += `✅ Present: ${p}\n🕒 Half Day: ${h}\n❌ Absent: ${a}\n`;
+    if (pt > 0) text += `👥 Part-Time Present: ${pt}\n`;
+    return text;
+  };
+
+  const handleShareLocation = (locName: string) => {
+    const text = generateLocationShareText(locName);
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const handleLocationPDF = (locName: string) => handleExportPDF(locName);
+
+
   return (
     <div className="p-1 md:p-6 space-y-6">
       {/* Header */}
