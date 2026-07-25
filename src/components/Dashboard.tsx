@@ -624,15 +624,33 @@ const Dashboard: React.FC<DashboardProps> = ({
 
             return (
               <div key={location.name} className="border-b border-[var(--glass-border)] pb-6 last:border-b-0 last:pb-0">
-                <h3 className="text-base md:text-lg font-semibold text-gradient mb-4 text-center">
-                  {location.name} - Staff Present: {locationTotalPresent}/{locationTotalFullTimeStaff}
-                  {tempGuests.length > 0 && (
-                    <span className="text-sm text-cyan-400 ml-2">+{tempGuests.length} Temp</span>
-                  )}
-                  {locationPartTimeData.length > 0 && (
-                    <span className="text-sm text-[var(--text-secondary)] ml-2">{' + Part-Time: '}{locationPartTimeData.length}</span>
-                  )}
-                </h3>
+                <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+                  <h3 className="text-base md:text-lg font-semibold text-gradient text-center flex-1 min-w-0">
+                    {location.name} - Staff Present: {locationTotalPresent}/{locationTotalFullTimeStaff}
+                    {tempGuests.length > 0 && (
+                      <span className="text-sm text-cyan-400 ml-2">+{tempGuests.length} Temp</span>
+                    )}
+                    {locationPartTimeData.length > 0 && (
+                      <span className="text-sm text-[var(--text-secondary)] ml-2">{' + Part-Time: '}{locationPartTimeData.length}</span>
+                    )}
+                  </h3>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => handleShareLocation(location.name)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-500/90 hover:bg-green-600 text-white text-xs font-medium shadow active:scale-95"
+                      title={`Share ${location.name} via WhatsApp`}
+                    >
+                      <MessageCircle size={12} /> Share
+                    </button>
+                    <button
+                      onClick={() => handleLocationPDF(location.name)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-500/90 hover:bg-blue-600 text-white text-xs font-medium shadow active:scale-95"
+                      title={`Download ${location.name} PDF`}
+                    >
+                      <FileText size={12} /> PDF
+                    </button>
+                  </div>
+                </div>
 
                 {groupBy === 'none' ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
