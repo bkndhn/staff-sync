@@ -1451,6 +1451,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               <button type="button" onClick={() => { resetForm(); setEditingStaff(null); setShowAddForm(false); }} className="btn-ghost px-6 py-2">Cancel</button>
             </div>
           </form>
+          </div>
         </div>
       )}
 
