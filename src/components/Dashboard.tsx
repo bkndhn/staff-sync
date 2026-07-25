@@ -1,10 +1,11 @@
 import React from 'react';
 import { Staff, Attendance } from '../types';
-import { Users, Clock, Calendar, MapPin, TrendingUp, Sun, Moon, ArrowUp, ArrowDown, GripVertical, Share2, Copy, MessageCircle, AlertTriangle } from 'lucide-react';
+import { Users, Clock, Calendar, MapPin, TrendingUp, Sun, Moon, ArrowUp, ArrowDown, GripVertical, Share2, Copy, MessageCircle, AlertTriangle, FileText } from 'lucide-react';
 import { calculateLocationAttendance } from '../utils/salaryCalculations';
 import { appSettingsService } from '../services/appSettingsService';
 import { customAlert } from './CustomDialog';
 import BreaksDashboardWidget from './BreaksDashboardWidget';
+import { exportDashboardPDF } from '../utils/dashboardPdfExport';
 interface DashboardProps {
   staff: Staff[];
   attendance: Attendance[];
@@ -267,6 +268,43 @@ const Dashboard: React.FC<DashboardProps> = ({
     await customAlert('Dashboard report copied!');
   };
 
+  const handleExportPDF = (scope: 'overall' | string = 'overall') => {
+    exportDashboardPDF({
+      staff,
+      attendance,
+      selectedDate,
+      locations: locations.map(l => ({ name: l.name })),
+      scope,
+    });
+  };
+
+  const generateLocationShareText = (locName: string) => {
+    const date = new Date(selectedDate + 'T00:00:00');
+    const dateStr = date.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+    const locStaff = activeStaff.filter(s => s.location === locName);
+    const locAtt = fullTimeAttendance.filter(r => {
+      const s = activeStaff.find(st => st.id === r.staffId);
+      return s?.location === locName;
+    });
+    const p = locAtt.filter(r => r.status === 'Present').length;
+    const h = locAtt.filter(r => r.status === 'Half Day').length;
+    const a = locAtt.filter(r => r.status === 'Absent').length;
+    const pt = filteredTodayAttendance.filter(r => r.isPartTime && r.status === 'Present' && r.location === locName).length;
+    let text = `📍 *${locName} — ${dateStr}*\n\n`;
+    text += `👥 Staff: ${locStaff.length}\n`;
+    text += `✅ Present: ${p}\n🕒 Half Day: ${h}\n❌ Absent: ${a}\n`;
+    if (pt > 0) text += `👥 Part-Time Present: ${pt}\n`;
+    return text;
+  };
+
+  const handleShareLocation = (locName: string) => {
+    const text = generateLocationShareText(locName);
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const handleLocationPDF = (locName: string) => handleExportPDF(locName);
+
+
   return (
     <div className="p-1 md:p-6 space-y-6">
       {/* Header */}
@@ -298,6 +336,14 @@ const Dashboard: React.FC<DashboardProps> = ({
           >
             <Copy size={16} />
             <span className="text-xs md:text-sm">Copy</span>
+          </button>
+          <button
+            onClick={() => handleExportPDF('overall')}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-medium transition-all duration-300 shadow-lg active:scale-95 shrink-0"
+            title="Download PDF report"
+          >
+            <FileText size={16} />
+            <span className="text-xs md:text-sm">PDF</span>
           </button>
           <button
             onClick={toggleTheme}
@@ -578,15 +624,33 @@ const Dashboard: React.FC<DashboardProps> = ({
 
             return (
               <div key={location.name} className="border-b border-[var(--glass-border)] pb-6 last:border-b-0 last:pb-0">
-                <h3 className="text-base md:text-lg font-semibold text-gradient mb-4 text-center">
-                  {location.name} - Staff Present: {locationTotalPresent}/{locationTotalFullTimeStaff}
-                  {tempGuests.length > 0 && (
-                    <span className="text-sm text-cyan-400 ml-2">+{tempGuests.length} Temp</span>
-                  )}
-                  {locationPartTimeData.length > 0 && (
-                    <span className="text-sm text-[var(--text-secondary)] ml-2">{' + Part-Time: '}{locationPartTimeData.length}</span>
-                  )}
-                </h3>
+                <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+                  <h3 className="text-base md:text-lg font-semibold text-gradient text-center flex-1 min-w-0">
+                    {location.name} - Staff Present: {locationTotalPresent}/{locationTotalFullTimeStaff}
+                    {tempGuests.length > 0 && (
+                      <span className="text-sm text-cyan-400 ml-2">+{tempGuests.length} Temp</span>
+                    )}
+                    {locationPartTimeData.length > 0 && (
+                      <span className="text-sm text-[var(--text-secondary)] ml-2">{' + Part-Time: '}{locationPartTimeData.length}</span>
+                    )}
+                  </h3>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => handleShareLocation(location.name)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-500/90 hover:bg-green-600 text-white text-xs font-medium shadow active:scale-95"
+                      title={`Share ${location.name} via WhatsApp`}
+                    >
+                      <MessageCircle size={12} /> Share
+                    </button>
+                    <button
+                      onClick={() => handleLocationPDF(location.name)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-500/90 hover:bg-blue-600 text-white text-xs font-medium shadow active:scale-95"
+                      title={`Download ${location.name} PDF`}
+                    >
+                      <FileText size={12} /> PDF
+                    </button>
+                  </div>
+                </div>
 
                 {groupBy === 'none' ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
