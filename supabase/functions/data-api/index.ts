@@ -27,23 +27,24 @@ const corsHeaders = {
 //                    (using the column name supplied — usually 'location' or
 //                    'location_id')
 // ---------------------------------------------------------------------------
-type Role = "admin" | "manager" | "staff" | "statutory_admin";
+type Role = "admin" | "manager" | "staff" | "statutory_admin" | "supervisor";
 type Op = "select" | "insert" | "update" | "upsert" | "delete";
 
 interface TableAcl {
   read: Role[];
   write: Role[];
   locationCol?: string; // column to use for manager location-scoping
+  floorCol?: string;    // column to use for supervisor floor-scoping
 }
 
 const ACL: Record<string, TableAcl> = {
-  staff:                          { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin", "manager"], locationCol: "location" },
-  attendance:                     { read: ["admin", "manager", "staff"], write: ["admin", "manager"], locationCol: "location" },
-  punch_events:                   { read: ["admin", "manager", "staff"], write: ["admin", "manager"], locationCol: "location" },
-  break_events:                   { read: ["admin", "manager", "staff"], write: ["admin", "manager", "staff"], locationCol: "location" },
-  break_types:                    { read: ["admin", "manager", "staff"], write: ["admin"] },
-  break_policies:                 { read: ["admin", "manager"],          write: ["admin"] },
-  leave_requests:                 { read: ["admin", "manager", "staff"], write: ["admin", "manager", "staff"], locationCol: "location" },
+  staff:                          { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin", "manager"], locationCol: "location", floorCol: "floor" },
+  attendance:                     { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "supervisor"], locationCol: "location", floorCol: "floor" },
+  punch_events:                   { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "supervisor"], locationCol: "location" },
+  break_events:                   { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "staff", "supervisor"], locationCol: "location" },
+  break_types:                    { read: ["admin", "manager", "staff", "supervisor"], write: ["admin"] },
+  break_policies:                 { read: ["admin", "manager", "supervisor"],          write: ["admin"] },
+  leave_requests:                 { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "staff", "supervisor"], locationCol: "location" },
   advances:                       { read: ["admin", "manager"],          write: ["admin", "manager"], locationCol: "location" },
   advance_entries:                { read: ["admin", "manager"],          write: ["admin", "manager"] },
   payroll_runs:                   { read: ["admin"],                     write: ["admin"] },
@@ -53,16 +54,16 @@ const ACL: Record<string, TableAcl> = {
   face_embeddings:                { read: ["admin", "manager"],          write: ["admin", "manager"] },
   face_registration_logs:         { read: ["admin", "manager"],          write: ["admin", "manager"] },
   old_staff_records:              { read: ["admin"],                     write: ["admin"] },
-  part_time_advance_tracking:     { read: ["admin", "manager"],          write: ["admin", "manager"] },
-  part_time_settlements:          { read: ["admin", "manager"],          write: ["admin", "manager"] },
-  app_settings:                   { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
-  locations:                      { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
-  designations:                   { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
-  floors:                         { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
-  salary_categories:              { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
+  part_time_advance_tracking:     { read: ["admin", "manager", "supervisor"], write: ["admin", "manager", "supervisor"] },
+  part_time_settlements:          { read: ["admin", "manager", "supervisor"], write: ["admin", "manager", "supervisor"] },
+  app_settings:                   { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
+  locations:                      { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
+  designations:                   { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
+  floors:                         { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
+  salary_categories:              { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
 
-  location_shift_config:          { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
-  location_designation_shift_config: { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
+  location_shift_config:          { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
+  location_designation_shift_config: { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
 
   statutory_portal_config:        { read: ["admin", "manager", "staff", "statutory_admin" as Role], write: ["admin"] },
 };
