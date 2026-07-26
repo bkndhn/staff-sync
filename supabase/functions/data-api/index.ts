@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
 
     const { data: user } = await admin
       .from("app_users")
-      .select("id, role, location, location_id, is_active")
+      .select("id, role, location, location_id, floor, floor_id, is_active")
       .eq("id", session.user_id)
       .maybeSingle();
 
@@ -153,11 +153,29 @@ Deno.serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Manager location-scoping
+    // Location + floor scoping
     const scopeFilters: Filter[] = [];
     if (role === "manager" && acl.locationCol && user.location) {
       scopeFilters.push({ col: acl.locationCol, op: "eq", val: user.location });
     }
+    if (role === "supervisor") {
+      if (acl.locationCol && user.location) {
+        scopeFilters.push({ col: acl.locationCol, op: "eq", val: user.location });
+      }
+      if (acl.floorCol && user.floor) {
+        scopeFilters.push({ col: acl.floorCol, op: "eq", val: user.floor });
+      }
+    }
+
+    const forceScope = (rows: Array<Record<string, unknown>>) => {
+      if (role === "manager" && acl.locationCol && user.location) {
+        for (const r of rows) r[acl.locationCol!] = user.location;
+      }
+      if (role === "supervisor") {
+        if (acl.locationCol && user.location) for (const r of rows) r[acl.locationCol!] = user.location;
+        if (acl.floorCol && user.floor) for (const r of rows) r[acl.floorCol!] = user.floor;
+      }
+    };
 
     let query: any = admin.from(body.table);
 
@@ -170,19 +188,14 @@ Deno.serve(async (req) => {
         break;
       }
       case "insert": {
-        // Force manager rows to their location
         const rows = Array.isArray(body.values) ? body.values : [body.values ?? {}];
-        if (role === "manager" && acl.locationCol && user.location) {
-          for (const r of rows) (r as any)[acl.locationCol] = user.location;
-        }
+        forceScope(rows as any);
         query = query.insert(rows).select();
         break;
       }
       case "upsert": {
         const rows = Array.isArray(body.values) ? body.values : [body.values ?? {}];
-        if (role === "manager" && acl.locationCol && user.location) {
-          for (const r of rows) (r as any)[acl.locationCol] = user.location;
-        }
+        forceScope(rows as any);
         query = query.upsert(rows, body.onConflict ? { onConflict: body.onConflict } : undefined).select();
         break;
       }
