@@ -79,7 +79,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           ...createSecureSession({
             email: dbUser.email,
             role: dbUser.role,
-            location: dbUser.location
+            location: dbUser.location,
+            floor: (dbUser as any).floor,
+            floorId: (dbUser as any).floor_id,
           }),
           sessionToken
         };
@@ -89,7 +91,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         onLogin({
           email: dbUser.email,
           role: dbUser.role,
-          location: dbUser.location || undefined
+          location: dbUser.location || undefined,
+          floor: (dbUser as any).floor || undefined,
+          floorId: (dbUser as any).floor_id || undefined,
         });
       } else {
         recordFailedAttempt(sanitizedEmail);
