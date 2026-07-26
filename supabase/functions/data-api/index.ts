@@ -27,23 +27,24 @@ const corsHeaders = {
 //                    (using the column name supplied — usually 'location' or
 //                    'location_id')
 // ---------------------------------------------------------------------------
-type Role = "admin" | "manager" | "staff" | "statutory_admin";
+type Role = "admin" | "manager" | "staff" | "statutory_admin" | "supervisor";
 type Op = "select" | "insert" | "update" | "upsert" | "delete";
 
 interface TableAcl {
   read: Role[];
   write: Role[];
   locationCol?: string; // column to use for manager location-scoping
+  floorCol?: string;    // column to use for supervisor floor-scoping
 }
 
 const ACL: Record<string, TableAcl> = {
-  staff:                          { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin", "manager"], locationCol: "location" },
-  attendance:                     { read: ["admin", "manager", "staff"], write: ["admin", "manager"], locationCol: "location" },
-  punch_events:                   { read: ["admin", "manager", "staff"], write: ["admin", "manager"], locationCol: "location" },
-  break_events:                   { read: ["admin", "manager", "staff"], write: ["admin", "manager", "staff"], locationCol: "location" },
-  break_types:                    { read: ["admin", "manager", "staff"], write: ["admin"] },
-  break_policies:                 { read: ["admin", "manager"],          write: ["admin"] },
-  leave_requests:                 { read: ["admin", "manager", "staff"], write: ["admin", "manager", "staff"], locationCol: "location" },
+  staff:                          { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin", "manager"], locationCol: "location", floorCol: "floor" },
+  attendance:                     { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "supervisor"], locationCol: "location", floorCol: "floor" },
+  punch_events:                   { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "supervisor"], locationCol: "location" },
+  break_events:                   { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "staff", "supervisor"], locationCol: "location" },
+  break_types:                    { read: ["admin", "manager", "staff", "supervisor"], write: ["admin"] },
+  break_policies:                 { read: ["admin", "manager", "supervisor"],          write: ["admin"] },
+  leave_requests:                 { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "staff", "supervisor"], locationCol: "location" },
   advances:                       { read: ["admin", "manager"],          write: ["admin", "manager"], locationCol: "location" },
   advance_entries:                { read: ["admin", "manager"],          write: ["admin", "manager"] },
   payroll_runs:                   { read: ["admin"],                     write: ["admin"] },
@@ -53,16 +54,16 @@ const ACL: Record<string, TableAcl> = {
   face_embeddings:                { read: ["admin", "manager"],          write: ["admin", "manager"] },
   face_registration_logs:         { read: ["admin", "manager"],          write: ["admin", "manager"] },
   old_staff_records:              { read: ["admin"],                     write: ["admin"] },
-  part_time_advance_tracking:     { read: ["admin", "manager"],          write: ["admin", "manager"] },
-  part_time_settlements:          { read: ["admin", "manager"],          write: ["admin", "manager"] },
-  app_settings:                   { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
-  locations:                      { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
-  designations:                   { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
-  floors:                         { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
-  salary_categories:              { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
+  part_time_advance_tracking:     { read: ["admin", "manager", "supervisor"], write: ["admin", "manager", "supervisor"] },
+  part_time_settlements:          { read: ["admin", "manager", "supervisor"], write: ["admin", "manager", "supervisor"] },
+  app_settings:                   { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
+  locations:                      { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
+  designations:                   { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
+  floors:                         { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
+  salary_categories:              { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
 
-  location_shift_config:          { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
-  location_designation_shift_config: { read: ["admin", "manager", "staff", "statutory_admin"], write: ["admin"] },
+  location_shift_config:          { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
+  location_designation_shift_config: { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
 
   statutory_portal_config:        { read: ["admin", "manager", "staff", "statutory_admin" as Role], write: ["admin"] },
 };
@@ -135,7 +136,7 @@ Deno.serve(async (req) => {
 
     const { data: user } = await admin
       .from("app_users")
-      .select("id, role, location, location_id, is_active")
+      .select("id, role, location, location_id, floor, floor_id, is_active")
       .eq("id", session.user_id)
       .maybeSingle();
 
@@ -152,11 +153,29 @@ Deno.serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Manager location-scoping
+    // Location + floor scoping
     const scopeFilters: Filter[] = [];
     if (role === "manager" && acl.locationCol && user.location) {
       scopeFilters.push({ col: acl.locationCol, op: "eq", val: user.location });
     }
+    if (role === "supervisor") {
+      if (acl.locationCol && user.location) {
+        scopeFilters.push({ col: acl.locationCol, op: "eq", val: user.location });
+      }
+      if (acl.floorCol && user.floor) {
+        scopeFilters.push({ col: acl.floorCol, op: "eq", val: user.floor });
+      }
+    }
+
+    const forceScope = (rows: Array<Record<string, unknown>>) => {
+      if (role === "manager" && acl.locationCol && user.location) {
+        for (const r of rows) r[acl.locationCol!] = user.location;
+      }
+      if (role === "supervisor") {
+        if (acl.locationCol && user.location) for (const r of rows) r[acl.locationCol!] = user.location;
+        if (acl.floorCol && user.floor) for (const r of rows) r[acl.floorCol!] = user.floor;
+      }
+    };
 
     let query: any = admin.from(body.table);
 
@@ -169,19 +188,14 @@ Deno.serve(async (req) => {
         break;
       }
       case "insert": {
-        // Force manager rows to their location
         const rows = Array.isArray(body.values) ? body.values : [body.values ?? {}];
-        if (role === "manager" && acl.locationCol && user.location) {
-          for (const r of rows) (r as any)[acl.locationCol] = user.location;
-        }
+        forceScope(rows as any);
         query = query.insert(rows).select();
         break;
       }
       case "upsert": {
         const rows = Array.isArray(body.values) ? body.values : [body.values ?? {}];
-        if (role === "manager" && acl.locationCol && user.location) {
-          for (const r of rows) (r as any)[acl.locationCol] = user.location;
-        }
+        forceScope(rows as any);
         query = query.upsert(rows, body.onConflict ? { onConflict: body.onConflict } : undefined).select();
         break;
       }

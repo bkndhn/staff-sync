@@ -81,6 +81,17 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Settings' as NavigationTab, label: 'Settings', icon: SettingsIcon },
       ];
     }
+    if (user.role === 'supervisor') {
+      // Floor supervisor: attendance-focused, own floor only.
+      return [
+        { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
+        { id: 'Staff Management' as NavigationTab, label: 'Staff', icon: Users },
+        { id: 'Attendance' as NavigationTab, label: 'Attendance', icon: Calendar },
+        { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
+        { id: 'Part-Time Staff' as NavigationTab, label: 'Part-Time', icon: Clock },
+        { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
+      ];
+    }
     return [
       { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
       { id: 'Workforce Insights' as NavigationTab, label: 'Insights', icon: TrendingUp },

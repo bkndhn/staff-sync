@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
 
     const { data: user, error } = await supabase
       .from('app_users')
-      .select('id, email, full_name, role, location, location_id, is_active, last_login, password_hash')
+      .select('id, email, full_name, role, location, location_id, floor, floor_id, is_active, last_login, password_hash')
       .eq('email', normalizedEmail)
       .eq('is_active', true)
       .single();

@@ -208,10 +208,12 @@ function App() {
     if (!user) return;
     const saved = localStorage.getItem('activeTab') as NavigationTab | null;
     const statutoryAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Salary Management', 'Leave Management', 'Settings'];
+    const supervisorAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Break Management', 'Part-Time Staff', 'Leave Management'];
     const validForRole = (tab: NavigationTab | null): boolean => {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
       if (user.role === 'statutory_admin') return statutoryAllowed.includes(tab);
+      if (user.role === 'supervisor') return supervisorAllowed.includes(tab);
       if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security';
       return tab !== 'My Portal';
     };
@@ -327,9 +329,11 @@ function App() {
       return staff;
     } else if (user?.role === 'manager' && user.location) {
       return staff.filter(member => member.location === user.location);
+    } else if (user?.role === 'supervisor' && user.location && user.floor) {
+      return staff.filter(member => member.location === user.location && member.floor === user.floor);
     }
     return [];
-  }, [staff, user?.role, user?.location]);
+  }, [staff, user?.role, user?.location, user?.floor]);
 
 
   // Filter attendance based on user role and location - memoized for performance
@@ -346,9 +350,14 @@ function App() {
           ? true // Allow all part-time staff for managers
           : locationStaffIds.includes(record.staffId)
       );
+    } else if (user?.role === 'supervisor' && user.location && user.floor) {
+      const floorStaffIds = staff
+        .filter(m => m.location === user.location && m.floor === user.floor)
+        .map(m => m.id);
+      return attendance.filter(r => floorStaffIds.includes(r.staffId));
     }
     return [];
-  }, [attendance, staff, user?.role, user?.location]);
+  }, [attendance, staff, user?.role, user?.location, user?.floor]);
 
 
   // Auto-carry forward advances from previous month

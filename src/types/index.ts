@@ -214,8 +214,11 @@ export interface SalaryHike {
 
 export interface User {
   email: string;
-  role: 'admin' | 'manager' | 'staff' | 'statutory_admin';
+  role: 'admin' | 'manager' | 'staff' | 'statutory_admin' | 'supervisor';
   location?: string;
+  /** For supervisor role: the single floor they can manage. */
+  floor?: string;
+  floorId?: string;
   staffId?: string;
   staffName?: string;
 }

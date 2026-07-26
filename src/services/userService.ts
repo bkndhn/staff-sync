@@ -6,9 +6,11 @@ export interface AppUser {
     id: string;
     email: string;
     full_name: string;
-    role: 'admin' | 'manager';
+    role: 'admin' | 'manager' | 'supervisor' | 'statutory_admin';
     location: string | null;
     location_id?: string | null;
+    floor?: string | null;
+    floor_id?: string | null;
     is_active: boolean;
     last_login?: string | null;
     created_at?: string;

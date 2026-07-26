@@ -138,12 +138,14 @@ export function generateSessionToken(): string {
 /**
  * Create secure session data
  */
-export function createSecureSession(user: { email: string; role: string; location?: string | null }) {
+export function createSecureSession(user: { email: string; role: string; location?: string | null; floor?: string | null; floorId?: string | null }) {
     return {
         user: {
             email: user.email,
             role: user.role,
-            location: user.location
+            location: user.location,
+            floor: user.floor,
+            floorId: user.floorId,
         },
         token: generateSessionToken(),
         timestamp: Date.now(),
