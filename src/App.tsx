@@ -208,10 +208,12 @@ function App() {
     if (!user) return;
     const saved = localStorage.getItem('activeTab') as NavigationTab | null;
     const statutoryAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Salary Management', 'Leave Management', 'Settings'];
+    const supervisorAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Break Management', 'Part-Time Staff', 'Leave Management'];
     const validForRole = (tab: NavigationTab | null): boolean => {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
       if (user.role === 'statutory_admin') return statutoryAllowed.includes(tab);
+      if (user.role === 'supervisor') return supervisorAllowed.includes(tab);
       if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security';
       return tab !== 'My Portal';
     };
