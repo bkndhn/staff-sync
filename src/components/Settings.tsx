@@ -234,7 +234,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
             email: user.email,
             password: '',
             full_name: user.full_name,
-            role: user.role,
+            role: (user.role === 'admin' || user.role === 'manager') ? user.role : 'manager',
             location: user.location || ''
         });
         setEditingUser(user);
