@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabase';
 import { generateDeviceFingerprint } from '../utils/deviceFingerprint';
 
 interface LoginProps {
-  onLogin: (user: { email: string; role: string; location?: string; staffId?: string; staffName?: string }) => void;
+  onLogin: (user: { email: string; role: string; location?: string; floor?: string; floorId?: string; staffId?: string; staffName?: string }) => void;
 }
 
 
