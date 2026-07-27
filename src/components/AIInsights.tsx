@@ -34,7 +34,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ staff, attendance }) => {
     const halfDay = monthAttendance.filter(a => a.status === 'Half Day').length;
     const byLocation: Record<string, number> = {};
     activeStaff.forEach(s => { byLocation[s.location || 'Unknown'] = (byLocation[s.location || 'Unknown'] || 0) + 1; });
-    const totalSalary = activeStaff.reduce((sum, s) => sum + (Number(s.salary) || 0), 0);
+    const totalSalary = activeStaff.reduce((sum, s) => sum + (Number(s.totalSalary) || 0), 0);
     return {
       generatedAt: today,
       totalActiveStaff: activeStaff.length,
