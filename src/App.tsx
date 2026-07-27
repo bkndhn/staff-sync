@@ -40,6 +40,7 @@ const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
 const SecurityFindings = React.lazy(() => import('./components/SecurityFindings'));
+const AIInsights = React.lazy(() => import('./components/AIInsights'));
 // StatutoryDashboard component retained on disk but no longer mounted; statutory features are now inline in the main pages.
 
 
@@ -1165,6 +1166,15 @@ function App() {
         return (
           <ErrorBoundary moduleName="Audit Log">
             <AuditLogViewer currentUserEmail={user?.email || ''} />
+          </ErrorBoundary>
+        );
+      case 'AI Insights':
+        if (user?.role !== 'admin' && user?.role !== 'manager') return null;
+        return (
+          <ErrorBoundary moduleName="AI Insights">
+            <Suspense fallback={<ComponentLoader />}>
+              <AIInsights staff={filteredStaffData} attendance={filteredAttendanceData} />
+            </Suspense>
           </ErrorBoundary>
         );
       case 'Security':

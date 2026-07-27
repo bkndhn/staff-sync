@@ -9,6 +9,7 @@ import AttendanceRulesPanel from './AttendanceRulesPanel';
 import DeviceIntegration from './DeviceIntegration';
 import SalaryOverridesPanel from './SalaryOverridesPanel';
 import StatutoryPortalSettingsPanel from './StatutoryPortalSettingsPanel';
+import FaceTuningPanel from './face/FaceTuningPanel';
 
 interface SettingsProps {
     userRole: string;
@@ -517,6 +518,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
 
             {/* Statutory Portal Configuration (admin only) */}
             {userRole === 'admin' && <StatutoryPortalSettingsPanel />}
+            {(userRole === 'admin' || userRole === 'manager') && <FaceTuningPanel />}
 
 
             {/* Backup all data (admin only) */}

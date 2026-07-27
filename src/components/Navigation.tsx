@@ -3,7 +3,7 @@ import { NavigationTab, User } from '../types';
 import {
   BarChart3, Users, Calendar, DollarSign, Clock, Archive, LogOut,
   AlertTriangle, Settings as SettingsIcon, FileText, ScanFace,
-  ShieldAlert, Shield, TrendingUp, Coffee, Sun, Moon,
+  ShieldAlert, Shield, TrendingUp, Coffee, Sun, Moon, Sparkles,
   PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { SyncBadge } from './SyncBadge';
@@ -77,6 +77,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
         { id: 'Old Staff Records' as NavigationTab, label: 'Archive', icon: Archive },
         { id: 'Audit Log' as NavigationTab, label: 'Audit Log', icon: ShieldAlert },
+        { id: 'AI Insights' as NavigationTab, label: 'AI Insights', icon: Sparkles },
         { id: 'Security' as NavigationTab, label: 'Security', icon: Shield },
         { id: 'Settings' as NavigationTab, label: 'Settings', icon: SettingsIcon },
       ];
