@@ -966,8 +966,140 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         </div>
       </div>
 
-      {/* Attendance Table */}
-      <div className="table-container">
+      {/* Mobile Card View (native-app feel) */}
+      <div className="md:hidden space-y-2 pb-24">
+        {combinedAttendanceData.length === 0 && (
+          <div className="text-center py-10 text-sm text-gray-500 bg-white rounded-xl border border-gray-100">
+            No staff to show for this filter.
+          </div>
+        )}
+        {combinedAttendanceData.map((data: any) => {
+          const inVal = individualTimes[data.id]?.inTime !== undefined ? individualTimes[data.id].inTime : (data.arrivalTime || '');
+          const outVal = individualTimes[data.id]?.outTime !== undefined ? individualTimes[data.id].outTime : (data.leavingTime || '');
+          return (
+            <div
+              key={data.id}
+              className={`bg-white rounded-2xl border ${data.isUninformed ? 'border-orange-300 bg-orange-50' : 'border-gray-100'} shadow-sm p-3 active:scale-[0.995] transition-transform`}
+            >
+              {/* Header row */}
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-gray-400 w-5 shrink-0">{data.serialNo}</span>
+                    <span className="font-semibold text-gray-900 text-[15px] truncate">{data.name}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1 pl-7">
+                    {showEmpCode && data.employeeCode && (
+                      <span className="text-[10px] font-mono text-gray-500">{data.employeeCode}</span>
+                    )}
+                    <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${getLocationColor(data.location)}`}>
+                      <MapPin size={9} className="mr-0.5 self-center" />{data.location}
+                    </span>
+                    {data.floor && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">F: {data.floor}</span>
+                    )}
+                    {data.shift !== '-' && (
+                      <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${getShiftColor(data.shift)}`}>
+                        {data.shift}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span className={`shrink-0 inline-flex px-2 py-1 text-[10px] font-bold rounded-full ${getStatusColor(data.status)}`}>
+                  {data.status}
+                </span>
+              </div>
+
+              {!data.isPartTime && (
+                <>
+                  {/* Time inputs */}
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <label className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-2 py-1.5 border border-gray-100">
+                      <Clock size={12} className="text-gray-400" />
+                      <span className="text-[10px] font-bold text-gray-500">IN</span>
+                      <input
+                        type="time"
+                        value={inVal}
+                        onChange={(e) => handleIndividualTimeChange(data.id, 'inTime', e.target.value)}
+                        onBlur={() => { if (data.hasRecord) confirmIndividualUpdate(data.id, data.status, data); }}
+                        className="flex-1 bg-transparent text-xs outline-none focus:ring-0 border-none p-0 min-w-0"
+                      />
+                    </label>
+                    <label className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-2 py-1.5 border border-gray-100">
+                      <Clock size={12} className="text-gray-400" />
+                      <span className="text-[10px] font-bold text-gray-500">OUT</span>
+                      <input
+                        type="time"
+                        value={outVal}
+                        onChange={(e) => handleIndividualTimeChange(data.id, 'outTime', e.target.value)}
+                        onBlur={() => { if (data.hasRecord) confirmIndividualUpdate(data.id, data.status, data); }}
+                        className="flex-1 bg-transparent text-xs outline-none focus:ring-0 border-none p-0 min-w-0"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Action buttons - native-app tap targets */}
+                  <div className="grid grid-cols-4 gap-1.5">
+                    <button
+                      onClick={() => confirmIndividualUpdate(data.id, 'Present', data)}
+                      disabled={!canEditDate}
+                      className={`h-10 rounded-lg text-sm font-bold shadow-sm transition-all ${data.status === 'Present' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-800 active:bg-green-200'}`}
+                    >P</button>
+                    <button
+                      onClick={() => setShowHalfDayModal({ staffId: data.id, staffName: data.originalName || data.name })}
+                      disabled={!canEditDate}
+                      className={`h-10 rounded-lg text-sm font-bold shadow-sm transition-all ${data.status === 'Half Day' ? 'bg-yellow-500 text-white' : 'bg-yellow-100 text-yellow-800 active:bg-yellow-200'}`}
+                    >H</button>
+                    <button
+                      onClick={() => confirmIndividualUpdate(data.id, 'Absent', data)}
+                      disabled={!canEditDate}
+                      className={`h-10 rounded-lg text-sm font-bold shadow-sm transition-all ${data.status === 'Absent' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-800 active:bg-red-200'}`}
+                    >A</button>
+                    <button
+                      onClick={() => setShowLocationModal({
+                        staffId: data.id,
+                        staffName: data.originalName || data.name,
+                        currentLocation: data.originalLocation || data.location
+                      })}
+                      disabled={!canEditDate}
+                      className="h-10 rounded-lg bg-blue-100 text-blue-800 active:bg-blue-200 flex items-center justify-center shadow-sm"
+                      title="Change location"
+                    >
+                      <MapPin size={16} />
+                    </button>
+                  </div>
+
+                  {data.status === 'Absent' && (
+                    <button
+                      onClick={async () => {
+                        const record = getAttendanceForDate(data.id, selectedDate);
+                        if (record) {
+                          const newVal = !record.isUninformed;
+                          await attendanceService.upsert({
+                            staffId: data.id,
+                            date: selectedDate,
+                            status: 'Absent',
+                            attendanceValue: 0,
+                            isUninformed: newVal
+                          });
+                          window.location.reload();
+                        }
+                      }}
+                      className={`mt-2 w-full h-9 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 ${data.isUninformed ? 'bg-orange-600 text-white' : 'bg-orange-100 text-orange-800 active:bg-orange-200'}`}
+                    >
+                      <AlertTriangle size={12} />
+                      {data.isUninformed ? 'Uninformed leave (tap to clear)' : 'Mark uninformed leave'}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Attendance Table (desktop / tablet) */}
+      <div className="table-container hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
