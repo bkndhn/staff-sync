@@ -322,36 +322,12 @@ const Dashboard: React.FC<DashboardProps> = ({
 
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
           <button
-            onClick={handleShareWhatsApp}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-medium transition-all duration-300 shadow-lg active:scale-95 shrink-0"
-            title="Share via WhatsApp"
-          >
-            <MessageCircle size={16} />
-            <span className="text-xs md:text-sm">Share</span>
-          </button>
-          <button
-            onClick={handleCopyReport}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium transition-all duration-300 shadow-lg active:scale-95 shrink-0"
-            title="Copy report to clipboard"
-          >
-            <Copy size={16} />
-            <span className="text-xs md:text-sm">Copy</span>
-          </button>
-          <button
             onClick={() => handleExportPDF('overall')}
             className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-medium transition-all duration-300 shadow-lg active:scale-95 shrink-0"
             title="Download PDF report"
           >
             <FileText size={16} />
             <span className="text-xs md:text-sm">PDF</span>
-          </button>
-          <button
-            onClick={toggleTheme}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-medium transition-all duration-300 shadow-lg active:scale-95 shrink-0"
-            title={isDarkTheme ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-          >
-            {isDarkTheme ? <Sun size={16} /> : <Moon size={16} />}
-            <span className="text-xs md:text-sm">{isDarkTheme ? 'Light' : 'Dark'}</span>
           </button>
 
           <div className="w-[120px] md:w-[140px] lg:w-32">
@@ -763,10 +739,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
-      {/* Breaks widget moved to bottom */}
-      {!statutoryMode && (
-        <BreaksDashboardWidget location={userRole === 'manager' ? userLocation : undefined} />
-      )}
 
     </div>
 

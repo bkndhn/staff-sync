@@ -18,6 +18,20 @@ const THEME = {
   white: [255, 255, 255] as [number, number, number],
 };
 
+/** Format "HH:mm" (24h) or ISO-ish time into 12h AM/PM. */
+const fmt12h = (t?: string): string => {
+  if (!t) return '—';
+  const m = /^(\d{1,2}):(\d{2})/.exec(t);
+  if (!m) return t;
+  let h = parseInt(m[1], 10);
+  const min = m[2];
+  if (isNaN(h)) return t;
+  const period = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${min} ${period}`;
+};
+
 const drawHeader = (doc: jsPDF, title: string, subtitle: string) => {
   const w = doc.internal.pageSize.getWidth();
   doc.setFillColor(...THEME.primary);
@@ -87,10 +101,15 @@ export interface DashboardExportOptions {
   scope?: 'overall' | string; // location name or 'overall'
 }
 
-export const exportDashboardPDF = (opts: DashboardExportOptions) => {
-  const { staff, attendance, selectedDate, locations, scope = 'overall' } = opts;
-  const doc = new jsPDF();
-
+/** Render a single report section (overall or a specific location) into the current page(s). */
+const renderReportSection = (
+  doc: jsPDF,
+  staff: Staff[],
+  attendance: Attendance[],
+  selectedDate: string,
+  locations: { name: string }[],
+  scope: 'overall' | string,
+) => {
   const dateObj = new Date(selectedDate + 'T00:00:00');
   const dateStr = dateObj.toLocaleDateString('en-IN', {
     weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
@@ -130,14 +149,7 @@ export const exportDashboardPDF = (opts: DashboardExportOptions) => {
     const rows = locations.map(loc => {
       const s = calculateLocationAttendance(activeStaff, dayAtt, selectedDate, loc.name);
       const locPt = dayAtt.filter(r => r.isPartTime && r.status === 'Present' && r.location === loc.name).length;
-      return [
-        loc.name,
-        s.total,
-        s.present,
-        s.halfDay,
-        s.absent,
-        locPt,
-      ];
+      return [loc.name, s.total, s.present, s.halfDay, s.absent, locPt];
     });
     autoTable(doc, {
       head: [['Location', 'Staff', 'Present', 'Half Day', 'Absent', 'Part-Time']],
@@ -151,7 +163,7 @@ export const exportDashboardPDF = (opts: DashboardExportOptions) => {
     y = (doc as any).lastAutoTable.finalY + 6;
   }
 
-  // Full-time attendance detail
+  // Full-time attendance detail (with Floor)
   const ftRows = scopedStaff
     .filter(s => s.type === 'full-time')
     .map((m, i) => {
@@ -160,21 +172,22 @@ export const exportDashboardPDF = (opts: DashboardExportOptions) => {
         i + 1,
         m.name,
         m.location || '—',
+        (m as any).floor || '—',
         rec?.status || 'Absent',
-        rec?.arrivalTime || '—',
-        rec?.leavingTime || '—',
+        fmt12h(rec?.arrivalTime),
+        fmt12h(rec?.leavingTime),
       ];
     });
   if (ftRows.length > 0) {
     autoTable(doc, {
-      head: [['#', 'Name', 'Location', 'Status', 'In', 'Out']],
+      head: [['#', 'Name', 'Location', 'Floor', 'Status', 'In', 'Out']],
       body: ftRows,
       startY: y,
       theme: 'striped',
       headStyles: { fillColor: THEME.accent, textColor: 255 },
       styles: { fontSize: 9, cellPadding: 2.5 },
       didParseCell: (data) => {
-        if (data.section === 'body' && data.column.index === 3) {
+        if (data.section === 'body' && data.column.index === 4) {
           const v = String(data.cell.raw);
           if (v === 'Present') data.cell.styles.textColor = THEME.success;
           else if (v === 'Half Day') data.cell.styles.textColor = THEME.warning;
@@ -185,24 +198,42 @@ export const exportDashboardPDF = (opts: DashboardExportOptions) => {
     y = (doc as any).lastAutoTable.finalY + 6;
   }
 
-  // Part-time detail
+  // Part-time detail (with Floor)
   if (pt.length > 0) {
     const ptRows = pt.map((r, i) => [
       i + 1,
       r.staffName || '—',
       r.location || '—',
+      r.floor || '—',
       r.shift || '—',
-      r.arrivalTime || '—',
-      r.leavingTime || '—',
+      fmt12h(r.arrivalTime),
+      fmt12h(r.leavingTime),
     ]);
     autoTable(doc, {
-      head: [['#', 'Name', 'Location', 'Shift', 'In', 'Out']],
+      head: [['#', 'Name', 'Location', 'Floor', 'Shift', 'In', 'Out']],
       body: ptRows,
       startY: y,
       theme: 'striped',
       headStyles: { fillColor: THEME.purple, textColor: 255 },
       styles: { fontSize: 9, cellPadding: 2.5 },
     });
+  }
+};
+
+export const exportDashboardPDF = (opts: DashboardExportOptions) => {
+  const { staff, attendance, selectedDate, locations, scope = 'overall' } = opts;
+  const doc = new jsPDF();
+
+  if (scope === 'overall') {
+    // Overall summary page first
+    renderReportSection(doc, staff, attendance, selectedDate, locations, 'overall');
+    // Then one dedicated page per location
+    locations.forEach(loc => {
+      doc.addPage();
+      renderReportSection(doc, staff, attendance, selectedDate, locations, loc.name);
+    });
+  } else {
+    renderReportSection(doc, staff, attendance, selectedDate, locations, scope);
   }
 
   drawFooter(doc);
