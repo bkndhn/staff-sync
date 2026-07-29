@@ -1177,15 +1177,6 @@ function App() {
             </Suspense>
           </ErrorBoundary>
         );
-      case 'Security':
-        if (user?.role !== 'admin') return null;
-        return (
-          <ErrorBoundary moduleName="Security">
-            <Suspense fallback={<div className="p-6 text-sm text-gray-500">Loading…</div>}>
-              <SecurityFindings />
-            </Suspense>
-          </ErrorBoundary>
-        );
       default:
         return null;
     }

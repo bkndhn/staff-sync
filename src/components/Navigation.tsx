@@ -78,7 +78,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Old Staff Records' as NavigationTab, label: 'Archive', icon: Archive },
         { id: 'Audit Log' as NavigationTab, label: 'Audit Log', icon: ShieldAlert },
         { id: 'AI Insights' as NavigationTab, label: 'AI Insights', icon: Sparkles },
-        { id: 'Security' as NavigationTab, label: 'Security', icon: Shield },
+        
         { id: 'Settings' as NavigationTab, label: 'Settings', icon: SettingsIcon },
       ];
     }
