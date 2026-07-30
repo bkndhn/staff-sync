@@ -41,7 +41,35 @@ const Dashboard: React.FC<DashboardProps> = ({
   statutoryMode = false,
 }) => {
 
+  const [showReportConfig, setShowReportConfig] = React.useState(false);
+  const [reportColumns, setReportColumns] = React.useState<ReportColumnKey[]>(() => {
+    try {
+      const raw = localStorage.getItem('dashboard_report_columns');
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed) && parsed.length) return parsed as ReportColumnKey[];
+    } catch { /* ignore */ }
+    return DEFAULT_REPORT_COLUMNS;
+  });
+  const [reportSort, setReportSort] = React.useState<ReportSortKey>(() => {
+    return (localStorage.getItem('dashboard_report_sort') as ReportSortKey) || 'name';
+  });
+
+  React.useEffect(() => {
+    try { localStorage.setItem('dashboard_report_columns', JSON.stringify(reportColumns)); } catch { /* ignore */ }
+  }, [reportColumns]);
+  React.useEffect(() => {
+    try { localStorage.setItem('dashboard_report_sort', reportSort); } catch { /* ignore */ }
+  }, [reportSort]);
+
+  const toggleReportColumn = (key: ReportColumnKey) => {
+    setReportColumns(prev => {
+      const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key];
+      return next.length ? next : prev;
+    });
+  };
+
   const todayAttendance = attendance.filter(record => record.date === selectedDate);
+
   const filteredStaff = userRole === 'admin' ? staff : staff.filter(member => member.location === userLocation);
   const allActiveStaff = staff.filter(member => member.isActive);
   const activeStaff = filteredStaff.filter(member => member.isActive);
