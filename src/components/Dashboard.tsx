@@ -805,6 +805,59 @@ const Dashboard: React.FC<DashboardProps> = ({
       )}
 
 
+      {/* Report columns & order config */}
+      {showReportConfig && (
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4" onClick={() => setShowReportConfig(false)}>
+          <div className="w-full md:max-w-md bg-white rounded-t-3xl md:rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 flex items-center justify-between px-4 py-3 bg-blue-600 text-white rounded-t-3xl md:rounded-t-2xl">
+              <h3 className="font-bold text-sm">Report / WhatsApp Columns</h3>
+              <button onClick={() => setShowReportConfig(false)} className="h-8 w-8 flex items-center justify-center rounded-full bg-white/20 active:scale-95" aria-label="Close">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">Columns to include</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {REPORT_COLUMNS.map(c => {
+                    const on = reportColumns.includes(c.key);
+                    return (
+                      <button
+                        key={c.key}
+                        onClick={() => toggleReportColumn(c.key)}
+                        className={`h-11 rounded-xl text-sm font-semibold border transition-colors ${on ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-700 border-gray-200 active:bg-gray-100'}`}
+                      >
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">Order rows by</p>
+                <select
+                  value={reportSort}
+                  onChange={e => setReportSort(e.target.value as ReportSortKey)}
+                  className="w-full h-11 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-800"
+                >
+                  <option value="name">Name</option>
+                  <option value="location">Location</option>
+                  <option value="floor">Floor</option>
+                  <option value="designation">Designation</option>
+                  <option value="status">Status</option>
+                </select>
+              </div>
+              <button
+                onClick={() => setShowReportConfig(false)}
+                className="w-full h-12 rounded-xl bg-blue-600 text-white font-bold active:scale-[0.99]"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
 
   );
