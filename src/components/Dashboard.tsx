@@ -276,15 +276,25 @@ const Dashboard: React.FC<DashboardProps> = ({
     await customAlert('Dashboard report copied!');
   };
 
+  const reportOpts = (scope: 'overall' | string) => ({
+    staff,
+    attendance,
+    selectedDate,
+    locations: locations.map(l => ({ name: l.name })),
+    scope,
+    columns: reportColumns,
+    sortBy: reportSort,
+  });
+
   const handleExportPDF = (scope: 'overall' | string = 'overall') => {
-    exportDashboardPDF({
-      staff,
-      attendance,
-      selectedDate,
-      locations: locations.map(l => ({ name: l.name })),
-      scope,
-    });
+    exportDashboardPDF(reportOpts(scope));
   };
+
+  const handleSharePDF = async (scope: 'overall' | string = 'overall') => {
+    const text = scope === 'overall' ? generateDashboardShareText() : generateLocationShareText(scope);
+    await shareDashboardPDFWhatsApp(reportOpts(scope), text);
+  };
+
 
   const generateLocationShareText = (locName: string) => {
     const date = new Date(selectedDate + 'T00:00:00');
