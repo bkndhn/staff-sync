@@ -18,6 +18,25 @@ const THEME = {
   white: [255, 255, 255] as [number, number, number],
 };
 
+/** Columns the user can toggle for reports / WhatsApp share. */
+export type ReportColumnKey =
+  | 'name' | 'location' | 'floor' | 'designation' | 'status' | 'in' | 'out' | 'hours';
+
+export const REPORT_COLUMNS: { key: ReportColumnKey; label: string }[] = [
+  { key: 'name', label: 'Name' },
+  { key: 'location', label: 'Location' },
+  { key: 'floor', label: 'Floor' },
+  { key: 'designation', label: 'Designation' },
+  { key: 'status', label: 'Status' },
+  { key: 'in', label: 'In' },
+  { key: 'out', label: 'Out' },
+  { key: 'hours', label: 'Working Time' },
+];
+
+export const DEFAULT_REPORT_COLUMNS: ReportColumnKey[] = ['name', 'location', 'floor', 'status', 'in', 'out', 'hours'];
+
+export type ReportSortKey = 'name' | 'location' | 'floor' | 'designation' | 'status';
+
 /** Format "HH:mm" (24h) or ISO-ish time into 12h AM/PM. */
 const fmt12h = (t?: string): string => {
   if (!t) return '—';
@@ -30,6 +49,47 @@ const fmt12h = (t?: string): string => {
   h = h % 12;
   if (h === 0) h = 12;
   return `${h}:${min} ${period}`;
+};
+
+const toMin = (t?: string): number | null => {
+  if (!t) return null;
+  const m = /^(\d{1,2}):(\d{2})/.exec(t);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+};
+
+/** Working duration between in/out as "7h 45m". */
+export const workingTime = (inT?: string, outT?: string, breakMinutes?: number): string => {
+  const a = toMin(inT);
+  const b = toMin(outT);
+  if (a == null || b == null) return '—';
+  let mins = b - a;
+  if (mins < 0) mins += 24 * 60;
+  mins -= Math.max(0, breakMinutes || 0);
+  if (mins <= 0) return '—';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
+};
+
+/** Session word for half-days: Morning / Evening. */
+const sessionLabel = (shift?: string): string => {
+  const s = (shift || '').toLowerCase();
+  if (s.includes('morning') || s === 'am' || s === 'm') return 'Morning';
+  if (s.includes('evening') || s.includes('afternoon') || s === 'pm' || s === 'e') return 'Evening';
+  return shift ? shift : '';
+};
+
+/** Full status text incl. half-day session and uninformed leave tag. */
+export const statusText = (rec?: Attendance): string => {
+  if (!rec) return 'Absent';
+  const base = rec.status || 'Absent';
+  if (base === 'Half Day') {
+    const sess = sessionLabel(rec.shift);
+    return sess ? `Half Day (${sess} Present)` : 'Half Day';
+  }
+  if (base === 'Absent' && rec.isUninformed) return 'Absent (Uninformed)';
+  return base;
 };
 
 const drawHeader = (doc: jsPDF, title: string, subtitle: string) => {
@@ -99,7 +159,27 @@ export interface DashboardExportOptions {
   selectedDate: string;
   locations: { name: string }[];
   scope?: 'overall' | string; // location name or 'overall'
+  columns?: ReportColumnKey[];
+  sortBy?: ReportSortKey;
 }
+
+interface Row {
+  name: string;
+  location: string;
+  floor: string;
+  designation: string;
+  status: string;
+  in: string;
+  out: string;
+  hours: string;
+}
+
+const buildCells = (rows: Row[], cols: ReportColumnKey[], sortBy: ReportSortKey) => {
+  const sorted = [...rows].sort((a, b) => String(a[sortBy] || '').localeCompare(String(b[sortBy] || '')));
+  const head = ['#', ...cols.map(c => REPORT_COLUMNS.find(rc => rc.key === c)!.label)];
+  const body = sorted.map((r, i) => [i + 1, ...cols.map(c => r[c] || '—')]);
+  return { head, body, statusIdx: cols.indexOf('status') + 1 };
+};
 
 /** Render a single report section (overall or a specific location) into the current page(s). */
 const renderReportSection = (
@@ -109,6 +189,8 @@ const renderReportSection = (
   selectedDate: string,
   locations: { name: string }[],
   scope: 'overall' | string,
+  cols: ReportColumnKey[],
+  sortBy: ReportSortKey,
 ) => {
   const dateObj = new Date(selectedDate + 'T00:00:00');
   const dateStr = dateObj.toLocaleDateString('en-IN', {
@@ -133,6 +215,7 @@ const renderReportSection = (
   const present = ft.filter(r => r.status === 'Present').length;
   const half = ft.filter(r => r.status === 'Half Day').length;
   const absent = ft.filter(r => r.status === 'Absent').length;
+  const uninformed = ft.filter(r => r.isUninformed).length;
   const pt = scopedAtt.filter(r => r.isPartTime && r.status === 'Present');
 
   let y = 38;
@@ -141,7 +224,8 @@ const renderReportSection = (
     { label: 'Present', value: present, color: THEME.success },
     { label: 'Half Day', value: half, color: THEME.warning },
     { label: 'Absent', value: absent, color: THEME.danger },
-    { label: 'Part-Time', value: pt.length, color: THEME.purple },
+    { label: 'Uninformed', value: uninformed, color: THEME.primaryDark },
+    { label: 'Temp Guest', value: pt.length, color: THEME.purple },
   ]);
 
   // Per-location breakdown (only for overall)
@@ -152,7 +236,7 @@ const renderReportSection = (
       return [loc.name, s.total, s.present, s.halfDay, s.absent, locPt];
     });
     autoTable(doc, {
-      head: [['Location', 'Staff', 'Present', 'Half Day', 'Absent', 'Part-Time']],
+      head: [['Location', 'Staff', 'Present', 'Half Day', 'Absent', 'Temp Guest']],
       body: rows,
       startY: y,
       theme: 'grid',
@@ -163,55 +247,65 @@ const renderReportSection = (
     y = (doc as any).lastAutoTable.finalY + 6;
   }
 
-  // Full-time attendance detail (with Floor)
-  const ftRows = scopedStaff
+  // Full-time attendance detail
+  const ftRows: Row[] = scopedStaff
     .filter(s => s.type === 'full-time')
-    .map((m, i) => {
+    .map((m) => {
       const rec = ft.find(r => r.staffId === m.id);
-      return [
-        i + 1,
-        m.name,
-        m.location || '—',
-        (m as any).floor || '—',
-        rec?.status || 'Absent',
-        fmt12h(rec?.arrivalTime),
-        fmt12h(rec?.leavingTime),
-      ];
+      return {
+        name: m.name,
+        location: m.location || '—',
+        floor: (m as any).floor || '—',
+        designation: (m as any).designation || '—',
+        status: statusText(rec),
+        in: fmt12h(rec?.arrivalTime),
+        out: fmt12h(rec?.leavingTime),
+        hours: workingTime(rec?.arrivalTime, rec?.leavingTime, (rec as any)?.breakMinutes),
+      };
     });
   if (ftRows.length > 0) {
+    const { head, body, statusIdx } = buildCells(ftRows, cols, sortBy);
     autoTable(doc, {
-      head: [['#', 'Name', 'Location', 'Floor', 'Status', 'In', 'Out']],
-      body: ftRows,
+      head: [head],
+      body,
       startY: y,
       theme: 'striped',
       headStyles: { fillColor: THEME.accent, textColor: 255 },
       styles: { fontSize: 9, cellPadding: 2.5 },
       didParseCell: (data) => {
-        if (data.section === 'body' && data.column.index === 4) {
+        if (data.section === 'body' && statusIdx > 0 && data.column.index === statusIdx) {
           const v = String(data.cell.raw);
-          if (v === 'Present') data.cell.styles.textColor = THEME.success;
-          else if (v === 'Half Day') data.cell.styles.textColor = THEME.warning;
-          else if (v === 'Absent') data.cell.styles.textColor = THEME.danger;
+          if (v.startsWith('Present')) data.cell.styles.textColor = THEME.success;
+          else if (v.startsWith('Half Day')) data.cell.styles.textColor = THEME.warning;
+          else if (v.startsWith('Absent')) data.cell.styles.textColor = THEME.danger;
         }
       },
     });
     y = (doc as any).lastAutoTable.finalY + 6;
   }
 
-  // Part-time detail (with Floor)
+  // Temp guest / part-time detail
   if (pt.length > 0) {
-    const ptRows = pt.map((r, i) => [
-      i + 1,
-      r.staffName || '—',
-      r.location || '—',
-      r.floor || '—',
-      r.shift || '—',
-      fmt12h(r.arrivalTime),
-      fmt12h(r.leavingTime),
-    ]);
+    const ptRows: Row[] = pt.map(r => ({
+      name: r.staffName || '—',
+      location: r.location || '—',
+      floor: r.floor || '—',
+      designation: sessionLabel(r.shift) || r.shift || 'Temp Guest',
+      status: r.shift ? `Present (${sessionLabel(r.shift) || r.shift})` : 'Present',
+      in: fmt12h(r.arrivalTime),
+      out: fmt12h(r.leavingTime),
+      hours: workingTime(r.arrivalTime, r.leavingTime, (r as any)?.breakMinutes),
+    }));
+    const { head, body } = buildCells(ptRows, cols, sortBy);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...THEME.purple);
+    doc.text('Temp Guest / Part-Time — Working Time', 14, y);
+    doc.setTextColor(...THEME.text);
+    y += 4;
     autoTable(doc, {
-      head: [['#', 'Name', 'Location', 'Floor', 'Shift', 'In', 'Out']],
-      body: ptRows,
+      head: [head],
+      body,
       startY: y,
       theme: 'striped',
       headStyles: { fillColor: THEME.purple, textColor: 255 },
@@ -220,30 +314,58 @@ const renderReportSection = (
   }
 };
 
-export const exportDashboardPDF = (opts: DashboardExportOptions) => {
-  const { staff, attendance, selectedDate, locations, scope = 'overall' } = opts;
+const buildDoc = (opts: DashboardExportOptions): jsPDF => {
+  const {
+    staff, attendance, selectedDate, locations, scope = 'overall',
+    columns = DEFAULT_REPORT_COLUMNS, sortBy = 'name',
+  } = opts;
+  const cols = columns.length ? columns : DEFAULT_REPORT_COLUMNS;
   const doc = new jsPDF();
 
   if (scope === 'overall') {
-    // Overall summary page first
-    renderReportSection(doc, staff, attendance, selectedDate, locations, 'overall');
-    // Then one dedicated page per location
+    renderReportSection(doc, staff, attendance, selectedDate, locations, 'overall', cols, sortBy);
     locations.forEach(loc => {
       doc.addPage();
-      renderReportSection(doc, staff, attendance, selectedDate, locations, loc.name);
+      renderReportSection(doc, staff, attendance, selectedDate, locations, loc.name, cols, sortBy);
     });
   } else {
-    renderReportSection(doc, staff, attendance, selectedDate, locations, scope);
+    renderReportSection(doc, staff, attendance, selectedDate, locations, scope, cols, sortBy);
   }
 
   drawFooter(doc);
-  const suffix = scope === 'overall' ? 'overall' : scope.toLowerCase().replace(/\s+/g, '-');
-  doc.save(`dashboard-${suffix}-${selectedDate}.pdf`);
+  return doc;
 };
 
+const fileNameFor = (opts: DashboardExportOptions) => {
+  const scope = opts.scope || 'overall';
+  const suffix = scope === 'overall' ? 'overall' : scope.toLowerCase().replace(/\s+/g, '-');
+  return `dashboard-${suffix}-${opts.selectedDate}.pdf`;
+};
+
+export const exportDashboardPDF = (opts: DashboardExportOptions) => {
+  buildDoc(opts).save(fileNameFor(opts));
+};
+
+/**
+ * Share the PDF straight into WhatsApp (native share sheet on Android/iOS).
+ * Falls back to a wa.me deep link + local download on desktop browsers.
+ */
 export const shareDashboardPDFWhatsApp = async (opts: DashboardExportOptions, text: string) => {
-  // WhatsApp Web can't accept file attachments via URL; we open share text and download PDF
-  exportDashboardPDF(opts);
-  const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-  window.open(url, '_blank');
+  const doc = buildDoc(opts);
+  const name = fileNameFor(opts);
+  const blob = doc.output('blob') as Blob;
+  const file = new File([blob], name, { type: 'application/pdf' });
+
+  const nav: any = navigator;
+  if (nav.canShare && nav.canShare({ files: [file] })) {
+    try {
+      await nav.share({ files: [file], text, title: name });
+      return;
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
+    }
+  }
+
+  doc.save(name);
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
 };

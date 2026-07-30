@@ -1,11 +1,19 @@
 import React from 'react';
 import { Staff, Attendance } from '../types';
-import { Users, Clock, Calendar, MapPin, TrendingUp, Sun, Moon, ArrowUp, ArrowDown, GripVertical, Share2, Copy, MessageCircle, AlertTriangle, FileText } from 'lucide-react';
+import { Users, Clock, Calendar, MapPin, TrendingUp, Sun, Moon, ArrowUp, ArrowDown, GripVertical, Share2, Copy, MessageCircle, AlertTriangle, FileText, SlidersHorizontal, X, Download } from 'lucide-react';
 import { calculateLocationAttendance } from '../utils/salaryCalculations';
 import { appSettingsService } from '../services/appSettingsService';
 import { customAlert } from './CustomDialog';
 import BreaksDashboardWidget from './BreaksDashboardWidget';
-import { exportDashboardPDF } from '../utils/dashboardPdfExport';
+import {
+  exportDashboardPDF,
+  shareDashboardPDFWhatsApp,
+  REPORT_COLUMNS,
+  DEFAULT_REPORT_COLUMNS,
+  type ReportColumnKey,
+  type ReportSortKey,
+} from '../utils/dashboardPdfExport';
+
 interface DashboardProps {
   staff: Staff[];
   attendance: Attendance[];
@@ -33,7 +41,35 @@ const Dashboard: React.FC<DashboardProps> = ({
   statutoryMode = false,
 }) => {
 
+  const [showReportConfig, setShowReportConfig] = React.useState(false);
+  const [reportColumns, setReportColumns] = React.useState<ReportColumnKey[]>(() => {
+    try {
+      const raw = localStorage.getItem('dashboard_report_columns');
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed) && parsed.length) return parsed as ReportColumnKey[];
+    } catch { /* ignore */ }
+    return DEFAULT_REPORT_COLUMNS;
+  });
+  const [reportSort, setReportSort] = React.useState<ReportSortKey>(() => {
+    return (localStorage.getItem('dashboard_report_sort') as ReportSortKey) || 'name';
+  });
+
+  React.useEffect(() => {
+    try { localStorage.setItem('dashboard_report_columns', JSON.stringify(reportColumns)); } catch { /* ignore */ }
+  }, [reportColumns]);
+  React.useEffect(() => {
+    try { localStorage.setItem('dashboard_report_sort', reportSort); } catch { /* ignore */ }
+  }, [reportSort]);
+
+  const toggleReportColumn = (key: ReportColumnKey) => {
+    setReportColumns(prev => {
+      const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key];
+      return next.length ? next : prev;
+    });
+  };
+
   const todayAttendance = attendance.filter(record => record.date === selectedDate);
+
   const filteredStaff = userRole === 'admin' ? staff : staff.filter(member => member.location === userLocation);
   const allActiveStaff = staff.filter(member => member.isActive);
   const activeStaff = filteredStaff.filter(member => member.isActive);
@@ -268,15 +304,25 @@ const Dashboard: React.FC<DashboardProps> = ({
     await customAlert('Dashboard report copied!');
   };
 
+  const reportOpts = (scope: 'overall' | string) => ({
+    staff,
+    attendance,
+    selectedDate,
+    locations: locations.map(l => ({ name: l.name })),
+    scope,
+    columns: reportColumns,
+    sortBy: reportSort,
+  });
+
   const handleExportPDF = (scope: 'overall' | string = 'overall') => {
-    exportDashboardPDF({
-      staff,
-      attendance,
-      selectedDate,
-      locations: locations.map(l => ({ name: l.name })),
-      scope,
-    });
+    exportDashboardPDF(reportOpts(scope));
   };
+
+  const handleSharePDF = async (scope: 'overall' | string = 'overall') => {
+    const text = scope === 'overall' ? generateDashboardShareText() : generateLocationShareText(scope);
+    await shareDashboardPDFWhatsApp(reportOpts(scope), text);
+  };
+
 
   const generateLocationShareText = (locName: string) => {
     const date = new Date(selectedDate + 'T00:00:00');
@@ -302,7 +348,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  const handleLocationPDF = (locName: string) => handleExportPDF(locName);
+  const handleLocationPDF = (locName: string) => handleSharePDF(locName);
 
 
   return (
@@ -322,13 +368,32 @@ const Dashboard: React.FC<DashboardProps> = ({
 
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
           <button
-            onClick={() => handleExportPDF('overall')}
+            onClick={() => handleSharePDF('overall')}
             className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-medium transition-all duration-300 shadow-lg active:scale-95 shrink-0"
-            title="Download PDF report"
+            title="Share PDF report on WhatsApp"
           >
             <FileText size={16} />
             <span className="text-xs md:text-sm">PDF</span>
           </button>
+
+          <button
+            onClick={() => handleExportPDF('overall')}
+            className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/10 hover:bg-white/20 text-white active:scale-95 shrink-0"
+            title="Download PDF instead"
+            aria-label="Download PDF"
+          >
+            <Download size={16} />
+          </button>
+
+          <button
+            onClick={() => setShowReportConfig(true)}
+            className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/10 hover:bg-white/20 text-white active:scale-95 shrink-0"
+            title="Report columns & order"
+            aria-label="Report settings"
+          >
+            <SlidersHorizontal size={16} />
+          </button>
+
 
           <div className="w-[120px] md:w-[140px] lg:w-32">
             <label className="block text-[10px] uppercase tracking-wider font-bold text-white/40 mb-1 ml-1">Group By</label>
@@ -739,6 +804,59 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
+
+      {/* Report columns & order config */}
+      {showReportConfig && (
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4" onClick={() => setShowReportConfig(false)}>
+          <div className="w-full md:max-w-md bg-white rounded-t-3xl md:rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 flex items-center justify-between px-4 py-3 bg-blue-600 text-white rounded-t-3xl md:rounded-t-2xl">
+              <h3 className="font-bold text-sm">Report / WhatsApp Columns</h3>
+              <button onClick={() => setShowReportConfig(false)} className="h-8 w-8 flex items-center justify-center rounded-full bg-white/20 active:scale-95" aria-label="Close">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">Columns to include</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {REPORT_COLUMNS.map(c => {
+                    const on = reportColumns.includes(c.key);
+                    return (
+                      <button
+                        key={c.key}
+                        onClick={() => toggleReportColumn(c.key)}
+                        className={`h-11 rounded-xl text-sm font-semibold border transition-colors ${on ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-700 border-gray-200 active:bg-gray-100'}`}
+                      >
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">Order rows by</p>
+                <select
+                  value={reportSort}
+                  onChange={e => setReportSort(e.target.value as ReportSortKey)}
+                  className="w-full h-11 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-800"
+                >
+                  <option value="name">Name</option>
+                  <option value="location">Location</option>
+                  <option value="floor">Floor</option>
+                  <option value="designation">Designation</option>
+                  <option value="status">Status</option>
+                </select>
+              </div>
+              <button
+                onClick={() => setShowReportConfig(false)}
+                className="w-full h-12 rounded-xl bg-blue-600 text-white font-bold active:scale-[0.99]"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
 
