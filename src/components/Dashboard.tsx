@@ -348,7 +348,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  const handleLocationPDF = (locName: string) => handleExportPDF(locName);
+  const handleLocationPDF = (locName: string) => handleSharePDF(locName);
 
 
   return (
