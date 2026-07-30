@@ -368,13 +368,32 @@ const Dashboard: React.FC<DashboardProps> = ({
 
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
           <button
-            onClick={() => handleExportPDF('overall')}
+            onClick={() => handleSharePDF('overall')}
             className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-medium transition-all duration-300 shadow-lg active:scale-95 shrink-0"
-            title="Download PDF report"
+            title="Share PDF report on WhatsApp"
           >
             <FileText size={16} />
             <span className="text-xs md:text-sm">PDF</span>
           </button>
+
+          <button
+            onClick={() => handleExportPDF('overall')}
+            className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/10 hover:bg-white/20 text-white active:scale-95 shrink-0"
+            title="Download PDF instead"
+            aria-label="Download PDF"
+          >
+            <Download size={16} />
+          </button>
+
+          <button
+            onClick={() => setShowReportConfig(true)}
+            className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/10 hover:bg-white/20 text-white active:scale-95 shrink-0"
+            title="Report columns & order"
+            aria-label="Report settings"
+          >
+            <SlidersHorizontal size={16} />
+          </button>
+
 
           <div className="w-[120px] md:w-[140px] lg:w-32">
             <label className="block text-[10px] uppercase tracking-wider font-bold text-white/40 mb-1 ml-1">Group By</label>
