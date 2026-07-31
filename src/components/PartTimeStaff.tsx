@@ -188,7 +188,16 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     );
     const [showLocationDropdown, setShowLocationDropdown] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [expandedSalaryCards, setExpandedSalaryCards] = useState<Set<string>>(new Set());
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const toggleSalaryCard = (key: string) => {
+        setExpandedSalaryCards(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            return next;
+        });
+    };
 
     // Close dropdown when clicking outside
     useEffect(() => {
