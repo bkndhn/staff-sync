@@ -155,6 +155,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     setScheduledDeductions(computed);
   }, [advanceEntries, selectedMonth, selectedYear]);
   const [showSalaryColumnPicker, setShowSalaryColumnPicker] = useState(false);
+  const [expandedSalaryCard, setExpandedSalaryCard] = useState<string | null>(null);
   const [salaryVisibleCols, setSalaryVisibleCols] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('salaryVisibleColumns');
     if (saved) return JSON.parse(saved);
