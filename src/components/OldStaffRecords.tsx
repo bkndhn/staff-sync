@@ -219,7 +219,8 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
                   {isOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
                 </button>
 
-                {isOpen && (
+                <div className={`grid transition-all duration-200 ease-out ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                  <div className="overflow-hidden">
                   <div className="border-t border-gray-100 px-4 py-3 space-y-3 bg-gray-50/60">
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="rounded-xl bg-white border border-gray-100 p-2">
