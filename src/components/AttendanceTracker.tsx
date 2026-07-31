@@ -4,6 +4,13 @@ import { Calendar, Download, Check, X, Filter, MapPin, Clock, Upload, Share2, Al
 import { isSunday } from '../utils/salaryCalculations';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, shiftService } from '../services/shiftService';
 import { exportAttendancePDF } from '../utils/exportUtils';
+import {
+  exportPeriodAttendancePDF,
+  sharePeriodAttendanceWhatsApp,
+  workingMinutes,
+  formatWorkingMinutes,
+  PeriodAttendanceRow,
+} from '../utils/attendancePeriodExport';
 import BulkAttendanceUpload from './BulkAttendanceUpload';
 import { attendanceService } from '../services/attendanceService';
 import YearlyAttendanceSummary from './YearlyAttendanceSummary';
@@ -35,6 +42,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 }) => {
   const showEmpCode = actualRole !== 'statutory_admin';
   const [view, setView] = useState<'daily' | 'monthly' | 'yearly'>('daily');
+  const [expandedPeriodCard, setExpandedPeriodCard] = useState<string | null>(null);
   const [monthlyDate, setMonthlyDate] = useState({
     month: new Date().getMonth(),
     year: new Date().getFullYear()
