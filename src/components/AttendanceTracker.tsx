@@ -388,7 +388,97 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           />
         </div>
 
-        <div className="table-container">
+        {/* Mobile: native-style card list */}
+        <div className="md:hidden space-y-2 pb-2">
+          {monthlyFilteredStaff.length === 0 ? (
+            <div className="text-center py-10 text-gray-400 text-sm">No staff match this month's filters.</div>
+          ) : (
+            monthlyFilteredStaff.map(member => {
+              const summary = getStaffSummary(member.id);
+              const work = formatWorkingMinutes(getPeriodWorkMinutes(member.id, d => {
+                const dt = new Date(d);
+                return dt.getFullYear() === year && dt.getMonth() === month;
+              }));
+              const expanded = expandedPeriodCard === member.id;
+              return (
+                <div key={member.id} className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+                  <button
+                    onClick={() => setExpandedPeriodCard(expanded ? null : member.id)}
+                    className="w-full flex items-center gap-3 px-3 py-3 min-h-[56px] text-left active:bg-gray-50 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-900 text-sm truncate">{member.name}</p>
+                      <p className="text-[11px] text-gray-500 truncate">{member.location}{member.floor ? ` • ${member.floor}` : ''} • {work}</p>
+                    </div>
+                    <span className="text-xs font-bold text-blue-600 bg-blue-50 rounded-lg px-2 py-1">{summary.total}</span>
+                  </button>
+                  <div className={`grid transition-all duration-200 ease-out ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                    <div className="overflow-hidden">
+                      <div className="px-3 pb-3 space-y-3">
+                        <div className="grid grid-cols-4 gap-2 text-center">
+                          <div className="rounded-xl bg-green-50 py-2"><p className="text-base font-bold text-green-600">{summary.present}</p><p className="text-[10px] text-green-700">Present</p></div>
+                          <div className="rounded-xl bg-yellow-50 py-2"><p className="text-base font-bold text-yellow-600">{summary.halfDay}</p><p className="text-[10px] text-yellow-700">Half</p></div>
+                          <div className="rounded-xl bg-red-50 py-2"><p className="text-base font-bold text-red-600">{summary.absent}</p><p className="text-[10px] text-red-700">Absent</p></div>
+                          <div className="rounded-xl bg-orange-50 py-2"><p className="text-base font-bold text-orange-600">{summary.uninformed}</p><p className="text-[10px] text-orange-700">Uninf.</p></div>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-gray-600">
+                          <span>Working time</span>
+                          <span className="font-semibold text-gray-900">{work}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => exportPeriodAttendancePDF(`${monthTitle} - ${member.name}`, [buildPeriodRow(member, summary, work)])}
+                            className="flex-1 min-h-[44px] rounded-xl bg-blue-600 text-white text-xs font-semibold active:bg-blue-700"
+                          >
+                            PDF
+                          </button>
+                          <button
+                            onClick={() => sharePeriodAttendanceWhatsApp(`${monthTitle} - ${member.name}`, [buildPeriodRow(member, summary, work)])}
+                            className="flex-1 min-h-[44px] rounded-xl bg-green-600 text-white text-xs font-semibold active:bg-green-700"
+                          >
+                            WhatsApp
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+          {monthlyFilteredStaff.length > 0 && (
+            <div className="sticky bottom-20 flex gap-2 pt-1">
+              <button
+                onClick={() => exportPeriodAttendancePDF(monthTitle, monthlyFilteredStaff.map(m => {
+                  const s = getStaffSummary(m.id);
+                  const w = formatWorkingMinutes(getPeriodWorkMinutes(m.id, d => {
+                    const dt = new Date(d);
+                    return dt.getFullYear() === year && dt.getMonth() === month;
+                  }));
+                  return buildPeriodRow(m, s, w);
+                }))}
+                className="flex-1 min-h-[44px] rounded-xl bg-blue-600 text-white text-sm font-semibold shadow-lg active:bg-blue-700"
+              >
+                Download month PDF
+              </button>
+              <button
+                onClick={() => sharePeriodAttendanceWhatsApp(monthTitle, monthlyFilteredStaff.map(m => {
+                  const s = getStaffSummary(m.id);
+                  const w = formatWorkingMinutes(getPeriodWorkMinutes(m.id, d => {
+                    const dt = new Date(d);
+                    return dt.getFullYear() === year && dt.getMonth() === month;
+                  }));
+                  return buildPeriodRow(m, s, w);
+                }))}
+                className="flex-1 min-h-[44px] rounded-xl bg-green-600 text-white text-sm font-semibold shadow-lg active:bg-green-700"
+              >
+                Share
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="table-container hidden md:block">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
