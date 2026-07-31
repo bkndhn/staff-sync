@@ -390,6 +390,15 @@ body.light-theme .text-white {
   color: #1a1a2e !important;
 }
 
+/* GLOBAL FIX: Ensure colored backgrounds keep white text */
+body.light-theme [class*="bg-"].text-white:not([class*="bg-white"]):not([class*="bg-transparent"]):not([class*="bg-gray-"]),
+body.light-theme [class*="bg-"] .text-white:not([class*="bg-white"]):not([class*="bg-transparent"]):not([class*="bg-gray-"]),
+body.light-theme [class*="from-"].text-white,
+body.light-theme [class*="from-"] .text-white {
+  color: #ffffff !important;
+}
+
+
 /* EXCEPTION: Green/colored background buttons keep white text */
 body.light-theme .btn-premium.bg-\[\#25D366\],
 body.light-theme .btn-premium.bg-\[\#25D366\] span {

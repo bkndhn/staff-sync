@@ -369,16 +369,18 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
           <button
             onClick={() => handleSharePDF('overall')}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-medium transition-all duration-300 shadow-lg active:scale-95 shrink-0"
-            title="Share PDF report on WhatsApp"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium transition-all duration-300 shadow-lg active:scale-95 shrink-0"
+            title="Share report on WhatsApp"
+            style={{ color: 'white' }}
           >
-            <FileText size={16} />
-            <span className="text-xs md:text-sm">PDF</span>
+            <Share2 size={16} />
+            <span className="text-xs md:text-sm">Share</span>
           </button>
 
           <button
             onClick={() => handleExportPDF('overall')}
-            className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/10 hover:bg-white/20 text-white active:scale-95 shrink-0"
+            className="flex items-center justify-center h-10 w-10 rounded-xl active:scale-95 shrink-0 transition-colors"
+            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--glass-border-strong)', color: 'var(--text-primary)' }}
             title="Download PDF instead"
             aria-label="Download PDF"
           >
@@ -387,7 +389,8 @@ const Dashboard: React.FC<DashboardProps> = ({
 
           <button
             onClick={() => setShowReportConfig(true)}
-            className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/10 hover:bg-white/20 text-white active:scale-95 shrink-0"
+            className="flex items-center justify-center h-10 w-10 rounded-xl active:scale-95 shrink-0 transition-colors"
+            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--glass-border-strong)', color: 'var(--text-primary)' }}
             title="Report columns & order"
             aria-label="Report settings"
           >
@@ -677,18 +680,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                   </h3>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
-                      onClick={() => handleShareLocation(location.name)}
+                      onClick={() => handleLocationPDF(location.name)}
                       className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-500/90 hover:bg-green-600 text-white text-xs font-medium shadow active:scale-95"
                       title={`Share ${location.name} via WhatsApp`}
+                      style={{ color: 'white' }}
                     >
-                      <MessageCircle size={12} /> Share
-                    </button>
-                    <button
-                      onClick={() => handleLocationPDF(location.name)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-500/90 hover:bg-blue-600 text-white text-xs font-medium shadow active:scale-95"
-                      title={`Download ${location.name} PDF`}
-                    >
-                      <FileText size={12} /> PDF
+                      <Share2 size={12} /> Share
                     </button>
                   </div>
                 </div>
@@ -825,7 +822,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <button
                         key={c.key}
                         onClick={() => toggleReportColumn(c.key)}
-                        className={`h-11 rounded-xl text-sm font-semibold border transition-colors ${on ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-700 border-gray-200 active:bg-gray-100'}`}
+                        className={`h-11 rounded-xl text-sm font-semibold border transition-colors`}
+                        style={{
+                          background: on ? 'var(--primary-gradient)' : 'var(--bg-secondary)',
+                          color: on ? 'white' : 'var(--text-primary)',
+                          borderColor: on ? 'var(--primary-gradient)' : 'var(--glass-border-strong)'
+                        }}
                       >
                         {c.label}
                       </button>
@@ -838,7 +840,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <select
                   value={reportSort}
                   onChange={e => setReportSort(e.target.value as ReportSortKey)}
-                  className="w-full h-11 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-800"
+                  className="w-full h-11 rounded-xl border px-3 text-sm"
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    borderColor: 'var(--glass-border-strong)'
+                  }}
                 >
                   <option value="name">Name</option>
                   <option value="location">Location</option>
