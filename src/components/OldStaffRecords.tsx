@@ -275,7 +275,8 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
                       </button>
                     </div>
                   </div>
-                )}
+                  </div>
+                </div>
               </div>
             );
           })
