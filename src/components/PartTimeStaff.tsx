@@ -189,6 +189,28 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     const [showLocationDropdown, setShowLocationDropdown] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedSalaryCards, setExpandedSalaryCards] = useState<Set<string>>(new Set());
+    const [ptSort, setPtSort] = useState<{ key: string; dir: 'asc' | 'desc' }>(() => {
+        try { return JSON.parse(localStorage.getItem('partTimeSort') || '') || { key: 'name', dir: 'asc' }; }
+        catch { return { key: 'name', dir: 'asc' }; }
+    });
+    const [partTimeColumns, setPartTimeColumns] = useState<string[]>(() => {
+        try { return JSON.parse(localStorage.getItem('partTimeColumns') || '') || ['location', 'floor', 'days', 'shifts', 'earned', 'advance']; }
+        catch { return ['location', 'floor', 'days', 'shifts', 'earned', 'advance']; }
+    });
+    const PT_COLUMNS = [
+        { key: 'location', label: 'Location' },
+        { key: 'floor', label: 'Floor' },
+        { key: 'days', label: 'Days' },
+        { key: 'shifts', label: 'Shifts' },
+        { key: 'earned', label: 'Earned' },
+        { key: 'advance', label: 'Advance' },
+    ];
+    const PT_SORTS = [
+        { key: 'name', label: 'Name' },
+        { key: 'location', label: 'Location' },
+        { key: 'earnings', label: 'Earnings' },
+        { key: 'shifts', label: 'Shifts' },
+    ];
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const toggleSalaryCard = (key: string) => {
@@ -201,15 +223,16 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
     const shareSalaryWhatsApp = (salary: PartTimeSalaryDetail, advance: number, net: number) => {
         const period = new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+        const has = (k: string) => partTimeColumns.includes(k);
         const lines = [
             `*${salary.staffName}* — Part-Time Salary`,
             `Period: ${period}`,
-            `Location: ${salary.location}${salary.floor ? ` (${salary.floor})` : ''}`,
-            `Days: ${salary.totalDays} | Shifts: ${salary.totalShifts}`,
-            `Earned: ₹${salary.totalEarnings}`,
-            `Advance: ₹${advance}`,
+            has('location') ? `Location: ${salary.location}${salary.floor && has('floor') ? ` (${salary.floor})` : ''}` : '',
+            has('days') || has('shifts') ? `Days: ${salary.totalDays} | Shifts: ${salary.totalShifts}` : '',
+            has('earned') ? `Earned: ₹${salary.totalEarnings}` : '',
+            has('advance') ? `Advance: ₹${advance}` : '',
             `*Net Payable: ₹${net}*`
-        ];
+        ].filter(Boolean);
         window.open(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
     };
 
