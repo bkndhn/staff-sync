@@ -1,28 +1,56 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { OldStaffRecord } from '../types';
 import { Archive, Download, Eye, UserPlus, Trash2, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { exportOldStaffPDF } from '../utils/pdfExport';
+import { exportOldStaffPDF, OLD_STAFF_PDF_COLUMNS } from '../utils/pdfExport';
 import { customConfirm } from './CustomDialog';
+import ListFilterBar from './ui/ListFilterBar';
 
 interface OldStaffRecordsProps {
   oldStaffRecords: OldStaffRecord[];
   onRejoinStaff: (record: OldStaffRecord) => void;
   onPermanentDelete: (record: OldStaffRecord) => void;
+  loading?: boolean;
 }
 
 const PAGE_SIZE = 20;
 
-const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRejoinStaff, onPermanentDelete }) => {
+const ARCHIVE_SORTS = [
+  { key: 'name', label: 'Name' },
+  { key: 'left', label: 'Left date' },
+  { key: 'salary', label: 'Last salary' },
+  { key: 'advance', label: 'Outstanding' },
+];
+
+const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRejoinStaff, onPermanentDelete, loading = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRecord, setSelectedRecord] = useState<OldStaffRecord | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' }>(() => {
+    try { return JSON.parse(localStorage.getItem('archiveSort') || '') || { key: 'name', dir: 'asc' }; }
+    catch { return { key: 'name', dir: 'asc' }; }
+  });
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('archiveColumns') || '') || OLD_STAFF_PDF_COLUMNS.map(c => c.key); }
+    catch { return OLD_STAFF_PDF_COLUMNS.map(c => c.key); }
+  });
 
-  const filteredRecords = useMemo(() => oldStaffRecords.filter(record =>
-    record.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    record.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    record.reason.toLowerCase().includes(searchTerm.toLowerCase())
-  ), [oldStaffRecords, searchTerm]);
+  const filteredRecords = useMemo(() => {
+    const list = oldStaffRecords.filter(record =>
+      record.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.reason.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...list].sort((a, b) => {
+      switch (sort.key) {
+        case 'left': return (new Date(a.leftDate).getTime() - new Date(b.leftDate).getTime()) * dir;
+        case 'salary': return (a.totalSalary - b.totalSalary) * dir;
+        case 'advance': return (a.totalAdvanceOutstanding - b.totalAdvanceOutstanding) * dir;
+        default: return a.name.localeCompare(b.name) * dir;
+      }
+    });
+  }, [oldStaffRecords, searchTerm, sort]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
 
@@ -49,7 +77,7 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
   };
 
   const handleExportPDF = () => {
-    exportOldStaffPDF(oldStaffRecords);
+    exportOldStaffPDF(filteredRecords, visibleColumns);
   };
 
   const handleRejoin = async (record: OldStaffRecord) => {

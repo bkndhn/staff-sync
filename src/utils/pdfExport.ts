@@ -132,9 +132,24 @@ export const exportSalaryPDF = (
   doc.save(`salary-report-${new Date(0, month).toLocaleString('default', { month: 'long' })}-${year}.pdf`);
 };
 
-export const exportOldStaffPDF = (oldStaffRecords: OldStaffRecord[]) => {
+export const OLD_STAFF_PDF_COLUMNS = [
+  { key: 'name', label: 'Name' },
+  { key: 'location', label: 'Location' },
+  { key: 'type', label: 'Type' },
+  { key: 'experience', label: 'Experience' },
+  { key: 'tenure', label: 'Tenure' },
+  { key: 'salary', label: 'Last Salary' },
+  { key: 'advance', label: 'Outstanding Advance' },
+  { key: 'reason', label: 'Reason' },
+];
+
+export const exportOldStaffPDF = (
+  oldStaffRecords: OldStaffRecord[],
+  visibleColumns?: string[]
+) => {
   const doc = new jsPDF('landscape');
-  
+  const cols = OLD_STAFF_PDF_COLUMNS.filter(c => !visibleColumns || visibleColumns.includes(c.key));
+
   // Header
   doc.setFontSize(20);
   doc.text('Old Staff Records', 20, 20);
@@ -149,21 +164,22 @@ export const exportOldStaffPDF = (oldStaffRecords: OldStaffRecord[]) => {
     const remainingMonths = tenureMonths % 12;
     const tenure = `${tenureYears > 0 ? `${tenureYears}y ` : ''}${remainingMonths}m`;
 
-    return [
-      index + 1,
-      record.name,
-      record.location,
-      record.type,
-      record.experience,
+    const values: Record<string, any> = {
+      name: record.name,
+      location: record.location,
+      type: record.type,
+      experience: record.experience,
       tenure,
-      `₹${record.totalSalary.toLocaleString()}`,
-      `₹${record.totalAdvanceOutstanding.toLocaleString()}`,
-      record.reason
-    ];
+      salary: `₹${record.totalSalary.toLocaleString()}`,
+      advance: `₹${record.totalAdvanceOutstanding.toLocaleString()}`,
+      reason: record.reason
+    };
+
+    return [index + 1, ...cols.map(c => values[c.key])];
   });
 
   autoTable(doc, {
-    head: [['S.No', 'Name', 'Location', 'Type', 'Experience', 'Tenure', 'Last Salary', 'Outstanding Advance', 'Reason']],
+    head: [['S.No', ...cols.map(c => c.label)]],
     body: tableData,
     startY: 45,
     styles: { fontSize: 9 },
