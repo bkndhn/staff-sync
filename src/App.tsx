@@ -21,6 +21,7 @@ import { useOfflineSync } from './hooks/useOfflineSync';
 import { usePayrollAutoGenerate } from './hooks/usePayrollAutoGenerate';
 import { offlineDbService } from './services/offlineDb';
 import { db } from './lib/db';
+import { useRealtimeUpdates } from './hooks/useRealtimeUpdates';
 
 import { faceEmbeddingService } from './services/faceEmbeddingService';
 import { designationService } from './services/designationService';
@@ -40,7 +41,7 @@ const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
 const SecurityFindings = React.lazy(() => import('./components/SecurityFindings'));
-const AIInsights = React.lazy(() => import('./components/AIInsights'));
+
 // StatutoryDashboard component retained on disk but no longer mounted; statutory features are now inline in the main pages.
 
 
@@ -283,6 +284,26 @@ function App() {
   // loadAllData alias kept for compatibility (forceRefresh, offline sync, etc.)
   const loadAllData = silentRefresh;
 
+  // Listen for realtime updates from Supabase
+  useRealtimeUpdates(
+    useCallback((record) => {
+      // @ts-ignore
+      patchAttendance(record);
+    }, [patchAttendance]),
+    useCallback((record) => {
+      setStaff(prev => {
+        const idx = prev.findIndex(s => s.id === record.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = record;
+          return next;
+        }
+        return [...prev, record];
+      });
+      cacheService.invalidate(CACHE_KEYS.STAFF);
+    }, [])
+  );
+
   // Force refresh data (clears cache, then re-fetches)
   const forceRefreshData = async () => {
     cacheService.clearAll();
@@ -330,7 +351,7 @@ function App() {
       return staff;
     } else if (user?.role === 'manager' && user.location) {
       return staff.filter(member => member.location === user.location);
-    } else if (user?.role === 'supervisor' && user.location && user.floor) {
+    } else if (user?.role === 'floor_supervisor' && user.location && user.floor) {
       return staff.filter(member => member.location === user.location && member.floor === user.floor);
     }
     return [];
@@ -351,7 +372,7 @@ function App() {
           ? true // Allow all part-time staff for managers
           : locationStaffIds.includes(record.staffId)
       );
-    } else if (user?.role === 'supervisor' && user.location && user.floor) {
+    } else if (user?.role === 'floor_supervisor' && user.location && user.floor) {
       const floorStaffIds = staff
         .filter(m => m.location === user.location && m.floor === user.floor)
         .map(m => m.id);
@@ -504,8 +525,13 @@ function App() {
       const previousAttendance = attendance.find(a =>
         a.staffId === staffId && a.date === date && !!a.isPartTime === !!isPartTime
       );
+
+      // Optimistic update
+      patchAttendance({ id: previousAttendance?.id || `temp-${Date.now()}`, ...attendanceRecord } as any);
+
       const savedAttendance = await attendanceService.upsert(attendanceRecord);
 
+      // Audit Log
       auditLogService.log({
         action: 'attendance_override',
         staffId,
@@ -526,11 +552,21 @@ function App() {
         },
       });
 
-
-      // Zero-latency optimistic update — no network wait
+      // Update with final DB record
       patchAttendance(savedAttendance);
     } catch (error) {
       console.error('Error updating attendance:', error);
+      // Rollback
+      const prev = attendance.find(a =>
+        a.staffId === staffId && a.date === date && !!a.isPartTime === !!isPartTime
+      );
+      if (prev) {
+        patchAttendance(prev);
+      } else {
+        setAttendance(current => current.filter(a => !(a.staffId === staffId && a.date === date && !!a.isPartTime === !!isPartTime)));
+      }
+      // @ts-ignore
+      if (typeof customAlert !== 'undefined') customAlert('Failed to update attendance. Changes reverted.');
     }
   };
 
@@ -603,6 +639,16 @@ function App() {
       };
     });
 
+    const oldState = [...attendance];
+
+    // Optimistic UI update
+    setAttendance(prev => {
+      const targetStaffIds = new Set(targetStaff.map(s => s.id));
+      const filtered = prev.filter(a => !(a.date === date && !a.isPartTime && targetStaffIds.has(a.staffId)));
+      const tempRecords = attendanceRecords.map((r, i) => ({ id: `temp-bulk-${Date.now()}-${i}`, ...r }));
+      return [...filtered, ...(tempRecords as any[])];
+    });
+
     try {
       const savedRecords = await attendanceService.bulkUpsert(attendanceRecords);
 
@@ -617,8 +663,12 @@ function App() {
         const filtered = prev.filter(a => !(a.date === date && !a.isPartTime && targetStaffIds.has(a.staffId)));
         return [...filtered, ...savedRecords];
       });
+      cacheService.invalidate(CACHE_KEYS.ATTENDANCE);
     } catch (error) {
       console.error('Error bulk updating attendance:', error);
+      setAttendance(oldState);
+      // @ts-ignore
+      if (typeof customAlert !== 'undefined') customAlert('Failed to bulk update attendance. Changes reverted.');
     }
   };
 
@@ -1168,15 +1218,7 @@ function App() {
             <AuditLogViewer currentUserEmail={user?.email || ''} />
           </ErrorBoundary>
         );
-      case 'AI Insights':
-        if (user?.role !== 'admin' && user?.role !== 'manager') return null;
-        return (
-          <ErrorBoundary moduleName="AI Insights">
-            <Suspense fallback={<ComponentLoader />}>
-              <AIInsights staff={filteredStaffData} attendance={filteredAttendanceData} />
-            </Suspense>
-          </ErrorBoundary>
-        );
+
       default:
         return null;
     }

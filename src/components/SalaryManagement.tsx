@@ -462,10 +462,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           ...resultDetail,
           statutoryTotal,
           statutoryBreakdown: breakdown.map(b => ({ key: b.key, label: b.label, amount: b.amount })),
+          nonStatutoryNet: resultDetail.netSalary,
           netSalary: Math.max(0, roundToNearest10(resultDetail.netSalary - statutoryTotal)),
         };
       } else {
-        resultDetail = { ...resultDetail, statutoryTotal: 0, statutoryBreakdown: [] };
+        resultDetail = { ...resultDetail, statutoryTotal: 0, statutoryBreakdown: [], nonStatutoryNet: resultDetail.netSalary };
       }
       return resultDetail;
     });
@@ -1410,6 +1411,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <div className="text-right shrink-0">
                       <p className="text-[10px] uppercase tracking-wide text-gray-400">Net</p>
                       <p className="text-base font-bold text-green-700">₹{Math.round(detail.netSalary).toLocaleString()}</p>
+                      {(detail.statutoryTotal || 0) > 0 && (
+                        <p className="text-[10px] text-gray-500 mt-1 font-medium">Non-Statutory: ₹{Math.round(detail.nonStatutoryNet || 0).toLocaleString()}</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1.5 mt-2">
@@ -1721,6 +1725,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     </td>}
                     {salaryVisibleCols.net !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center font-bold text-green-700">
                       ₹{editMode ? (tempData?.netSalary || 0) : detail.netSalary}
+                      {(detail.statutoryTotal || 0) > 0 && !editMode && (
+                        <div className="text-[10px] text-gray-400 font-medium">Off-Books: ₹{Math.round(detail.nonStatutoryNet || 0).toLocaleString()}</div>
+                      )}
                     </td>}
                     {salaryVisibleCols.newAdv !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-blue-600">
                       ₹{editMode ? (tempData?.newAdvance || 0) : detail.newAdv}
