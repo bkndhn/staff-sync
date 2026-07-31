@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Attendance, PartTimeSalaryDetail, Staff } from '../types';
-import { Clock, Plus, Download, Calendar, DollarSign, Edit2, Save, X, FileSpreadsheet, Trash2, Settings, CheckCircle } from 'lucide-react';
+import { Clock, Plus, Download, Calendar, DollarSign, Edit2, Save, X, FileSpreadsheet, Trash2, Settings, CheckCircle, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react';
 import { calculatePartTimeSalary, getPartTimeDailySalary, isSunday, getCurrencyBreakdown } from '../utils/salaryCalculations';
 import { exportSalaryToExcel, exportPartTimeSalaryPDF } from '../utils/exportUtils';
 import { settingsService } from '../services/settingsService';
@@ -188,7 +188,30 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     );
     const [showLocationDropdown, setShowLocationDropdown] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [expandedSalaryCards, setExpandedSalaryCards] = useState<Set<string>>(new Set());
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const toggleSalaryCard = (key: string) => {
+        setExpandedSalaryCards(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            return next;
+        });
+    };
+
+    const shareSalaryWhatsApp = (salary: PartTimeSalaryDetail, advance: number, net: number) => {
+        const period = new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+        const lines = [
+            `*${salary.staffName}* — Part-Time Salary`,
+            `Period: ${period}`,
+            `Location: ${salary.location}${salary.floor ? ` (${salary.floor})` : ''}`,
+            `Days: ${salary.totalDays} | Shifts: ${salary.totalShifts}`,
+            `Earned: ₹${salary.totalEarnings}`,
+            `Advance: ₹${advance}`,
+            `*Net Payable: ₹${net}*`
+        ];
+        window.open(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
+    };
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -1868,7 +1891,118 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                     )}
                 </div>
 
-                <div className="overflow-x-auto">
+                {/* Mobile card list */}
+                <div className="md:hidden space-y-3">
+                    {partTimeSalaries.length === 0 ? (
+                        <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
+                            <DollarSign className="mx-auto text-gray-300 mb-3" size={40} />
+                            <p className="text-sm text-gray-500">No records found for the selected period</p>
+                        </div>
+                    ) : (
+                        partTimeSalaries.map((salary, index) => {
+                            const key = `${salary.staffName}-${salary.location}`;
+                            const status = getSettlementStatus(salary.staffName, salary.location);
+                            const advance = reportType === 'weekly'
+                                ? (advanceRecords[`${key}-${selectedYear}-${selectedMonth}-${selectedWeek}`]?.advanceGiven || 0)
+                                : (aggregatedAdvances[key] || 0);
+                            const net = Math.max(0, salary.totalEarnings - advance);
+                            const expanded = expandedSalaryCards.has(`${key}-${index}`);
+                            const selected = selectedStaff.has(key);
+                            return (
+                                <div
+                                    key={`m-${key}-${index}`}
+                                    className={`rounded-2xl border bg-white shadow-sm overflow-hidden ${status.isFullySettled ? 'border-green-300' : status.isPartiallySettled ? 'border-yellow-300' : 'border-gray-100'}`}
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleSalaryCard(`${key}-${index}`)}
+                                        className="w-full flex items-center gap-3 p-4 text-left active:bg-gray-50"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={selected}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => {
+                                                const next = new Set(selectedStaff);
+                                                if (e.target.checked) next.add(key); else next.delete(key);
+                                                setSelectedStaff(next);
+                                            }}
+                                            className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="font-semibold text-gray-900 truncate">{salary.staffName}</div>
+                                            <div className="text-xs text-gray-500 truncate">
+                                                {salary.location}{salary.floor ? ` · ${salary.floor}` : ''} · {salary.totalShifts} shifts
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-base font-bold text-green-600">₹{net}</div>
+                                            {status.isFullySettled && <div className="text-[11px] text-green-700 font-medium">Settled</div>}
+                                        </div>
+                                        {expanded ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
+                                    </button>
+
+                                    {expanded && (
+                                        <div className="border-t border-gray-100 px-4 py-3 space-y-3 bg-gray-50/60">
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <div className="rounded-xl bg-white border border-gray-100 p-2">
+                                                    <div className="text-[11px] text-gray-500">Days</div>
+                                                    <div className="font-semibold text-gray-900">{salary.totalDays}</div>
+                                                </div>
+                                                <div className="rounded-xl bg-white border border-gray-100 p-2">
+                                                    <div className="text-[11px] text-gray-500">Shifts</div>
+                                                    <div className="font-semibold text-gray-900">{salary.totalShifts}</div>
+                                                </div>
+                                                <div className="rounded-xl bg-white border border-gray-100 p-2">
+                                                    <div className="text-[11px] text-gray-500">Earned</div>
+                                                    <div className="font-semibold text-gray-900">₹{salary.totalEarnings}</div>
+                                                </div>
+                                                <div className="rounded-xl bg-white border border-gray-100 p-2">
+                                                    <div className="text-[11px] text-gray-500">Advance</div>
+                                                    <div className="font-semibold text-gray-900">{advance > 0 ? `₹${advance}` : '-'}</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => toggleSettlement(salary.staffName, salary.location)}
+                                                    className={`flex-1 min-h-[44px] rounded-xl text-sm font-semibold transition-colors ${status.isFullySettled ? 'bg-green-100 text-green-700' : 'bg-purple-600 text-white active:bg-purple-700'}`}
+                                                >
+                                                    {status.isFullySettled ? 'Settled · Tap to revert' : 'Settle'}
+                                                </button>
+                                                <button
+                                                    onClick={() => shareSalaryWhatsApp(salary, advance, net)}
+                                                    className="min-h-[44px] px-4 rounded-xl bg-green-600 text-white text-sm font-semibold flex items-center gap-2 active:bg-green-700"
+                                                >
+                                                    <MessageCircle size={16} />
+                                                    Share
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
+                    )}
+
+                    {partTimeSalaries.length > 0 && (
+                        <div className="sticky bottom-2 rounded-2xl bg-purple-600 text-white px-4 py-3 flex items-center justify-between shadow-lg">
+                            <span className="text-sm font-medium">Total Net Payable</span>
+                            <span className="text-lg font-bold">
+                                ₹{partTimeSalaries.reduce((sum, salary) => {
+                                    const key = `${salary.staffName}-${salary.location}`;
+                                    const advance = reportType === 'weekly'
+                                        ? (advanceRecords[`${key}-${selectedYear}-${selectedMonth}-${selectedWeek}`]?.advanceGiven || 0)
+                                        : (aggregatedAdvances[key] || 0);
+                                    return sum + Math.max(0, salary.totalEarnings - advance);
+                                }, 0)}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="hidden md:block overflow-x-auto">
+
                     <table className="w-full">
                         <thead className="bg-gray-50">
                             <tr>
