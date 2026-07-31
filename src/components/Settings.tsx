@@ -378,6 +378,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                 </div>
             </div>
 
+            <SettingsSection title="General" subtitle="Login, QR and hike defaults" icon={SettingsIcon} defaultOpen>
             {/* Staff Self-Service Toggle */}
             <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -480,7 +481,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                     </button>
                 </div>
             </div>
+            </SettingsSection>
 
+            <SettingsSection title="Access & Compliance" subtitle="Visibility, statutory portal, face tuning" icon={Shield}>
             {/* Show Today's Punches toggle (admin only) */}
             {userRole === 'admin' && (
                 <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">
@@ -519,8 +522,10 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
             {/* Statutory Portal Configuration (admin only) */}
             {userRole === 'admin' && <StatutoryPortalSettingsPanel />}
             {(userRole === 'admin' || userRole === 'manager') && <FaceTuningPanel />}
+            </SettingsSection>
 
 
+            <SettingsSection title="Data & Backup" subtitle="Export a full snapshot" icon={Save}>
             {/* Backup all data (admin only) */}
             {userRole === 'admin' && (
                 <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">
@@ -555,7 +560,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                     </button>
                 </div>
             )}
+            </SettingsSection>
 
+            <SettingsSection title="Attendance & Devices" subtitle="Shifts, smart rules and kiosk" icon={Clock}>
             {/* Shift Windows & Auto Half-Day Rules */}
             <ShiftWindowsPanel />
 
@@ -572,7 +579,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
               </div>
               <AttendanceRulesPanel />
             </div>
+            </SettingsSection>
 
+            <SettingsSection title="Salary" subtitle="Override configuration" icon={TrendingUp}>
             {/* Salary Overrides Config */}
             <div className="glass-card-static p-4 rounded-xl space-y-3 mt-6">
               <div className="flex items-center gap-3">
@@ -586,6 +595,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
               </div>
               <SalaryOverridesPanel />
             </div>
+            </SettingsSection>
 
             <div className="flex flex-col sm:flex-row gap-3">
                 <input
