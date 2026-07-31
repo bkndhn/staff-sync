@@ -1375,7 +1375,92 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile card list (native app feel) */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {salaryDetails.length === 0 && (
+            <div className="p-6 text-center text-sm text-gray-500">No salary records for this period.</div>
+          )}
+          {salaryDetails.map((detail, index) => {
+            const staffMember = getStaffForDisplay(detail.staffId);
+            const isOpen = expandedSalaryCard === detail.staffId;
+            const uninformedDays = (Array.isArray(attendance) ? attendance : []).filter(a =>
+              a.staffId === detail.staffId && a.isUninformed &&
+              new Date(a.date).getMonth() === selectedMonth && new Date(a.date).getFullYear() === selectedYear
+            ).length;
+            return (
+              <div key={detail.staffId} className={`p-3 active:bg-gray-50 ${uninformedDays > 0 ? 'border-l-4 border-orange-400 bg-orange-50/40' : ''}`}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedSalaryCard(isOpen ? null : detail.staffId)}
+                  className="w-full text-left"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 text-[15px] truncate">
+                        {index + 1}. {staffMember?.name}
+                        {uninformedDays > 0 && <span className="ml-1 text-[10px] text-orange-600 font-bold">⚠{uninformedDays}</span>}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate mt-0.5">
+                        {[staffMember?.location, staffMember?.floor, staffMember?.designation].filter(Boolean).join(' • ') || '-'}
+                      </p>
+                      {showEmpCode && (
+                        <p className="text-[11px] text-gray-400 mt-0.5">{staffMember?.employeeCode || '-'}</p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[10px] uppercase tracking-wide text-gray-400">Net</p>
+                      <p className="text-base font-bold text-green-700">₹{Math.round(detail.netSalary).toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    <span className="badge-premium badge-success">P {(detail.presentDays + detail.halfDays * 0.5).toFixed(1)}</span>
+                    <span className={`badge-premium ${(detail.leaveDays - detail.halfDays * 0.5) > 0 ? 'badge-danger' : 'badge-neutral'}`}>L {(detail.leaveDays - detail.halfDays * 0.5).toFixed(1)}</span>
+                    <span className="badge-premium badge-neutral">Gross ₹{Math.round(detail.grossSalary).toLocaleString()}</span>
+                    {detail.newAdv > 0 && <span className="badge-premium badge-warning">Adv ₹{Math.round(detail.newAdv).toLocaleString()}</span>}
+                  </div>
+                </button>
+
+                {isOpen && (
+                  <div className="mt-3 rounded-xl bg-gray-50 p-3 grid grid-cols-2 gap-y-2 gap-x-3 text-xs">
+                    <div className="text-gray-500">Basic</div><div className="text-right font-medium text-gray-800">₹{Math.round(detail.basicEarned).toLocaleString()}</div>
+                    <div className="text-gray-500">Incentive</div><div className="text-right font-medium text-gray-800">₹{Math.round(detail.incentiveEarned).toLocaleString()}</div>
+                    <div className="text-gray-500">HRA</div><div className="text-right font-medium text-gray-800">₹{Math.round(detail.hraEarned).toLocaleString()}</div>
+                    <div className="text-gray-500">Meal</div><div className="text-right font-medium text-gray-800">₹{Math.round(detail.mealAllowance || 0).toLocaleString()}</div>
+                    <div className="text-gray-500">Sun Penalty</div><div className="text-right font-medium text-red-600">₹{Math.round(detail.sundayPenalty || 0).toLocaleString()}</div>
+                    <div className="text-gray-500">Deduction</div><div className="text-right font-medium text-red-600">₹{Math.round(detail.deduction || 0).toLocaleString()}</div>
+                    <div className="text-gray-500">Old Adv</div><div className="text-right font-medium text-blue-600">₹{Math.round(detail.oldAdv || 0).toLocaleString()}</div>
+                    <div className="text-gray-500">Cur Adv</div><div className="text-right font-medium text-blue-600">₹{Math.round(detail.curAdv || 0).toLocaleString()}</div>
+                    {(detail.statutoryTotal || 0) > 0 && (<><div className="text-gray-500">Deductions (Stat.)</div><div className="text-right font-medium text-red-600">₹{Math.round(detail.statutoryTotal || 0).toLocaleString()}</div></>)}
+                  </div>
+                )}
+
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => handleDownloadSingleSlip(detail)}
+                    className="flex-1 min-h-[44px] rounded-xl border border-gray-200 text-purple-700 bg-white text-sm font-medium flex items-center justify-center gap-2 active:bg-purple-50"
+                  >
+                    <Download size={16} /> Slip
+                  </button>
+                  <button
+                    onClick={() => handleWhatsAppShare(detail)}
+                    className="flex-1 min-h-[44px] rounded-xl border border-gray-200 text-green-700 bg-white text-sm font-medium flex items-center justify-center gap-2 active:bg-green-50"
+                  >
+                    <MessageCircle size={16} /> Share
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          {salaryDetails.length > 0 && (
+            <div className="p-3 bg-gray-50 flex items-center justify-between text-sm font-bold">
+              <span className="text-gray-700">TOTAL NET</span>
+              <span className="text-green-700">₹{totals.totalNet.toLocaleString()}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="overflow-x-auto hidden md:block">
+
           <table className="table-premium">
             <thead>
               <tr>
