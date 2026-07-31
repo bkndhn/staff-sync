@@ -1038,6 +1038,14 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             (settlementFilter === 'settled' && status.isFullySettled) ||
             (settlementFilter === 'unsettled' && !status.isFullySettled);
         return locationMatch && searchMatch && settlementMatch;
+    }).sort((a, b) => {
+        const dir = ptSort.dir === 'asc' ? 1 : -1;
+        switch (ptSort.key) {
+            case 'location': return a.location.localeCompare(b.location) * dir;
+            case 'earnings': return (a.totalEarnings - b.totalEarnings) * dir;
+            case 'shifts': return (a.totalShifts - b.totalShifts) * dir;
+            default: return a.staffName.localeCompare(b.staffName) * dir;
+        }
     });
 
     // Filter salaries based on selection if any are selected
@@ -1888,31 +1896,28 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                     </div>
                 </div>
 
-                {/* Search Bar */}
-                <div className="mb-4">
-                    <div className="relative w-full md:w-96">
-                        <input
-                            type="text"
-                            placeholder="Search staff by name..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                            >
-                                <X size={16} />
-                            </button>
-                        )}
-                    </div>
-                    {searchQuery && (
-                        <p className="mt-2 text-sm text-gray-500">
-                            Showing {partTimeSalaries.length} result(s) for "{searchQuery}"
-                        </p>
-                    )}
-                </div>
+                {/* Search + sort + column bar (also drives PDF/WhatsApp exports) */}
+                <ListFilterBar
+                    accent="purple"
+                    search={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    placeholder="Search staff by name…"
+                    sortKey={ptSort.key}
+                    sortDir={ptSort.dir}
+                    onSortChange={(key, dir) => {
+                        setPtSort({ key, dir });
+                        localStorage.setItem('partTimeSort', JSON.stringify({ key, dir }));
+                    }}
+                    sortOptions={PT_SORTS}
+                    columns={PT_COLUMNS}
+                    visibleColumns={partTimeColumns}
+                    onColumnsChange={(keys) => {
+                        setPartTimeColumns(keys);
+                        localStorage.setItem('partTimeColumns', JSON.stringify(keys));
+                    }}
+                    resultCount={partTimeSalaries.length}
+                />
+
 
                 {/* Mobile card list */}
                 <div className="md:hidden space-y-3">
