@@ -1033,7 +1033,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               placeholder="Search by name or location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input-premium"
+              className="search-bar-premium"
             />
           </div>
 
@@ -1103,7 +1103,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              className="input-premium px-2 py-1.5 text-sm"
+              className="filter-chip"
             >
               {Array.from({ length: 12 }, (_, i) => i)
                 .filter(i => selectedYear < new Date().getFullYear() || i <= new Date().getMonth())
@@ -1125,7 +1125,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 }
                 setSelectedYear(newYear);
               }}
-              className="input-premium px-2 py-1.5 text-sm"
+              className="filter-chip"
             >
               {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i)
                 .filter(y => y <= new Date().getFullYear())
@@ -1139,7 +1139,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             <select
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
-              className="input-premium px-2 py-1.5 text-sm"
+              className="filter-chip"
             >
               <option value="All">All Locations</option>
               {locations.map(loc => (<option key={loc.id} value={loc.name}>{loc.name}</option>))}
@@ -1150,7 +1150,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             <select
               value={paymentModeFilter}
               onChange={(e) => setPaymentModeFilter(e.target.value)}
-              className="input-premium px-2 py-1.5 text-sm"
+              className="filter-chip"
             >
               <option value="All">All Modes</option>
               <option value="cash">Cash ({activeStaff.filter(s => (s.paymentMode || 'cash') === 'cash').length})</option>
@@ -1161,7 +1161,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             <select
               value={floorFilter}
               onChange={(e) => setFloorFilter(e.target.value)}
-              className="input-premium px-2 py-1.5 text-sm"
+              className="filter-chip"
             >
               <option value="All">All Floors</option>
               {Array.from(new Set(activeStaff.filter(s => s.floor).map(s => s.floor!))).map(flr => (
@@ -1173,7 +1173,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             <select
               value={designationFilter}
               onChange={(e) => setDesignationFilter(e.target.value)}
-              className="input-premium px-2 py-1.5 text-sm"
+              className="filter-chip"
             >
               <option value="All">All Designations</option>
               {Array.from(new Set(activeStaff.filter(s => s.designation).map(s => s.designation!))).map(des => (
@@ -1185,7 +1185,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             <select
               value={accommodationFilter}
               onChange={(e) => setAccommodationFilter(e.target.value)}
-              className="input-premium px-2 py-1.5 text-sm"
+              className="filter-chip"
             >
               <option value="All">All Types</option>
               <option value="day_scholar">Day Scholar</option>

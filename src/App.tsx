@@ -284,25 +284,6 @@ function App() {
   // loadAllData alias kept for compatibility (forceRefresh, offline sync, etc.)
   const loadAllData = silentRefresh;
 
-  // Listen for realtime updates from Supabase
-  useRealtimeUpdates(
-    useCallback((record) => {
-      // @ts-ignore
-      patchAttendance(record);
-    }, [patchAttendance]),
-    useCallback((record) => {
-      setStaff(prev => {
-        const idx = prev.findIndex(s => s.id === record.id);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = record;
-          return next;
-        }
-        return [...prev, record];
-      });
-      cacheService.invalidate(CACHE_KEYS.STAFF);
-    }, [])
-  );
 
   // Force refresh data (clears cache, then re-fetches)
   const forceRefreshData = async () => {
@@ -333,6 +314,26 @@ function App() {
     // Invalidate cache so next cold load fetches fresh data from Supabase
     cacheService.invalidate(CACHE_KEYS.ATTENDANCE);
   }, []);
+
+  // Listen for realtime updates from Supabase
+  useRealtimeUpdates(
+    useCallback((record) => {
+      // @ts-ignore
+      patchAttendance(record);
+    }, [patchAttendance]),
+    useCallback((record) => {
+      setStaff(prev => {
+        const idx = prev.findIndex(s => s.id === record.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = record;
+          return next;
+        }
+        return [...prev, record];
+      });
+      cacheService.invalidate(CACHE_KEYS.STAFF);
+    }, [])
+  );
 
   const handleLogin = (userData: { email: string; role: string; location?: string; staffId?: string; staffName?: string }) => {
     setUser(userData as User);

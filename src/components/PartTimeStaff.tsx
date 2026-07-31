@@ -1506,7 +1506,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             type="date"
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            className="filter-chip"
                         />
                         {isSunday(selectedDate) && (
                             <span className="px-3 py-1 bg-orange-100 text-orange-800 text-sm font-medium rounded-full">
@@ -1520,7 +1520,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             <select
                                 value={locationFilter}
                                 onChange={(e) => setLocationFilter(e.target.value as any)}
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                className="filter-chip"
                             >
                                 {getAvailableLocations().map(location => (
                                     <option key={location} value={location}>{location}</option>
@@ -1781,7 +1781,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                         <select
                             value={reportType}
                             onChange={(e) => setReportType(e.target.value as 'monthly' | 'weekly' | 'dateRange')}
-                            className="px-2 md:px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                            className="filter-chip"
                         >
                             <option value="monthly">Monthly</option>
                             <option value="weekly">Weekly</option>
@@ -1792,7 +1792,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                         <select
                             value={settlementFilter}
                             onChange={(e) => setSettlementFilter(e.target.value as 'all' | 'settled' | 'unsettled')}
-                            className="px-2 md:px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                            className="filter-chip"
                         >
                             <option value="all">All Status</option>
                             <option value="settled">✓ Settled</option>
@@ -1804,7 +1804,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                 <select
                                     value={selectedMonth}
                                     onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                                    className="px-2 md:px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                    className="filter-chip"
                                 >
                                     {Array.from({ length: 12 }, (_, i) => (
                                         <option key={i} value={i}>
@@ -1815,7 +1815,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                 <select
                                     value={selectedYear}
                                     onChange={(e) => setSelectedYear(Number(e.target.value))}
-                                    className="px-2 md:px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                    className="filter-chip"
                                 >
                                     {Array.from({ length: 5 }, (_, i) => (
                                         <option key={i} value={new Date().getFullYear() - 2 + i}>
@@ -1837,7 +1837,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     <select
                                         value={selectedMonth}
                                         onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                                        className="px-2 md:px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                        className="filter-chip"
                                     >
                                         {Array.from({ length: 12 }, (_, i) => (
                                             <option key={i} value={i}>
@@ -1848,7 +1848,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     <select
                                         value={selectedYear}
                                         onChange={(e) => setSelectedYear(Number(e.target.value))}
-                                        className="px-2 md:px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                        className="filter-chip"
                                     >
                                         {Array.from({ length: 5 }, (_, i) => (
                                             <option key={i} value={new Date().getFullYear() - 2 + i}>
@@ -1859,7 +1859,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     <select
                                         value={selectedWeek}
                                         onChange={(e) => setSelectedWeek(Number(e.target.value))}
-                                        className="px-2 md:px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                        className="filter-chip"
                                     >
                                         {weeks.map((week, index) => (
                                             <option key={index} value={index}>
@@ -1882,7 +1882,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     type="date"
                                     value={dateRange.start}
                                     onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                                    className="px-2 md:px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                    className="filter-chip"
                                 />
                                 <span className="text-gray-500">to</span>
                                 <input
@@ -1890,7 +1890,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     value={dateRange.end}
                                     min={dateRange.start}
                                     onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                                    className="px-2 md:px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                    className="filter-chip"
                                 />
                             </>
                         )}

@@ -218,8 +218,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
         email: '',
         password: '',
         full_name: '',
-        role: 'manager' as 'admin' | 'manager',
-        location: ''
+        role: 'manager' as 'admin' | 'manager' | 'floor_supervisor',
+        location: '',
+        floor: ''
     });
     const [showPassword, setShowPassword] = useState(false);
 
@@ -253,7 +254,8 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
             password: '',
             full_name: '',
             role: 'manager',
-            location: locations[0]?.name || ''
+            location: locations[0]?.name || '',
+            floor: ''
         });
         setShowPassword(false);
     };
@@ -269,8 +271,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
             email: user.email,
             password: '',
             full_name: user.full_name,
-            role: (user.role === 'admin' || user.role === 'manager') ? user.role : 'manager',
-            location: user.location || ''
+            role: (user.role === 'admin' || user.role === 'manager' || user.role === 'floor_supervisor') ? user.role : 'manager',
+            location: user.location || '',
+            floor: user.floor || ''
         });
         setEditingUser(user);
         setShowAddModal(true);
@@ -287,7 +290,8 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                     email: formData.email,
                     full_name: formData.full_name,
                     role: formData.role,
-                    location: formData.role === 'manager' ? formData.location : null
+                    location: (formData.role === 'manager' || formData.role === 'floor_supervisor') ? formData.location : null,
+                    floor: formData.role === 'floor_supervisor' ? formData.floor : null
                 };
 
                 if (formData.password) {
@@ -314,7 +318,8 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                     password: formData.password,
                     full_name: formData.full_name,
                     role: formData.role,
-                    location: formData.role === 'manager' ? formData.location : null
+                    location: (formData.role === 'manager' || formData.role === 'floor_supervisor') ? formData.location : null,
+                    floor: formData.role === 'floor_supervisor' ? formData.floor : null
                 };
 
                 const created = await userService.createUser(input);
@@ -722,8 +727,8 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                                         <td className="font-medium text-white">{user.full_name}</td>
                                         <td className="text-white/70 font-mono text-sm">{user.email}</td>
                                         <td>
-                                            <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : 'badge-info'}`}>
-                                                {user.role === 'admin' ? 'Admin' : 'Manager'}
+                                            <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
+                                                {user.role === 'admin' ? 'Admin' : user.role === 'floor_supervisor' ? 'Floor Sup' : 'Manager'}
                                             </span>
                                         </td>
                                         <td>
@@ -827,14 +832,15 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                                 <label className="block text-sm font-medium text-white/70 mb-1">Role *</label>
                                 <select
                                     value={formData.role}
-                                    onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'manager' })}
+                                    onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'manager' | 'floor_supervisor' })}
                                     className="input-premium w-full"
                                 >
                                     <option value="admin">Admin</option>
                                     <option value="manager">Manager</option>
+                                    <option value="floor_supervisor">Floor Supervisor</option>
                                 </select>
                             </div>
-                            {formData.role === 'manager' && (
+                            {(formData.role === 'manager' || formData.role === 'floor_supervisor') && (
                                 <div>
                                     <label className="block text-sm font-medium text-white/70 mb-1">Location *</label>
                                     <select
@@ -848,6 +854,19 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                                             <option key={loc.id} value={loc.name}>{loc.name}</option>
                                         ))}
                                     </select>
+                                </div>
+                            )}
+                            {formData.role === 'floor_supervisor' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-white/70 mb-1">Floor *</label>
+                                    <input
+                                        type="text"
+                                        value={formData.floor}
+                                        onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
+                                        className="input-premium w-full"
+                                        required
+                                        placeholder="e.g. Ground Floor, 1st Floor"
+                                    />
                                 </div>
                             )}
                             <div className="flex gap-3 pt-4">

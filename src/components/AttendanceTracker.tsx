@@ -1019,7 +1019,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               value={selectedDate}
               max={new Date().toISOString().split('T')[0]}
               onChange={(e) => onDateChange(e.target.value)}
-              className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="filter-chip"
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -1047,14 +1047,14 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   onBulkUpdateAttendance(selectedDate, 'Present', undefined, bulkInTime, bulkOutTime);
                 }
               }}
-              className="flex items-center gap-1 px-2 md:px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs md:text-sm"
+              className="btn-premium btn-premium-success !px-3 !py-1 !min-h-0 text-xs"
             >
               <Check size={14} />
               <span className="hidden xs:inline">All Present</span>
             </button>
             <button
               onClick={() => setShowBulkHalfDayModal(true)}
-              className="flex items-center gap-1 px-2 md:px-3 py-1.5 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-xs md:text-sm"
+              className="btn-premium btn-premium-warning !px-3 !py-1 !min-h-0 text-xs"
             >
               <Clock size={14} />
               <span className="hidden xs:inline">All Half Day</span>
@@ -1065,7 +1065,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   onBulkUpdateAttendance(selectedDate, 'Absent');
                 }
               }}
-              className="flex items-center gap-1 px-2 md:px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs md:text-sm"
+              className="btn-premium btn-premium-danger !px-3 !py-1 !min-h-0 text-xs"
             >
               <X size={14} />
               <span className="hidden xs:inline">All Absent</span>
@@ -1097,7 +1097,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               placeholder="Search by staff name..."
               value={filters.search || ''}
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="search-bar-premium"
             />
           </div>
         )}
@@ -1109,7 +1109,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <select
               value={filters.staffType}
               onChange={(e) => setFilters({ ...filters, staffType: e.target.value as any })}
-              className="px-2 py-1 text-xs md:text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="filter-chip"
             >
               <option value="all">All Staff</option>
               <option value="full-time">Full-time</option>
@@ -1120,7 +1120,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <select
               value={filters.shift}
               onChange={(e) => setFilters({ ...filters, shift: e.target.value as any })}
-              className="px-2 py-1 text-xs md:text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="filter-chip"
             >
               <option value="All">All Shifts</option>
               <option value="Morning">Morning</option>
@@ -1133,7 +1133,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               <select
                 value={filters.location || 'All'}
                 onChange={(e) => setFilters({ ...filters, location: e.target.value })}
-                className="px-2 py-1 text-xs md:text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="filter-chip"
               >
                 <option value="All">All Locations</option>
                 {availableLocations.map(loc => (
@@ -1146,7 +1146,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <select
               value={floorFilter}
               onChange={(e) => setFloorFilter(e.target.value)}
-              className="px-2 py-1 text-xs md:text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="filter-chip"
             >
               <option value="All">All Floors</option>
               {Array.from(new Set(activeStaff.filter(s => s.floor).map(s => s.floor!))).map(flr => (
@@ -1158,7 +1158,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <select
               value={designationFilter}
               onChange={(e) => setDesignationFilter(e.target.value)}
-              className="px-2 py-1 text-xs md:text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="filter-chip"
             >
               <option value="All">All Designations</option>
               {Array.from(new Set(activeStaff.filter(s => s.designation).map(s => s.designation!))).map(des => (
@@ -1170,7 +1170,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <select
               value={accommodationFilter}
               onChange={(e) => setAccommodationFilter(e.target.value)}
-              className="px-2 py-1 text-xs md:text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="filter-chip"
             >
               <option value="All">All Types</option>
               <option value="day_scholar">Day Scholar</option>
