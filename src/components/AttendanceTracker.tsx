@@ -705,12 +705,106 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               year={year}
               title={`Year ${year} — ${selectedStaff.name}`}
             />
+
+            {/* Mobile: native-style month card list */}
+            <div className="md:hidden space-y-2">
+              {Array.from({ length: 12 }, (_, mi) => {
+                const s = computeMonthSummary(selectedStaff.id, mi);
+                const monthName = new Date(year, mi).toLocaleString('default', { month: 'long' });
+                const work = formatWorkingMinutes(getPeriodWorkMinutes(selectedStaff.id, d => {
+                  const dt = new Date(d);
+                  return dt.getFullYear() === year && dt.getMonth() === mi;
+                }));
+                const key = `y-${mi}`;
+                const expanded = expandedPeriodCard === key;
+                const row: PeriodAttendanceRow = {
+                  name: `${selectedStaff.name} — ${monthName} ${year}`,
+                  location: selectedStaff.location,
+                  present: s.p, halfDay: s.h, absent: s.a, uninformed: s.ui,
+                  total: Number(s.total.toFixed(1)), workingTime: work,
+                };
+                const title = `${selectedStaff.name} ${monthName} ${year}`;
+                return (
+                  <div key={mi} className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+                    <button
+                      onClick={() => setExpandedPeriodCard(expanded ? null : key)}
+                      className="w-full flex items-center gap-3 px-3 py-3 min-h-[56px] text-left active:bg-gray-50 transition-colors"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-gray-900 text-sm">{monthName} {year}</p>
+                        <p className="text-[11px] text-gray-500">P {s.p} • H {s.h} • A {s.a} • {work}</p>
+                      </div>
+                      <span className="text-xs font-bold text-blue-600 bg-blue-50 rounded-lg px-2 py-1">{s.total.toFixed(1).replace('.0', '')}</span>
+                    </button>
+                    <div className={`grid transition-all duration-200 ease-out ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                      <div className="overflow-hidden">
+                        <div className="px-3 pb-3 space-y-3">
+                          <div className="grid grid-cols-4 gap-2 text-center">
+                            <div className="rounded-xl bg-green-50 py-2"><p className="text-base font-bold text-green-600">{s.p}</p><p className="text-[10px] text-green-700">Present</p></div>
+                            <div className="rounded-xl bg-yellow-50 py-2"><p className="text-base font-bold text-yellow-600">{s.h}</p><p className="text-[10px] text-yellow-700">Half</p></div>
+                            <div className="rounded-xl bg-red-50 py-2"><p className="text-base font-bold text-red-600">{s.a}</p><p className="text-[10px] text-red-700">Absent</p></div>
+                            <div className="rounded-xl bg-orange-50 py-2"><p className="text-base font-bold text-orange-600">{s.ui}</p><p className="text-[10px] text-orange-700">Uninf.</p></div>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-gray-600">
+                            <span>Working time</span>
+                            <span className="font-semibold text-gray-900">{work}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => exportPeriodAttendancePDF(title, [row])} className="flex-1 min-h-[44px] rounded-xl bg-blue-600 text-white text-xs font-semibold active:bg-blue-700">PDF</button>
+                            <button onClick={() => sharePeriodAttendanceWhatsApp(title, [row])} className="flex-1 min-h-[44px] rounded-xl bg-green-600 text-white text-xs font-semibold active:bg-green-700">WhatsApp</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="sticky bottom-20 flex gap-2 pt-1">
+                <button
+                  onClick={() => exportPeriodAttendancePDF(`${selectedStaff.name} ${year} attendance`, Array.from({ length: 12 }, (_, mi) => {
+                    const s = computeMonthSummary(selectedStaff.id, mi);
+                    return {
+                      name: new Date(year, mi).toLocaleString('default', { month: 'long' }),
+                      location: selectedStaff.location,
+                      present: s.p, halfDay: s.h, absent: s.a, uninformed: s.ui,
+                      total: Number(s.total.toFixed(1)),
+                      workingTime: formatWorkingMinutes(getPeriodWorkMinutes(selectedStaff.id, d => {
+                        const dt = new Date(d);
+                        return dt.getFullYear() === year && dt.getMonth() === mi;
+                      })),
+                    };
+                  }))}
+                  className="flex-1 min-h-[44px] rounded-xl bg-blue-600 text-white text-sm font-semibold shadow-lg active:bg-blue-700"
+                >
+                  Year PDF
+                </button>
+                <button
+                  onClick={() => sharePeriodAttendanceWhatsApp(`${selectedStaff.name} ${year} attendance`, Array.from({ length: 12 }, (_, mi) => {
+                    const s = computeMonthSummary(selectedStaff.id, mi);
+                    return {
+                      name: new Date(year, mi).toLocaleString('default', { month: 'long' }),
+                      location: selectedStaff.location,
+                      present: s.p, halfDay: s.h, absent: s.a, uninformed: s.ui,
+                      total: Number(s.total.toFixed(1)),
+                      workingTime: formatWorkingMinutes(getPeriodWorkMinutes(selectedStaff.id, d => {
+                        const dt = new Date(d);
+                        return dt.getFullYear() === year && dt.getMonth() === mi;
+                      })),
+                    };
+                  }))}
+                  className="flex-1 min-h-[44px] rounded-xl bg-green-600 text-white text-sm font-semibold shadow-lg active:bg-green-700"
+                >
+                  Share year
+                </button>
+              </div>
+            </div>
+
             {Array.from({ length: 12 }, (_, mi) => {
               const summary = computeMonthSummary(selectedStaff.id, mi);
               const monthName = new Date(year, mi).toLocaleString('default', { month: 'long' });
               const days = Array.from({ length: summary.daysInMonth }, (_, d) => d + 1);
               return (
-                <div key={mi} className="border border-gray-100 rounded-lg p-3">
+                <div key={mi} className="hidden md:block border border-gray-100 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                     <h4 className="font-bold text-gray-800">{monthName} {year}</h4>
                     <div className="flex gap-3 text-xs flex-wrap">
