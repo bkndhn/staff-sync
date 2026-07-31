@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode, ChevronDown } from 'lucide-react';
 import { userService, AppUser, CreateUserInput, UpdateUserInput } from '../services/userService';
 import { locationService, Location } from '../services/locationService';
 import { appSettingsService } from '../services/appSettingsService';
@@ -14,6 +14,40 @@ import FaceTuningPanel from './face/FaceTuningPanel';
 interface SettingsProps {
     userRole: string;
 }
+
+// Native-style collapsible settings section
+const SettingsSection: React.FC<{
+    title: string;
+    subtitle?: string;
+    icon: React.ComponentType<{ size?: number; className?: string }>;
+    defaultOpen?: boolean;
+    children: React.ReactNode;
+}> = ({ title, subtitle, icon: Icon, defaultOpen = false, children }) => {
+    const [open, setOpen] = useState(defaultOpen);
+    return (
+        <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-card)] overflow-hidden">
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className="w-full flex items-center gap-3 px-4 py-3 min-h-[56px] text-left active:opacity-80 transition-opacity"
+            >
+                <div className="w-9 h-9 rounded-xl bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+                    <Icon size={18} className="text-blue-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <h2 className="text-sm font-semibold text-[var(--text-primary)] truncate">{title}</h2>
+                    {subtitle && <p className="text-[11px] text-[var(--text-muted)] truncate">{subtitle}</p>}
+                </div>
+                <ChevronDown
+                    size={18}
+                    className={`text-[var(--text-muted)] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+                />
+            </button>
+            {open && <div className="px-3 pb-3 space-y-3 md:px-4 md:pb-4">{children}</div>}
+        </div>
+    );
+};
+
 
 interface CredentialsModalProps {
     credentials: { email: string; password: string };
