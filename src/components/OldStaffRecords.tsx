@@ -1,28 +1,56 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { OldStaffRecord } from '../types';
 import { Archive, Download, Eye, UserPlus, Trash2, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { exportOldStaffPDF } from '../utils/pdfExport';
+import { exportOldStaffPDF, OLD_STAFF_PDF_COLUMNS } from '../utils/pdfExport';
 import { customConfirm } from './CustomDialog';
+import ListFilterBar from './ui/ListFilterBar';
 
 interface OldStaffRecordsProps {
   oldStaffRecords: OldStaffRecord[];
   onRejoinStaff: (record: OldStaffRecord) => void;
   onPermanentDelete: (record: OldStaffRecord) => void;
+  loading?: boolean;
 }
 
 const PAGE_SIZE = 20;
 
-const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRejoinStaff, onPermanentDelete }) => {
+const ARCHIVE_SORTS = [
+  { key: 'name', label: 'Name' },
+  { key: 'left', label: 'Left date' },
+  { key: 'salary', label: 'Last salary' },
+  { key: 'advance', label: 'Outstanding' },
+];
+
+const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRejoinStaff, onPermanentDelete, loading = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRecord, setSelectedRecord] = useState<OldStaffRecord | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' }>(() => {
+    try { return JSON.parse(localStorage.getItem('archiveSort') || '') || { key: 'name', dir: 'asc' }; }
+    catch { return { key: 'name', dir: 'asc' }; }
+  });
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('archiveColumns') || '') || OLD_STAFF_PDF_COLUMNS.map(c => c.key); }
+    catch { return OLD_STAFF_PDF_COLUMNS.map(c => c.key); }
+  });
 
-  const filteredRecords = useMemo(() => oldStaffRecords.filter(record =>
-    record.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    record.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    record.reason.toLowerCase().includes(searchTerm.toLowerCase())
-  ), [oldStaffRecords, searchTerm]);
+  const filteredRecords = useMemo(() => {
+    const list = oldStaffRecords.filter(record =>
+      record.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.reason.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...list].sort((a, b) => {
+      switch (sort.key) {
+        case 'left': return (new Date(a.leftDate).getTime() - new Date(b.leftDate).getTime()) * dir;
+        case 'salary': return (a.totalSalary - b.totalSalary) * dir;
+        case 'advance': return (a.totalAdvanceOutstanding - b.totalAdvanceOutstanding) * dir;
+        default: return a.name.localeCompare(b.name) * dir;
+      }
+    });
+  }, [oldStaffRecords, searchTerm, sort]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
 
@@ -49,7 +77,7 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
   };
 
   const handleExportPDF = () => {
-    exportOldStaffPDF(oldStaffRecords);
+    exportOldStaffPDF(filteredRecords, visibleColumns);
   };
 
   const handleRejoin = async (record: OldStaffRecord) => {
@@ -109,26 +137,27 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
         </button>
       </div>
 
-      {/* Search */}
+      {/* Search + sort + columns (shared with PDF export) */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 md:p-6">
-        <div className="relative">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by name, location, or reason..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-10 min-h-[44px] border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base md:text-sm"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <X size={18} />
-            </button>
-          )}
-        </div>
+        <ListFilterBar
+          search={searchTerm}
+          onSearchChange={setSearchTerm}
+          placeholder="Search by name, location, or reason…"
+          sortKey={sort.key}
+          sortDir={sort.dir}
+          onSortChange={(key, dir) => {
+            setSort({ key, dir });
+            localStorage.setItem('archiveSort', JSON.stringify({ key, dir }));
+          }}
+          sortOptions={ARCHIVE_SORTS}
+          columns={OLD_STAFF_PDF_COLUMNS}
+          visibleColumns={visibleColumns}
+          onColumnsChange={(keys) => {
+            setVisibleColumns(keys);
+            localStorage.setItem('archiveColumns', JSON.stringify(keys));
+          }}
+          resultCount={filteredRecords.length}
+        />
       </div>
 
       {/* Mobile card list */}
@@ -137,7 +166,20 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
           <h2 className="text-sm font-semibold text-white/90">Archived ({filteredRecords.length})</h2>
         </div>
 
-        {filteredRecords.length === 0 ? (
+        {loading ? (
+          <div className="space-y-3">
+            {[0, 1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3 animate-pulse">
+                <div className="w-11 h-11 rounded-full bg-gray-200" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-1/2 bg-gray-200 rounded" />
+                  <div className="h-2.5 w-1/3 bg-gray-100 rounded" />
+                </div>
+                <div className="h-3 w-14 bg-gray-200 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : filteredRecords.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
             <Archive className="mx-auto text-gray-300 mb-3" size={40} />
             <h3 className="text-base font-medium text-gray-900 mb-1">No archived records found</h3>
@@ -177,7 +219,8 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
                   {isOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
                 </button>
 
-                {isOpen && (
+                <div className={`grid transition-all duration-200 ease-out ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                  <div className="overflow-hidden">
                   <div className="border-t border-gray-100 px-4 py-3 space-y-3 bg-gray-50/60">
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="rounded-xl bg-white border border-gray-100 p-2">
@@ -232,7 +275,8 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
                       </button>
                     </div>
                   </div>
-                )}
+                  </div>
+                </div>
               </div>
             );
           })

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Attendance, PartTimeSalaryDetail, Staff } from '../types';
 import { Clock, Plus, Download, Calendar, DollarSign, Edit2, Save, X, FileSpreadsheet, Trash2, Settings, CheckCircle, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react';
 import { calculatePartTimeSalary, getPartTimeDailySalary, isSunday, getCurrencyBreakdown } from '../utils/salaryCalculations';
+import ListFilterBar from './ui/ListFilterBar';
 import { exportSalaryToExcel, exportPartTimeSalaryPDF } from '../utils/exportUtils';
 import { settingsService } from '../services/settingsService';
 import { partTimeAdvanceService } from '../services/partTimeAdvanceService';
@@ -189,6 +190,28 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     const [showLocationDropdown, setShowLocationDropdown] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedSalaryCards, setExpandedSalaryCards] = useState<Set<string>>(new Set());
+    const [ptSort, setPtSort] = useState<{ key: string; dir: 'asc' | 'desc' }>(() => {
+        try { return JSON.parse(localStorage.getItem('partTimeSort') || '') || { key: 'name', dir: 'asc' }; }
+        catch { return { key: 'name', dir: 'asc' }; }
+    });
+    const [partTimeColumns, setPartTimeColumns] = useState<string[]>(() => {
+        try { return JSON.parse(localStorage.getItem('partTimeColumns') || '') || ['location', 'floor', 'days', 'shifts', 'earned', 'advance']; }
+        catch { return ['location', 'floor', 'days', 'shifts', 'earned', 'advance']; }
+    });
+    const PT_COLUMNS = [
+        { key: 'location', label: 'Location' },
+        { key: 'floor', label: 'Floor' },
+        { key: 'days', label: 'Days' },
+        { key: 'shifts', label: 'Shifts' },
+        { key: 'earned', label: 'Earned' },
+        { key: 'advance', label: 'Advance' },
+    ];
+    const PT_SORTS = [
+        { key: 'name', label: 'Name' },
+        { key: 'location', label: 'Location' },
+        { key: 'earnings', label: 'Earnings' },
+        { key: 'shifts', label: 'Shifts' },
+    ];
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const toggleSalaryCard = (key: string) => {
@@ -201,15 +224,16 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
     const shareSalaryWhatsApp = (salary: PartTimeSalaryDetail, advance: number, net: number) => {
         const period = new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+        const has = (k: string) => partTimeColumns.includes(k);
         const lines = [
             `*${salary.staffName}* — Part-Time Salary`,
             `Period: ${period}`,
-            `Location: ${salary.location}${salary.floor ? ` (${salary.floor})` : ''}`,
-            `Days: ${salary.totalDays} | Shifts: ${salary.totalShifts}`,
-            `Earned: ₹${salary.totalEarnings}`,
-            `Advance: ₹${advance}`,
+            has('location') ? `Location: ${salary.location}${salary.floor && has('floor') ? ` (${salary.floor})` : ''}` : '',
+            has('days') || has('shifts') ? `Days: ${salary.totalDays} | Shifts: ${salary.totalShifts}` : '',
+            has('earned') ? `Earned: ₹${salary.totalEarnings}` : '',
+            has('advance') ? `Advance: ₹${advance}` : '',
             `*Net Payable: ₹${net}*`
-        ];
+        ].filter(Boolean);
         window.open(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
     };
 
@@ -1015,6 +1039,14 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             (settlementFilter === 'settled' && status.isFullySettled) ||
             (settlementFilter === 'unsettled' && !status.isFullySettled);
         return locationMatch && searchMatch && settlementMatch;
+    }).sort((a, b) => {
+        const dir = ptSort.dir === 'asc' ? 1 : -1;
+        switch (ptSort.key) {
+            case 'location': return a.location.localeCompare(b.location) * dir;
+            case 'earnings': return (a.totalEarnings - b.totalEarnings) * dir;
+            case 'shifts': return (a.totalShifts - b.totalShifts) * dir;
+            default: return a.staffName.localeCompare(b.staffName) * dir;
+        }
     });
 
     // Filter salaries based on selection if any are selected
@@ -1865,31 +1897,28 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                     </div>
                 </div>
 
-                {/* Search Bar */}
-                <div className="mb-4">
-                    <div className="relative w-full md:w-96">
-                        <input
-                            type="text"
-                            placeholder="Search staff by name..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                            >
-                                <X size={16} />
-                            </button>
-                        )}
-                    </div>
-                    {searchQuery && (
-                        <p className="mt-2 text-sm text-gray-500">
-                            Showing {partTimeSalaries.length} result(s) for "{searchQuery}"
-                        </p>
-                    )}
-                </div>
+                {/* Search + sort + column bar (also drives PDF/WhatsApp exports) */}
+                <ListFilterBar
+                    accent="purple"
+                    search={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    placeholder="Search staff by name…"
+                    sortKey={ptSort.key}
+                    sortDir={ptSort.dir}
+                    onSortChange={(key, dir) => {
+                        setPtSort({ key, dir });
+                        localStorage.setItem('partTimeSort', JSON.stringify({ key, dir }));
+                    }}
+                    sortOptions={PT_SORTS}
+                    columns={PT_COLUMNS}
+                    visibleColumns={partTimeColumns}
+                    onColumnsChange={(keys) => {
+                        setPartTimeColumns(keys);
+                        localStorage.setItem('partTimeColumns', JSON.stringify(keys));
+                    }}
+                    resultCount={partTimeSalaries.length}
+                />
+
 
                 {/* Mobile card list */}
                 <div className="md:hidden space-y-3">
@@ -1942,7 +1971,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                         {expanded ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
                                     </button>
 
-                                    {expanded && (
+                                    <div className={`grid transition-all duration-200 ease-out ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                                      <div className="overflow-hidden">
                                         <div className="border-t border-gray-100 px-4 py-3 space-y-3 bg-gray-50/60">
                                             <div className="grid grid-cols-2 gap-2 text-sm">
                                                 <div className="rounded-xl bg-white border border-gray-100 p-2">
@@ -1979,7 +2009,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                 </button>
                                             </div>
                                         </div>
-                                    )}
+                                      </div>
+                                    </div>
                                 </div>
                             );
                         })

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode, ChevronDown } from 'lucide-react';
 import { userService, AppUser, CreateUserInput, UpdateUserInput } from '../services/userService';
 import { locationService, Location } from '../services/locationService';
 import { appSettingsService } from '../services/appSettingsService';
@@ -14,6 +14,40 @@ import FaceTuningPanel from './face/FaceTuningPanel';
 interface SettingsProps {
     userRole: string;
 }
+
+// Native-style collapsible settings section
+const SettingsSection: React.FC<{
+    title: string;
+    subtitle?: string;
+    icon: any;
+    defaultOpen?: boolean;
+    children: React.ReactNode;
+}> = ({ title, subtitle, icon: Icon, defaultOpen = false, children }) => {
+    const [open, setOpen] = useState(defaultOpen);
+    return (
+        <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-card)] overflow-hidden">
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className="w-full flex items-center gap-3 px-4 py-3 min-h-[56px] text-left active:opacity-80 transition-opacity"
+            >
+                <div className="w-9 h-9 rounded-xl bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+                    <Icon size={18} className="text-blue-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <h2 className="text-sm font-semibold text-[var(--text-primary)] truncate">{title}</h2>
+                    {subtitle && <p className="text-[11px] text-[var(--text-muted)] truncate">{subtitle}</p>}
+                </div>
+                <ChevronDown
+                    size={18}
+                    className={`text-[var(--text-muted)] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+                />
+            </button>
+            {open && <div className="px-3 pb-3 space-y-3 md:px-4 md:pb-4">{children}</div>}
+        </div>
+    );
+};
+
 
 interface CredentialsModalProps {
     credentials: { email: string; password: string };
@@ -378,6 +412,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                 </div>
             </div>
 
+            <SettingsSection title="General" subtitle="Login, QR and hike defaults" icon={SettingsIcon} defaultOpen>
             {/* Staff Self-Service Toggle */}
             <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -480,7 +515,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                     </button>
                 </div>
             </div>
+            </SettingsSection>
 
+            <SettingsSection title="Access & Compliance" subtitle="Visibility, statutory portal, face tuning" icon={Shield}>
             {/* Show Today's Punches toggle (admin only) */}
             {userRole === 'admin' && (
                 <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">
@@ -519,8 +556,10 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
             {/* Statutory Portal Configuration (admin only) */}
             {userRole === 'admin' && <StatutoryPortalSettingsPanel />}
             {(userRole === 'admin' || userRole === 'manager') && <FaceTuningPanel />}
+            </SettingsSection>
 
 
+            <SettingsSection title="Data & Backup" subtitle="Export a full snapshot" icon={Save}>
             {/* Backup all data (admin only) */}
             {userRole === 'admin' && (
                 <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">
@@ -555,7 +594,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                     </button>
                 </div>
             )}
+            </SettingsSection>
 
+            <SettingsSection title="Attendance & Devices" subtitle="Shifts, smart rules and kiosk" icon={Clock}>
             {/* Shift Windows & Auto Half-Day Rules */}
             <ShiftWindowsPanel />
 
@@ -572,7 +613,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
               </div>
               <AttendanceRulesPanel />
             </div>
+            </SettingsSection>
 
+            <SettingsSection title="Salary" subtitle="Override configuration" icon={TrendingUp}>
             {/* Salary Overrides Config */}
             <div className="glass-card-static p-4 rounded-xl space-y-3 mt-6">
               <div className="flex items-center gap-3">
@@ -586,6 +629,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
               </div>
               <SalaryOverridesPanel />
             </div>
+            </SettingsSection>
 
             <div className="flex flex-col sm:flex-row gap-3">
                 <input
