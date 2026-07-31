@@ -199,6 +199,20 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         });
     };
 
+    const shareSalaryWhatsApp = (salary: PartTimeSalaryDetail, advance: number, net: number) => {
+        const period = new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+        const lines = [
+            `*${salary.staffName}* — Part-Time Salary`,
+            `Period: ${period}`,
+            `Location: ${salary.location}${salary.floor ? ` (${salary.floor})` : ''}`,
+            `Days: ${salary.totalDays} | Shifts: ${salary.totalShifts}`,
+            `Earned: ₹${salary.totalEarnings}`,
+            `Advance: ₹${advance}`,
+            `*Net Payable: ₹${net}*`
+        ];
+        window.open(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
+    };
+
     // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
