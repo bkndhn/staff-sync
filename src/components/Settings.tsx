@@ -19,7 +19,7 @@ interface SettingsProps {
 const SettingsSection: React.FC<{
     title: string;
     subtitle?: string;
-    icon: React.ComponentType<{ size?: number; className?: string }>;
+    icon: any;
     defaultOpen?: boolean;
     children: React.ReactNode;
 }> = ({ title, subtitle, icon: Icon, defaultOpen = false, children }) => {
