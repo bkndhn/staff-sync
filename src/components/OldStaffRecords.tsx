@@ -137,26 +137,27 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
         </button>
       </div>
 
-      {/* Search */}
+      {/* Search + sort + columns (shared with PDF export) */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 md:p-6">
-        <div className="relative">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by name, location, or reason..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-10 min-h-[44px] border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base md:text-sm"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <X size={18} />
-            </button>
-          )}
-        </div>
+        <ListFilterBar
+          search={searchTerm}
+          onSearchChange={setSearchTerm}
+          placeholder="Search by name, location, or reason…"
+          sortKey={sort.key}
+          sortDir={sort.dir}
+          onSortChange={(key, dir) => {
+            setSort({ key, dir });
+            localStorage.setItem('archiveSort', JSON.stringify({ key, dir }));
+          }}
+          sortOptions={ARCHIVE_SORTS}
+          columns={OLD_STAFF_PDF_COLUMNS}
+          visibleColumns={visibleColumns}
+          onColumnsChange={(keys) => {
+            setVisibleColumns(keys);
+            localStorage.setItem('archiveColumns', JSON.stringify(keys));
+          }}
+          resultCount={filteredRecords.length}
+        />
       </div>
 
       {/* Mobile card list */}
@@ -165,7 +166,20 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
           <h2 className="text-sm font-semibold text-white/90">Archived ({filteredRecords.length})</h2>
         </div>
 
-        {filteredRecords.length === 0 ? (
+        {loading ? (
+          <div className="space-y-3">
+            {[0, 1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3 animate-pulse">
+                <div className="w-11 h-11 rounded-full bg-gray-200" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-1/2 bg-gray-200 rounded" />
+                  <div className="h-2.5 w-1/3 bg-gray-100 rounded" />
+                </div>
+                <div className="h-3 w-14 bg-gray-200 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : filteredRecords.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
             <Archive className="mx-auto text-gray-300 mb-3" size={40} />
             <h3 className="text-base font-medium text-gray-900 mb-1">No archived records found</h3>
