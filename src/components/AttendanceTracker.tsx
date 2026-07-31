@@ -281,6 +281,27 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     }
   };
 
+  /** Sum working minutes for a staff member over the dates matching a predicate */
+  const getPeriodWorkMinutes = (staffId: string, matches: (date: string) => boolean): number =>
+    attendance
+      .filter(a => a.staffId === staffId && !a.isPartTime && matches(a.date))
+      .reduce((sum, a) => sum + workingMinutes(a.arrivalTime, a.leavingTime), 0);
+
+  const buildPeriodRow = (
+    member: Staff,
+    summary: { present: number; halfDay: number; absent: number; uninformed: number; total: number },
+    workingTime: string
+  ): PeriodAttendanceRow => ({
+    name: member.name,
+    location: member.location,
+    present: summary.present,
+    halfDay: summary.halfDay,
+    absent: summary.absent,
+    uninformed: summary.uninformed,
+    total: summary.total,
+    workingTime,
+  });
+
   const generateMonthlyView = () => {
     const year = monthlyDate.year;
     const month = monthlyDate.month;
@@ -292,6 +313,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     // Limit days shown: if viewing current month/year, only show up to today
     const maxDay = (year === currentYear && month === currentMonth) ? currentDay : daysInMonth;
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+    const monthTitle = `Attendance ${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}`;
 
     // Filter staff for monthly view
     const monthlyFilteredStaff = activeStaff
