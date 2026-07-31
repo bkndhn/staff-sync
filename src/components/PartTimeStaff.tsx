@@ -2009,7 +2009,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                 </button>
                                             </div>
                                         </div>
-                                    )}
+                                      </div>
+                                    </div>
                                 </div>
                             );
                         })
