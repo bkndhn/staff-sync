@@ -1696,25 +1696,46 @@ export type Database = {
       }
       tenants: {
         Row: {
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
           created_at: string | null
           id: string
           name: string
+          notes: string | null
+          plan: string
+          slug: string | null
           staff_limit: number
           status: string
+          updated_at: string
         }
         Insert: {
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           id?: string
           name: string
+          notes?: string | null
+          plan?: string
+          slug?: string | null
           staff_limit?: number
           status?: string
+          updated_at?: string
         }
         Update: {
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           id?: string
           name?: string
+          notes?: string | null
+          plan?: string
+          slug?: string | null
           staff_limit?: number
           status?: string
+          updated_at?: string
         }
         Relationships: []
       }

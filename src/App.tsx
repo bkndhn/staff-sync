@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
 import Navigation from './components/Navigation';
+import SuperAdminConsole from './components/SuperAdminConsole';
+import { impersonation, Tenant } from './services/superAdminService';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import AttendanceTracker from './components/AttendanceTracker';
@@ -94,6 +96,14 @@ function App() {
       }
     } catch {}
     return null;
+  });
+  // Super admin "view as client" scope (persisted so data-api stays scoped).
+  const [viewingTenant, setViewingTenant] = useState<{ id: string; name: string } | null>(() => {
+    try {
+      const id = localStorage.getItem('impersonateTenantId');
+      if (!id) return null;
+      return { id, name: localStorage.getItem('impersonateTenantName') || 'Client' };
+    } catch { return null; }
   });
   const [activeTab, setActiveTabState] = useState<NavigationTab>(() => {
     const saved = localStorage.getItem('activeTab');
@@ -340,6 +350,9 @@ function App() {
   };
 
   const handleLogout = () => {
+    impersonation.clear();
+    try { localStorage.removeItem('impersonateTenantName'); } catch {}
+    setViewingTenant(null);
     localStorage.removeItem('staffManagementLogin');
     localStorage.removeItem('activeTab');
     setUser(null);
@@ -348,7 +361,7 @@ function App() {
 
   // Filter staff based on user role and location - memoized for performance
   const filteredStaff = useMemo(() => {
-    if (user?.role === 'admin' || user?.role === 'statutory_admin') {
+    if (user?.role === 'admin' || user?.role === 'statutory_admin' || user?.role === 'super_admin') {
       return staff;
     } else if (user?.role === 'manager' && user.location) {
       return staff.filter(member => member.location === user.location);
@@ -361,7 +374,7 @@ function App() {
 
   // Filter attendance based on user role and location - memoized for performance
   const filteredAttendance = useMemo(() => {
-    if (user?.role === 'admin' || user?.role === 'statutory_admin') {
+    if (user?.role === 'admin' || user?.role === 'statutory_admin' || user?.role === 'super_admin') {
       return attendance;
     } else if (user?.role === 'manager' && user.location) {
       const locationStaffIds = staff
@@ -593,7 +606,7 @@ function App() {
   // Bulk update attendance (admin only)
   const bulkUpdateAttendance = async (date: string, status: 'Present' | 'Absent' | 'Half Day', shift?: 'Morning' | 'Evening', arrivalTime?: string, leavingTime?: string) => {
     // Allow admin, statutory_admin and managers to perform bulk updates
-    if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'statutory_admin')) {
+    if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'statutory_admin' && user.role !== 'super_admin')) {
       await customAlert('You do not have permission to perform bulk updates');
       return;
     }
@@ -1079,7 +1092,7 @@ function App() {
             attendance={filteredAttendanceData}
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
-            userRole={user?.role === 'admin' || user?.role === 'statutory_admin' ? 'admin' : 'manager'}
+            userRole={user?.role === 'admin' || user?.role === 'statutory_admin' || user?.role === 'super_admin' ? 'admin' : 'manager'}
 
             userLocation={user?.location || ''}
             isDarkTheme={isDarkTheme}
@@ -1127,7 +1140,7 @@ function App() {
             onDateChange={setSelectedDate}
             onUpdateAttendance={updateAttendance}
             onBulkUpdateAttendance={bulkUpdateAttendance}
-            userRole={user?.role === 'admin' || user?.role === 'statutory_admin' ? 'admin' : 'manager'}
+            userRole={user?.role === 'admin' || user?.role === 'statutory_admin' || user?.role === 'super_admin' ? 'admin' : 'manager'}
             actualRole={user?.role}
           />
         );
@@ -1272,6 +1285,24 @@ function App() {
     return <Login onLogin={handleLogin} />;
   }
 
+  // Super admin: platform control plane, unless "viewing as" a client.
+  if (user.role === 'super_admin' && !viewingTenant) {
+    return (
+      <SuperAdminConsole
+        email={user.email}
+        onLogout={handleLogout}
+        onViewAsClient={(t: Tenant) => {
+          setViewingTenant({ id: t.id, name: t.name });
+          try { localStorage.setItem('impersonateTenantName', t.name); } catch { /* ignore */ }
+          setActiveTab('Dashboard');
+          window.location.reload();
+        }}
+      />
+    );
+  }
+
+
+
 
 
 
@@ -1279,6 +1310,22 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {viewingTenant && user.role === 'super_admin' && (
+        <div className="fixed inset-x-0 top-0 z-[60] flex items-center gap-2 bg-blue-600 px-3 py-1.5 text-xs text-white">
+          <span className="flex-1 truncate">Viewing client: <strong>{viewingTenant.name}</strong></span>
+          <button
+            onClick={() => {
+              impersonation.clear();
+              try { localStorage.removeItem('impersonateTenantName'); } catch {}
+              setViewingTenant(null);
+              window.location.reload();
+            }}
+            className="rounded bg-white/20 px-2 py-0.5 font-medium hover:bg-white/30"
+          >
+            Exit client view
+          </button>
+        </div>
+      )}
       <Navigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}

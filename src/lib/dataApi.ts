@@ -82,12 +82,17 @@ class QueryBuilder<T = any> implements PromiseLike<{ data: T | null; error: Erro
         const empty = { data: (this.state.single ? null : []) as unknown as T, error: null };
         return onFulfilled ? onFulfilled(empty) : (empty as unknown as TR1);
       }
+      // Super admin "view as client" support: scopes every request to a client.
+      const impersonated = (() => {
+        try { return localStorage.getItem('impersonateTenantId') || ''; } catch { return ''; }
+      })();
       const res = await fetch(FUNCTION_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           apikey: SUPABASE_PUBLISHABLE_KEY,
           "x-session-token": token,
+          ...(impersonated ? { "x-tenant-id": impersonated } : {}),
         },
         body: JSON.stringify(this.state),
       });

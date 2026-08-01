@@ -116,6 +116,8 @@ export interface SalaryDetail {
   isProcessed: boolean;
   statutoryTotal?: number;
   statutoryBreakdown?: Array<{ key: string; label: string; amount: number }>;
+  /** Net payable excluding statutory deductions (used by statutory-mode views). */
+  nonStatutoryNet?: number;
 }
 
 export interface PayrollRun {
@@ -214,7 +216,7 @@ export interface SalaryHike {
 
 export interface User {
   email: string;
-  role: 'admin' | 'manager' | 'staff' | 'statutory_admin' | 'floor_supervisor';
+  role: 'admin' | 'manager' | 'staff' | 'statutory_admin' | 'floor_supervisor' | 'supervisor' | 'super_admin';
   location?: string;
   /** For supervisor role: the single floor they can manage. */
   floor?: string;
