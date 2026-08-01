@@ -64,7 +64,7 @@ const Navigation: React.FC<NavigationProps> = ({
       ];
       return map.filter(t => portalCfg.visiblePages[t.key]).map(({ id, label, icon }) => ({ id, label, icon }));
     }
-    if (user.role === 'admin') {
+    if (user.role === 'admin' || user.role === 'super_admin') {
       return [
         { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
         { id: 'Workforce Insights' as NavigationTab, label: 'Insights', icon: TrendingUp },
@@ -173,7 +173,7 @@ const Navigation: React.FC<NavigationProps> = ({
         </nav>
         {!collapsed && (
           <div className="p-3 border-t border-white/10 text-xs text-white/40 truncate">
-            {user.role === 'admin' || user.role === 'statutory_admin' ? 'Administrator' : user.role === 'staff' ? (user.staffName || 'Staff') : `${user.location || ''} Manager`.trim()}
+            {user.role === 'admin' || user.role === 'statutory_admin' || user.role === 'super_admin' ? 'Administrator' : user.role === 'staff' ? (user.staffName || 'Staff') : `${user.location || ''} Manager`.trim()}
           </div>
         )}
       </aside>
@@ -187,7 +187,7 @@ const Navigation: React.FC<NavigationProps> = ({
         {scopePill}
         <div className="text-right hidden lg:block mr-2">
           <div className="text-xs font-medium text-white/80 leading-tight">
-            {user.role === 'admin' || user.role === 'statutory_admin' ? 'Administrator' : user.role === 'staff' ? (user.staffName || 'Staff') : `${user.location || ''} Manager`.trim()}
+            {user.role === 'admin' || user.role === 'statutory_admin' || user.role === 'super_admin' ? 'Administrator' : user.role === 'staff' ? (user.staffName || 'Staff') : `${user.location || ''} Manager`.trim()}
           </div>
           <div className="text-[10px] text-white/40">{user.role === 'staff' ? 'Staff Portal' : user.email}</div>
         </div>

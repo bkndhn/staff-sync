@@ -6,7 +6,7 @@ export interface AppUser {
     id: string;
     email: string;
     full_name: string;
-    role: 'admin' | 'manager' | 'floor_supervisor' | 'statutory_admin';
+    role: 'admin' | 'manager' | 'floor_supervisor' | 'statutory_admin' | 'supervisor' | 'super_admin';
     location: string | null;
     location_id?: string | null;
     floor?: string | null;
@@ -21,7 +21,7 @@ export interface CreateUserInput {
     email: string;
     password: string;
     full_name: string;
-    role: 'admin' | 'manager' | 'floor_supervisor';
+    role: 'admin' | 'manager' | 'floor_supervisor' | 'statutory_admin' | 'supervisor';
     location?: string | null;
     location_id?: string | null;
     floor?: string | null;
@@ -31,8 +31,9 @@ export interface UpdateUserInput {
     email?: string;
     password?: string;
     full_name?: string;
-    role?: 'admin' | 'manager';
+    role?: 'admin' | 'manager' | 'floor_supervisor' | 'statutory_admin' | 'supervisor';
     location?: string | null;
+    floor?: string | null;
     location_id?: string | null;
     is_active?: boolean;
 }
@@ -55,7 +56,7 @@ export const userService = {
 
         return (data || []).map((user: any) => ({
             ...user,
-            role: user.role as 'admin' | 'manager',
+            role: user.role as AppUser['role'],
             is_active: user.is_active ?? true
         }));
     },
@@ -84,7 +85,7 @@ export const userService = {
             return {
                 user: {
                     ...user,
-                    role: user.role as 'admin' | 'manager',
+                    role: user.role as AppUser['role'],
                     is_active: user.is_active ?? true
                 },
                 sessionToken
@@ -139,7 +140,7 @@ export const userService = {
             }
 
             const { user } = await response.json();
-            return user ? { ...user, role: user.role as 'admin' | 'manager', is_active: user.is_active ?? true } : null;
+            return user ? { ...user, role: user.role as AppUser['role'], is_active: user.is_active ?? true } : null;
         } catch (err) {
             console.error('Error creating user:', err);
             return null;
@@ -200,7 +201,7 @@ export const userService = {
 
         return data ? {
             ...data,
-            role: data.role as 'admin' | 'manager',
+            role: data.role as AppUser['role'],
             is_active: data.is_active ?? true,
             created_at: data.created_at ?? undefined,
             updated_at: data.updated_at ?? undefined,

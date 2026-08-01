@@ -27,7 +27,7 @@ const corsHeaders = {
 //                    (using the column name supplied — usually 'location' or
 //                    'location_id')
 // ---------------------------------------------------------------------------
-type Role = "admin" | "manager" | "staff" | "statutory_admin" | "supervisor";
+type Role = "admin" | "manager" | "staff" | "statutory_admin" | "supervisor" | "super_admin";
 type Op = "select" | "insert" | "update" | "upsert" | "delete";
 
 interface TableAcl {
@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
 
     const { data: user } = await admin
       .from("app_users")
-      .select("id, role, location, location_id, floor, floor_id, is_active")
+      .select("id, role, location, location_id, floor, floor_id, is_active, tenant_id")
       .eq("id", session.user_id)
       .maybeSingle();
 
@@ -146,15 +146,33 @@ Deno.serve(async (req) => {
     }
 
     const role = (user.role as Role) ?? "staff";
+    const isSuper = role === "super_admin";
     const isRead = body.op === "select";
     const allowed = isRead ? acl.read : acl.write;
-    if (!allowed.includes(role)) {
+    if (!isSuper && !allowed.includes(role)) {
       return new Response(JSON.stringify({ error: `Role '${role}' not permitted to ${body.op} ${body.table}` }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ---- Tenant isolation -------------------------------------------------
+    // Every tenant-scoped table is filtered by the caller's tenant_id.
+    // A super_admin may target a specific client with the x-tenant-id header;
+    // without it they operate across all clients (read-only dashboards).
+    const headerTenant = req.headers.get("x-tenant-id");
+    const tenantId = isSuper ? (headerTenant || null) : (user.tenant_id as string | null);
+
+    if (!isSuper && !tenantId) {
+      return new Response(JSON.stringify({ error: "User is not assigned to a client" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (isSuper && !tenantId && body.op !== "select") {
+      return new Response(JSON.stringify({ error: "Select a client (x-tenant-id) before writing data" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Location + floor scoping
     const scopeFilters: Filter[] = [];
+    if (tenantId) scopeFilters.push({ col: "tenant_id", op: "eq", val: tenantId });
     if (role === "manager" && acl.locationCol && user.location) {
       scopeFilters.push({ col: acl.locationCol, op: "eq", val: user.location });
     }
@@ -168,6 +186,7 @@ Deno.serve(async (req) => {
     }
 
     const forceScope = (rows: Array<Record<string, unknown>>) => {
+      if (tenantId) for (const r of rows) r["tenant_id"] = tenantId;
       if (role === "manager" && acl.locationCol && user.location) {
         for (const r of rows) r[acl.locationCol!] = user.location;
       }

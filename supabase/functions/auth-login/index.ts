@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
 
     const { data: user, error } = await supabase
       .from('app_users')
-      .select('id, email, full_name, role, location, location_id, floor, floor_id, is_active, last_login, password_hash')
+      .select('id, email, full_name, role, location, location_id, floor, floor_id, is_active, last_login, password_hash, tenant_id')
       .eq('email', normalizedEmail)
       .eq('is_active', true)
       .single();
@@ -140,6 +140,28 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Invalid credentials' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Client (tenant) must be active — super_admin has no tenant.
+    let tenant: { id: string; name: string; status: string } | null = null;
+    if (user.tenant_id) {
+      const { data: t } = await supabase
+        .from('tenants')
+        .select('id, name, status')
+        .eq('id', user.tenant_id)
+        .maybeSingle();
+      tenant = t as typeof tenant;
+      if (!tenant || tenant.status !== 'ACTIVE') {
+        return new Response(
+          JSON.stringify({ error: 'This client account is suspended. Contact your provider.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else if (user.role !== 'super_admin') {
+      return new Response(
+        JSON.stringify({ error: 'Account is not linked to a client. Contact your provider.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -178,7 +200,7 @@ Deno.serve(async (req) => {
     // Return user without password_hash, plus session token
     const { password_hash: _, ...safeUser } = user;
     return new Response(
-      JSON.stringify({ user: safeUser, sessionToken }),
+      JSON.stringify({ user: { ...safeUser, tenant }, sessionToken }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
