@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
 
     const { data: me } = await admin
       .from("app_users")
-      .select("id, email, role, is_active, super_admin_role")
+      .select("id, email, role, is_active")
       .eq("id", session.user_id)
       .maybeSingle();
 
@@ -95,7 +95,16 @@ Deno.serve(async (req) => {
       return json({ error: "Super admin access required" }, 403);
     }
     
-    const saRole = me.super_admin_role || "owner"; // default to owner if null
+    let saRole = "owner"; // default to owner
+    const { data: rbac, error: rbacError } = await admin
+      .from("app_users")
+      .select("super_admin_role")
+      .eq("id", session.user_id)
+      .maybeSingle();
+      
+    if (!rbacError && rbac?.super_admin_role) {
+      saRole = rbac.super_admin_role;
+    }
 
     const body = await req.json().catch(() => ({}));
     const action = String(body?.action ?? "");
