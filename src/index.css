@@ -1908,7 +1908,10 @@ textarea::placeholder {
 /* Force all SVG icons to be visible */
 svg {
   color: inherit;
-  fill: currentColor;
+}
+
+svg.lucide {
+  fill: none !important;
 }
 
 /* Absolute positioned icons (like in inputs) */

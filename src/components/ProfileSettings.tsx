@@ -16,7 +16,7 @@ const ProfileSettings: React.FC<Props> = ({ user, onUpdateUser }) => {
     confirmPassword: ''
   });
   
-  const [showPwd, setShowPwd] = useState({ current: false, new: false });
+  const [showPwd, setShowPwd] = useState({ current: false, new: false, confirm: false });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -110,12 +110,17 @@ const ProfileSettings: React.FC<Props> = ({ user, onUpdateUser }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Confirm New Password</label>
-                <input 
-                  type={showPwd.new ? "text" : "password"} 
-                  value={form.confirmPassword} 
-                  onChange={e => setForm({ ...form, confirmPassword: e.target.value })} 
-                  className={inputCls} 
-                />
+                <div className="relative">
+                  <input 
+                    type={showPwd.confirm ? "text" : "password"} 
+                    value={form.confirmPassword} 
+                    onChange={e => setForm({ ...form, confirmPassword: e.target.value })} 
+                    className={inputCls} 
+                  />
+                  <button type="button" onClick={() => setShowPwd(p => ({ ...p, confirm: !p.confirm }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    {showPwd.confirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
