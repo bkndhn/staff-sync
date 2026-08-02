@@ -2096,11 +2096,15 @@ label:hover * {
   color: inherit !important;
 }
 
-/* Modal container backgrounds */
-.fixed.inset-0 .bg-white,
-[class*="modal"] .bg-white,
-.fixed .rounded-xl,
-.fixed .rounded-lg {
+/* Modal container backgrounds.
+   IMPORTANT: never touch elements that declare their own background/text colour
+   (buttons, badges, chips) — that used to wash blue buttons out to white-on-white. */
+.fixed.inset-0 > .bg-white,
+[class*="modal"] > .bg-white,
+.fixed > .rounded-xl:not([class*="bg-"]):not(button),
+.fixed > .rounded-lg:not([class*="bg-"]):not(button),
+.fixed.inset-0 > div > .rounded-xl:not([class*="bg-"]):not(button),
+.fixed.inset-0 > div > .rounded-lg:not([class*="bg-"]):not(button) {
   background-color: var(--bg-secondary) !important;
   color: var(--text-primary) !important;
 }
