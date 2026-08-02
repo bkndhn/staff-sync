@@ -119,6 +119,7 @@ Deno.serve(async (req) => {
             contact_email: p.contact_email ?? null,
             contact_phone: p.contact_phone ?? null,
             notes: p.notes ?? null,
+            staff_portal_enabled: p.staff_portal_enabled === undefined ? true : !!p.staff_portal_enabled,
           })
           .select()
           .single();
@@ -153,6 +154,10 @@ Deno.serve(async (req) => {
         if (!id) return json({ error: "Client id required" }, 400);
         const patch: Record<string, unknown> = {};
         for (const k of ["name", "plan", "contact_name", "contact_email", "contact_phone", "notes"]) {
+          if (p[k] !== undefined) patch[k] = p[k];
+        }
+        if (p.staff_portal_enabled !== undefined) patch.staff_portal_enabled = !!p.staff_portal_enabled;
+        for (const k of []) {
           if (p[k] !== undefined) patch[k] = p[k];
         }
         if (p.slug !== undefined) patch.slug = p.slug ? slugify(String(p.slug)) : null;
@@ -193,86 +198,8 @@ Deno.serve(async (req) => {
         return json({ data: counts });
       }
 
-      /* ---------------- Users ---------------- */
-      case "list_users": {
-        let q = admin
-          .from("app_users")
-          .select("id, email, full_name, role, location, floor, is_active, last_login, tenant_id, created_at")
-          .order("created_at", { ascending: true });
-        if (p.tenant_id) q = q.eq("tenant_id", String(p.tenant_id));
-        const { data, error } = await q;
-        if (error) return json({ error: error.message }, 400);
-        return json({ data });
-      }
-
-      case "create_user": {
-        if (!isEmail(p.email)) return json({ error: "Valid email required" }, 400);
-        const pwd = String(p.password ?? "");
-        if (pwd.length < 8) return json({ error: "Password must be at least 8 characters" }, 400);
-        const role = String(p.role ?? "admin");
-        if (!ALLOWED_ROLES.includes(role)) return json({ error: "Invalid role" }, 400);
-        if (!p.tenant_id) return json({ error: "Client is required" }, 400);
-
-        const { data, error } = await admin
-          .from("app_users")
-          .insert({
-            email: String(p.email).trim().toLowerCase(),
-            password_hash: await bcrypt.hash(pwd, 10),
-            full_name: String(p.full_name ?? p.email),
-            role,
-            location: p.location ?? null,
-            floor: p.floor ?? null,
-            is_active: true,
-            tenant_id: String(p.tenant_id),
-          })
-          .select("id, email, full_name, role, location, is_active, tenant_id")
-          .single();
-        if (error) return json({ error: error.message }, 400);
-        return json({ data });
-      }
-
-      case "update_user": {
-        const id = String(p.id ?? "");
-        if (!id) return json({ error: "User id required" }, 400);
-        const patch: Record<string, unknown> = {};
-        for (const k of ["full_name", "location", "floor", "is_active"]) {
-          if (p[k] !== undefined) patch[k] = p[k];
-        }
-        if (p.role !== undefined) {
-          if (!ALLOWED_ROLES.includes(String(p.role))) return json({ error: "Invalid role" }, 400);
-          patch.role = p.role;
-        }
-        const { data, error } = await admin
-          .from("app_users").update(patch).eq("id", id)
-          .neq("role", "super_admin")
-          .select("id, email, full_name, role, location, is_active, tenant_id").maybeSingle();
-        if (error) return json({ error: error.message }, 400);
-        return json({ data });
-      }
-
-      case "reset_user_password": {
-        const id = String(p.id ?? "");
-        const pwd = String(p.password ?? "");
-        if (!id) return json({ error: "User id required" }, 400);
-        if (pwd.length < 8) return json({ error: "Password must be at least 8 characters" }, 400);
-        const { error } = await admin
-          .from("app_users")
-          .update({ password_hash: await bcrypt.hash(pwd, 10) })
-          .eq("id", id);
-        if (error) return json({ error: error.message }, 400);
-        // Invalidate all sessions for that user
-        await admin.from("app_sessions").update({ is_valid: false }).eq("user_id", id);
-        return json({ data: { ok: true } });
-      }
-
-      case "delete_user": {
-        const id = String(p.id ?? "");
-        if (!id) return json({ error: "User id required" }, 400);
-        await admin.from("app_sessions").update({ is_valid: false }).eq("user_id", id);
-        const { error } = await admin.from("app_users").delete().eq("id", id).neq("role", "super_admin");
-        if (error) return json({ error: error.message }, 400);
-        return json({ data: { deleted: id } });
-      }
+      /* Client user management intentionally lives inside each client's own
+         admin app — the platform console never reads client user data. */
 
       /* ---------------- Platform overview ---------------- */
       case "overview": {

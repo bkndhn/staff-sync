@@ -20,6 +20,7 @@ export interface Tenant {
   contact_email?: string | null;
   contact_phone?: string | null;
   notes?: string | null;
+  staff_portal_enabled?: boolean;
   created_at?: string;
   staff_count?: number;
   active_staff_count?: number;
@@ -82,21 +83,12 @@ export const superAdminService = {
   deleteTenant: (id: string) => call<{ deleted: string }>('delete_tenant', { id, confirm: true }),
   tenantStats: (id: string) => call<Record<string, number>>('tenant_stats', { id }),
 
-  listUsers: (tenantId?: string) => call<TenantUser[]>('list_users', tenantId ? { tenant_id: tenantId } : {}),
-  createUser: (payload: Record<string, unknown>) => call<TenantUser>('create_user', payload),
-  updateUser: (payload: Record<string, unknown>) => call<TenantUser>('update_user', payload),
-  resetUserPassword: (id: string, password: string) =>
-    call<{ ok: boolean }>('reset_user_password', { id, password }),
-  deleteUser: (id: string) => call<{ deleted: string }>('delete_user', { id }),
 };
 
-/** "View as client" — scopes all data-api traffic to one client. */
+/** Kept so any stale impersonation state from earlier builds is cleared. */
 export const impersonation = {
   get: () => {
     try { return localStorage.getItem('impersonateTenantId') || ''; } catch { return ''; }
-  },
-  set: (tenantId: string) => {
-    try { localStorage.setItem('impersonateTenantId', tenantId); } catch { /* ignore */ }
   },
   clear: () => {
     try { localStorage.removeItem('impersonateTenantId'); } catch { /* ignore */ }
