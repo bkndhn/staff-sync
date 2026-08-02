@@ -157,9 +157,6 @@ Deno.serve(async (req) => {
           if (p[k] !== undefined) patch[k] = p[k];
         }
         if (p.staff_portal_enabled !== undefined) patch.staff_portal_enabled = !!p.staff_portal_enabled;
-        for (const k of []) {
-          if (p[k] !== undefined) patch[k] = p[k];
-        }
         if (p.slug !== undefined) patch.slug = p.slug ? slugify(String(p.slug)) : null;
         if (p.status !== undefined) patch.status = String(p.status).toUpperCase();
         if (p.staff_limit !== undefined) patch.staff_limit = Math.max(1, Number(p.staff_limit));
