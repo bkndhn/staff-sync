@@ -101,15 +101,15 @@ const ProfileSettings: React.FC<Props> = ({ user, onUpdateUser }) => {
                     type={showPwd.new ? "text" : "password"} 
                     value={form.newPassword} 
                     onChange={e => setForm({ ...form, newPassword: e.target.value })} 
-                    className={`${inputCls} pr-11`}
+                    className={`${inputCls} pr-10`}
                   />
                   <button 
                     type="button" 
                     onClick={() => setShowPwd(p => ({ ...p, new: !p.new }))} 
-                    className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center justify-center shadow-sm"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors focus:outline-none flex items-center justify-center rounded-md hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
                     title={showPwd.new ? "Hide password" : "Show password"}
                   >
-                    {showPwd.new ? <EyeOff size={16} className="!text-white" /> : <Eye size={16} className="!text-white" />}
+                    {showPwd.new ? <EyeOff size={18} className="text-slate-600 dark:text-slate-300" /> : <Eye size={18} className="text-slate-600 dark:text-slate-300" />}
                   </button>
                 </div>
               </div>
@@ -120,15 +120,15 @@ const ProfileSettings: React.FC<Props> = ({ user, onUpdateUser }) => {
                     type={showPwd.confirm ? "text" : "password"} 
                     value={form.confirmPassword} 
                     onChange={e => setForm({ ...form, confirmPassword: e.target.value })} 
-                    className={`${inputCls} pr-11`}
+                    className={`${inputCls} pr-10`}
                   />
                   <button 
                     type="button" 
                     onClick={() => setShowPwd(p => ({ ...p, confirm: !p.confirm }))} 
-                    className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center justify-center shadow-sm"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors focus:outline-none flex items-center justify-center rounded-md hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
                     title={showPwd.confirm ? "Hide password" : "Show password"}
                   >
-                    {showPwd.confirm ? <EyeOff size={16} className="!text-white" /> : <Eye size={16} className="!text-white" />}
+                    {showPwd.confirm ? <EyeOff size={18} className="text-slate-600 dark:text-slate-300" /> : <Eye size={18} className="text-slate-600 dark:text-slate-300" />}
                   </button>
                 </div>
               </div>
@@ -146,15 +146,15 @@ const ProfileSettings: React.FC<Props> = ({ user, onUpdateUser }) => {
                 type={showPwd.current ? "text" : "password"} 
                 value={form.currentPassword} 
                 onChange={e => setForm({ ...form, currentPassword: e.target.value })} 
-                className={`${inputCls} pr-11`}
+                className={`${inputCls} pr-10`}
               />
               <button 
                 type="button" 
                 onClick={() => setShowPwd(p => ({ ...p, current: !p.current }))} 
-                className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center justify-center shadow-sm"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors focus:outline-none flex items-center justify-center rounded-md hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
                 title={showPwd.current ? "Hide password" : "Show password"}
               >
-                {showPwd.current ? <EyeOff size={16} className="!text-white" /> : <Eye size={16} className="!text-white" />}
+                {showPwd.current ? <EyeOff size={18} className="text-slate-600 dark:text-slate-300" /> : <Eye size={18} className="text-slate-600 dark:text-slate-300" />}
               </button>
             </div>
           </div>

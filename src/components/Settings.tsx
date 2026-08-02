@@ -828,9 +828,10 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-colors"
+                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors focus:outline-none flex items-center justify-center rounded-md hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                                        aria-label={showPassword ? "Hide password" : "Show password"}
                                     >
-                                        {showPassword ? <EyeOff size={16} color="#fff" /> : <Eye size={16} color="#fff" />}
+                                        {showPassword ? <EyeOff size={18} className="text-slate-600 dark:text-slate-300" /> : <Eye size={18} className="text-slate-600 dark:text-slate-300" />}
                                     </button>
                                 </div>
                             </div>

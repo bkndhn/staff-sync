@@ -368,10 +368,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 z-20 p-2 rounded-lg bg-blue-600 hover:bg-blue-500 transition-colors"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors focus:outline-none flex items-center justify-center rounded-md hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? <EyeOff size={18} color="#ffffff" /> : <Eye size={18} color="#ffffff" />}
+                    {showPassword ? <EyeOff size={18} className="text-slate-600 dark:text-slate-300" /> : <Eye size={18} className="text-slate-600 dark:text-slate-300" />}
                   </button>
                 </div>
               </div>
@@ -430,10 +430,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       <button
                         type="button"
                         onClick={() => setShowStaffPassword(v => !v)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-lg bg-blue-600 hover:bg-blue-500 transition-colors"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors focus:outline-none flex items-center justify-center rounded-md hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
                         aria-label={showStaffPassword ? 'Hide password' : 'Show password'}
                       >
-                        {showStaffPassword ? <EyeOff size={18} color="#ffffff" /> : <Eye size={18} color="#ffffff" />}
+                        {showStaffPassword ? <EyeOff size={18} className="text-slate-600 dark:text-slate-300" /> : <Eye size={18} className="text-slate-600 dark:text-slate-300" />}
                       </button>
                     </div>
                     <p className="text-xs text-[var(--text-muted)] mt-1">
