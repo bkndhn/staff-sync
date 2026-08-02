@@ -15,7 +15,7 @@
 // }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import bcrypt from "npm:bcryptjs@2.4.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
       return json({ error: "device_locked" }, 403);
     }
 
-    const hash = await bcrypt.hash(newPassword);
+    const hash = await bcrypt.hash(newPassword, 10);
 
     const { error: updateErr } = await admin
       .from("staff")

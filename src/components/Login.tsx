@@ -508,9 +508,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       <Camera size={24} className="text-blue-400" />
                     )}
                   </div>
-                  <label className="px-4 py-2.5 text-sm cursor-pointer flex items-center gap-2 font-bold bg-blue-600 hover:bg-blue-700 !text-white rounded-xl shadow-md transition-all shrink-0">
-                    <Upload size={16} className="!text-white" />
-                    <span className="!text-white">Upload Photo</span>
+                  <label className="px-4 py-2.5 text-sm cursor-pointer flex items-center gap-2 font-bold bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition-all shrink-0" style={{ color: '#ffffff' }}>
+                    <Upload size={16} style={{ color: '#ffffff' }} />
+                    Upload Photo
                     <input 
                       type="file" 
                       accept="image/*" 
