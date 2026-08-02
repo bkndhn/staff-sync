@@ -503,15 +503,15 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
                 <p className="mb-2 text-sm font-medium text-slate-700">Change Password <span className="text-xs text-slate-500 font-normal">(Leave blank to keep current)</span></p>
                 <div className="space-y-3">
                   <div className="relative">
-                    <input type={showPwd.new ? "text" : "password"} placeholder="New Password" value={profileForm.newPassword} onChange={e => setProfileForm({ ...profileForm, newPassword: e.target.value })} className={`${inputCls} pr-10`} />
-                    <button type="button" onClick={() => setShowPwd(p => ({ ...p, new: !p.new }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                      {showPwd.new ? <EyeOff size={16} /> : <Eye size={16} />}
+                    <input type={showPwd.new ? "text" : "password"} placeholder="New Password" value={profileForm.newPassword} onChange={e => setProfileForm({ ...profileForm, newPassword: e.target.value })} className={`${inputCls} pr-11`} />
+                    <button type="button" onClick={() => setShowPwd(p => ({ ...p, new: !p.new }))} className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center justify-center shadow-sm">
+                      {showPwd.new ? <EyeOff size={16} className="!text-white" /> : <Eye size={16} className="!text-white" />}
                     </button>
                   </div>
                   <div className="relative">
-                    <input type={showPwd.confirm ? "text" : "password"} placeholder="Confirm New Password" value={profileForm.confirmPassword} onChange={e => setProfileForm({ ...profileForm, confirmPassword: e.target.value })} className={`${inputCls} pr-10`} />
-                    <button type="button" onClick={() => setShowPwd(p => ({ ...p, confirm: !p.confirm }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                      {showPwd.confirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                    <input type={showPwd.confirm ? "text" : "password"} placeholder="Confirm New Password" value={profileForm.confirmPassword} onChange={e => setProfileForm({ ...profileForm, confirmPassword: e.target.value })} className={`${inputCls} pr-11`} />
+                    <button type="button" onClick={() => setShowPwd(p => ({ ...p, confirm: !p.confirm }))} className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center justify-center shadow-sm">
+                      {showPwd.confirm ? <EyeOff size={16} className="!text-white" /> : <Eye size={16} className="!text-white" />}
                     </button>
                   </div>
                 </div>
@@ -522,9 +522,9 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                 <p className="mb-3 text-sm font-medium text-amber-900">Current Password Required</p>
                 <div className="relative">
-                  <input required type={showPwd.current ? "text" : "password"} placeholder="Enter current password to save changes" value={profileForm.currentPassword} onChange={e => setProfileForm({ ...profileForm, currentPassword: e.target.value })} className={`${inputCls} pr-10`} />
-                  <button type="button" onClick={() => setShowPwd(p => ({ ...p, current: !p.current }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    {showPwd.current ? <EyeOff size={16} /> : <Eye size={16} />}
+                  <input required type={showPwd.current ? "text" : "password"} placeholder="Enter current password to save changes" value={profileForm.currentPassword} onChange={e => setProfileForm({ ...profileForm, currentPassword: e.target.value })} className={`${inputCls} pr-11`} />
+                  <button type="button" onClick={() => setShowPwd(p => ({ ...p, current: !p.current }))} className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center justify-center shadow-sm">
+                    {showPwd.current ? <EyeOff size={16} className="!text-white" /> : <Eye size={16} className="!text-white" />}
                   </button>
                 </div>
               </div>

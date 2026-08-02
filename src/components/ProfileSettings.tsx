@@ -101,10 +101,15 @@ const ProfileSettings: React.FC<Props> = ({ user, onUpdateUser }) => {
                     type={showPwd.new ? "text" : "password"} 
                     value={form.newPassword} 
                     onChange={e => setForm({ ...form, newPassword: e.target.value })} 
-                    className={inputCls} 
+                    className={`${inputCls} pr-11`}
                   />
-                  <button type="button" onClick={() => setShowPwd(p => ({ ...p, new: !p.new }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    {showPwd.new ? <EyeOff size={16} /> : <Eye size={16} />}
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPwd(p => ({ ...p, new: !p.new }))} 
+                    className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center justify-center shadow-sm"
+                    title={showPwd.new ? "Hide password" : "Show password"}
+                  >
+                    {showPwd.new ? <EyeOff size={16} className="!text-white" /> : <Eye size={16} className="!text-white" />}
                   </button>
                 </div>
               </div>
@@ -115,10 +120,15 @@ const ProfileSettings: React.FC<Props> = ({ user, onUpdateUser }) => {
                     type={showPwd.confirm ? "text" : "password"} 
                     value={form.confirmPassword} 
                     onChange={e => setForm({ ...form, confirmPassword: e.target.value })} 
-                    className={inputCls} 
+                    className={`${inputCls} pr-11`}
                   />
-                  <button type="button" onClick={() => setShowPwd(p => ({ ...p, confirm: !p.confirm }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    {showPwd.confirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPwd(p => ({ ...p, confirm: !p.confirm }))} 
+                    className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center justify-center shadow-sm"
+                    title={showPwd.confirm ? "Hide password" : "Show password"}
+                  >
+                    {showPwd.confirm ? <EyeOff size={16} className="!text-white" /> : <Eye size={16} className="!text-white" />}
                   </button>
                 </div>
               </div>
@@ -136,10 +146,15 @@ const ProfileSettings: React.FC<Props> = ({ user, onUpdateUser }) => {
                 type={showPwd.current ? "text" : "password"} 
                 value={form.currentPassword} 
                 onChange={e => setForm({ ...form, currentPassword: e.target.value })} 
-                className={inputCls} 
+                className={`${inputCls} pr-11`}
               />
-              <button type="button" onClick={() => setShowPwd(p => ({ ...p, current: !p.current }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                {showPwd.current ? <EyeOff size={16} /> : <Eye size={16} />}
+              <button 
+                type="button" 
+                onClick={() => setShowPwd(p => ({ ...p, current: !p.current }))} 
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center justify-center shadow-sm"
+                title={showPwd.current ? "Hide password" : "Show password"}
+              >
+                {showPwd.current ? <EyeOff size={16} className="!text-white" /> : <Eye size={16} className="!text-white" />}
               </button>
             </div>
           </div>
