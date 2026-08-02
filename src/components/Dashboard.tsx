@@ -477,10 +477,10 @@ const Dashboard: React.FC<DashboardProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-[var(--text-secondary)] mb-1">Uninformed Leave</p>
-                  <p className="text-3xl font-bold text-orange-400">{uninformedCount}</p>
-                  <p className="text-xs text-white/40">Unapproved absences</p>
+                  <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">{uninformedCount}</p>
+                  <p className="text-xs text-[var(--text-muted)]">Unapproved absences</p>
                 </div>
-                <div className="stat-icon" style={{ background: 'rgba(251,146,60,0.15)' }}><AlertTriangle size={22} className="text-orange-400" /></div>
+                <div className="stat-icon" style={{ background: 'rgba(251,146,60,0.15)' }}><AlertTriangle size={22} className="text-orange-600 dark:text-orange-400" /></div>
               </div>
             </div>
           </div>

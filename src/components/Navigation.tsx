@@ -163,8 +163,8 @@ const Navigation: React.FC<NavigationProps> = ({
                 title={tab.label}
                 className={`w-full flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-blue-500/20 text-white shadow-sm'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                    ? 'bg-blue-500/20 text-blue-700 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                 }`}
               >
                 <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />

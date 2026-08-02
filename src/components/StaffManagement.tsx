@@ -992,11 +992,11 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               type="button"
               onClick={() => { resetForm(); setEditingStaff(null); setShowAddForm(false); }}
               aria-label="Close"
-              className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center shadow-lg backdrop-blur"
+              className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-700 dark:text-white flex items-center justify-center shadow-lg backdrop-blur"
             >
               <X size={18} />
             </button>
-            <h2 className="text-lg font-semibold text-white mb-4 pr-10">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 pr-10">
               {editingStaff ? 'Edit Staff Member' : 'Add New Staff Member'}
             </h2>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1284,8 +1284,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 />
                 <Shield size={16} className="text-emerald-400" />
                 <div>
-                  <div className="text-sm font-semibold text-white">Statutory Employee</div>
-                  <div className="text-xs text-white/50">Covered under statutory compliance — enables PF / ESI numbers and per-staff deductions.</div>
+                  <div className="text-sm font-semibold text-[var(--text-primary)]">Statutory Employee</div>
+                  <div className="text-xs text-[var(--text-muted)]">Covered under statutory compliance — enables PF / ESI numbers and per-staff deductions.</div>
                 </div>
               </label>
             </div>
@@ -1326,9 +1326,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                             onChange={(e) => update({ enabled: e.target.checked })}
                             className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 border-white/30 bg-white/10"
                           />
-                          <span className="text-sm font-semibold text-white">{def.label}</span>
+                          <span className="text-sm font-semibold text-[var(--text-primary)]">{def.label}</span>
                         </label>
-                        <span className="text-xs text-white/40 flex-1 min-w-[140px]">{def.description}</span>
+                        <span className="text-xs text-[var(--text-muted)] flex-1 min-w-[140px]">{def.description}</span>
 
                         {enabled && (
                           <>
@@ -1713,7 +1713,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                       <div className="flex flex-col items-center gap-1 justify-center">
                         <span>{member.designation || <span className="text-gray-400 italic">-</span>}</span>
                         {member.exemptFromLateDeduction && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 leading-none">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/30 leading-none">
                             Exempt
                           </span>
                         )}
@@ -1894,7 +1894,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                   ) : (
                     <>
                       <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-white">{loc.name}</span>
+                          <span className="text-sm font-bold text-[var(--text-primary)]">{loc.name}</span>
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => { setEditingLocation(loc); setEditLocationValue(loc.name); setEditLocationIp(loc.device_ip || ''); setEditLocationPort(loc.device_port || 4370); }}
@@ -2277,9 +2277,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
             <div className="space-y-4 mb-6">
               <div className="glass-card-static p-4 rounded-xl">
-                <label className="block text-xs font-medium text-white/50 mb-1">Email</label>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Email</label>
                 <div className="flex items-center justify-between">
-                  <span className="text-white font-mono">{credentialsModal.credentials.email}</span>
+                  <span className="text-[var(--text-primary)] font-mono">{credentialsModal.credentials.email}</span>
                   <button
                     onClick={() => copyToClipboard(credentialsModal.credentials.email, 'email')}
                     className={`p-2 rounded-lg transition-colors ${copiedField === 'email' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
@@ -2289,9 +2289,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 </div>
               </div>
               <div className="glass-card-static p-4 rounded-xl">
-                <label className="block text-xs font-medium text-white/50 mb-1">Password</label>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Password</label>
                 <div className="flex items-center justify-between">
-                  <span className="text-white font-mono">{credentialsModal.credentials.password}</span>
+                  <span className="text-[var(--text-primary)] font-mono">{credentialsModal.credentials.password}</span>
                   <button
                     onClick={() => copyToClipboard(credentialsModal.credentials.password, 'password')}
                     className={`p-2 rounded-lg transition-colors ${copiedField === 'password' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}

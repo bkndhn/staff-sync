@@ -84,9 +84,9 @@ const CredentialsModal: React.FC<CredentialsModalProps> = ({ credentials, locati
 
                 <div className="space-y-4 mb-6">
                     <div className="glass-card-static p-4 rounded-xl">
-                        <label className="block text-xs font-medium text-white/50 mb-1">Email</label>
+                        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Email</label>
                         <div className="flex items-center justify-between">
-                            <span className="text-white font-mono text-sm break-all">{credentials.email}</span>
+                            <span className="text-[var(--text-primary)] font-mono text-sm break-all">{credentials.email}</span>
                             <button
                                 onClick={() => copyToClipboard(credentials.email, 'email')}
                                 className={`p-2 rounded-lg transition-colors flex-shrink-0 ml-2 ${copiedField === 'email' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
@@ -98,9 +98,9 @@ const CredentialsModal: React.FC<CredentialsModalProps> = ({ credentials, locati
                     </div>
 
                     <div className="glass-card-static p-4 rounded-xl">
-                        <label className="block text-xs font-medium text-white/50 mb-1">Password</label>
+                        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Password</label>
                         <div className="flex items-center justify-between">
-                            <span className="text-white font-mono tracking-wider">
+                            <span className="text-[var(--text-primary)] font-mono tracking-wider">
                                 {showPassword ? credentials.password : '••••••••••••'}
                             </span>
                             <div className="flex items-center gap-1 flex-shrink-0 ml-2">

@@ -168,15 +168,24 @@ body.light-theme .section-header button,
 body.light-theme [class*="bg-gradient"] .text-white,
 body.light-theme [class*="bg-gradient"] h1,
 body.light-theme [class*="bg-gradient"] h2,
+body.light-theme [class*="bg-gradient"] h3,
 body.light-theme [class*="bg-gradient"] p,
 body.light-theme [class*="bg-gradient"] span,
-body.light-theme [class*="bg-gradient"] button,
+body.light-theme [class*="bg-gradient"] button:not(.bg-white):not([class*="bg-white"]),
 body.light-theme [class*="from-blue"] .text-white,
 body.light-theme [class*="from-blue"] h1,
 body.light-theme [class*="from-blue"] h2,
+body.light-theme [class*="from-blue"] h3,
 body.light-theme [class*="from-purple"] .text-white,
 body.light-theme [class*="from-purple"] h1,
-body.light-theme [class*="from-purple"] h2 {
+body.light-theme [class*="from-purple"] h2,
+body.light-theme [class*="from-purple"] h3,
+body.light-theme [class*="from-amber"] .text-white,
+body.light-theme [class*="from-amber"] h1,
+body.light-theme [class*="from-amber"] h2,
+body.light-theme [class*="from-amber"] h3,
+body.light-theme [class*="from-amber"] p,
+body.light-theme [class*="from-amber"] span {
   color: #ffffff !important;
 }
 
@@ -1566,16 +1575,26 @@ table tbody tr:hover td[class*="sticky"] {
   background: var(--glass-bg-strong) !important;
 }
 
-.text-green-800 {
+/* Dark mode: bright versions of semantic colors */
+body:not(.light-theme) .text-green-800 {
   color: #38ef7d !important;
 }
-
-.text-yellow-800 {
+body:not(.light-theme) .text-yellow-800 {
   color: #fbbf24 !important;
 }
-
-.text-red-800 {
+body:not(.light-theme) .text-red-800 {
   color: #ff6b8a !important;
+}
+
+/* Light mode: proper dark semantic colors */
+body.light-theme .text-green-800 {
+  color: #065f46 !important;
+}
+body.light-theme .text-yellow-800 {
+  color: #854d0e !important;
+}
+body.light-theme .text-red-800 {
+  color: #991b1b !important;
 }
 
 .text-gray-800 {
