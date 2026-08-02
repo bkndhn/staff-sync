@@ -125,6 +125,17 @@ Deno.serve(async (req) => {
     // Anyone still on the temp password (joined_date) must set a real one.
     const mustChangePassword = Boolean(match.must_change_password) || usedTempPassword || !match.password_hash;
 
+    // Generate session token for data-api access
+    const sessionToken = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    await admin.from("app_sessions").insert({
+      user_id: match.id,
+      role: "staff",
+      token: sessionToken,
+      expires_at: expiresAt,
+      is_valid: true,
+    });
+
     return json({
       staff: {
         id: match.id,
@@ -134,6 +145,7 @@ Deno.serve(async (req) => {
         designation: match.designation,
         type: match.type,
       },
+      sessionToken,
       mustChangePassword,
     });
   } catch (err) {

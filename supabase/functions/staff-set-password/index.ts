@@ -113,7 +113,17 @@ Deno.serve(async (req) => {
       return json({ error: "internal_error" }, 500);
     }
 
-    return json({ ok: true });
+    const sessionToken = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    await admin.from("app_sessions").insert({
+      user_id: match.id,
+      role: "staff",
+      token: sessionToken,
+      expires_at: expiresAt,
+      is_valid: true,
+    });
+
+    return json({ ok: true, sessionToken });
   } catch (err) {
     console.error("staff-set-password error:", err);
     return json({ error: (err as Error).message ?? "internal_error" }, 500);

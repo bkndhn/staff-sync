@@ -134,11 +134,24 @@ Deno.serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: user } = await admin
-      .from("app_users")
-      .select("id, role, location, location_id, floor, floor_id, is_active, tenant_id")
-      .eq("id", session.user_id)
-      .maybeSingle();
+    let user: any = null;
+    if (session.role === "staff") {
+      const { data: sRow } = await admin
+        .from("staff")
+        .select("id, location, floor, is_active, tenant_id")
+        .eq("id", session.user_id)
+        .maybeSingle();
+      if (sRow) {
+        user = { ...sRow, role: "staff", is_active: sRow.is_active ?? true };
+      }
+    } else {
+      const { data: uRow } = await admin
+        .from("app_users")
+        .select("id, role, location, location_id, floor, floor_id, is_active, tenant_id")
+        .eq("id", session.user_id)
+        .maybeSingle();
+      user = uRow;
+    }
 
     if (!user || !user.is_active) {
       return new Response(JSON.stringify({ error: "User inactive" }),

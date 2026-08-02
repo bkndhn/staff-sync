@@ -116,24 +116,30 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
 
 
-  const finalizeStaffSession = (matchedStaff: any) => {
+  const finalizeStaffSession = (matchedStaff: any, sessionToken?: string) => {
     const session = {
       user: {
         email: `staff_${matchedStaff.id}`,
         role: 'staff',
         location: matchedStaff.location,
         staffId: matchedStaff.id,
-        staffName: matchedStaff.name
+        staffName: matchedStaff.name,
+        staffRecord: matchedStaff,
       },
+      sessionToken: sessionToken || null,
       expiresAt: Date.now() + (24 * 60 * 60 * 1000)
     };
     localStorage.setItem('staffManagementLogin', JSON.stringify(session));
+    if (sessionToken) {
+      localStorage.setItem('sessionToken', sessionToken);
+    }
     onLogin({
       email: `staff_${matchedStaff.id}`,
       role: 'staff',
       location: matchedStaff.location,
       staffId: matchedStaff.id,
-      staffName: matchedStaff.name
+      staffName: matchedStaff.name,
+      staffRecord: matchedStaff,
     });
   };
 
@@ -204,6 +210,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       }
 
       const matchedStaff = payload.staff;
+      const sessionToken = payload.sessionToken;
 
       if (payload.mustChangePassword) {
         // Do not create a session yet — force the staff member to pick a real
@@ -219,7 +226,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         return;
       }
 
-      finalizeStaffSession(matchedStaff);
+      finalizeStaffSession(matchedStaff, sessionToken);
     } catch (err) {
       console.error('Staff login error:', err);
       setError('Unable to connect to server. Please try again.');
@@ -279,7 +286,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         setLoading(false);
         return;
       }
-      finalizeStaffSession(mustSetPassword.staff);
+      finalizeStaffSession(mustSetPassword.staff, payload.sessionToken);
     } catch (err) {
       console.error('Set password error:', err);
       setError('Unable to reach server. Please try again.');

@@ -1069,7 +1069,7 @@ function App() {
     switch (activeTab) {
       case 'My Portal':
         if (user?.role === 'staff' && user.staffId) {
-          const portalStaff = staff.find(s => s.id === user.staffId);
+          const portalStaff = staff.find(s => s.id === user.staffId) || (user as any).staffRecord;
           if (!portalStaff) return <div className="p-8 text-center text-[var(--text-muted)]">Staff record not found.</div>;
           return (
             <Suspense fallback={<ComponentLoader />}>
