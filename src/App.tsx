@@ -93,7 +93,17 @@ function App() {
       if (!saved) return null;
       const d = JSON.parse(saved);
       if (d?.user?.email && d?.user?.role) {
-        if (d.expiresAt && Date.now() > d.expiresAt) { localStorage.removeItem('staffManagementLogin'); return null; }
+        if (d.expiresAt && Date.now() > d.expiresAt) { 
+          localStorage.removeItem('staffManagementLogin'); 
+          return null; 
+        }
+        
+        // Force logout of legacy staff sessions missing new auth data
+        if (d.user.role === 'staff' && (!d.sessionToken || !d.user.staffRecord)) {
+          localStorage.removeItem('staffManagementLogin');
+          return null;
+        }
+
         return d.user as User;
       }
     } catch {}
