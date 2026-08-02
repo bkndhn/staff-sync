@@ -74,25 +74,45 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { data: session } = await admin
+    const { data: session, error: sessionErr } = await admin
       .from("app_sessions")
       .select("user_id, expires_at, is_valid")
       .eq("token", token)
       .eq("is_valid", true)
       .maybeSingle();
 
-    if (!session || new Date(session.expires_at).getTime() < Date.now()) {
-      return json({ error: "Invalid or expired session" }, 401);
+    if (sessionErr) {
+      console.error("Session lookup error:", sessionErr);
+      return json({ error: `Session lookup failed: ${sessionErr.message}` }, 500);
     }
 
-    const { data: me } = await admin
+    if (!session) {
+      return json({ error: "Session not found — please log out and log in again" }, 401);
+    }
+
+    if (new Date(session.expires_at).getTime() < Date.now()) {
+      return json({ error: "Session expired — please log in again" }, 401);
+    }
+
+    const { data: me, error: meErr } = await admin
       .from("app_users")
       .select("id, email, role, is_active")
       .eq("id", session.user_id)
       .maybeSingle();
 
-    if (!me || !me.is_active || me.role !== "super_admin") {
-      return json({ error: "Super admin access required" }, 403);
+    if (meErr) {
+      console.error("User lookup error:", meErr);
+      return json({ error: `User lookup failed: ${meErr.message}` }, 500);
+    }
+
+    if (!me) {
+      return json({ error: "User account not found" }, 403);
+    }
+    if (!me.is_active) {
+      return json({ error: "User account is inactive" }, 403);
+    }
+    if (me.role !== "super_admin") {
+      return json({ error: `Super admin access required (your role: ${me.role})` }, 403);
     }
     
     let saRole = "owner"; // default to owner
