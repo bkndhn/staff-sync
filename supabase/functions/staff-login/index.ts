@@ -136,15 +136,13 @@ Deno.serve(async (req) => {
       is_valid: true,
     });
 
+    // Remove sensitive fields before returning the staff record to the frontend
+    const safeStaff = { ...match };
+    delete safeStaff.password_hash;
+    delete safeStaff.must_change_password;
+
     return json({
-      staff: {
-        id: match.id,
-        name: match.name,
-        location: match.location,
-        floor: match.floor,
-        designation: match.designation,
-        type: match.type,
-      },
+      staff: safeStaff,
       sessionToken,
       mustChangePassword,
     });
