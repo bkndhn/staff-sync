@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Attendance, PartTimeSalaryDetail, Staff } from '../types';
-import { Clock, Plus, Download, Calendar, DollarSign, Edit2, Save, X, FileSpreadsheet, Trash2, Settings, CheckCircle, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react';
+import { Clock, Plus, Download, Calendar, DollarSign, Edit2, Save, X, FileSpreadsheet, Trash2, Settings, CheckCircle, ChevronDown, ChevronUp, MessageCircle, Filter } from 'lucide-react';
 import { calculatePartTimeSalary, getPartTimeDailySalary, isSunday, getCurrencyBreakdown } from '../utils/salaryCalculations';
 import ListFilterBar from './ui/ListFilterBar';
 import { exportSalaryToExcel, exportPartTimeSalaryPDF } from '../utils/exportUtils';
@@ -188,6 +188,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         (!userRole || userRole === 'admin' || userRole === 'super_admin') ? ['All'] : (userLocation ? [userLocation] : ['All'])
     );
     const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+    const [showReportFilters, setShowReportFilters] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedSalaryCards, setExpandedSalaryCards] = useState<Set<string>>(new Set());
     const [ptSort, setPtSort] = useState<{ key: string; dir: 'asc' | 'desc' }>(() => {
@@ -1735,7 +1736,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
             {/* Monthly Salary Report */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6">
-                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 gap-4">
+                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-4">
                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                         <DollarSign className="text-green-600" size={20} />
                         Part-Time Staff Salary Report
@@ -1743,7 +1744,24 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             <span className="text-sm text-gray-500">- {userLocation}</span>
                         )}
                     </h2>
-                    <div className="flex flex-wrap gap-2 md:gap-4">
+
+                    {/* Mobile Collapsible Filter Options Toggle Button */}
+                    <button 
+                        type="button"
+                        onClick={() => setShowReportFilters(!showReportFilters)}
+                        className="w-full lg:hidden flex items-center justify-between p-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-xl transition-colors"
+                    >
+                        <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold text-sm">
+                            <Filter size={16} />
+                            <span>Filter Options</span>
+                        </div>
+                        <span className="text-xs text-[var(--text-muted)] font-medium">
+                            {showReportFilters ? 'Hide Filters' : 'Show Filters'}
+                        </span>
+                    </button>
+                </div>
+
+                <div className={`${showReportFilters ? 'flex' : 'hidden lg:flex'} flex-wrap items-center gap-2 md:gap-4 mb-6 p-3 lg:p-0 bg-slate-50 lg:bg-transparent rounded-xl border lg:border-0 border-slate-200 dark:border-slate-700`}>
                         {/* Multi-Location Filter Dropdown */}
                         <div className="relative" ref={dropdownRef}>
                             <button
