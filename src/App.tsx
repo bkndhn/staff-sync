@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
 import Navigation from './components/Navigation';
+import SuperAdminConsole from './components/SuperAdminConsole';
+import { impersonation, Tenant } from './services/superAdminService';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import AttendanceTracker from './components/AttendanceTracker';
@@ -29,8 +31,6 @@ import { locationDesignationShiftService } from './services/locationDesignationS
 import { resolveActiveRule } from './utils/attendanceRules';
 import { appSettingsService } from './services/appSettingsService';
 import { CustomDialogProvider, customAlert } from './components/CustomDialog';
-import { StatutoryAdminDashboard } from './components/StatutoryAdminDashboard';
-import { SuperAdminDashboard } from './components/SuperAdminDashboard';
 
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
 const SalaryManagement = React.lazy(() => import('./components/SalaryManagement'));
@@ -96,6 +96,14 @@ function App() {
       }
     } catch {}
     return null;
+  });
+  // Super admin "view as client" scope (persisted so data-api stays scoped).
+  const [viewingTenant, setViewingTenant] = useState<{ id: string; name: string } | null>(() => {
+    try {
+      const id = localStorage.getItem('impersonateTenantId');
+      if (!id) return null;
+      return { id, name: localStorage.getItem('impersonateTenantName') || 'Client' };
+    } catch { return null; }
   });
   const [activeTab, setActiveTabState] = useState<NavigationTab>(() => {
     const saved = localStorage.getItem('activeTab');
@@ -209,40 +217,6 @@ function App() {
 
   // Set default tab based on user role (only if no saved tab or role mismatch)
   useEffect(() => {
-    // Privacy Screen for web fallback
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        document.body.style.opacity = '0';
-      } else {
-        document.body.style.opacity = '1';
-      }
-    };
-    
-    // Additional protection for blurred window (when user alt-tabs)
-    const handleBlur = () => {
-      document.body.style.opacity = '0';
-    };
-    
-    const handleFocus = () => {
-      document.body.style.opacity = '1';
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, []);
-
-  useEffect(() => {
-    // Basic screen recording/screenshot deterrence CSS
-    document.body.style.userSelect = 'none';
-    document.body.style.webkitUserSelect = 'none';
-    
     if (!user) return;
     const saved = localStorage.getItem('activeTab') as NavigationTab | null;
     const statutoryAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Salary Management', 'Leave Management', 'Settings'];
@@ -251,7 +225,6 @@ function App() {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
       if (user.role === 'statutory_admin') return statutoryAllowed.includes(tab);
-      if (user.role === 'super_admin') return true;
       if (user.role === 'supervisor') return supervisorAllowed.includes(tab);
       if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security';
       return tab !== 'My Portal';
@@ -261,7 +234,7 @@ function App() {
     } else if (user.role === 'staff') {
       setActiveTab('My Portal');
     } else if (user.role === 'manager') {
-      setActiveTab('Dashboard');
+      setActiveTab('Face Attendance');
     } else {
       setActiveTab('Dashboard');
     }
@@ -276,14 +249,14 @@ function App() {
   const silentRefresh = useCallback(async () => {
     try {
       const [staffData, attendanceData, advanceData, oldStaffData, salaryHikeData, faceEmbeddingsData, designationsData, locDesigConfigs] = await Promise.all([
-        staffService.getAll().catch(() => []),
-        attendanceService.getAll().catch(() => []),
-        advanceService.getAll().catch(() => []),
-        oldStaffService.getAll().catch(() => []),
-        salaryHikeService.getAll().catch(() => []),
-        faceEmbeddingService.getAllApproved().catch(() => []),
-        designationService.getAllDesignations().catch(() => []),
-        locationDesignationShiftService.listAll().catch(() => []),
+        staffService.getAll(),
+        attendanceService.getAll(),
+        advanceService.getAll(),
+        oldStaffService.getAll(),
+        salaryHikeService.getAll(),
+        faceEmbeddingService.getAllApproved(),
+        designationService.getAllDesignations(),
+        locationDesignationShiftService.listAll(),
       ]);
       
       // Sync approved face embeddings to local Dexie for offline Face Scanner
@@ -377,6 +350,9 @@ function App() {
   };
 
   const handleLogout = () => {
+    impersonation.clear();
+    try { localStorage.removeItem('impersonateTenantName'); } catch {}
+    setViewingTenant(null);
     localStorage.removeItem('staffManagementLogin');
     localStorage.removeItem('activeTab');
     setUser(null);
@@ -422,7 +398,7 @@ function App() {
 
   // Auto-carry forward advances from previous month
   useEffect(() => {
-    if (staff.length === 0 || advances.length === 0 || (user?.role !== 'admin' && user?.role !== 'super_admin')) return;
+    if (staff.length === 0 || advances.length === 0 || user?.role !== 'admin') return;
 
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
@@ -446,8 +422,7 @@ function App() {
     leavingTime?: string,
     floor?: string,
     appliedRuleType?: string,
-    appliedRuleDetails?: any,
-    isUninformed?: boolean
+    appliedRuleDetails?: any
   ) => {
     // Check if manager is trying to edit non-today attendance
     if (user?.role === 'manager') {
@@ -557,8 +532,7 @@ function App() {
       arrivalTime: finalArrivalTime,
       leavingTime: finalLeavingTime,
       appliedRuleType: finalAppliedRuleType,
-      appliedRuleDetails: finalAppliedRuleDetails,
-      ...(isUninformed !== undefined ? { isUninformed } : {})
+      appliedRuleDetails: finalAppliedRuleDetails
     };
 
     try {
@@ -582,14 +556,13 @@ function App() {
           status: previousAttendance.status,
           shift: previousAttendance.shift,
           arrivalTime: previousAttendance.arrivalTime,
-          leavingTime: previousAttendance.leavingTime || null,
+          leavingTime: previousAttendance.leavingTime,
         } : { status: 'None' },
         after: {
           status,
           shift,
           arrivalTime: finalArrivalTime,
           leavingTime: finalLeavingTime,
-          ...(isUninformed !== undefined ? { isUninformed } : {})
         },
       });
 
@@ -715,7 +688,7 @@ function App() {
 
   // Add new staff member (admin only)
   const addStaff = async (newStaff: Omit<Staff, 'id'>) => {
-    if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+    if (user?.role !== 'admin') {
       await customAlert('Only administrators can add staff');
       return;
     }
@@ -747,7 +720,7 @@ function App() {
 
   // Update staff member with salary hike tracking
   const updateStaff = async (id: string, updatedStaff: Partial<Staff>) => {
-    if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+    if (user?.role !== 'admin') {
       await customAlert('Only administrators can update staff');
       return;
     }
@@ -1119,7 +1092,7 @@ function App() {
             attendance={filteredAttendanceData}
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
-            userRole={user?.role === 'admin' || user?.role === 'statutory_admin' ? 'admin' : 'manager'}
+            userRole={user?.role === 'admin' || user?.role === 'statutory_admin' || user?.role === 'super_admin' ? 'admin' : 'manager'}
 
             userLocation={user?.location || ''}
             isDarkTheme={isDarkTheme}
@@ -1167,7 +1140,7 @@ function App() {
             onDateChange={setSelectedDate}
             onUpdateAttendance={updateAttendance}
             onBulkUpdateAttendance={bulkUpdateAttendance}
-            userRole={user?.role === 'admin' || user?.role === 'statutory_admin' ? 'admin' : 'manager'}
+            userRole={user?.role === 'admin' || user?.role === 'statutory_admin' || user?.role === 'super_admin' ? 'admin' : 'manager'}
             actualRole={user?.role}
           />
         );
@@ -1312,12 +1285,47 @@ function App() {
     return <Login onLogin={handleLogin} />;
   }
 
-  if (user.role === 'super_admin') {
-    return <SuperAdminDashboard onLogout={handleLogout} />;
+  // Super admin: platform control plane, unless "viewing as" a client.
+  if (user.role === 'super_admin' && !viewingTenant) {
+    return (
+      <SuperAdminConsole
+        email={user.email}
+        onLogout={handleLogout}
+        onViewAsClient={(t: Tenant) => {
+          setViewingTenant({ id: t.id, name: t.name });
+          try { localStorage.setItem('impersonateTenantName', t.name); } catch { /* ignore */ }
+          setActiveTab('Dashboard');
+          window.location.reload();
+        }}
+      />
+    );
   }
+
+
+
+
+
+
+
 
   return (
     <div className="min-h-screen flex flex-col">
+      {viewingTenant && user.role === 'super_admin' && (
+        <div className="fixed inset-x-0 top-0 z-[60] flex items-center gap-2 bg-blue-600 px-3 py-1.5 text-xs text-white">
+          <span className="flex-1 truncate">Viewing client: <strong>{viewingTenant.name}</strong></span>
+          <button
+            onClick={() => {
+              impersonation.clear();
+              try { localStorage.removeItem('impersonateTenantName'); } catch {}
+              setViewingTenant(null);
+              window.location.reload();
+            }}
+            className="rounded bg-white/20 px-2 py-0.5 font-medium hover:bg-white/30"
+          >
+            Exit client view
+          </button>
+        </div>
+      )}
       <Navigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
