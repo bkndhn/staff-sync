@@ -35,25 +35,26 @@ interface TableAcl {
   write: Role[];
   locationCol?: string; // column to use for manager location-scoping
   floorCol?: string;    // column to use for supervisor floor-scoping
+  staffIdCol?: string;  // column to use for staff user scoping
 }
 
 const ACL: Record<string, TableAcl> = {
-  staff:                          { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin", "manager"], locationCol: "location", floorCol: "floor" },
-  attendance:                     { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "supervisor"], locationCol: "location", floorCol: "floor" },
-  punch_events:                   { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "supervisor"], locationCol: "location" },
-  break_events:                   { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "staff", "supervisor"], locationCol: "location" },
+  staff:                          { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin", "manager"], locationCol: "location", floorCol: "floor", staffIdCol: "id" },
+  attendance:                     { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "supervisor"], locationCol: "location", floorCol: "floor", staffIdCol: "staff_id" },
+  punch_events:                   { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "supervisor"], locationCol: "location", staffIdCol: "staff_id" },
+  break_events:                   { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "staff", "supervisor"], locationCol: "location", staffIdCol: "staff_id" },
   break_types:                    { read: ["admin", "manager", "staff", "supervisor"], write: ["admin"] },
   break_policies:                 { read: ["admin", "manager", "supervisor"],          write: ["admin"] },
-  leave_requests:                 { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "staff", "supervisor"], locationCol: "location" },
-  advances:                       { read: ["admin", "manager"],          write: ["admin", "manager"], locationCol: "location" },
-  advance_entries:                { read: ["admin", "manager"],          write: ["admin", "manager"] },
+  leave_requests:                 { read: ["admin", "manager", "staff", "supervisor"], write: ["admin", "manager", "staff", "supervisor"], locationCol: "location", staffIdCol: "staff_id" },
+  advances:                       { read: ["admin", "manager", "staff"],          write: ["admin", "manager"], locationCol: "location", staffIdCol: "staff_id" },
+  advance_entries:                { read: ["admin", "manager", "staff"],          write: ["admin", "manager"], staffIdCol: "staff_id" },
   payroll_runs:                   { read: ["admin"],                     write: ["admin"] },
   payroll_snapshots:              { read: ["admin"],                     write: ["admin"] },
-  salary_hikes:                   { read: ["admin", "manager"],          write: ["admin"] },
+  salary_hikes:                   { read: ["admin", "manager", "staff"],          write: ["admin"], staffIdCol: "staff_id" },
   salary_manual_overrides:        { read: ["admin"],                     write: ["admin"] },
-  face_embeddings:                { read: ["admin", "manager"],          write: ["admin", "manager"] },
-  face_registration_logs:         { read: ["admin", "manager"],          write: ["admin", "manager"] },
-  old_staff_records:              { read: ["admin"],                     write: ["admin"] },
+  face_embeddings:                { read: ["admin", "manager", "staff"],          write: ["admin", "manager", "staff"], staffIdCol: "staff_id" },
+  face_registration_logs:         { read: ["admin", "manager", "staff"],          write: ["admin", "manager", "staff"], staffIdCol: "staff_id" },
+  old_staff_records:              { read: ["admin", "staff"],                     write: ["admin"], staffIdCol: "original_staff_id" },
   part_time_advance_tracking:     { read: ["admin", "manager", "supervisor"], write: ["admin", "manager", "supervisor"] },
   part_time_settlements:          { read: ["admin", "manager", "supervisor"], write: ["admin", "manager", "supervisor"] },
   app_settings:                   { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
@@ -197,6 +198,9 @@ Deno.serve(async (req) => {
         scopeFilters.push({ col: acl.floorCol, op: "eq", val: user.floor });
       }
     }
+    if (role === "staff" && acl.staffIdCol && user.id) {
+      scopeFilters.push({ col: acl.staffIdCol, op: "eq", val: user.id });
+    }
 
     const forceScope = (rows: Array<Record<string, unknown>>) => {
       if (tenantId) for (const r of rows) r["tenant_id"] = tenantId;
@@ -206,6 +210,9 @@ Deno.serve(async (req) => {
       if (role === "supervisor") {
         if (acl.locationCol && user.location) for (const r of rows) r[acl.locationCol!] = user.location;
         if (acl.floorCol && user.floor) for (const r of rows) r[acl.floorCol!] = user.floor;
+      }
+      if (role === "staff" && acl.staffIdCol && user.id) {
+        for (const r of rows) r[acl.staffIdCol!] = user.id;
       }
     };
 
