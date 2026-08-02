@@ -526,7 +526,6 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     { id: 'salary' as const, label: 'Salary', icon: IndianRupee },
     { id: 'hikes' as const, label: 'Hikes', icon: TrendingUp },
     { id: 'leave' as const, label: 'Leave', icon: FileText },
-    { id: 'face' as const, label: 'Face ID', icon: Camera },
   ];
 
   const isWideTab = activeSection === 'attendance' || activeSection === 'yearly';
@@ -598,13 +597,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               </div>
               {!isLeftStaff && (
                 <div className="ml-auto flex items-center gap-2">
-                  <button
-                    onClick={() => setShowQRScanner(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-95 font-semibold"
-                  >
-                    <QrCode size={18} />
-                    <span className="hidden sm:inline">Scan QR</span>
-                  </button>
+                  {/* QR Scanner button temporarily hidden */}
                 </div>
               )}
             </div>
@@ -1426,19 +1419,9 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         </div>
       )}
 
-      {/* FACE ID */}
-      {activeSection === 'face' && (
-        <FaceRegistration staff={staff} capturedBy={staff.name} />
-      )}
+      {/* FACE ID Temporarily Hidden */}
       
-      {/* QR Scanner Modal */}
-      {showQRScanner && (
-        <QRAttendanceScanner 
-          staffLocation={staff.location}
-          onScanSuccess={handleQRScanSuccess}
-          onClose={() => setShowQRScanner(false)}
-        />
-      )}
+      {/* QR Scanner Modal Temporarily Hidden */}
     </div>
   );
 };

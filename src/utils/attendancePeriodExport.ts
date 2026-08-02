@@ -1,7 +1,9 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 export interface PeriodAttendanceRow {
+  employeeCode?: string;
   name: string;
   location?: string;
   present: number;
@@ -21,9 +23,10 @@ const buildDoc = (title: string, rows: PeriodAttendanceRow[]) => {
 
   autoTable(doc, {
     startY: 30,
-    head: [['#', 'Name', 'Location', 'P', 'H', 'A', 'UI', 'Total', 'Working Time']],
+    head: [['#', 'Emp Code', 'Name', 'Location', 'P', 'H', 'A', 'UI', 'Total', 'Working Time']],
     body: rows.map((r, i) => [
       i + 1,
+      r.employeeCode || '-',
       r.name,
       r.location || '-',
       r.present,
@@ -43,6 +46,27 @@ const buildDoc = (title: string, rows: PeriodAttendanceRow[]) => {
 export const exportPeriodAttendancePDF = (title: string, rows: PeriodAttendanceRow[]) => {
   const doc = buildDoc(title, rows);
   doc.save(`${title.replace(/[^\w]+/g, '_')}.pdf`);
+};
+
+export const exportPeriodAttendanceExcel = (title: string, rows: PeriodAttendanceRow[]) => {
+  const data = rows.map((r, i) => ({
+    'S.No': i + 1,
+    'Emp Code': r.employeeCode || '-',
+    'Name': r.name,
+    'Location': r.location || '-',
+    'Present (P)': r.present,
+    'Half Day (H)': r.halfDay,
+    'Absent (A)': r.absent,
+    'Uninformed (UI)': r.uninformed,
+    'Total Points': r.total,
+    'Working Time': r.workingTime,
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance');
+
+  XLSX.writeFile(workbook, `${title.replace(/[^\w]+/g, '_')}.xlsx`);
 };
 
 export const sharePeriodAttendanceWhatsApp = async (title: string, rows: PeriodAttendanceRow[]) => {

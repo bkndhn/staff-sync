@@ -29,6 +29,8 @@ import { locationDesignationShiftService } from './services/locationDesignationS
 import { resolveActiveRule } from './utils/attendanceRules';
 import { appSettingsService } from './services/appSettingsService';
 import { CustomDialogProvider, customAlert } from './components/CustomDialog';
+import { StatutoryAdminDashboard } from './components/StatutoryAdminDashboard';
+import { SuperAdminDashboard } from './components/SuperAdminDashboard';
 
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
 const SalaryManagement = React.lazy(() => import('./components/SalaryManagement'));
@@ -207,6 +209,40 @@ function App() {
 
   // Set default tab based on user role (only if no saved tab or role mismatch)
   useEffect(() => {
+    // Privacy Screen for web fallback
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        document.body.style.opacity = '0';
+      } else {
+        document.body.style.opacity = '1';
+      }
+    };
+    
+    // Additional protection for blurred window (when user alt-tabs)
+    const handleBlur = () => {
+      document.body.style.opacity = '0';
+    };
+    
+    const handleFocus = () => {
+      document.body.style.opacity = '1';
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Basic screen recording/screenshot deterrence CSS
+    document.body.style.userSelect = 'none';
+    document.body.style.webkitUserSelect = 'none';
+    
     if (!user) return;
     const saved = localStorage.getItem('activeTab') as NavigationTab | null;
     const statutoryAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Salary Management', 'Leave Management', 'Settings'];
@@ -215,6 +251,7 @@ function App() {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
       if (user.role === 'statutory_admin') return statutoryAllowed.includes(tab);
+      if (user.role === 'super_admin') return true;
       if (user.role === 'supervisor') return supervisorAllowed.includes(tab);
       if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security';
       return tab !== 'My Portal';
@@ -224,7 +261,7 @@ function App() {
     } else if (user.role === 'staff') {
       setActiveTab('My Portal');
     } else if (user.role === 'manager') {
-      setActiveTab('Face Attendance');
+      setActiveTab('Dashboard');
     } else {
       setActiveTab('Dashboard');
     }
@@ -239,14 +276,14 @@ function App() {
   const silentRefresh = useCallback(async () => {
     try {
       const [staffData, attendanceData, advanceData, oldStaffData, salaryHikeData, faceEmbeddingsData, designationsData, locDesigConfigs] = await Promise.all([
-        staffService.getAll(),
-        attendanceService.getAll(),
-        advanceService.getAll(),
-        oldStaffService.getAll(),
-        salaryHikeService.getAll(),
-        faceEmbeddingService.getAllApproved(),
-        designationService.getAllDesignations(),
-        locationDesignationShiftService.listAll(),
+        staffService.getAll().catch(() => []),
+        attendanceService.getAll().catch(() => []),
+        advanceService.getAll().catch(() => []),
+        oldStaffService.getAll().catch(() => []),
+        salaryHikeService.getAll().catch(() => []),
+        faceEmbeddingService.getAllApproved().catch(() => []),
+        designationService.getAllDesignations().catch(() => []),
+        locationDesignationShiftService.listAll().catch(() => []),
       ]);
       
       // Sync approved face embeddings to local Dexie for offline Face Scanner
@@ -348,7 +385,7 @@ function App() {
 
   // Filter staff based on user role and location - memoized for performance
   const filteredStaff = useMemo(() => {
-    if (user?.role === 'admin' || user?.role === 'statutory_admin') {
+    if (user?.role === 'admin' || user?.role === 'statutory_admin' || user?.role === 'super_admin') {
       return staff;
     } else if (user?.role === 'manager' && user.location) {
       return staff.filter(member => member.location === user.location);
@@ -361,7 +398,7 @@ function App() {
 
   // Filter attendance based on user role and location - memoized for performance
   const filteredAttendance = useMemo(() => {
-    if (user?.role === 'admin' || user?.role === 'statutory_admin') {
+    if (user?.role === 'admin' || user?.role === 'statutory_admin' || user?.role === 'super_admin') {
       return attendance;
     } else if (user?.role === 'manager' && user.location) {
       const locationStaffIds = staff
@@ -385,7 +422,7 @@ function App() {
 
   // Auto-carry forward advances from previous month
   useEffect(() => {
-    if (staff.length === 0 || advances.length === 0 || user?.role !== 'admin') return;
+    if (staff.length === 0 || advances.length === 0 || (user?.role !== 'admin' && user?.role !== 'super_admin')) return;
 
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
@@ -409,7 +446,8 @@ function App() {
     leavingTime?: string,
     floor?: string,
     appliedRuleType?: string,
-    appliedRuleDetails?: any
+    appliedRuleDetails?: any,
+    isUninformed?: boolean
   ) => {
     // Check if manager is trying to edit non-today attendance
     if (user?.role === 'manager') {
@@ -519,7 +557,8 @@ function App() {
       arrivalTime: finalArrivalTime,
       leavingTime: finalLeavingTime,
       appliedRuleType: finalAppliedRuleType,
-      appliedRuleDetails: finalAppliedRuleDetails
+      appliedRuleDetails: finalAppliedRuleDetails,
+      ...(isUninformed !== undefined ? { isUninformed } : {})
     };
 
     try {
@@ -543,13 +582,14 @@ function App() {
           status: previousAttendance.status,
           shift: previousAttendance.shift,
           arrivalTime: previousAttendance.arrivalTime,
-          leavingTime: previousAttendance.leavingTime,
+          leavingTime: previousAttendance.leavingTime || null,
         } : { status: 'None' },
         after: {
           status,
           shift,
           arrivalTime: finalArrivalTime,
           leavingTime: finalLeavingTime,
+          ...(isUninformed !== undefined ? { isUninformed } : {})
         },
       });
 
@@ -593,7 +633,7 @@ function App() {
   // Bulk update attendance (admin only)
   const bulkUpdateAttendance = async (date: string, status: 'Present' | 'Absent' | 'Half Day', shift?: 'Morning' | 'Evening', arrivalTime?: string, leavingTime?: string) => {
     // Allow admin, statutory_admin and managers to perform bulk updates
-    if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'statutory_admin')) {
+    if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'statutory_admin' && user.role !== 'super_admin')) {
       await customAlert('You do not have permission to perform bulk updates');
       return;
     }
@@ -675,7 +715,7 @@ function App() {
 
   // Add new staff member (admin only)
   const addStaff = async (newStaff: Omit<Staff, 'id'>) => {
-    if (user?.role !== 'admin') {
+    if (user?.role !== 'admin' && user?.role !== 'super_admin') {
       await customAlert('Only administrators can add staff');
       return;
     }
@@ -707,7 +747,7 @@ function App() {
 
   // Update staff member with salary hike tracking
   const updateStaff = async (id: string, updatedStaff: Partial<Staff>) => {
-    if (user?.role !== 'admin') {
+    if (user?.role !== 'admin' && user?.role !== 'super_admin') {
       await customAlert('Only administrators can update staff');
       return;
     }
@@ -1272,10 +1312,9 @@ function App() {
     return <Login onLogin={handleLogin} />;
   }
 
-
-
-
-
+  if (user.role === 'super_admin') {
+    return <SuperAdminDashboard onLogout={handleLogout} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

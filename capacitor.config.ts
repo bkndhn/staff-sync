@@ -24,6 +24,10 @@ const config: CapacitorConfig = {
       backgroundColor: '#0a0a1a',
       showSpinner: false,
     },
+    PrivacyScreen: {
+      enable: true,
+      imageName: 'Splashscreen',
+    },
   },
 };
 

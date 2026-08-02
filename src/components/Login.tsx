@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, AlertCircle, Eye, EyeOff, Sparkles, Users, ShieldCheck } from 'lucide-react';
+import { Lock, AlertCircle, Eye, EyeOff, Sparkles, Users, ShieldCheck, Camera, Upload, Check } from 'lucide-react';
 import {
   isRateLimited,
   recordFailedAttempt,
@@ -10,6 +10,7 @@ import {
 } from '../lib/security';
 import { userService } from '../services/userService';
 import { supabase } from '../lib/supabase';
+import { compressImage } from '../utils/imageCompression';
 import { generateDeviceFingerprint } from '../utils/deviceFingerprint';
 
 interface LoginProps {
@@ -38,6 +39,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   }>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [staffPhoto, setStaffPhoto] = useState<string>('');
 
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
@@ -167,13 +169,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       // DDMMYYYY string — the server will accept whichever matches. Otherwise
       // only send it as `password`.
       const looksLikeDate = /^\d{8}$/.test(trimmedPassword);
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://nsmppwnpdxomjmgrtqka.supabase.co";
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-login`,
+        `${SUPABASE_URL}/functions/v1/staff-login`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
           },
           body: JSON.stringify({
             contactNumber: trimmedMobile,
@@ -233,6 +236,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       setError('Passwords do not match');
       return;
     }
+
     // Refuse letting them "reuse" the joined-date fallback as their new password.
     if (/^\d{8}$/.test(newPassword) && newPassword === mustSetPassword.currentCredential) {
       setError('Please choose a new password different from your joined date');
@@ -242,13 +246,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     try {
       const looksLikeDate = /^\d{8}$/.test(mustSetPassword.currentCredential);
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://nsmppwnpdxomjmgrtqka.supabase.co";
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-set-password`,
+        `${SUPABASE_URL}/functions/v1/staff-set-password`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
           },
           body: JSON.stringify({
             contactNumber: mustSetPassword.contactNumber,
@@ -257,6 +262,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               ? { joinedDate: mustSetPassword.currentCredential }
               : { currentPassword: mustSetPassword.currentCredential }),
             newPassword,
+            ...(staffPhoto ? { photo: staffPhoto } : {}),
           }),
         },
       );
@@ -472,6 +478,43 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   autoComplete="new-password"
                 />
               </div>
+              
+              {/* Photo Upload Section */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Profile Photo (Optional)</label>
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-blue-500/10 border-2 border-blue-500/30 flex items-center justify-center overflow-hidden shrink-0">
+                    {staffPhoto ? (
+                      <img src={staffPhoto} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <Camera size={24} className="text-blue-400" />
+                    )}
+                  </div>
+                  <label className="btn-premium px-4 py-2 text-sm cursor-pointer flex items-center gap-2">
+                    <Upload size={16} />
+                    <span>Upload Photo</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            const compressed = await compressImage(file);
+                            setStaffPhoto(compressed);
+                          } catch (err) {
+                            console.error('Error compressing image:', err);
+                            setError('Failed to process image');
+                          }
+                        }
+                      }}
+                    />
+                  </label>
+                  {staffPhoto && <Check size={20} className="text-emerald-500" />}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Confirm Password</label>
                 <input

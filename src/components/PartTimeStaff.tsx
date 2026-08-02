@@ -1325,13 +1325,15 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             <span className="hidden sm:inline">Export PDF</span>
                             <span className="sm:hidden">PDF</span>
                         </button>
-                        <button
-                            onClick={() => setShowSettings(true)}
-                            className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm"
-                        >
-                            <Settings size={16} />
-                            <span className="hidden sm:inline">Settings</span>
-                        </button>
+                        {(userRole === 'admin' || userRole === 'manager') && (
+                            <button
+                                onClick={() => setShowSettings(true)}
+                                className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm"
+                            >
+                                <Settings size={16} />
+                                <span className="hidden sm:inline">Settings</span>
+                            </button>
+                        )}
                         <button
                             onClick={() => setShowAddForm(true)}
                             className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm"
@@ -2664,8 +2666,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                 onClick={() => {
                                     settingsService.updatePartTimeRates(partTimeRates);
                                     setShowSettings(false);
-                                    // Force re-render to update calculated salaries
-                                    window.location.reload();
+                                    // Removed reload: React state will re-render component with new rates
                                 }}
                                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
                             >

@@ -27,8 +27,8 @@ const corsHeaders = {
 //                    (using the column name supplied — usually 'location' or
 //                    'location_id')
 // ---------------------------------------------------------------------------
-type Role = "admin" | "manager" | "staff" | "statutory_admin" | "supervisor";
-type Op = "select" | "insert" | "update" | "upsert" | "delete";
+type Role = "admin" | "manager" | "staff" | "statutory_admin" | "supervisor" | "super_admin";
+type Op = "select" | "insert" | "update" | "upsert" | "delete" | "create_admin" | "update_admin_password";
 
 interface TableAcl {
   read: Role[];
@@ -66,6 +66,7 @@ const ACL: Record<string, TableAcl> = {
   location_designation_shift_config: { read: ["admin", "manager", "staff", "statutory_admin", "supervisor"], write: ["admin"] },
 
   statutory_portal_config:        { read: ["admin", "manager", "staff", "statutory_admin" as Role], write: ["admin"] },
+  tenants:                        { read: ["super_admin"], write: ["super_admin"] },
 };
 
 interface Filter { col: string; op: string; val: unknown }
@@ -136,7 +137,7 @@ Deno.serve(async (req) => {
 
     const { data: user } = await admin
       .from("app_users")
-      .select("id, role, location, location_id, floor, floor_id, is_active")
+      .select("id, role, location, location_id, floor, floor_id, is_active, tenant_id")
       .eq("id", session.user_id)
       .maybeSingle();
 
@@ -153,8 +154,18 @@ Deno.serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Location + floor scoping
     const scopeFilters: Filter[] = [];
+    
+    // Multi-tenant isolation: Super admins don't have a tenant_id but they can only access 'tenants' table (enforced by ACL).
+    // All other roles must have their queries scoped to their tenant_id.
+    if (role !== "super_admin") {
+      if (!user.tenant_id) {
+        return new Response(JSON.stringify({ error: "User is missing a tenant assignment" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      scopeFilters.push({ col: "tenant_id", op: "eq", val: user.tenant_id });
+    }
+
     if (role === "manager" && acl.locationCol && user.location) {
       scopeFilters.push({ col: acl.locationCol, op: "eq", val: user.location });
     }
@@ -168,12 +179,19 @@ Deno.serve(async (req) => {
     }
 
     const forceScope = (rows: Array<Record<string, unknown>>) => {
-      if (role === "manager" && acl.locationCol && user.location) {
-        for (const r of rows) r[acl.locationCol!] = user.location;
-      }
-      if (role === "supervisor") {
-        if (acl.locationCol && user.location) for (const r of rows) r[acl.locationCol!] = user.location;
-        if (acl.floorCol && user.floor) for (const r of rows) r[acl.floorCol!] = user.floor;
+      for (const r of rows) {
+        // Enforce tenant_id on all inserts/upserts for non-super-admins
+        if (role !== "super_admin" && user.tenant_id) {
+          r["tenant_id"] = user.tenant_id;
+        }
+        
+        if (role === "manager" && acl.locationCol && user.location) {
+          r[acl.locationCol!] = user.location;
+        }
+        if (role === "supervisor") {
+          if (acl.locationCol && user.location) r[acl.locationCol!] = user.location;
+          if (acl.floorCol && user.floor) r[acl.floorCol!] = user.floor;
+        }
       }
     };
 
@@ -210,6 +228,61 @@ Deno.serve(async (req) => {
         query = applyFilters(query, [...scopeFilters, ...(body.filters ?? [])]);
         query = query.select();
         break;
+      }
+      case "create_admin": {
+        if (role !== "super_admin") throw new Error("Only super_admin can create admins");
+        const vals = body.values as any;
+        if (!vals.tenant_id || !vals.email || !vals.password) throw new Error("Missing admin fields");
+        
+        // 1. Create user in Supabase Auth
+        const { data: authUser, error: authErr } = await admin.auth.admin.createUser({
+          email: vals.email,
+          password: vals.password,
+          email_confirm: true,
+          user_metadata: { role: 'admin', tenant_id: vals.tenant_id, full_name: vals.full_name }
+        });
+        
+        if (authErr) throw authErr;
+        
+        // 2. Insert into app_users
+        query = query.insert({
+          id: authUser.user.id,
+          email: vals.email,
+          full_name: vals.full_name || 'Admin',
+          role: 'admin',
+          is_active: true,
+          tenant_id: vals.tenant_id,
+          password_hash: 'managed_by_auth'
+        }).select();
+        break;
+      }
+      case "update_admin_password": {
+        if (role !== "super_admin") throw new Error("Only super_admin can update admin passwords");
+        const vals = body.values as any;
+        if (!vals.email || !vals.password) throw new Error("Missing email or password");
+        
+        // Find the user by email in Auth
+        const { data: usersData, error: listErr } = await admin.auth.admin.listUsers();
+        if (listErr) throw listErr;
+        
+        const targetUser = usersData.users.find(u => u.email === vals.email);
+        if (!targetUser) throw new Error("Admin user not found in Auth system");
+        
+        // Ensure this user actually belongs to a tenant as an admin (don't let them change super_admin password)
+        if (targetUser.user_metadata?.role === 'super_admin') {
+          throw new Error("Cannot change super_admin password via this API");
+        }
+        
+        // Update password
+        const { error: updateErr } = await admin.auth.admin.updateUserById(targetUser.id, {
+          password: vals.password
+        });
+        
+        if (updateErr) throw updateErr;
+        
+        // Just return a success object, no DB query needed
+        return new Response(JSON.stringify({ data: [{ success: true }] }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 

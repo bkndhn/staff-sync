@@ -6,6 +6,7 @@ import { DEFAULT_SHIFT_WINDOWS, parseHHMM, shiftService } from '../services/shif
 import { exportAttendancePDF } from '../utils/exportUtils';
 import {
   exportPeriodAttendancePDF,
+  exportPeriodAttendanceExcel,
   sharePeriodAttendanceWhatsApp,
   workingMinutes,
   formatWorkingMinutes,
@@ -40,7 +41,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   userRole,
   actualRole
 }) => {
-  const showEmpCode = actualRole !== 'statutory_admin';
   const [view, setView] = useState<'daily' | 'monthly' | 'yearly'>('daily');
   const [expandedPeriodCard, setExpandedPeriodCard] = useState<string | null>(null);
   const [monthlyDate, setMonthlyDate] = useState({
@@ -287,11 +287,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       .filter(a => a.staffId === staffId && !a.isPartTime && matches(a.date))
       .reduce((sum, a) => sum + workingMinutes(a.arrivalTime, a.leavingTime), 0);
 
-  const buildPeriodRow = (
-    member: Staff,
-    summary: { present: number; halfDay: number; absent: number; uninformed: number; total: number },
-    workingTime: string
-  ): PeriodAttendanceRow => ({
+  const buildPeriodRow = (member: any, summary: any, work: string): PeriodAttendanceRow => ({
+    employeeCode: member.employeeCode || '',
     name: member.name,
     location: member.location,
     present: summary.present,
@@ -463,6 +460,12 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                             PDF
                           </button>
                           <button
+                            onClick={() => exportPeriodAttendanceExcel(`${monthTitle} - ${member.name}`, [buildPeriodRow(member, summary, work)])}
+                            className="flex-1 min-h-[44px] rounded-xl bg-emerald-600 text-white text-xs font-semibold active:bg-emerald-700"
+                          >
+                            Excel
+                          </button>
+                          <button
                             onClick={() => sharePeriodAttendanceWhatsApp(`${monthTitle} - ${member.name}`, [buildPeriodRow(member, summary, work)])}
                             className="flex-1 min-h-[44px] rounded-xl bg-green-600 text-white text-xs font-semibold active:bg-green-700"
                           >
@@ -489,7 +492,20 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 }))}
                 className="flex-1 min-h-[44px] rounded-xl bg-blue-600 text-white text-sm font-semibold shadow-lg active:bg-blue-700"
               >
-                Download month PDF
+                Month PDF
+              </button>
+              <button
+                onClick={() => exportPeriodAttendanceExcel(monthTitle, monthlyFilteredStaff.map(m => {
+                  const s = getStaffSummary(m.id);
+                  const w = formatWorkingMinutes(getPeriodWorkMinutes(m.id, d => {
+                    const dt = new Date(d);
+                    return dt.getFullYear() === year && dt.getMonth() === month;
+                  }));
+                  return buildPeriodRow(m, s, w);
+                }))}
+                className="flex-1 min-h-[44px] rounded-xl bg-emerald-600 text-white text-sm font-semibold shadow-lg active:bg-emerald-700"
+              >
+                Month Excel
               </button>
               <button
                 onClick={() => sharePeriodAttendanceWhatsApp(monthTitle, monthlyFilteredStaff.map(m => {
@@ -514,7 +530,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               <thead>
                 <tr className="bg-gray-50">
                   <th className="px-2 md:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
-                  {showEmpCode && <th className="px-2 md:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emp Code</th>}
+                  <th className="px-2 md:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emp Code</th>
                   <th className="px-2 md:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 z-30 bg-gray-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">Name</th>
                   <th className="px-1 md:px-2 py-3 text-center text-xs font-medium text-green-600 uppercase tracking-wider bg-green-50">P</th>
                   <th className="px-1 md:px-2 py-3 text-center text-xs font-medium text-yellow-600 uppercase tracking-wider bg-yellow-50">H</th>
@@ -543,7 +559,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   return (
                     <tr key={member.id} className="hover:bg-gray-50">
                       <td className="px-2 md:px-4 py-4 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
-                      {showEmpCode && <td className="px-2 md:px-4 py-4 whitespace-nowrap text-sm text-gray-500">{member.employeeCode || (member.deviceId?.startsWith('dev_') ? null : member.deviceId) || '-'}</td>}
+                      <td className="px-2 md:px-4 py-4 whitespace-nowrap text-sm text-gray-500">{member.employeeCode || (member.deviceId?.startsWith('dev_') ? null : member.deviceId) || '-'}</td>
                       <td className="px-2 md:px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 z-10 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">{member.name}</td>
                       <td className="px-1 md:px-2 py-4 text-center text-sm font-bold text-green-600 bg-green-50">{summary.present}</td>
                       <td className="px-1 md:px-2 py-4 text-center text-sm font-bold text-yellow-600 bg-yellow-50">{summary.halfDay}</td>
@@ -751,6 +767,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                           </div>
                           <div className="flex gap-2">
                             <button onClick={() => exportPeriodAttendancePDF(title, [row])} className="flex-1 min-h-[44px] rounded-xl bg-blue-600 text-white text-xs font-semibold active:bg-blue-700">PDF</button>
+                            <button onClick={() => exportPeriodAttendanceExcel(title, [row])} className="flex-1 min-h-[44px] rounded-xl bg-emerald-600 text-white text-xs font-semibold active:bg-emerald-700">Excel</button>
                             <button onClick={() => sharePeriodAttendanceWhatsApp(title, [row])} className="flex-1 min-h-[44px] rounded-xl bg-green-600 text-white text-xs font-semibold active:bg-green-700">WhatsApp</button>
                           </div>
                         </div>
@@ -764,6 +781,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   onClick={() => exportPeriodAttendancePDF(`${selectedStaff.name} ${year} attendance`, Array.from({ length: 12 }, (_, mi) => {
                     const s = computeMonthSummary(selectedStaff.id, mi);
                     return {
+                      employeeCode: selectedStaff.employeeCode || '',
                       name: new Date(year, mi).toLocaleString('default', { month: 'long' }),
                       location: selectedStaff.location,
                       present: s.p, halfDay: s.h, absent: s.a, uninformed: s.ui,
@@ -777,6 +795,25 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   className="flex-1 min-h-[44px] rounded-xl bg-blue-600 text-white text-sm font-semibold shadow-lg active:bg-blue-700"
                 >
                   Year PDF
+                </button>
+                <button
+                  onClick={() => exportPeriodAttendanceExcel(`${selectedStaff.name} ${year} attendance`, Array.from({ length: 12 }, (_, mi) => {
+                    const s = computeMonthSummary(selectedStaff.id, mi);
+                    return {
+                      employeeCode: selectedStaff.employeeCode || '',
+                      name: new Date(year, mi).toLocaleString('default', { month: 'long' }),
+                      location: selectedStaff.location,
+                      present: s.p, halfDay: s.h, absent: s.a, uninformed: s.ui,
+                      total: Number(s.total.toFixed(1)),
+                      workingTime: formatWorkingMinutes(getPeriodWorkMinutes(selectedStaff.id, d => {
+                        const dt = new Date(d);
+                        return dt.getFullYear() === year && dt.getMonth() === mi;
+                      })),
+                    };
+                  }))}
+                  className="flex-1 min-h-[44px] rounded-xl bg-emerald-600 text-white text-sm font-semibold shadow-lg active:bg-emerald-700"
+                >
+                  Year Excel
                 </button>
                 <button
                   onClick={() => sharePeriodAttendanceWhatsApp(`${selectedStaff.name} ${year} attendance`, Array.from({ length: 12 }, (_, mi) => {
@@ -1022,54 +1059,59 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               className="filter-chip"
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1">
+          <div className="flex flex-row items-center gap-1 md:gap-2 w-full md:w-auto">
+            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-1 md:px-2 py-1">
               <label className="text-[10px] uppercase text-gray-500 font-bold">IN</label>
               <input 
                 type="time" 
                 value={bulkInTime} 
                 onChange={e => setBulkInTime(e.target.value)} 
-                className="text-xs border-none outline-none focus:ring-0 p-0 w-[70px]"
+                className="text-xs border-none outline-none focus:ring-0 p-0 w-[55px] md:w-[70px] bg-transparent"
               />
             </div>
-            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1">
+            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-1 md:px-2 py-1">
               <label className="text-[10px] uppercase text-gray-500 font-bold">OUT</label>
               <input 
                 type="time" 
                 value={bulkOutTime} 
                 onChange={e => setBulkOutTime(e.target.value)} 
-                className="text-xs border-none outline-none focus:ring-0 p-0 w-[70px]"
+                className="text-xs border-none outline-none focus:ring-0 p-0 w-[55px] md:w-[70px] bg-transparent"
               />
             </div>
-            <button
-              onClick={async () => {
-                if (await customConfirm('Are you sure you want to mark ALL filtered staff as Present?')) {
-                  onBulkUpdateAttendance(selectedDate, 'Present', undefined, bulkInTime, bulkOutTime);
-                }
-              }}
-              className="btn-premium btn-premium-success !px-3 !py-1 !min-h-0 text-xs"
-            >
-              <Check size={14} />
-              <span className="hidden xs:inline">All Present</span>
-            </button>
-            <button
-              onClick={() => setShowBulkHalfDayModal(true)}
-              className="btn-premium btn-premium-warning !px-3 !py-1 !min-h-0 text-xs"
-            >
-              <Clock size={14} />
-              <span className="hidden xs:inline">All Half Day</span>
-            </button>
-            <button
-              onClick={async () => {
-                if (await customConfirm('Are you sure you want to mark ALL filtered staff as Absent?')) {
-                  onBulkUpdateAttendance(selectedDate, 'Absent');
-                }
-              }}
-              className="btn-premium btn-premium-danger !px-3 !py-1 !min-h-0 text-xs"
-            >
-              <X size={14} />
-              <span className="hidden xs:inline">All Absent</span>
-            </button>
+            <div className="flex gap-1">
+              <button
+                onClick={async () => {
+                  if (await customConfirm('Are you sure you want to mark ALL filtered staff as Present?')) {
+                    onBulkUpdateAttendance(selectedDate, 'Present', undefined, bulkInTime, bulkOutTime);
+                  }
+                }}
+                className="btn-premium btn-premium-success flex-1 !px-2 md:!px-3 !py-1 !min-h-0 text-xs flex justify-center"
+                title="Mark All Present"
+              >
+                <Check size={14} />
+                <span className="hidden md:inline ml-1">All Present</span>
+              </button>
+              <button
+                onClick={() => setShowBulkHalfDayModal(true)}
+                className="btn-premium btn-premium-warning flex-1 !px-2 md:!px-3 !py-1 !min-h-0 text-xs flex justify-center"
+                title="Mark All Half Day"
+              >
+                <Clock size={14} />
+                <span className="hidden md:inline ml-1">All Half Day</span>
+              </button>
+              <button
+                onClick={async () => {
+                  if (await customConfirm('Are you sure you want to mark ALL filtered staff as Absent?')) {
+                    onBulkUpdateAttendance(selectedDate, 'Absent');
+                  }
+                }}
+                className="btn-premium btn-premium-danger flex-1 !px-2 md:!px-3 !py-1 !min-h-0 text-xs flex justify-center"
+                title="Mark All Absent"
+              >
+                <X size={14} />
+                <span className="hidden md:inline ml-1">All Absent</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1203,7 +1245,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     <span className="font-semibold text-gray-900 text-[15px] truncate">{data.name}</span>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5 mt-1 pl-7">
-                    {showEmpCode && data.employeeCode && (
+                    {data.employeeCode && (
                       <span className="text-[10px] font-mono text-gray-500">{data.employeeCode}</span>
                     )}
                     <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${getLocationColor(data.location)}`}>
@@ -1253,7 +1295,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   </div>
 
                   {/* Action buttons - native-app tap targets */}
-                  <div className="grid grid-cols-4 gap-1.5">
+                  <div className="grid grid-cols-5 gap-1.5">
                     <button
                       onClick={() => confirmIndividualUpdate(data.id, 'Present', data)}
                       disabled={!canEditDate}
@@ -1270,6 +1312,35 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       className={`h-10 rounded-lg text-sm font-bold shadow-sm transition-all ${data.status === 'Absent' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-800 active:bg-red-200'}`}
                     >A</button>
                     <button
+                      onClick={async () => {
+                        const record = getAttendanceForDate(data.id, selectedDate);
+                        // If they aren't already absent, mark absent + uninformed
+                        const newStatus = data.status !== 'Absent' ? 'Absent' : 'Absent';
+                        const newVal = !record?.isUninformed;
+                        
+                        // Pass isUninformed flag via the new signature in updateAttendance
+                        onUpdateAttendance(
+                          data.id,
+                          selectedDate,
+                          newStatus,
+                          false,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          newVal
+                        );
+                      }}
+                      className={`h-10 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-1 ${data.isUninformed ? 'bg-orange-600 text-white' : 'bg-orange-100 text-orange-800 active:bg-orange-200'}`}
+                      title="Uninformed Leave"
+                    >UL</button>
+                    <button
                       onClick={() => setShowLocationModal({
                         staffId: data.id,
                         staffName: data.originalName || data.name,
@@ -1282,29 +1353,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       <MapPin size={16} />
                     </button>
                   </div>
-
-                  {data.status === 'Absent' && (
-                    <button
-                      onClick={async () => {
-                        const record = getAttendanceForDate(data.id, selectedDate);
-                        if (record) {
-                          const newVal = !record.isUninformed;
-                          await attendanceService.upsert({
-                            staffId: data.id,
-                            date: selectedDate,
-                            status: 'Absent',
-                            attendanceValue: 0,
-                            isUninformed: newVal
-                          });
-                          window.location.reload();
-                        }
-                      }}
-                      className={`mt-2 w-full h-9 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 ${data.isUninformed ? 'bg-orange-600 text-white' : 'bg-orange-100 text-orange-800 active:bg-orange-200'}`}
-                    >
-                      <AlertTriangle size={12} />
-                      {data.isUninformed ? 'Uninformed leave (tap to clear)' : 'Mark uninformed leave'}
-                    </button>
-                  )}
                 </>
               )}
             </div>
@@ -1319,7 +1367,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">S.No</th>
-                {showEmpCode && <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Emp Code</th>}
+                <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Emp Code</th>
                 <th className="px-3 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider sticky left-0 z-30 bg-gray-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Name</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
@@ -1336,7 +1384,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               {combinedAttendanceData.map((data: any) => (
                 <tr key={data.id} className={`group hover:bg-gray-50 transition-colors ${data.isUninformed ? 'bg-orange-50 border-l-4 border-orange-500' : ''}`}>
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{data.serialNo}</td>
-                  {showEmpCode && <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">{data.employeeCode || '-'}</td>}
+                  <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">{data.employeeCode || '-'}</td>
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap sticky left-0 z-10 bg-white group-hover:bg-gray-50 transition-colors shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                     <div>
                       <div className="text-sm font-medium text-gray-900">{data.name}</div>
@@ -1412,33 +1460,40 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                         >
                           A
                         </button>
-                        {data.status === 'Absent' && (
-                          <button
-                            onClick={async () => {
-                              const record = getAttendanceForDate(data.id, selectedDate);
-                              if (record) {
-                                const newVal = !record.isUninformed;
-                                await attendanceService.upsert({
-                                  staffId: data.id,
-                                  date: selectedDate,
-                                  status: 'Absent',
-                                  attendanceValue: 0,
-                                  isUninformed: newVal
-                                });
-                                window.location.reload();
-                              }
-                            }}
-                            className={`w-7 h-7 md:w-auto md:px-2 md:py-1 text-xs font-bold rounded shadow-sm flex items-center justify-center ${
-                              data.isUninformed
-                                ? 'bg-orange-600 text-white ring-2 ring-orange-600 ring-offset-1'
-                                : 'bg-orange-200 text-orange-900 hover:bg-orange-300 border border-orange-300'
-                            } transition-all duration-200`}
-                            title={data.isUninformed ? 'Marked as uninformed leave' : 'Mark as uninformed leave'}
-                            disabled={!canEditDate}
-                          >
-                            <AlertTriangle size={12} />
-                          </button>
-                        )}
+                        <button
+                          onClick={async () => {
+                            const record = getAttendanceForDate(data.id, selectedDate);
+                            const newVal = !record?.isUninformed;
+                            
+                            // Call App's onUpdateAttendance to update DB and local state simultaneously
+                            onUpdateAttendance(
+                              data.id,
+                              selectedDate,
+                              'Absent',
+                              false,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              newVal
+                            );
+                          }}
+                          className={`w-7 h-7 md:w-auto md:px-2 md:py-1 text-xs font-bold rounded shadow-sm flex items-center justify-center ${
+                            data.isUninformed
+                              ? 'bg-orange-600 text-white ring-2 ring-orange-600 ring-offset-1'
+                              : 'bg-orange-200 text-orange-900 hover:bg-orange-300 border border-orange-300'
+                          } transition-all duration-200`}
+                          title={data.isUninformed ? 'Unmarked as uninformed leave' : 'Mark as uninformed leave'}
+                          disabled={!canEditDate}
+                        >
+                          UL
+                        </button>
                         <button
                           onClick={() => setShowLocationModal({
                             staffId: data.id,

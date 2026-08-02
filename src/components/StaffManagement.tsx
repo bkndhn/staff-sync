@@ -86,6 +86,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   };
   const [draggedItem, setDraggedItem] = useState<Staff | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   // Settings State
   const [showLocationManager, setShowLocationManager] = useState(false);
@@ -852,13 +853,27 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         />
       )}
 
-      {/* Filter Bar */}
-      <div className="glass-card-static p-4 space-y-3">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2 text-white/60">
+      {/* Filter Bar Wrapped */}
+      <div className="glass-card-static rounded-xl overflow-hidden mb-6">
+        <button 
+          onClick={() => setShowFilters(!showFilters)}
+          className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 transition-colors"
+        >
+          <div className="flex items-center gap-2 text-white/90">
             <Filter size={18} />
-            <span className="font-medium">Location:</span>
+            <span className="font-semibold tracking-wide">Filter Options</span>
           </div>
+          <div className="text-white/60">
+            {showFilters ? <span className="text-sm">Hide Filters</span> : <span className="text-sm">Show Filters</span>}
+          </div>
+        </button>
+        
+        {showFilters && (
+          <div className="p-4 space-y-4 border-t border-white/5">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2 text-white/60 w-32">
+                <span className="font-medium text-sm">Location:</span>
+              </div>
           <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setLocationFilter('All')}
@@ -887,7 +902,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2 text-white/60">
+          <div className="flex items-center gap-2 text-white/60 w-32">
             <span className="font-medium text-sm">Accommodation:</span>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -904,7 +919,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2 text-white/60 ml-4">
+          <div className="flex items-center gap-2 text-white/60 w-32">
             <span className="font-medium text-sm">Floor:</span>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -935,7 +950,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2 text-white/60">
+          <div className="flex items-center gap-2 text-white/60 w-32">
             <span className="font-medium text-sm">Designation:</span>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -965,12 +980,14 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             ))}
           </div>
         </div>
+        </div>
+        )}
       </div>
 
       {/* Add/Edit Staff Form */}
       {showAddForm && (
         <div className="modal-overlay" onClick={() => { resetForm(); setEditingStaff(null); setShowAddForm(false); }}>
-          <div ref={formRef} className="modal-content max-w-5xl w-full max-h-[92vh] overflow-y-auto relative" onClick={(e) => e.stopPropagation()}>
+          <div ref={formRef} className="modal-content !max-w-4xl w-full max-h-[92vh] overflow-y-auto relative" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               onClick={() => { resetForm(); setEditingStaff(null); setShowAddForm(false); }}

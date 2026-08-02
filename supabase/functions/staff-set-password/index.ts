@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { contactNumber, deviceFingerprint, currentPassword, joinedDate, newPassword } = await req.json();
+    const { contactNumber, deviceFingerprint, currentPassword, joinedDate, newPassword, photo } = await req.json();
 
     if (!contactNumber || !deviceFingerprint || !newPassword) {
       return json({ error: "Missing required fields" }, 400);
@@ -105,6 +105,7 @@ Deno.serve(async (req) => {
         password_updated_at: new Date().toISOString(),
         // bind device on first-time set if not already bound
         device_id: match.device_id ?? deviceFingerprint,
+        ...(photo ? { photo_url: photo } : {}),
       })
       .eq("id", match.id);
 

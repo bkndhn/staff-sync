@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode, ChevronDown } from 'lucide-react';
 import { userService, AppUser, CreateUserInput, UpdateUserInput } from '../services/userService';
 import { locationService, Location } from '../services/locationService';
+import { staffService } from '../services/staffService';
 import { appSettingsService } from '../services/appSettingsService';
 import { getQRRefreshSeconds, setQRRefreshSeconds } from '../utils/qrCrypto';
 import ShiftWindowsPanel from './ShiftWindowsPanel';
@@ -222,6 +223,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
         location: '',
         floor: ''
     });
+    const [availableFloors, setAvailableFloors] = useState<string[]>([]);
     const [showPassword, setShowPassword] = useState(false);
 
     // Fetch users and locations on mount
@@ -234,12 +236,16 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [usersData, locationsData] = await Promise.all([
+            const [usersData, locationsData, staffData] = await Promise.all([
                 userService.getUsers(),
-                locationService.getLocations()
+                locationService.getLocations(),
+                staffService.getAll()
             ]);
             setUsers(usersData);
             setLocations(locationsData);
+            
+            const uniqueFloors = Array.from(new Set(staffData.filter(s => s.floor).map(s => s.floor))) as string[];
+            setAvailableFloors(uniqueFloors.sort());
         } catch (err) {
             console.error('Error loading data:', err);
             setError('Failed to load data');
@@ -417,7 +423,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                 </div>
             </div>
 
-            <SettingsSection title="General" subtitle="Login, QR and hike defaults" icon={SettingsIcon} defaultOpen>
+            <SettingsSection title="General" subtitle="Login, QR and hike defaults" icon={SettingsIcon}>
             {/* Staff Self-Service Toggle */}
             <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -828,18 +834,6 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                                     </button>
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-white/70 mb-1">Role *</label>
-                                <select
-                                    value={formData.role}
-                                    onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'manager' | 'floor_supervisor' })}
-                                    className="input-premium w-full"
-                                >
-                                    <option value="admin">Admin</option>
-                                    <option value="manager">Manager</option>
-                                    <option value="floor_supervisor">Floor Supervisor</option>
-                                </select>
-                            </div>
                             {(formData.role === 'manager' || formData.role === 'floor_supervisor') && (
                                 <div>
                                     <label className="block text-sm font-medium text-white/70 mb-1">Location *</label>
@@ -856,17 +850,40 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                                     </select>
                                 </div>
                             )}
+                            <div>
+                                <label className="block text-sm font-medium text-white/70 mb-1">Role *</label>
+                                <select
+                                    value={formData.role}
+                                    onChange={(e) => {
+                                        const newRole = e.target.value as 'admin' | 'manager' | 'floor_supervisor';
+                                        setFormData(prev => ({ 
+                                            ...prev, 
+                                            role: newRole,
+                                            location: newRole === 'admin' ? '' : prev.location,
+                                            floor: newRole !== 'floor_supervisor' ? '' : prev.floor
+                                        }));
+                                    }}
+                                    className="input-premium w-full"
+                                >
+                                    <option value="admin">Admin</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="floor_supervisor">Floor Supervisor</option>
+                                </select>
+                            </div>
                             {formData.role === 'floor_supervisor' && (
                                 <div>
                                     <label className="block text-sm font-medium text-white/70 mb-1">Floor *</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         value={formData.floor}
                                         onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
                                         className="input-premium w-full"
                                         required
-                                        placeholder="e.g. Ground Floor, 1st Floor"
-                                    />
+                                    >
+                                        <option value="">Select Floor</option>
+                                        {availableFloors.map(f => (
+                                            <option key={f} value={f}>{f}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             )}
                             <div className="flex gap-3 pt-4">
