@@ -95,6 +95,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [showExportOptions, setShowExportOptions] = useState(false);
   const [showAdvanceEntryModal, setShowAdvanceEntryModal] = useState<string | null>(null);
   const [advanceEntries, setAdvanceEntries] = useState<{ [staffId: string]: AdvanceEntry[] }>({});
   const [advanceForm, setAdvanceForm] = useState({ entryDate: new Date().toISOString().split('T')[0], amount: 0, purpose: '', deductPeriods: 1, startDeductMonth: undefined as number | undefined, startDeductYear: undefined as number | undefined });
@@ -1039,60 +1040,77 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 sm:flex gap-2">
-            <button
-              onClick={handleExportExcel}
-              className="btn-premium btn-premium-success whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
+          {/* Export & Action Options */}
+          <div className="w-full sm:w-auto">
+            <button 
+              type="button"
+              onClick={() => setShowExportOptions(!showExportOptions)}
+              className="w-full sm:hidden flex items-center justify-between p-3.5 bg-white/5 hover:bg-white/10 rounded-xl border border-slate-200 dark:border-white/10 transition-colors"
             >
-              <FileSpreadsheet size={16} />
-              <span className="hidden sm:inline">Export Excel</span>
-              <span className="sm:hidden">Excel</span>
+              <div className="flex items-center gap-2 text-[var(--text-primary)]">
+                <Download size={18} />
+                <span className="font-semibold text-sm tracking-wide">Export & Action Options</span>
+              </div>
+              <div className="text-[var(--text-muted)] text-xs font-medium">
+                {showExportOptions ? 'Hide Actions' : 'Show Actions'}
+              </div>
             </button>
-            <button
-              onClick={handleExportPDF}
-              className="btn-premium whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
-            >
-              <Download size={16} />
-              <span className="hidden sm:inline">Export PDF</span>
-              <span className="sm:hidden">PDF</span>
-            </button>
-            {!hideStatutoryExtras(userRole) && (
-            <div className="relative group">
+
+            <div className={`${showExportOptions ? 'grid grid-cols-2 gap-2 p-3 mt-2 bg-white/5 rounded-xl border border-slate-200 dark:border-white/10' : 'hidden'} sm:flex sm:flex-row gap-2`}>
               <button
-                className="btn-premium whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
-                style={{ background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)' }}
+                onClick={handleExportExcel}
+                className="btn-premium btn-premium-success whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
               >
                 <FileSpreadsheet size={16} />
-                <span className="hidden sm:inline">Statutory Export</span>
-                <span className="sm:hidden">Stat</span>
+                <span className="hidden sm:inline">Export Excel</span>
+                <span className="sm:inline">Excel</span>
               </button>
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden group-hover:block border border-gray-100">
-                <button onClick={() => exportStatutoryToExcel(salaryDetails, activeStaff, selectedMonth, selectedYear, 'combined')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Combined ESI & PF</button>
-                <button onClick={() => exportStatutoryToExcel(salaryDetails, activeStaff, selectedMonth, selectedYear, 'esi')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">ESI Only</button>
-                <button onClick={() => exportStatutoryToExcel(salaryDetails, activeStaff, selectedMonth, selectedYear, 'pf')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">PF Only</button>
+              <button
+                onClick={handleExportPDF}
+                className="btn-premium whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
+              >
+                <Download size={16} />
+                <span className="hidden sm:inline">Export PDF</span>
+                <span className="sm:inline">PDF</span>
+              </button>
+              {!hideStatutoryExtras(userRole) && (
+              <div className="relative group col-span-2 sm:col-span-1">
+                <button
+                  className="btn-premium w-full sm:w-auto whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
+                  style={{ background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)' }}
+                >
+                  <FileSpreadsheet size={16} />
+                  <span className="hidden sm:inline">Statutory Export</span>
+                  <span className="sm:inline">Stat</span>
+                </button>
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden group-hover:block border border-gray-100">
+                  <button onClick={() => exportStatutoryToExcel(salaryDetails, activeStaff, selectedMonth, selectedYear, 'combined')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Combined ESI & PF</button>
+                  <button onClick={() => exportStatutoryToExcel(salaryDetails, activeStaff, selectedMonth, selectedYear, 'esi')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">ESI Only</button>
+                  <button onClick={() => exportStatutoryToExcel(salaryDetails, activeStaff, selectedMonth, selectedYear, 'pf')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">PF Only</button>
+                </div>
               </div>
-            </div>
-            )}
+              )}
 
-            <button
-              onClick={handleDownloadAllSlips}
-              className="btn-premium whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
-              style={{ background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)' }}
-              title="Download individual salary slips for all staff"
-            >
-              <FileText size={16} />
-              <span className="hidden sm:inline">All Slips</span>
-              <span className="sm:hidden">Slips</span>
-            </button>
-            <button
-              onClick={() => setShowBulkSender(true)}
-              className="btn-premium whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm bg-[#25D366] hover:bg-[#20bd5a] text-white border-none"
-              title="Rapidly send WhatsApp slips to all staff"
-            >
-              <MessageCircle size={16} />
-              <span className="hidden sm:inline">Bulk WhatsApp</span>
-              <span className="sm:hidden">WA</span>
-            </button>
+              <button
+                onClick={handleDownloadAllSlips}
+                className="btn-premium whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm"
+                style={{ background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)' }}
+                title="Download individual salary slips for all staff"
+              >
+                <FileText size={16} />
+                <span className="hidden sm:inline">All Slips</span>
+                <span className="sm:inline">Slips</span>
+              </button>
+              <button
+                onClick={() => setShowBulkSender(true)}
+                className="btn-premium whitespace-nowrap flex items-center justify-center gap-2 px-3 md:px-4 py-2 text-sm bg-[#25D366] hover:bg-[#20bd5a] text-white border-none"
+                title="Rapidly send WhatsApp slips to all staff"
+              >
+                <MessageCircle size={16} />
+                <span className="hidden sm:inline">Bulk WhatsApp</span>
+                <span className="sm:inline">WA</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
