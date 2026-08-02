@@ -189,13 +189,45 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     }
   }, [locations]);
 
-  // Handle photo upload
+  // Handle photo upload with auto-resizing canvas compression (max 300x300 JPEG)
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, photo: reader.result as string }));
+        const rawUrl = reader.result as string;
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 300;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.85);
+            setFormData(prev => ({ ...prev, photo: compressed }));
+          } else {
+            setFormData(prev => ({ ...prev, photo: rawUrl }));
+          }
+        };
+        img.onerror = () => {
+          setFormData(prev => ({ ...prev, photo: rawUrl }));
+        };
+        img.src = rawUrl;
       };
       reader.readAsDataURL(file);
     }

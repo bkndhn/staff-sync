@@ -63,6 +63,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [showHalfDayModal, setShowHalfDayModal] = useState<{ staffId: string, staffName: string } | null>(null);
   const [showLocationModal, setShowLocationModal] = useState<{ staffId: string, staffName: string, currentLocation: string } | null>(null);
   const [selectedShift, setSelectedShift] = useState<'Morning' | 'Evening'>('Morning');
+  const [viewImageModal, setViewImageModal] = useState<{ name: string; photo: string } | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string>('Big Shop');
   const [availableLocations, setAvailableLocations] = useState<string[]>(['Big Shop', 'Small Shop', 'Godown']);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
@@ -434,6 +435,15 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     onClick={() => setExpandedPeriodCard(expanded ? null : member.id)}
                     className="w-full flex items-center gap-3 px-3 py-3 min-h-[56px] text-left active:bg-gray-50 transition-colors"
                   >
+                    {member.photo ? (
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setViewImageModal({ name: member.name, photo: member.photo! }); }} className="shrink-0 cursor-pointer">
+                        <img src={member.photo} alt={member.name} className="w-9 h-9 rounded-full object-cover border border-gray-200 shadow-sm" />
+                      </button>
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 font-bold text-xs flex items-center justify-center shrink-0 border border-indigo-100">
+                        {member.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-gray-900 text-sm truncate">{member.name}</p>
                       <p className="text-[11px] text-gray-500 truncate">{member.location}{member.floor ? ` • ${member.floor}` : ''} • {work}</p>
@@ -945,6 +955,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       id: member.id,
       serialNo: index + 1,
       employeeCode: member.employeeCode || '',
+      photo: member.photo || '',
       name: displayName,
       location: displayLocation,
       floor: member.floor || '',
@@ -1262,6 +1273,15 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold text-gray-400 w-5 shrink-0">{data.serialNo}</span>
+                    {data.photo ? (
+                      <button type="button" onClick={() => setViewImageModal({ name: data.originalName || data.name, photo: data.photo })} className="shrink-0 cursor-pointer">
+                        <img src={data.photo} alt={data.name} className="w-8 h-8 rounded-full object-cover border border-gray-200 shadow-sm" />
+                      </button>
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 font-bold text-xs flex items-center justify-center shrink-0 border border-indigo-100">
+                        {(data.originalName || data.name).charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <span className="font-semibold text-gray-900 text-[15px] truncate">{data.name}</span>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5 mt-1 pl-7">
@@ -1406,9 +1426,20 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{data.serialNo}</td>
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">{data.employeeCode || '-'}</td>
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap sticky left-0 z-10 bg-white group-hover:bg-gray-50 transition-colors shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{data.name}</div>
-                      <div className="text-sm text-gray-500">{data.type}</div>
+                    <div className="flex items-center gap-2.5">
+                      {data.photo ? (
+                        <button type="button" onClick={() => setViewImageModal({ name: data.originalName || data.name, photo: data.photo })} className="shrink-0 cursor-pointer">
+                          <img src={data.photo} alt={data.name} className="w-8 h-8 rounded-full object-cover border border-gray-200 shadow-sm hover:scale-105 transition-transform" />
+                        </button>
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 font-bold text-xs flex items-center justify-center shrink-0 border border-indigo-100">
+                          {(data.originalName || data.name).charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{data.name}</div>
+                        <div className="text-xs text-gray-500">{data.type}</div>
+                      </div>
                     </div>
                   </td>
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap text-xs">
@@ -1834,6 +1865,22 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* View Full Image Modal */}
+      {viewImageModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setViewImageModal(null)}>
+          <div className="relative max-w-lg w-full bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-2xl p-4 flex flex-col items-center" onClick={e => e.stopPropagation()}>
+            <div className="w-full flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+              <h3 className="font-bold text-base text-gray-900 dark:text-white">{viewImageModal.name}</h3>
+              <button onClick={() => setViewImageModal(null)} className="p-1 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="py-4">
+              <img src={viewImageModal.photo} alt={viewImageModal.name} className="max-w-full max-h-[70vh] rounded-xl object-contain shadow-md" />
             </div>
           </div>
         </div>
