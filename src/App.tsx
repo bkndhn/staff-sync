@@ -1173,6 +1173,7 @@ function App() {
               onUpdateAttendance={updateAttendance}
               onDeletePartTimeAttendance={deletePartTimeAttendance}
               userLocation={user?.location}
+              userRole={user?.role}
             />
           </Suspense>
         );

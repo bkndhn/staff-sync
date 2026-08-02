@@ -185,7 +185,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     );
     // Salary Report Filter: Defaults to ['All'] for admins, otherwise defaults to user's location in array
     const [reportLocationFilter, setReportLocationFilter] = useState<string[]>(
-        userRole === 'admin' ? ['All'] : (userLocation ? [userLocation] : ['All'])
+        (!userRole || userRole === 'admin' || userRole === 'super_admin') ? ['All'] : (userLocation ? [userLocation] : ['All'])
     );
     const [showLocationDropdown, setShowLocationDropdown] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -1325,13 +1325,15 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             <span className="hidden sm:inline">Export PDF</span>
                             <span className="sm:hidden">PDF</span>
                         </button>
-                        {(userRole === 'admin' || userRole === 'manager') && (
+                        {(!userRole || userRole === 'admin' || userRole === 'manager' || userRole === 'super_admin' || userRole === 'owner') && (
                             <button
                                 onClick={() => setShowSettings(true)}
                                 className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm"
+                                title="Part-Time Salary Settings"
                             >
                                 <Settings size={16} />
-                                <span className="hidden sm:inline">Settings</span>
+                                <span className="hidden sm:inline">Salary Settings</span>
+                                <span className="sm:hidden">Salary</span>
                             </button>
                         )}
                         <button
