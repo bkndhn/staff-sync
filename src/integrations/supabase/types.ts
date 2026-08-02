@@ -1706,6 +1706,7 @@ export type Database = {
           plan: string
           slug: string | null
           staff_limit: number
+          staff_portal_enabled: boolean
           status: string
           updated_at: string
         }
@@ -1720,6 +1721,7 @@ export type Database = {
           plan?: string
           slug?: string | null
           staff_limit?: number
+          staff_portal_enabled?: boolean
           status?: string
           updated_at?: string
         }
@@ -1734,6 +1736,7 @@ export type Database = {
           plan?: string
           slug?: string | null
           staff_limit?: number
+          staff_portal_enabled?: boolean
           status?: string
           updated_at?: string
         }
