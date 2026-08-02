@@ -191,6 +191,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       if (!res.ok) {
         if (payload?.error === 'device_locked') {
           setError('This account is already registered to another device. Please contact Admin to reset your device lock.');
+        } else if (payload?.error === 'staff_portal_disabled') {
+          setError('Staff login is currently disabled for your organisation. Please contact your administrator.');
         } else {
           setError('Invalid mobile number or password. Please check your credentials.');
         }
