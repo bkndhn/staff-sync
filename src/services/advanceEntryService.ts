@@ -165,7 +165,7 @@ export const advanceEntryService = {
 
     const allEntries = (data || []).map(this.mapFromDatabase);
 
-    return allEntries.filter(entry => {
+    return allEntries.filter((entry: any) => {
       const totalDeducted = entry.totalDeducted || 0;
       if (totalDeducted >= entry.amount) return false; // fully paid
 
