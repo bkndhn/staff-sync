@@ -422,7 +422,8 @@ function App() {
     leavingTime?: string,
     floor?: string,
     appliedRuleType?: string,
-    appliedRuleDetails?: any
+    appliedRuleDetails?: any,
+    isUninformed?: boolean
   ) => {
     // Check if manager is trying to edit non-today attendance
     if (user?.role === 'manager') {
@@ -532,7 +533,8 @@ function App() {
       arrivalTime: finalArrivalTime,
       leavingTime: finalLeavingTime,
       appliedRuleType: finalAppliedRuleType,
-      appliedRuleDetails: finalAppliedRuleDetails
+      appliedRuleDetails: finalAppliedRuleDetails,
+      isUninformed: !!isUninformed
     };
 
     try {
