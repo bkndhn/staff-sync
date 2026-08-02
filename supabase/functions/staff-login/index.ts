@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
 
     const { data: rows, error } = await admin
       .from("staff")
-      .select("id, name, location, floor, designation, type, joined_date, device_id, is_active, contact_number, password_hash, must_change_password")
+      .select("id, name, location, floor, designation, type, joined_date, device_id, is_active, contact_number, password_hash, must_change_password, tenant_id")
       .eq("contact_number", String(contactNumber).trim());
 
     if (error || !rows || rows.length === 0) {
@@ -101,6 +101,19 @@ Deno.serve(async (req) => {
 
     if (!match || !match.is_active) {
       return json({ error: "invalid_credentials" }, 401);
+    }
+
+    // Platform-level switch: the client's staff self-service portal can be
+    // disabled (or the whole client suspended) from the super admin console.
+    if (match.tenant_id) {
+      const { data: tenant } = await admin
+        .from("tenants")
+        .select("status, staff_portal_enabled")
+        .eq("id", match.tenant_id)
+        .maybeSingle();
+      if (tenant && (tenant.status !== "ACTIVE" || tenant.staff_portal_enabled === false)) {
+        return json({ error: "staff_portal_disabled" }, 403);
+      }
     }
 
     if (!match.device_id) {
