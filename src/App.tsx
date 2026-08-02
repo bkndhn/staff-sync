@@ -97,14 +97,11 @@ function App() {
     } catch {}
     return null;
   });
-  // Super admin "view as client" scope (persisted so data-api stays scoped).
-  const [viewingTenant, setViewingTenant] = useState<{ id: string; name: string } | null>(() => {
-    try {
-      const id = localStorage.getItem('impersonateTenantId');
-      if (!id) return null;
-      return { id, name: localStorage.getItem('impersonateTenantName') || 'Client' };
-    } catch { return null; }
-  });
+  // Legacy "view as client" state is no longer used — clear any stale scope.
+  useEffect(() => {
+    impersonation.clear();
+    try { localStorage.removeItem('impersonateTenantName'); } catch { /* ignore */ }
+  }, []);
   const [activeTab, setActiveTabState] = useState<NavigationTab>(() => {
     const saved = localStorage.getItem('activeTab');
     return (saved as NavigationTab) || 'Dashboard';
@@ -1301,22 +1298,6 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {viewingTenant && user.role === 'super_admin' && (
-        <div className="fixed inset-x-0 top-0 z-[60] flex items-center gap-2 bg-blue-600 px-3 py-1.5 text-xs text-white">
-          <span className="flex-1 truncate">Viewing client: <strong>{viewingTenant.name}</strong></span>
-          <button
-            onClick={() => {
-              impersonation.clear();
-              try { localStorage.removeItem('impersonateTenantName'); } catch {}
-              setViewingTenant(null);
-              window.location.reload();
-            }}
-            className="rounded bg-white/20 px-2 py-0.5 font-medium hover:bg-white/30"
-          >
-            Exit client view
-          </button>
-        </div>
-      )}
       <Navigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
