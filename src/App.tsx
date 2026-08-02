@@ -349,7 +349,7 @@ function App() {
   const handleLogout = () => {
     impersonation.clear();
     try { localStorage.removeItem('impersonateTenantName'); } catch {}
-    setViewingTenant(null);
+    
     localStorage.removeItem('staffManagementLogin');
     localStorage.removeItem('activeTab');
     setUser(null);
