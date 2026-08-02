@@ -50,7 +50,13 @@ export interface PlatformOverview {
 }
 
 async function call<T>(action: string, payload: Record<string, unknown> = {}): Promise<T> {
-  const token = localStorage.getItem('sessionToken');
+  let token = localStorage.getItem('sessionToken');
+  if (!token) {
+    try {
+      const raw = localStorage.getItem('staffManagementLogin');
+      if (raw) token = JSON.parse(raw)?.sessionToken || null;
+    } catch { /* ignore */ }
+  }
   if (!token) throw new Error('Not signed in');
 
   const res = await fetch(FN_URL, {
