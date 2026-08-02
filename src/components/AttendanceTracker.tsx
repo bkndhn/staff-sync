@@ -59,6 +59,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [floorFilter, setFloorFilter] = useState<string>('All');
   const [designationFilter, setDesignationFilter] = useState<string>('All');
   const [accommodationFilter, setAccommodationFilter] = useState<string>('All');
+  const [showFilters, setShowFilters] = useState(false);
   const [showHalfDayModal, setShowHalfDayModal] = useState<{ staffId: string, staffName: string } | null>(null);
   const [showLocationModal, setShowLocationModal] = useState<{ staffId: string, staffName: string, currentLocation: string } | null>(null);
   const [selectedShift, setSelectedShift] = useState<'Morning' | 'Evening'>('Morning');
@@ -1144,81 +1145,100 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           </div>
         )}
 
-        {/* Filters Row - All in single row */}
-        <div className="flex flex-row items-center gap-2 md:gap-4 flex-wrap">
-          <div className="flex items-center gap-1">
-            <Filter size={14} className="text-gray-500" />
-            <select
-              value={filters.staffType}
-              onChange={(e) => setFilters({ ...filters, staffType: e.target.value as any })}
-              className="filter-chip"
-            >
-              <option value="all">All Staff</option>
-              <option value="full-time">Full-time</option>
-              <option value="part-time">Part-time</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-1">
-            <select
-              value={filters.shift}
-              onChange={(e) => setFilters({ ...filters, shift: e.target.value as any })}
-              className="filter-chip"
-            >
-              <option value="All">All Shifts</option>
-              <option value="Morning">Morning</option>
-              <option value="Evening">Evening</option>
-              <option value="Both">Both</option>
-            </select>
-          </div>
-          {userRole === 'admin' && (
-            <div className="flex items-center gap-1">
-              <select
-                value={filters.location || 'All'}
-                onChange={(e) => setFilters({ ...filters, location: e.target.value })}
-                className="filter-chip"
-              >
-                <option value="All">All Locations</option>
-                {availableLocations.map(loc => (
-                  <option key={loc} value={loc}>{loc}</option>
-                ))}
-              </select>
+        {/* Filters Row - Collapsible */}
+        <div className="mt-3 border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden">
+          <button 
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="w-full flex items-center justify-between p-3.5 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+          >
+            <div className="flex items-center gap-2 text-[var(--text-primary)]">
+              <Filter size={18} />
+              <span className="font-semibold text-sm tracking-wide">Filter Options</span>
+            </div>
+            <div className="text-[var(--text-muted)] text-xs font-medium">
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </div>
+          </button>
+
+          {showFilters && (
+            <div className="p-3 border-t border-gray-200 dark:border-white/10">
+              <div className="flex flex-row items-center gap-2 md:gap-4 flex-wrap">
+                <div className="flex items-center gap-1">
+                  <select
+                    value={filters.staffType}
+                    onChange={(e) => setFilters({ ...filters, staffType: e.target.value as any })}
+                    className="filter-chip"
+                  >
+                    <option value="all">All Staff</option>
+                    <option value="full-time">Full-time</option>
+                    <option value="part-time">Part-time</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-1">
+                  <select
+                    value={filters.shift}
+                    onChange={(e) => setFilters({ ...filters, shift: e.target.value as any })}
+                    className="filter-chip"
+                  >
+                    <option value="All">All Shifts</option>
+                    <option value="Morning">Morning</option>
+                    <option value="Evening">Evening</option>
+                    <option value="Both">Both</option>
+                  </select>
+                </div>
+                {userRole === 'admin' && (
+                  <div className="flex items-center gap-1">
+                    <select
+                      value={filters.location || 'All'}
+                      onChange={(e) => setFilters({ ...filters, location: e.target.value })}
+                      className="filter-chip"
+                    >
+                      <option value="All">All Locations</option>
+                      {availableLocations.map(loc => (
+                        <option key={loc} value={loc}>{loc}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className="flex items-center gap-1">
+                  <select
+                    value={floorFilter}
+                    onChange={(e) => setFloorFilter(e.target.value)}
+                    className="filter-chip"
+                  >
+                    <option value="All">All Floors</option>
+                    {Array.from(new Set(activeStaff.filter(s => s.floor).map(s => s.floor!))).map(flr => (
+                      <option key={flr} value={flr}>{flr}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-1">
+                  <select
+                    value={designationFilter}
+                    onChange={(e) => setDesignationFilter(e.target.value)}
+                    className="filter-chip"
+                  >
+                    <option value="All">All Designations</option>
+                    {Array.from(new Set(activeStaff.filter(s => s.designation).map(s => s.designation!))).map(des => (
+                      <option key={des} value={des}>{des}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-1">
+                  <select
+                    value={accommodationFilter}
+                    onChange={(e) => setAccommodationFilter(e.target.value)}
+                    className="filter-chip"
+                  >
+                    <option value="All">All Types</option>
+                    <option value="day_scholar">Day Scholar</option>
+                    <option value="accommodation">Accommodation</option>
+                  </select>
+                </div>
+              </div>
             </div>
           )}
-          <div className="flex items-center gap-1">
-            <select
-              value={floorFilter}
-              onChange={(e) => setFloorFilter(e.target.value)}
-              className="filter-chip"
-            >
-              <option value="All">All Floors</option>
-              {Array.from(new Set(activeStaff.filter(s => s.floor).map(s => s.floor!))).map(flr => (
-                <option key={flr} value={flr}>{flr}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-1">
-            <select
-              value={designationFilter}
-              onChange={(e) => setDesignationFilter(e.target.value)}
-              className="filter-chip"
-            >
-              <option value="All">All Designations</option>
-              {Array.from(new Set(activeStaff.filter(s => s.designation).map(s => s.designation!))).map(des => (
-                <option key={des} value={des}>{des}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-1">
-            <select
-              value={accommodationFilter}
-              onChange={(e) => setAccommodationFilter(e.target.value)}
-              className="filter-chip"
-            >
-              <option value="All">All Types</option>
-              <option value="day_scholar">Day Scholar</option>
-              <option value="accommodation">Accommodation</option>
-            </select>
-          </div>
         </div>
       </div>
 

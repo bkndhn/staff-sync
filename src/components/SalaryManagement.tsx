@@ -94,6 +94,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [tempAdvances, setTempAdvances] = useState<{ [key: string]: TempSalaryData }>({});
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [showAdvanceEntryModal, setShowAdvanceEntryModal] = useState<string | null>(null);
   const [advanceEntries, setAdvanceEntries] = useState<{ [staffId: string]: AdvanceEntry[] }>({});
   const [advanceForm, setAdvanceForm] = useState({ entryDate: new Date().toISOString().split('T')[0], amount: 0, purpose: '', deductPeriods: 1, startDeductMonth: undefined as number | undefined, startDeductYear: undefined as number | undefined });
@@ -1096,104 +1097,122 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         </div>
       </div>
 
-      {/* Month/Year/Location Selection - Compact Single Row */}
-      <div className="glass-card-static p-3 md:p-4">
-        <div className="flex flex-row items-center justify-center gap-2 md:gap-4 flex-wrap">
-          <div className="flex items-center gap-1">
-            <label className="text-xs font-medium text-white/60 hidden sm:inline">Month:</label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              className="filter-chip"
-            >
-              {Array.from({ length: 12 }, (_, i) => i)
-                .filter(i => selectedYear < new Date().getFullYear() || i <= new Date().getMonth())
-                .map(i => (
-                <option key={i} value={i}>
-                  {new Date(0, i).toLocaleString('default', { month: 'short' })}
-                </option>
-              ))}
-            </select>
+      {/* Filter Options Bar */}
+      <div className="glass-card-static rounded-xl overflow-hidden mb-6">
+        <button 
+          type="button"
+          onClick={() => setShowFilters(!showFilters)}
+          className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 transition-colors"
+        >
+          <div className="flex items-center gap-2 text-[var(--text-primary)]">
+            <Filter size={18} />
+            <span className="font-semibold tracking-wide">Filter Options</span>
           </div>
-          <div className="flex items-center gap-1">
-            <label className="text-xs font-medium text-white/60 hidden sm:inline">Year:</label>
-            <select
-              value={selectedYear}
-              onChange={(e) => {
-                const newYear = Number(e.target.value);
-                if (newYear === new Date().getFullYear() && selectedMonth > new Date().getMonth()) {
-                  setSelectedMonth(new Date().getMonth());
-                }
-                setSelectedYear(newYear);
-              }}
-              className="filter-chip"
-            >
-              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i)
-                .filter(y => y <= new Date().getFullYear())
-                .map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+          <div className="text-[var(--text-muted)] text-sm font-medium">
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
           </div>
-          <div className="flex items-center gap-1">
-            <label className="text-xs font-medium text-white/60 hidden sm:inline">Location:</label>
-            <select
-              value={locationFilter}
-              onChange={(e) => setLocationFilter(e.target.value)}
-              className="filter-chip"
-            >
-              <option value="All">All Locations</option>
-              {locations.map(loc => (<option key={loc.id} value={loc.name}>{loc.name}</option>))}
-            </select>
+        </button>
+
+        {showFilters && (
+          <div className="p-3 md:p-4 border-t border-slate-200 dark:border-white/10">
+            <div className="flex flex-row items-center justify-center gap-2 md:gap-4 flex-wrap">
+              <div className="flex items-center gap-1">
+                <label className="text-xs font-medium text-[var(--text-muted)] hidden sm:inline">Month:</label>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                  className="filter-chip"
+                >
+                  {Array.from({ length: 12 }, (_, i) => i)
+                    .filter(i => selectedYear < new Date().getFullYear() || i <= new Date().getMonth())
+                    .map(i => (
+                    <option key={i} value={i}>
+                      {new Date(0, i).toLocaleString('default', { month: 'short' })}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-1">
+                <label className="text-xs font-medium text-[var(--text-muted)] hidden sm:inline">Year:</label>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => {
+                    const newYear = Number(e.target.value);
+                    if (newYear === new Date().getFullYear() && selectedMonth > new Date().getMonth()) {
+                      setSelectedMonth(new Date().getMonth());
+                    }
+                    setSelectedYear(newYear);
+                  }}
+                  className="filter-chip"
+                >
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i)
+                    .filter(y => y <= new Date().getFullYear())
+                    .map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-1">
+                <label className="text-xs font-medium text-[var(--text-muted)] hidden sm:inline">Location:</label>
+                <select
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  className="filter-chip"
+                >
+                  <option value="All">All Locations</option>
+                  {locations.map(loc => (<option key={loc.id} value={loc.name}>{loc.name}</option>))}
+                </select>
+              </div>
+              <div className="flex items-center gap-1">
+                <label className="text-xs font-medium text-[var(--text-muted)] hidden sm:inline">Payment:</label>
+                <select
+                  value={paymentModeFilter}
+                  onChange={(e) => setPaymentModeFilter(e.target.value)}
+                  className="filter-chip"
+                >
+                  <option value="All">All Modes</option>
+                  <option value="cash">Cash ({activeStaff.filter(s => (s.paymentMode || 'cash') === 'cash').length})</option>
+                  <option value="bank">Bank ({activeStaff.filter(s => s.paymentMode === 'bank').length})</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1">
+                <select
+                  value={floorFilter}
+                  onChange={(e) => setFloorFilter(e.target.value)}
+                  className="filter-chip"
+                >
+                  <option value="All">All Floors</option>
+                  {Array.from(new Set(activeStaff.filter(s => s.floor).map(s => s.floor!))).map(flr => (
+                    <option key={flr} value={flr}>{flr}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-1">
+                <select
+                  value={designationFilter}
+                  onChange={(e) => setDesignationFilter(e.target.value)}
+                  className="filter-chip"
+                >
+                  <option value="All">All Designations</option>
+                  {Array.from(new Set(activeStaff.filter(s => s.designation).map(s => s.designation!))).map(des => (
+                    <option key={des} value={des}>{des}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-1">
+                <select
+                  value={accommodationFilter}
+                  onChange={(e) => setAccommodationFilter(e.target.value)}
+                  className="filter-chip"
+                >
+                  <option value="All">All Types</option>
+                  <option value="day_scholar">Day Scholar</option>
+                  <option value="accommodation">Accommodation</option>
+                </select>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <label className="text-xs font-medium text-white/60 hidden sm:inline">Payment:</label>
-            <select
-              value={paymentModeFilter}
-              onChange={(e) => setPaymentModeFilter(e.target.value)}
-              className="filter-chip"
-            >
-              <option value="All">All Modes</option>
-              <option value="cash">Cash ({activeStaff.filter(s => (s.paymentMode || 'cash') === 'cash').length})</option>
-              <option value="bank">Bank ({activeStaff.filter(s => s.paymentMode === 'bank').length})</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-1">
-            <select
-              value={floorFilter}
-              onChange={(e) => setFloorFilter(e.target.value)}
-              className="filter-chip"
-            >
-              <option value="All">All Floors</option>
-              {Array.from(new Set(activeStaff.filter(s => s.floor).map(s => s.floor!))).map(flr => (
-                <option key={flr} value={flr}>{flr}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-1">
-            <select
-              value={designationFilter}
-              onChange={(e) => setDesignationFilter(e.target.value)}
-              className="filter-chip"
-            >
-              <option value="All">All Designations</option>
-              {Array.from(new Set(activeStaff.filter(s => s.designation).map(s => s.designation!))).map(des => (
-                <option key={des} value={des}>{des}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-1">
-            <select
-              value={accommodationFilter}
-              onChange={(e) => setAccommodationFilter(e.target.value)}
-              className="filter-chip"
-            >
-              <option value="All">All Types</option>
-              <option value="day_scholar">Day Scholar</option>
-              <option value="accommodation">Accommodation</option>
-            </select>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Summary Cards */}
