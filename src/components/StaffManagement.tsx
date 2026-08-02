@@ -760,8 +760,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const handleResetDevice = async (staffId: string, staffName: string) => {
     if (!await customConfirm(`Are you sure you want to reset the device lock for ${staffName}? They will be able to log in from a new device.`)) return;
     try {
-      onUpdateStaff(staffId, { deviceId: null });
+      await onUpdateStaff(staffId, { deviceId: null });
       await onRefreshStaff?.();
+      await customAlert(`Device lock reset successfully for ${staffName}. They can now register or log in from a new device.`);
     } catch (error) {
       console.error("Error resetting device:", error);
       await customAlert("Failed to reset device lock.");
@@ -1628,10 +1629,12 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             >
               <div className="flex items-start gap-3">
                 {member.photo ? (
-                  <img src={member.photo} alt={member.name} className="w-12 h-12 rounded-full object-cover border border-white/10 shrink-0" />
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setViewImageModal({ name: member.name, photo: member.photo! }); }} className="shrink-0 cursor-pointer">
+                    <img src={member.photo} alt={member.name} className="w-12 h-12 rounded-full object-cover border border-white/20 shadow-sm" />
+                  </button>
                 ) : (
-                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white/50 shrink-0">
-                    <Users size={18} />
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-lg flex items-center justify-center shrink-0 shadow-md border border-white/10">
+                    {member.name.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -1663,11 +1666,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                       <button onClick={(e) => { e.stopPropagation(); setFaceModalStaff(member); }} className="p-2 rounded-lg bg-purple-500/15 text-purple-300 active:bg-purple-500/30" title="Face samples">
                         <Camera size={14} />
                       </button>
-                      {member.deviceId && (
-                        <button onClick={(e) => { e.stopPropagation(); handleResetDevice(member.id, member.name); }} className="p-2 rounded-lg bg-orange-500/15 text-orange-400 active:bg-orange-500/30" title="Reset Device Lock">
-                          <ShieldOff size={14} />
-                        </button>
-                      )}
+                      <button onClick={(e) => { e.stopPropagation(); handleResetDevice(member.id, member.name); }} className="p-2 rounded-lg bg-orange-500/15 text-orange-400 active:bg-orange-500/30" title="Reset Device Lock">
+                        <ShieldOff size={14} />
+                      </button>
                       <button onClick={(e) => { e.stopPropagation(); handleResetStaffPassword(member.id, member.name); }} className="p-2 rounded-lg bg-amber-500/15 text-amber-400 active:bg-amber-500/30" title="Reset Password">
                         <RotateCcw size={14} />
                       </button>
@@ -1841,8 +1842,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                           <img src={member.photo} alt={member.name} className="w-10 h-10 rounded-full object-cover border-2 border-indigo-200 hover:border-indigo-400 hover:scale-110 transition-all mx-auto" />
                         </button>
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/50 mx-auto">
-                          <Users size={16} />
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-sm flex items-center justify-center mx-auto shadow-sm">
+                          {member.name.charAt(0).toUpperCase()}
                         </div>
                       )}
                     </td>}
