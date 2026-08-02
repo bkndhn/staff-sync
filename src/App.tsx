@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
 import Navigation from './components/Navigation';
 import SuperAdminConsole from './components/SuperAdminConsole';
-import { impersonation, Tenant } from './services/superAdminService';
+import { impersonation } from './services/superAdminService';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import AttendanceTracker from './components/AttendanceTracker';
@@ -1287,20 +1287,9 @@ function App() {
     return <Login onLogin={handleLogin} />;
   }
 
-  // Super admin: platform control plane, unless "viewing as" a client.
-  if (user.role === 'super_admin' && !viewingTenant) {
-    return (
-      <SuperAdminConsole
-        email={user.email}
-        onLogout={handleLogout}
-        onViewAsClient={(t: Tenant) => {
-          setViewingTenant({ id: t.id, name: t.name });
-          try { localStorage.setItem('impersonateTenantName', t.name); } catch { /* ignore */ }
-          setActiveTab('Dashboard');
-          window.location.reload();
-        }}
-      />
-    );
+  // Super admin: platform control plane only — never client operational data.
+  if (user.role === 'super_admin') {
+    return <SuperAdminConsole email={user.email} onLogout={handleLogout} />;
   }
 
 
