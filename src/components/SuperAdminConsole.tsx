@@ -1,32 +1,27 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Building2, Plus, Users, Search, RefreshCw, Power, Trash2, KeyRound,
-  LogOut, Eye, ShieldCheck, X, Pencil, BarChart3,
+  Building2, Plus, Search, RefreshCw, Power, Trash2,
+  LogOut, ShieldCheck, X, Pencil, BarChart3, Smartphone,
 } from 'lucide-react';
 import {
-  superAdminService, impersonation, Tenant, TenantUser, PlatformOverview,
+  superAdminService, Tenant, PlatformOverview,
 } from '../services/superAdminService';
 
 interface Props {
   email: string;
   onLogout: () => void;
-  /** Enter the normal app scoped to a client. */
-  onViewAsClient: (tenant: Tenant) => void;
 }
 
 const blankTenant = {
   name: '', slug: '', plan: 'standard', staff_limit: 50, status: 'ACTIVE',
   contact_name: '', contact_email: '', contact_phone: '', notes: '',
+  staff_portal_enabled: true,
   admin_email: '', admin_password: '', admin_full_name: '',
 };
 
-const ROLES = ['admin', 'manager', 'supervisor', 'statutory_admin', 'staff'];
-
-const SuperAdminConsole: React.FC<Props> = ({ email, onLogout, onViewAsClient }) => {
+const SuperAdminConsole: React.FC<Props> = ({ email, onLogout }) => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [overview, setOverview] = useState<PlatformOverview | null>(null);
-  const [users, setUsers] = useState<TenantUser[]>([]);
-  const [selected, setSelected] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -35,8 +30,6 @@ const SuperAdminConsole: React.FC<Props> = ({ email, onLogout, onViewAsClient })
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Tenant | null>(null);
   const [form, setForm] = useState({ ...blankTenant });
-  const [userForm, setUserForm] = useState({ email: '', full_name: '', password: '', role: 'admin', location: '' });
-  const [showUserForm, setShowUserForm] = useState(false);
 
   const flash = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(''), 3500); };
 
@@ -59,16 +52,6 @@ const SuperAdminConsole: React.FC<Props> = ({ email, onLogout, onViewAsClient })
 
   useEffect(() => { load(); }, [load]);
 
-  const loadUsers = useCallback(async (tenant: Tenant) => {
-    setSelected(tenant);
-    setUsers([]);
-    try {
-      setUsers(await superAdminService.listUsers(tenant.id));
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }, []);
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return tenants;
@@ -84,6 +67,7 @@ const SuperAdminConsole: React.FC<Props> = ({ email, onLogout, onViewAsClient })
       ...blankTenant,
       name: t.name, slug: t.slug || '', plan: t.plan || 'standard',
       staff_limit: t.staff_limit, status: t.status,
+      staff_portal_enabled: t.staff_portal_enabled !== false,
       contact_name: t.contact_name || '', contact_email: t.contact_email || '',
       contact_phone: t.contact_phone || '', notes: t.notes || '',
     });
@@ -125,54 +109,19 @@ const SuperAdminConsole: React.FC<Props> = ({ email, onLogout, onViewAsClient })
     setBusy(true);
     try {
       await superAdminService.deleteTenant(t.id);
-      if (selected?.id === t.id) setSelected(null);
       await load();
       flash('Client deleted');
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   };
 
-  const submitUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selected) return;
-    setBusy(true); setError('');
+  const toggleStaffPortal = async (t: Tenant) => {
+    setBusy(true);
     try {
-      await superAdminService.createUser({ ...userForm, tenant_id: selected.id });
-      setUserForm({ email: '', full_name: '', password: '', role: 'admin', location: '' });
-      setShowUserForm(false);
-      await loadUsers(selected);
+      const next = !(t.staff_portal_enabled !== false);
+      await superAdminService.updateTenant({ id: t.id, staff_portal_enabled: next });
       await load();
-      flash('User created');
-    } catch (err) { setError((err as Error).message); } finally { setBusy(false); }
-  };
-
-  const resetPassword = async (u: TenantUser) => {
-    const pwd = window.prompt(`New password for ${u.email} (min 8 chars):`);
-    if (!pwd) return;
-    try {
-      await superAdminService.resetUserPassword(u.id, pwd);
-      flash('Password reset — existing sessions signed out');
-    } catch (e) { setError((e as Error).message); }
-  };
-
-  const toggleUser = async (u: TenantUser) => {
-    try {
-      await superAdminService.updateUser({ id: u.id, is_active: !u.is_active });
-      if (selected) await loadUsers(selected);
-    } catch (e) { setError((e as Error).message); }
-  };
-
-  const deleteUser = async (u: TenantUser) => {
-    if (!window.confirm(`Delete user ${u.email}?`)) return;
-    try {
-      await superAdminService.deleteUser(u.id);
-      if (selected) await loadUsers(selected);
-      await load();
-    } catch (e) { setError((e as Error).message); }
-  };
-
-  const viewAs = (t: Tenant) => {
-    impersonation.set(t.id);
-    onViewAsClient(t);
+      flash(next ? 'Staff portal enabled' : 'Staff portal disabled');
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   };
 
   const stat = (label: string, value: React.ReactNode) => (
@@ -290,11 +239,8 @@ const SuperAdminConsole: React.FC<Props> = ({ email, onLogout, onViewAsClient })
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button onClick={() => loadUsers(t)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
-                      <Users size={14} /> Users
-                    </button>
-                    <button onClick={() => viewAs(t)} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100">
-                      <Eye size={14} /> View as client
+                    <button onClick={() => toggleStaffPortal(t)} disabled={busy} className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${t.staff_portal_enabled !== false ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                      <Smartphone size={14} /> Staff portal: {t.staff_portal_enabled !== false ? 'On' : 'Off'}
                     </button>
                     <button onClick={() => openEdit(t)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
                       <Pencil size={14} /> Edit
@@ -307,53 +253,6 @@ const SuperAdminConsole: React.FC<Props> = ({ email, onLogout, onViewAsClient })
                     </button>
                   </div>
 
-                  {selected?.id === t.id && (
-                    <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 p-3">
-                      <div className="mb-2 flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Client users</p>
-                        <div className="flex gap-2">
-                          <button onClick={() => setShowUserForm(v => !v)} className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700">
-                            {showUserForm ? 'Cancel' : 'Add user'}
-                          </button>
-                          <button onClick={() => setSelected(null)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600">Close</button>
-                        </div>
-                      </div>
-
-                      {showUserForm && (
-                        <form onSubmit={submitUser} className="mb-3 grid gap-2 rounded-lg border border-slate-200 bg-white p-3 sm:grid-cols-2">
-                          <input required type="email" placeholder="Email" value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} className={inputCls} />
-                          <input required placeholder="Full name" value={userForm.full_name} onChange={e => setUserForm({ ...userForm, full_name: e.target.value })} className={inputCls} />
-                          <input required type="password" minLength={8} placeholder="Password (min 8)" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} className={inputCls} />
-                          <select value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value })} className={inputCls}>
-                            {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                          </select>
-                          <input placeholder="Location (managers)" value={userForm.location} onChange={e => setUserForm({ ...userForm, location: e.target.value })} className={inputCls} />
-                          <button disabled={busy} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">Create user</button>
-                        </form>
-                      )}
-
-                      {users.length === 0 ? (
-                        <p className="py-3 text-center text-xs text-slate-500">No users for this client yet.</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {users.map(u => (
-                            <li key={u.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-2.5">
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium text-slate-800">{u.full_name}</p>
-                                <p className="truncate text-xs text-slate-500">{u.email} · {u.role}{u.location ? ` · ${u.location}` : ''}</p>
-                              </div>
-                              <span className={`rounded-full px-2 py-0.5 text-[11px] ${u.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                                {u.is_active ? 'active' : 'disabled'}
-                              </span>
-                              <button onClick={() => resetPassword(u)} className="rounded-lg border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" aria-label="Reset password"><KeyRound size={14} /></button>
-                              <button onClick={() => toggleUser(u)} className="rounded-lg border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" aria-label="Toggle active"><Power size={14} /></button>
-                              <button onClick={() => deleteUser(u)} className="rounded-lg border border-red-200 p-1.5 text-red-600 hover:bg-red-50" aria-label="Delete user"><Trash2 size={14} /></button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
                 </li>
               );
             })}
@@ -391,6 +290,12 @@ const SuperAdminConsole: React.FC<Props> = ({ email, onLogout, onViewAsClient })
                 <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className={inputCls}>
                   <option value="ACTIVE">ACTIVE</option>
                   <option value="SUSPENDED">SUSPENDED</option>
+                </select>
+              ))}
+              {field('Staff portal access', (
+                <select value={form.staff_portal_enabled ? 'on' : 'off'} onChange={e => setForm({ ...form, staff_portal_enabled: e.target.value === 'on' })} className={inputCls}>
+                  <option value="on">Enabled</option>
+                  <option value="off">Disabled</option>
                 </select>
               ))}
               <div className="sm:col-span-2">
