@@ -4,7 +4,7 @@ import {
   BarChart3, Users, Calendar, DollarSign, Clock, Archive, LogOut,
   AlertTriangle, Settings as SettingsIcon, FileText, ScanFace,
   ShieldAlert, Shield, TrendingUp, Coffee, Sun, Moon,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, UserCircle, Key
 } from 'lucide-react';
 import { SyncBadge } from './SyncBadge';
 import { statutoryPortalService, StatutoryPortalConfig, DEFAULT_STATUTORY_CONFIG } from '../services/statutoryPortalService';
@@ -61,6 +61,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Salary Management', label: 'Salary', icon: DollarSign, key: 'salary' },
         { id: 'Leave Management', label: 'Leave', icon: FileText, key: 'leave' },
         { id: 'Settings', label: 'Settings', icon: SettingsIcon, key: 'settings' },
+        { id: 'Profile', label: 'Profile', icon: UserCircle, key: 'settings' },
       ];
       return map.filter(t => portalCfg.visiblePages[t.key]).map(({ id, label, icon }) => ({ id, label, icon }));
     }
@@ -76,8 +77,9 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
         { id: 'Old Staff Records' as NavigationTab, label: 'Archive', icon: Archive },
         { id: 'Audit Log' as NavigationTab, label: 'Audit Log', icon: ShieldAlert },
-        
+        { id: 'Permissions Matrix' as NavigationTab, label: 'Permissions', icon: Key },
         { id: 'Settings' as NavigationTab, label: 'Settings', icon: SettingsIcon },
+        { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
       ];
     }
     if (user.role === 'floor_supervisor') {
@@ -89,6 +91,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
         { id: 'Part-Time Staff' as NavigationTab, label: 'Part-Time', icon: Clock },
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
+        { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
       ];
     }
     return [
@@ -98,6 +101,7 @@ const Navigation: React.FC<NavigationProps> = ({
       { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
       { id: 'Part-Time Staff' as NavigationTab, label: 'Part-Time', icon: Clock },
       { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
+      { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
     ];
   };
 

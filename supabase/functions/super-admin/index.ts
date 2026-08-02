@@ -44,6 +44,24 @@ function isEmail(v: unknown): v is string {
   return typeof v === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && v.length <= 254;
 }
 
+async function logAudit(admin: any, tenantId: string, action: string, details: string, performedBy: string, changes?: any, before?: any, after?: any) {
+  try {
+    await admin.from("audit_logs").insert([{
+      id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      tenant_id: tenantId,
+      action,
+      details,
+      performed_by: performedBy,
+      changes: changes ?? null,
+      before: before ?? null,
+      after: after ?? null,
+      timestamp: new Date().toISOString()
+    }]);
+  } catch (err) {
+    console.error("Failed to write audit log:", err);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -69,13 +87,15 @@ Deno.serve(async (req) => {
 
     const { data: me } = await admin
       .from("app_users")
-      .select("id, email, role, is_active")
+      .select("id, email, role, is_active, super_admin_role")
       .eq("id", session.user_id)
       .maybeSingle();
 
     if (!me || !me.is_active || me.role !== "super_admin") {
       return json({ error: "Super admin access required" }, 403);
     }
+    
+    const saRole = me.super_admin_role || "owner"; // default to owner if null
 
     const body = await req.json().catch(() => ({}));
     const action = String(body?.action ?? "");
@@ -90,19 +110,13 @@ Deno.serve(async (req) => {
           .order("created_at", { ascending: true });
         if (error) return json({ error: error.message }, 400);
 
-        const { data: staffRows } = await admin.from("staff").select("tenant_id, is_active");
-        const { data: userRows } = await admin.from("app_users").select("tenant_id, is_active");
-
-        const enriched = (tenants ?? []).map((t: any) => ({
-          ...t,
-          staff_count: (staffRows ?? []).filter((s: any) => s.tenant_id === t.id).length,
-          active_staff_count: (staffRows ?? []).filter((s: any) => s.tenant_id === t.id && s.is_active).length,
-          user_count: (userRows ?? []).filter((u: any) => u.tenant_id === t.id).length,
-        }));
-        return json({ data: enriched });
+        return json({ data: tenants ?? [] });
       }
 
       case "create_tenant": {
+        if (saRole !== "owner") {
+          return json({ error: "Only owners can onboard new clients" }, 403);
+        }
         const name = String(p.name ?? "").trim();
         if (!name) return json({ error: "Client name is required" }, 400);
         const staffLimit = Number.isFinite(Number(p.staff_limit)) ? Math.max(1, Number(p.staff_limit)) : 50;
@@ -146,12 +160,38 @@ Deno.serve(async (req) => {
           adminUser = created;
         }
 
+        await logAudit(
+          admin, 
+          tenant.id, 
+          "settings_update", 
+          `Tenant ${name} created`, 
+          me.email, 
+          null, 
+          null, 
+          tenant
+        );
+
         return json({ data: { tenant, adminUser } });
       }
 
       case "update_tenant": {
         const id = String(p.id ?? "");
         if (!id) return json({ error: "Client id required" }, 400);
+        
+        // RBAC Checks for updating tenant
+        if (saRole === "support") {
+          // Support can only toggle status and staff portal
+          if (p.name !== undefined || p.plan !== undefined || p.staff_limit !== undefined || p.slug !== undefined) {
+            return json({ error: "Support admins cannot modify plan, limit, or core client details" }, 403);
+          }
+        }
+        if (saRole === "billing") {
+          // Billing can only modify plan, staff_limit, and contact info, not status or staff portal
+          if (p.status !== undefined || p.staff_portal_enabled !== undefined) {
+            return json({ error: "Billing admins cannot suspend clients or modify portal access" }, 403);
+          }
+        }
+
         const patch: Record<string, unknown> = {};
         for (const k of ["name", "plan", "contact_name", "contact_email", "contact_phone", "notes"]) {
           if (p[k] !== undefined) patch[k] = p[k];
@@ -161,12 +201,28 @@ Deno.serve(async (req) => {
         if (p.status !== undefined) patch.status = String(p.status).toUpperCase();
         if (p.staff_limit !== undefined) patch.staff_limit = Math.max(1, Number(p.staff_limit));
 
+        const { data: beforeData } = await admin.from("tenants").select("*").eq("id", id).single();
         const { data, error } = await admin.from("tenants").update(patch).eq("id", id).select().single();
         if (error) return json({ error: error.message }, 400);
+
+        await logAudit(
+          admin,
+          id,
+          "settings_update",
+          `Tenant ${data.name} updated`,
+          me.email,
+          null,
+          beforeData,
+          data
+        );
+
         return json({ data });
       }
 
       case "delete_tenant": {
+        if (saRole !== "owner") {
+          return json({ error: "Only owners can delete clients" }, 403);
+        }
         const id = String(p.id ?? "");
         if (!id) return json({ error: "Client id required" }, 400);
         if (!p.confirm) return json({ error: "Confirmation required" }, 400);
@@ -179,21 +235,17 @@ Deno.serve(async (req) => {
           }
         }
         await admin.from("app_users").delete().eq("tenant_id", id);
+        const { data: beforeData } = await admin.from("tenants").select("*").eq("id", id).single();
         const { error } = await admin.from("tenants").delete().eq("id", id);
         if (error) return json({ error: error.message }, 400);
+
+        // Can't reliably log to audit_logs if tenant is deleted (tenant_id foreign key),
+        // so we skip audit log for tenant deletion for now, or log to a platform-level audit table.
+
         return json({ data: { deleted: id } });
       }
 
-      case "tenant_stats": {
-        const id = String(p.id ?? "");
-        if (!id) return json({ error: "Client id required" }, 400);
-        const counts: Record<string, number> = {};
-        for (const table of ["staff", "attendance", "app_users", "leave_requests", "punch_events"]) {
-          const { count } = await admin.from(table).select("id", { count: "exact", head: true }).eq("tenant_id", id);
-          counts[table] = count ?? 0;
-        }
-        return json({ data: counts });
-      }
+
 
       /* Client user management intentionally lives inside each client's own
          admin app — the platform console never reads client user data. */
@@ -201,20 +253,13 @@ Deno.serve(async (req) => {
       /* ---------------- Platform overview ---------------- */
       case "overview": {
         const { data: tenants } = await admin.from("tenants").select("id, status, staff_limit");
-        const { count: staffCount } = await admin.from("staff").select("id", { count: "exact", head: true });
-        const { count: userCount } = await admin.from("app_users").select("id", { count: "exact", head: true });
-        const { count: attendanceToday } = await admin
-          .from("attendance").select("id", { count: "exact", head: true })
-          .eq("date", new Date().toISOString().slice(0, 10));
+        
         return json({
           data: {
             tenants: tenants?.length ?? 0,
             activeTenants: (tenants ?? []).filter((t: any) => t.status === "ACTIVE").length,
             suspendedTenants: (tenants ?? []).filter((t: any) => t.status !== "ACTIVE").length,
             totalSeats: (tenants ?? []).reduce((s: number, t: any) => s + (t.staff_limit ?? 0), 0),
-            staff: staffCount ?? 0,
-            users: userCount ?? 0,
-            attendanceToday: attendanceToday ?? 0,
           },
         });
       }

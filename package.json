@@ -8,6 +8,7 @@
     "build:dev": "vite build --mode development",
     "build": "vite build",
     "lint": "eslint .",
+    "test:a11y": "eslint .",
     "preview": "vite preview",
     "copy-models": "node -e \"const fs=require('fs');const src='node_modules/@vladmandic/face-api/model';const dst='public/models';if(!fs.existsSync(dst))fs.mkdirSync(dst,{recursive:true});fs.readdirSync(src).forEach(f=>fs.copyFileSync(src+'/'+f,dst+'/'+f));console.log('Models copied.');\"",
     "postinstall": "npm run copy-models"
@@ -43,6 +44,7 @@
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.18",
     "eslint": "^9.9.1",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",

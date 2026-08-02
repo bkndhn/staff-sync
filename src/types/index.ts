@@ -215,6 +215,7 @@ export interface SalaryHike {
 }
 
 export interface User {
+  id?: string;
   email: string;
   role: 'admin' | 'manager' | 'staff' | 'statutory_admin' | 'floor_supervisor' | 'supervisor' | 'super_admin';
   location?: string;
@@ -223,6 +224,11 @@ export interface User {
   floorId?: string;
   staffId?: string;
   staffName?: string;
+  tenant?: {
+    id: string;
+    name: string;
+    status: string;
+  };
 }
 
 
@@ -247,7 +253,7 @@ export interface SalaryOverride {
   salarySupplementsOverride?: Record<string, number>;
 }
 
-export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Salary Management' | 'Part-Time Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Audit Log' | 'Workforce Insights' | 'Break Management' | 'Security' | 'AI Insights';
+export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Salary Management' | 'Part-Time Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Audit Log' | 'Workforce Insights' | 'Break Management' | 'Security' | 'AI Insights' | 'Profile' | 'Permissions Matrix';
 
 export interface BreakType {
   id: string;

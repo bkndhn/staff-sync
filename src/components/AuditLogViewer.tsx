@@ -90,13 +90,13 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
             <ShieldAlert className="text-purple-400" size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white flex items-center gap-2 flex-wrap">
+            <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2 flex-wrap">
               System Audit Trail
               <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono">
                 {filteredLogs.length} Records
               </span>
             </h2>
-            <p className="text-white/50 text-xs sm:text-sm">Before/after diffs for staff, attendance, salary, and settings changes.</p>
+            <p className="text-slate-400 text-xs sm:text-sm">Before/after diffs for staff, attendance, salary, and settings changes.</p>
           </div>
         </div>
         <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
@@ -113,7 +113,7 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="sm:col-span-2 relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" size={18} />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
           <input
             type="text"
             placeholder="Search by staff name, details, or user…"
@@ -123,7 +123,7 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
           />
         </div>
         <div className="relative">
-          <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" size={18} />
+          <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
           <select
             value={selectedAction}
             onChange={(e) => setSelectedAction(e.target.value)}
@@ -141,31 +141,31 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
         </div>
       </div>
 
-      <div className="card-premium overflow-hidden border border-white/5">
+      <div className="card-premium overflow-hidden border border-slate-700">
         {loading ? (
           <div className="p-12 text-center space-y-3">
             <RefreshCw className="mx-auto animate-spin text-purple-400" size={28} />
-            <p className="text-sm text-white/50">Loading audit trail…</p>
+            <p className="text-sm text-slate-400">Loading audit trail…</p>
           </div>
         ) : filteredLogs.length === 0 ? (
           <div className="p-12 text-center space-y-2">
-            <ShieldAlert className="mx-auto text-white/20" size={40} />
-            <p className="text-sm font-semibold text-white/60">No audit logs found</p>
-            <p className="text-xs text-white/40 max-w-sm mx-auto">Changes to staff, attendance, salary, and settings will appear here with before/after values.</p>
+            <ShieldAlert className="mx-auto text-slate-600" size={40} />
+            <p className="text-sm font-semibold text-slate-400">No audit logs found</p>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">Changes to staff, attendance, salary, and settings will appear here with before/after values.</p>
           </div>
         ) : (
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-slate-700">
             {filteredLogs.map((log) => {
               const hasDiff = (log.changes && log.changes.length > 0);
               const isOpen = !!expanded[log.id];
               return (
-                <div key={log.id} className="p-4 sm:p-5 hover:bg-white/[0.02] transition-colors">
+                <div key={log.id} className="p-4 sm:p-5 hover:bg-slate-800 transition-colors">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div className="space-y-1.5 flex-1 pr-4 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         {getActionBadge(log.action)}
                         {log.staffName && (
-                          <span className="text-xs font-semibold text-white/90">
+                          <span className="text-xs font-semibold text-slate-200">
                             Target: <span className="text-blue-400">{log.staffName}</span>
                           </span>
                         )}
@@ -175,13 +175,13 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
                           </span>
                         )}
                       </div>
-                      <p className="text-xs sm:text-sm font-medium text-white/80 leading-relaxed break-words">
+                      <p className="text-xs sm:text-sm font-medium text-slate-300 leading-relaxed break-words">
                         {log.details}
                       </p>
-                      <div className="flex items-center gap-3 text-[11px] text-white/40 pt-1 font-mono">
-                        <span>By: <span className="text-white/60 font-semibold">{log.performedBy}</span></span>
+                      <div className="flex items-center gap-3 text-[11px] text-slate-500 pt-1 font-mono">
+                        <span>By: <span className="text-slate-400 font-semibold">{log.performedBy}</span></span>
                         {log.performedBy === currentUserEmail && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/5 text-white/40">You</span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-700 text-slate-400">You</span>
                         )}
                       </div>
                     </div>
@@ -195,7 +195,7 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
                           {isOpen ? 'Hide diff' : 'View diff'}
                         </button>
                       )}
-                      <div className="flex items-center gap-1.5 text-[11px] text-white/40 font-mono bg-white/[0.02] px-2.5 py-1.5 rounded-lg border border-white/5">
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-mono bg-slate-800/50 px-2.5 py-1.5 rounded-lg border border-slate-700">
                         <Clock size={12} className="text-purple-400/70 flex-shrink-0" />
                         <span>{formatDate(log.timestamp)}</span>
                       </div>
@@ -203,9 +203,9 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
                   </div>
 
                   {isOpen && hasDiff && (
-                    <div className="mt-3 rounded-lg border border-white/10 overflow-hidden">
+                    <div className="mt-3 rounded-lg border border-slate-700 overflow-hidden">
                       <table className="w-full text-xs">
-                        <thead className="bg-white/[0.03] text-white/50 uppercase tracking-wider text-[10px]">
+                        <thead className="bg-slate-800/50 text-slate-400 uppercase tracking-wider text-[10px]">
                           <tr>
                             <th className="text-left p-2">Field</th>
                             <th className="text-left p-2 text-rose-300/80">Before</th>
@@ -213,12 +213,12 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
                             <th className="text-left p-2 text-emerald-300/80">After</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-slate-700">
                           {log.changes!.map((c, i) => (
                             <tr key={i}>
-                              <td className="p-2 font-semibold text-white/80">{c.label ? humanizeField(c.label) : humanizeField(c.field)}</td>
+                              <td className="p-2 font-semibold text-slate-300">{c.label ? humanizeField(c.label) : humanizeField(c.field)}</td>
                               <td className="p-2 font-mono text-rose-300/80 line-through decoration-rose-400/30">{formatValue(c.oldValue)}</td>
-                              <td className="p-2 text-white/30"><ArrowRight size={12} /></td>
+                              <td className="p-2 text-slate-600"><ArrowRight size={12} /></td>
                               <td className="p-2 font-mono text-emerald-300">{formatValue(c.newValue)}</td>
                             </tr>
                           ))}

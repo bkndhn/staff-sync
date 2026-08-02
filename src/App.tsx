@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
 import Navigation from './components/Navigation';
 import SuperAdminConsole from './components/SuperAdminConsole';
-import { impersonation } from './services/superAdminService';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import AttendanceTracker from './components/AttendanceTracker';
 import SalaryHikeModal from './components/SalaryHikeModal';
+import PermissionsMatrix from './components/PermissionsMatrix';
 import { Staff, Attendance, OldStaffRecord, SalaryHike, NavigationTab, AdvanceDeduction, User } from './types';
 import { staffService } from './services/staffService';
 import { attendanceService } from './services/attendanceService';
@@ -43,6 +43,7 @@ const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
 const SecurityFindings = React.lazy(() => import('./components/SecurityFindings'));
+const ProfileSettings = React.lazy(() => import('./components/ProfileSettings'));
 
 // StatutoryDashboard component retained on disk but no longer mounted; statutory features are now inline in the main pages.
 
@@ -60,6 +61,7 @@ const prefetchAllComponents = () => {
   import('./components/LeaveManagement');
   import('./components/FaceAttendance');
   import('./components/WorkforceInsights');
+  import('./components/ProfileSettings');
 };
 
 // ─── Skeleton shimmer ─────────────────────────────────────────────────────────
@@ -99,7 +101,6 @@ function App() {
   });
   // Legacy "view as client" state is no longer used — clear any stale scope.
   useEffect(() => {
-    impersonation.clear();
     try { localStorage.removeItem('impersonateTenantName'); } catch { /* ignore */ }
   }, []);
   const [activeTab, setActiveTabState] = useState<NavigationTab>(() => {
@@ -342,12 +343,11 @@ function App() {
     }, [])
   );
 
-  const handleLogin = (userData: { email: string; role: string; location?: string; staffId?: string; staffName?: string }) => {
+  const handleLogin = (userData: { id?: string; email: string; role: string; location?: string; staffId?: string; staffName?: string }) => {
     setUser(userData as User);
   };
 
   const handleLogout = () => {
-    impersonation.clear();
     try { localStorage.removeItem('impersonateTenantName'); } catch {}
     
     localStorage.removeItem('staffManagementLogin');
@@ -1231,6 +1231,14 @@ function App() {
             <AuditLogViewer currentUserEmail={user?.email || ''} />
           </ErrorBoundary>
         );
+      case 'Permissions Matrix':
+        return <PermissionsMatrix />;
+      case 'Profile':
+        return (
+          <Suspense fallback={<ComponentLoader />}>
+            <ProfileSettings user={user} onUpdateUser={setUser} />
+          </Suspense>
+        );
 
       default:
         return null;
@@ -1286,7 +1294,7 @@ function App() {
 
   // Super admin: platform control plane only — never client operational data.
   if (user.role === 'super_admin') {
-    return <SuperAdminConsole email={user.email} onLogout={handleLogout} />;
+    return <SuperAdminConsole user={user} onLogout={handleLogout} onUpdateUser={setUser} />;
   }
 
 
@@ -1298,6 +1306,11 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {user.tenant && user.tenant.status !== 'ACTIVE' && (
+        <div className="bg-red-600 text-white p-3 text-center text-sm font-medium z-50">
+          ⚠️ This workspace is currently {user.tenant.status.toLowerCase()}. Staff and managers cannot log in. Please resolve this issue in the billing or contact the super admin.
+        </div>
+      )}
       <Navigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}

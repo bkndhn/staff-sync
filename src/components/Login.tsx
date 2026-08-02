@@ -14,7 +14,7 @@ import { compressImage } from '../utils/imageCompression';
 import { generateDeviceFingerprint } from '../utils/deviceFingerprint';
 
 interface LoginProps {
-  onLogin: (user: { email: string; role: string; location?: string; floor?: string; floorId?: string; staffId?: string; staffName?: string }) => void;
+  onLogin: (user: { id?: string; email: string; role: string; location?: string; floor?: string; floorId?: string; staffId?: string; staffName?: string }) => void;
 }
 
 
@@ -91,6 +91,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         localStorage.setItem('staffManagementLogin', JSON.stringify(session));
 
         onLogin({
+          id: dbUser.id,
           email: dbUser.email,
           role: dbUser.role,
           location: dbUser.location || undefined,

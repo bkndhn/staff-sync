@@ -197,6 +197,19 @@ Deno.serve(async (req) => {
     };
 
     let query: any = admin.from(body.table);
+    let beforeData: any = null;
+
+    if (body.op === "update" || body.op === "delete") {
+      try {
+        let fetchBefore = admin.from(body.table).select("*");
+        fetchBefore = applyFilters(fetchBefore, [...scopeFilters, ...(body.filters ?? [])]);
+        if (body.single) fetchBefore = fetchBefore.maybeSingle();
+        const res = await fetchBefore;
+        beforeData = res.data;
+      } catch (e) {
+        console.error("Failed to fetch before data for audit log", e);
+      }
+    }
 
     switch (body.op) {
       case "select": {
@@ -238,6 +251,25 @@ Deno.serve(async (req) => {
     if (error) {
       return new Response(JSON.stringify({ error: error.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (body.op !== "select" && body.table !== "audit_logs") {
+      try {
+        const afterData = (body.op === "delete") ? null : data;
+        const details = `${body.op.toUpperCase()} on ${body.table}`;
+        await admin.from("audit_logs").insert([{
+          id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          tenant_id: tenantId,
+          action: `${body.table}_${body.op}`,
+          details,
+          performed_by: user.email ?? "Unknown",
+          before: beforeData,
+          after: afterData,
+          timestamp: new Date().toISOString()
+        }]);
+      } catch (err) {
+        console.error("Failed to write audit log in data-api:", err);
+      }
     }
 
     return new Response(JSON.stringify({ data }),

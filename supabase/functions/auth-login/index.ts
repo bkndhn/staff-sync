@@ -152,9 +152,15 @@ Deno.serve(async (req) => {
         .eq('id', user.tenant_id)
         .maybeSingle();
       tenant = t as typeof tenant;
-      if (!tenant || tenant.status !== 'ACTIVE') {
+      if (!tenant) {
         return new Response(
-          JSON.stringify({ error: 'This client account is suspended. Contact your provider.' }),
+          JSON.stringify({ error: 'This client account could not be found.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (tenant.status !== 'ACTIVE' && user.role !== 'admin') {
+        return new Response(
+          JSON.stringify({ error: 'This client account is suspended. Contact your administrator.' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
