@@ -533,7 +533,8 @@ function App() {
       arrivalTime: finalArrivalTime,
       leavingTime: finalLeavingTime,
       appliedRuleType: finalAppliedRuleType,
-      appliedRuleDetails: finalAppliedRuleDetails
+      appliedRuleDetails: finalAppliedRuleDetails,
+      isUninformed: !!isUninformed
     };
 
     try {
