@@ -128,7 +128,7 @@ export async function syncPendingPunches(): Promise<{ synced: number; failed: nu
 
   for (const punch of pending) {
     try {
-      const { error } = await supabase.from('punch_events').insert([{
+      const { error } = await dataApi.from('punch_events').insert([{
         staff_id: punch.staffId,
         punch_time: punch.punchTime,
         direction: punch.direction,

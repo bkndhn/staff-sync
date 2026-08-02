@@ -96,7 +96,7 @@ export const breakTypeService = {
 
 export const breakEventService = {
   async list(opts: { date?: string; startDate?: string; endDate?: string; staffId?: string; location?: string } = {}): Promise<BreakEvent[]> {
-    let q = (supabase as any).from('break_events').select('*').order('date', { ascending: false }).order('start_time', { ascending: false });
+    let q = dataApi.from('break_events').select('*').order('date', { ascending: false }).order('start_time', { ascending: false });
     if (opts.date) q = q.eq('date', opts.date);
     if (opts.startDate) q = q.gte('date', opts.startDate);
     if (opts.endDate) q = q.lte('date', opts.endDate);
@@ -109,7 +109,7 @@ export const breakEventService = {
 
   /** Currently open break for a staff (no end_time). */
   async openBreak(staffId: string): Promise<BreakEvent | null> {
-    const { data, error } = await (supabase as any).from('break_events')
+    const { data, error } = await dataApi.from('break_events')
       .select('*').eq('staff_id', staffId).is('end_time', null)
       .order('start_time', { ascending: false }).limit(1).maybeSingle();
     if (error || !data) return null;
@@ -140,7 +140,7 @@ export const breakEventService = {
       notes: input.notes,
       created_by: input.createdBy,
     };
-    const { data, error } = await (supabase as any).from('break_events').insert(payload).select().single();
+    const { data, error } = await dataApi.from('break_events').insert(payload).select().single();
     if (error) { console.error(error); return null; }
     await auditLogService.log({
       action: 'attendance_override',
@@ -157,7 +157,7 @@ export const breakEventService = {
     breakType?: BreakType; createdBy?: string;
   }): Promise<BreakEvent | null> {
     // Fetch current row to compute duration & violation
-    const { data: existing } = await (supabase as any).from('break_events').select('*').eq('id', input.eventId).maybeSingle();
+    const { data: existing } = await dataApi.from('break_events').select('*').eq('id', input.eventId).maybeSingle();
     if (!existing) return null;
     const endTime = nowTime();
     const duration = minutesBetween(existing.start_time, endTime);
@@ -167,7 +167,7 @@ export const breakEventService = {
       isViolation = true;
       violationReason = `Exceeded max ${input.breakType.maxMinutes}m (took ${duration}m)`;
     }
-    const { data, error } = await (supabase as any).from('break_events')
+    const { data, error } = await dataApi.from('break_events')
       .update({
         end_time: endTime,
         duration_minutes: duration,
@@ -205,7 +205,7 @@ export const breakEventService = {
       violation_reason: input.violationReason ?? null,
     };
     if (input.id) payload.id = input.id;
-    const { data, error } = await (supabase as any).from('break_events').upsert(payload).select().single();
+    const { data, error } = await dataApi.from('break_events').upsert(payload).select().single();
     if (error) { console.error(error); return null; }
     await auditLogService.log({
       action: input.id ? 'attendance_override' : 'attendance_override',
@@ -218,7 +218,7 @@ export const breakEventService = {
   },
 
   async remove(id: string, by?: string): Promise<boolean> {
-    const { error } = await (supabase as any).from('break_events').delete().eq('id', id);
+    const { error } = await dataApi.from('break_events').delete().eq('id', id);
     if (!error) {
       await auditLogService.log({
         action: 'attendance_override',

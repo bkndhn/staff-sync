@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { dataApi } from '../lib/dataApi';
 import { Attendance } from '../types';
 import type { DatabaseAttendance } from '../lib/supabase';
 import { isSunday } from '../utils/salaryCalculations';
@@ -8,7 +9,7 @@ export const attendanceService = {
   async getAll(): Promise<Attendance[]> {
     // If offline, we can attempt to fetch cached network response or return empty/cached state,
     // but typically cachedFetch in App.tsx handles the static view layer caching.
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('attendance')
       .select('*')
       .order('date', { ascending: false });
@@ -22,7 +23,7 @@ export const attendanceService = {
   },
 
   async getByDateRange(startDate: string, endDate: string): Promise<Attendance[]> {
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('attendance')
       .select('*')
       .gte('date', startDate)
@@ -58,7 +59,7 @@ export const attendanceService = {
     const { id: _stripId, ...upsertPayload } = dbAttendance;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await dataApi
         .from('attendance')
         .upsert([upsertPayload as any], {
           onConflict: 'staff_id,date,is_part_time'
@@ -95,7 +96,7 @@ export const attendanceService = {
   async upsertRemoteOnly(attendance: Omit<Attendance, 'id'>): Promise<Attendance> {
     const dbAttendance = this.mapToDatabase(attendance);
     const { id: _stripId, ...upsertPayload } = dbAttendance;
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('attendance')
       .upsert([upsertPayload as any], {
         onConflict: 'staff_id,date,is_part_time'
@@ -129,7 +130,7 @@ export const attendanceService = {
     });
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await dataApi
         .from('attendance')
         .upsert(dbRecords as any[], {
           onConflict: 'staff_id,date,is_part_time'
@@ -160,7 +161,7 @@ export const attendanceService = {
       return { error: null };
     }
 
-    const { error } = await supabase
+    const { error } = await dataApi
       .from('attendance')
       .delete()
       .eq('id', id);

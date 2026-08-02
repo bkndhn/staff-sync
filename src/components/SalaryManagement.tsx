@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { dataApi } from '../lib/dataApi';
 import { Staff, Attendance, SalaryDetail, AdvanceDeduction, PartTimeSalaryDetail, SalaryOverride, PayrollRun, PayrollSnapshot } from '../types';
 import { DollarSign, Download, Users, Calendar, TrendingUp, Edit2, Save, X, FileSpreadsheet, FileText, MessageCircle, Filter, Plus, Trash2 } from 'lucide-react';
 import { calculateAttendanceMetrics, calculateSalary, calculatePartTimeSalary, roundToNearest10, computeScheduledDeductions } from '../utils/salaryCalculations';
@@ -111,7 +112,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const loadAllAdvanceEntries = async () => {
     const { supabase } = await import('../lib/supabase');
     // 1. Load entries created in this month (for Cur Adv sum)
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('advance_entries')
       .select('*')
       .eq('month', selectedMonth)

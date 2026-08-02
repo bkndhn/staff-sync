@@ -1,10 +1,11 @@
 import { supabase } from '../lib/supabase';
+import { dataApi } from '../lib/dataApi';
 import { AdvanceDeduction } from '../types';
 import type { DatabaseAdvance } from '../lib/supabase';
 
 export const advanceService = {
   async getAll(): Promise<AdvanceDeduction[]> {
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('advances')
       .select('*')
       .order('year', { ascending: false })
@@ -19,7 +20,7 @@ export const advanceService = {
   },
 
   async getByStaffAndMonth(staffId: string, month: number, year: number): Promise<AdvanceDeduction | null> {
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('advances')
       .select('*')
       .eq('staff_id', staffId)
@@ -51,7 +52,7 @@ export const advanceService = {
   async upsert(advance: Omit<AdvanceDeduction, 'id' | 'createdAt' | 'updatedAt'>): Promise<AdvanceDeduction> {
     const dbAdvance = this.mapToDatabase(advance);
     
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('advances')
       .upsert([dbAdvance as any], {
         onConflict: 'staff_id,month,year'

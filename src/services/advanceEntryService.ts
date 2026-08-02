@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { dataApi } from '../lib/dataApi';
 
 export interface AdvanceEntry {
   id: string;
@@ -18,7 +19,7 @@ export interface AdvanceEntry {
 
 export const advanceEntryService = {
   async getByStaff(staffId: string): Promise<AdvanceEntry[]> {
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('advance_entries')
       .select('*')
       .eq('staff_id', staffId)
@@ -32,7 +33,7 @@ export const advanceEntryService = {
   },
 
   async getByStaffAndMonth(staffId: string, month: number, year: number): Promise<AdvanceEntry[]> {
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('advance_entries')
       .select('*')
       .eq('staff_id', staffId)
@@ -48,7 +49,7 @@ export const advanceEntryService = {
   },
 
   async create(entry: Omit<AdvanceEntry, 'id' | 'createdAt' | 'updatedAt'>): Promise<AdvanceEntry | null> {
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('advance_entries')
       .insert({
         staff_id: entry.staffId,
@@ -88,7 +89,7 @@ export const advanceEntryService = {
     if (updates.totalDeducted !== undefined) payload.total_deducted = updates.totalDeducted;
     payload.updated_at = new Date().toISOString();
 
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('advance_entries')
       .update(payload)
       .eq('id', id)
@@ -103,7 +104,7 @@ export const advanceEntryService = {
   },
 
   async delete(id: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await dataApi
       .from('advance_entries')
       .delete()
       .eq('id', id);
@@ -134,7 +135,7 @@ export const advanceEntryService = {
   },
 
   async updateTotalDeducted(id: string, newTotal: number): Promise<AdvanceEntry | null> {
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('advance_entries')
       .update({
         total_deducted: newTotal,
@@ -152,7 +153,7 @@ export const advanceEntryService = {
   },
 
   async getActiveForMonth(month: number, year: number): Promise<AdvanceEntry[]> {
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('advance_entries')
       .select('*')
       .order('entry_date', { ascending: true });

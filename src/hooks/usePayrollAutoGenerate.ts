@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { dataApi } from '../lib/dataApi';
 import { payrollService } from '../services/payrollService';
 import { staffService } from '../services/staffService';
 import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryService';
@@ -39,7 +40,7 @@ export const usePayrollAutoGenerate = (user: any) => {
         const overrides = await salaryOverrideService.getOverrides(targetMonth + 1, targetYear);
 
         // Fetch advances
-        const { data: advancesData } = await supabase
+        const { data: advancesData } = await dataApi
           .from('advances')
           .select('*')
           .eq('month', targetMonth)
@@ -58,7 +59,7 @@ export const usePayrollAutoGenerate = (user: any) => {
         }));
 
         // Fetch advance entries
-        const { data: thisMonthEntries } = await supabase
+        const { data: thisMonthEntries } = await dataApi
           .from('advance_entries')
           .select('*')
           .eq('month', targetMonth)
