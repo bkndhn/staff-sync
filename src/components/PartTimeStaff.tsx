@@ -1501,26 +1501,26 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 </div>
             )}
 
-            {/* Date Selection */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                        <label className="text-sm font-medium text-gray-700">Select Date</label>
+            {/* Date & Location Selection */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Select Date</label>
                         <input
                             type="date"
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
                             className="filter-chip"
                         />
-                        {isSunday(selectedDate) && (
-                            <span className="px-3 py-1 bg-orange-100 text-orange-800 text-sm font-medium rounded-full">
-                                Sunday - ₹400 rate
-                            </span>
-                        )}
                     </div>
+                    {isSunday(selectedDate) && (
+                        <span className="px-3 py-1 bg-orange-100 text-orange-800 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap">
+                            Sunday - ₹400 rate
+                        </span>
+                    )}
                     {!userLocation && (
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                            <label className="text-sm font-medium text-gray-700">Filter by Location</label>
+                        <div className="flex items-center gap-2">
+                            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Filter by Location</label>
                             <select
                                 value={locationFilter}
                                 onChange={(e) => setLocationFilter(e.target.value as any)}
