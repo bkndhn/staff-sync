@@ -318,8 +318,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
               }`}
             >
-              <ShieldCheck size={14} />
-              <span className="hidden sm:inline">Admin/Mgr</span><span className="sm:hidden">Admin</span>
+              <ShieldCheck size={14} className={loginMode === 'admin' ? '!text-white' : ''} />
+              <span className={`hidden sm:inline ${loginMode === 'admin' ? '!text-white' : ''}`}>Admin/Mgr</span>
+              <span className={`sm:hidden ${loginMode === 'admin' ? '!text-white' : ''}`}>Admin</span>
             </button>
             {staffLoginEnabled && (
               <button
@@ -331,7 +332,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                 }`}
               >
-                <Users size={14} /> Staff
+                <Users size={14} className={loginMode === 'staff' ? '!text-white' : ''} />
+                <span className={loginMode === 'staff' ? '!text-white' : ''}>Staff</span>
               </button>
             )}
           </div>
@@ -382,11 +384,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               )}
 
               <button type="submit" disabled={loading} className="w-full btn-premium py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group">
-                <span className="relative z-10 flex items-center justify-center gap-2">
+                <span className="relative z-10 flex items-center justify-center gap-2 !text-white">
                   {loading ? (
-                    <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Signing in...</>
+                    <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span className="!text-white">Signing in...</span></>
                   ) : (
-                    <><Lock size={18} />Sign In</>
+                    <><Lock size={18} className="!text-white" /><span className="!text-white">Sign In</span></>
                   )}
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
@@ -447,13 +449,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   )}
 
                   <button type="submit" disabled={loading} className="w-full py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg">
-                    <span className="relative z-10 flex items-center justify-center gap-2">
+                    <span className="relative z-10 flex items-center justify-center gap-2 !text-white">
                       {loading ? (
-                        <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Signing in...</>
+                        <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span className="!text-white">Signing in...</span></>
                       ) : (
-                        <><Users size={18} />Staff Sign In</>
+                        <><Users size={18} className="!text-white" /><span className="!text-white">Staff Sign In</span></>
                       )}
                     </span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                   </button>
               </form>
             </div>

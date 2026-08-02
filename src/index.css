@@ -3100,10 +3100,10 @@ body.light-theme .glass-card h4,
 body.light-theme .glass-card h5 {
   color: #0F172A !important;
 }
-body.light-theme .glass-card-static p,
-body.light-theme .glass-card-static span:not([class*="bg-"]):not([class*="badge"]):not([class*="rounded-full"]),
-body.light-theme .glass-card p,
-body.light-theme .glass-card span:not([class*="bg-"]):not([class*="badge"]):not([class*="rounded-full"]) {
+body.light-theme .glass-card-static p:not([class*="text-white"]),
+body.light-theme .glass-card-static span:not(button *):not([class*="bg-"]):not([class*="badge"]):not([class*="rounded-full"]),
+body.light-theme .glass-card p:not([class*="text-white"]),
+body.light-theme .glass-card span:not(button *):not([class*="bg-"]):not([class*="badge"]):not([class*="rounded-full"]) {
   color: #334155 !important;
 }
 
@@ -3115,6 +3115,8 @@ body.light-theme .glass-card span:not([class*="bg-"]):not([class*="badge"]):not(
 body.light-theme .glass-card-static [class*="bg-blue-5"] *,
 body.light-theme .glass-card-static [class*="bg-blue-6"] *,
 body.light-theme .glass-card-static [class*="bg-blue-7"] *,
+body.light-theme .glass-card-static [class*="bg-sky-5"] *,
+body.light-theme .glass-card-static [class*="bg-sky-6"] *,
 body.light-theme .glass-card-static [class*="bg-indigo-5"] *,
 body.light-theme .glass-card-static [class*="bg-indigo-6"] *,
 body.light-theme .glass-card-static [class*="bg-emerald-5"] *,
@@ -3130,16 +3132,24 @@ body.light-theme .glass-card-static [class*="bg-orange-6"] *,
 body.light-theme .glass-card-static [class*="bg-purple-5"] *,
 body.light-theme .glass-card-static [class*="bg-purple-6"] *,
 body.light-theme .glass-card-static [class*="bg-gradient"] *,
+body.light-theme .glass-card-static .btn-premium,
 body.light-theme .glass-card-static .btn-premium *,
+body.light-theme .glass-card-static button.bg-blue-600,
+body.light-theme .glass-card-static button.bg-blue-600 *,
+body.light-theme .glass-card-static button.bg-sky-500,
+body.light-theme .glass-card-static button.bg-sky-500 *,
 body.light-theme .glass-card [class*="bg-blue-5"] *,
 body.light-theme .glass-card [class*="bg-blue-6"] *,
 body.light-theme .glass-card [class*="bg-blue-7"] *,
+body.light-theme .glass-card [class*="bg-sky-5"] *,
+body.light-theme .glass-card [class*="bg-sky-6"] *,
 body.light-theme .glass-card [class*="bg-indigo-5"] *,
 body.light-theme .glass-card [class*="bg-indigo-6"] *,
 body.light-theme .glass-card [class*="bg-emerald-5"] *,
 body.light-theme .glass-card [class*="bg-emerald-6"] *,
 body.light-theme .glass-card [class*="bg-red-5"] *,
 body.light-theme .glass-card [class*="bg-red-6"] *,
+body.light-theme .glass-card .btn-premium,
 body.light-theme .glass-card .btn-premium * {
   color: #FFFFFF !important;
 }
