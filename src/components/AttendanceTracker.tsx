@@ -1672,33 +1672,58 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
       {/* Half Day Modal */}
       {showHalfDayModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
-          <div className="bg-white rounded-xl p-4 md:p-6 w-full max-w-xs md:max-w-md mx-2">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 md:p-4" onClick={() => setShowHalfDayModal(null)}>
+          <div className="bg-white rounded-2xl p-4 md:p-6 w-full max-w-xs md:max-w-md mx-2 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
               <Clock className="text-yellow-600" size={18} />
               <span className="truncate">Half Day - {showHalfDayModal.staffName}</span>
             </h3>
             <p className="text-sm md:text-base text-gray-600 mb-3 md:mb-4">Select which half of the day:</p>
             <div className="space-y-2 md:space-y-3 mb-4 md:mb-6">
-              <label className="flex items-center p-2 md:p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition-colors">
+              <label className={`flex items-center p-3 border-2 rounded-xl cursor-pointer transition-all ${
+                selectedShift === 'Morning' ? 'border-orange-500 bg-orange-50/60 shadow-sm' : 'border-gray-200 hover:border-gray-300'
+              }`}>
                 <input
                   type="radio"
+                  name="halfDayShift"
                   value="Morning"
                   checked={selectedShift === 'Morning'}
                   onChange={(e) => setSelectedShift(e.target.value as 'Morning')}
-                  className="mr-3 w-4 h-4"
+                  className="sr-only"
                 />
-                <span className="text-sm md:text-base font-medium">Morning</span>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 shrink-0 transition-colors ${
+                  selectedShift === 'Morning' ? 'border-orange-500 bg-white' : 'border-gray-300 bg-white'
+                }`}>
+                  {selectedShift === 'Morning' && (
+                    <div className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                  )}
+                </div>
+                <span className={`text-sm md:text-base font-bold ${selectedShift === 'Morning' ? 'text-orange-700' : 'text-gray-700'}`}>
+                  Morning
+                </span>
               </label>
-              <label className="flex items-center p-2 md:p-3 border rounded-lg cursor-pointer hover:bg-yellow-50 transition-colors">
+
+              <label className={`flex items-center p-3 border-2 rounded-xl cursor-pointer transition-all ${
+                selectedShift === 'Evening' ? 'border-orange-500 bg-orange-50/60 shadow-sm' : 'border-gray-200 hover:border-gray-300'
+              }`}>
                 <input
                   type="radio"
+                  name="halfDayShift"
                   value="Evening"
                   checked={selectedShift === 'Evening'}
                   onChange={(e) => setSelectedShift(e.target.value as 'Evening')}
-                  className="mr-3 w-4 h-4"
+                  className="sr-only"
                 />
-                <span className="text-sm md:text-base font-medium">Evening</span>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 shrink-0 transition-colors ${
+                  selectedShift === 'Evening' ? 'border-orange-500 bg-white' : 'border-gray-300 bg-white'
+                }`}>
+                  {selectedShift === 'Evening' && (
+                    <div className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                  )}
+                </div>
+                <span className={`text-sm md:text-base font-bold ${selectedShift === 'Evening' ? 'text-orange-700' : 'text-gray-700'}`}>
+                  Evening
+                </span>
               </label>
             </div>
             {/* IN/OUT time for half day */}
@@ -1742,8 +1767,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
       {/* Location Change Modal */}
       {showLocationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
-          <div className="bg-white rounded-xl p-4 md:p-6 w-full max-w-xs md:max-w-md mx-2">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 md:p-4" onClick={() => setShowLocationModal(null)}>
+          <div className="bg-white rounded-2xl p-4 md:p-6 w-full max-w-xs md:max-w-md mx-2 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
               <MapPin className="text-blue-600" size={18} />
               <span className="truncate">Change Location - {showLocationModal.staffName}</span>
@@ -1754,15 +1779,25 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             </p>
             <div className="space-y-2 md:space-y-3 mb-4 md:mb-6">
               {availableLocations.map(loc => (
-                <label key={loc} className="flex items-center p-2 md:p-3 border rounded-lg cursor-pointer hover:bg-blue-50 transition-colors">
+                <label key={loc} className={`flex items-center p-3 border-2 rounded-xl cursor-pointer transition-all ${
+                  selectedLocation === loc ? 'border-blue-500 bg-blue-50/60 shadow-sm' : 'border-gray-200 hover:border-gray-300'
+                }`}>
                   <input
                     type="radio"
+                    name="locationOption"
                     value={loc}
                     checked={selectedLocation === loc}
                     onChange={(e) => setSelectedLocation(e.target.value)}
-                    className="mr-3 w-4 h-4"
+                    className="sr-only"
                   />
-                  <span className="text-sm md:text-base font-medium">{loc}</span>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 shrink-0 transition-colors ${
+                    selectedLocation === loc ? 'border-blue-500 bg-white' : 'border-gray-300 bg-white'
+                  }`}>
+                    {selectedLocation === loc && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                    )}
+                  </div>
+                  <span className={`text-sm md:text-base font-semibold ${selectedLocation === loc ? 'text-blue-800' : 'text-gray-700'}`}>{loc}</span>
                 </label>
               ))}
             </div>
@@ -1799,8 +1834,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
       {/* Bulk Half Day Modal */}
       {showBulkHalfDayModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
-          <div className="bg-white rounded-xl p-4 md:p-6 w-full max-w-xs md:max-w-md mx-2">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 md:p-4" onClick={() => setShowBulkHalfDayModal(false)}>
+          <div className="bg-white rounded-2xl p-4 md:p-6 w-full max-w-xs md:max-w-md mx-2 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
               <Clock className="text-yellow-600" size={18} />
               <span>Bulk Half Day — All Staff</span>
