@@ -1917,7 +1917,6 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             </>
                         )}
                     </div>
-                </div>
 
                 {/* Search + sort + column bar (also drives PDF/WhatsApp exports) */}
                 <ListFilterBar
