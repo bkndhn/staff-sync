@@ -27,6 +27,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [staffPassword, setStaffPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showStaffPassword, setShowStaffPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -271,9 +273,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       );
       const payload = await res.json();
       if (!res.ok) {
-        setError(payload?.error === 'device_locked'
+        setError(payload?.message || (payload?.error === 'device_locked'
           ? 'Device mismatch — contact Admin.'
-          : 'Could not update password. Please try again.');
+          : (payload?.error || 'Could not update password. Please try again.')));
         setLoading(false);
         return;
       }
@@ -472,17 +474,27 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">New Password</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value.slice(0, 128))}
-                  className="input-premium"
-                  placeholder="At least 6 characters"
-                  minLength={6}
-                  maxLength={128}
-                  required
-                  autoComplete="new-password"
-                />
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value.slice(0, 128))}
+                    className="input-premium pr-12"
+                    placeholder="At least 6 characters"
+                    minLength={6}
+                    maxLength={128}
+                    required
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(v => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors focus:outline-none flex items-center justify-center rounded-md hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                    aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showNewPassword ? <EyeOff size={18} className="text-slate-600 dark:text-slate-300" /> : <Eye size={18} className="text-slate-600 dark:text-slate-300" />}
+                  </button>
+                </div>
               </div>
               
               {/* Photo Upload Section */}
@@ -496,9 +508,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       <Camera size={24} className="text-blue-400" />
                     )}
                   </div>
-                  <label className="btn-premium px-4 py-2 text-sm cursor-pointer flex items-center gap-2">
-                    <Upload size={16} />
-                    <span>Upload Photo</span>
+                  <label className="px-4 py-2.5 text-sm cursor-pointer flex items-center gap-2 font-bold bg-blue-600 hover:bg-blue-700 !text-white rounded-xl shadow-md transition-all shrink-0">
+                    <Upload size={16} className="!text-white" />
+                    <span className="!text-white">Upload Photo</span>
                     <input 
                       type="file" 
                       accept="image/*" 
@@ -517,23 +529,33 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       }}
                     />
                   </label>
-                  {staffPhoto && <Check size={20} className="text-emerald-500" />}
+                  {staffPhoto && <Check size={20} className="text-emerald-500 shrink-0" />}
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Confirm Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value.slice(0, 128))}
-                  className="input-premium"
-                  placeholder="Re-enter new password"
-                  minLength={6}
-                  maxLength={128}
-                  required
-                  autoComplete="new-password"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value.slice(0, 128))}
+                    className="input-premium pr-12"
+                    placeholder="Re-enter new password"
+                    minLength={6}
+                    maxLength={128}
+                    required
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(v => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors focus:outline-none flex items-center justify-center rounded-md hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} className="text-slate-600 dark:text-slate-300" /> : <Eye size={18} className="text-slate-600 dark:text-slate-300" />}
+                  </button>
+                </div>
               </div>
               {error && (
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30">

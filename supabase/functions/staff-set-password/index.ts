@@ -61,24 +61,23 @@ Deno.serve(async (req) => {
 
     const { data: rows, error } = await admin
       .from("staff")
-      .select("id, joined_date, device_id, is_active, password_hash")
+      .select("id, joined_date, device_id, is_active, password_hash, must_change_password")
       .eq("contact_number", String(contactNumber).trim());
 
     if (error || !rows || rows.length === 0) {
-      return json({ error: "invalid_credentials" }, 401);
+      return json({ error: "invalid_credentials", message: "Staff record not found for this mobile number" }, 401);
     }
 
     let match: any = null;
     for (const s of rows as any[]) {
       if (!s.is_active) continue;
-      if (currentPassword && s.password_hash) {
+      if (currentPassword && s.password_hash && !s.must_change_password) {
         try {
           if (await bcrypt.compare(currentPassword, s.password_hash)) { match = s; break; }
         } catch { /* ignore */ }
       }
-      // First-login path: no hash yet -> accept joined_date, or accept
-      // currentPassword when it happens to equal joined_date.
-      if (!s.password_hash) {
+      // First-login path or reset path: accept joined_date when hash is unset OR must_change_password is true.
+      if (!s.password_hash || s.must_change_password) {
         const candidate = joinedDate || currentPassword;
         if (candidate && /^\d{8}$/.test(String(candidate)) && joinedDateMatches(s.joined_date, String(candidate))) {
           match = s;
@@ -88,7 +87,7 @@ Deno.serve(async (req) => {
     }
 
     if (!match) {
-      return json({ error: "invalid_credentials" }, 401);
+      return json({ error: "invalid_credentials", message: "Invalid current credential or joined date" }, 401);
     }
 
     if (match.device_id && match.device_id !== deviceFingerprint) {
