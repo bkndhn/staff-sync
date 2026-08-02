@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Check, X, Clock, MessageSquare, FileText, Search } from 'lucide-react';
+import { Calendar, Check, X, Clock, MessageSquare, FileText, Search, Filter } from 'lucide-react';
 import { leaveService, LeaveRequest } from '../services/leaveService';
 
 interface LeaveManagementProps {
@@ -34,6 +34,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
   const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().split('T')[0]);
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [dateFilterEnabled, setDateFilterEnabled] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
 
   const loadLeaves = async () => {
     setLoading(true);
@@ -147,7 +148,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
 
       {/* Search & Date Filters */}
       <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-2xl p-4 space-y-3">
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex items-center justify-between gap-3">
           {/* Search */}
           <div className="relative flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
@@ -160,6 +161,18 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
             />
           </div>
 
+          {/* Mobile Filter Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="sm:hidden flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)] text-xs font-semibold text-[var(--text-primary)] hover:bg-white/10 transition-colors shrink-0"
+          >
+            <Filter size={14} />
+            <span>{showFilters ? 'Hide' : 'Filters'}</span>
+          </button>
+        </div>
+
+        <div className={`${showFilters ? 'block' : 'hidden sm:block'} space-y-3 pt-2 sm:pt-0 border-t sm:border-0 border-[var(--glass-border)]`}>
           {/* Date range */}
           <div className="flex items-center gap-2 flex-wrap">
             <label className="text-xs text-[var(--text-muted)] whitespace-nowrap">From:</label>
@@ -186,26 +199,26 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
               </button>
             )}
           </div>
-        </div>
 
-        {/* Status filter */}
-        <div className="flex gap-2 flex-wrap">
-          {(['all', 'pending', 'approved', 'rejected', 'postponed'] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                filter === f
-                  ? 'bg-indigo-500 text-white border-indigo-500'
-                  : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--glass-border)] hover:border-indigo-400/30'
-              }`}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-              {f === 'pending' && pendingCount > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px]">{pendingCount}</span>
-              )}
-            </button>
-          ))}
+          {/* Status filter */}
+          <div className="flex gap-2 flex-wrap">
+            {(['all', 'pending', 'approved', 'rejected', 'postponed'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                  filter === f
+                    ? 'bg-indigo-500 text-white border-indigo-500'
+                    : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--glass-border)] hover:border-indigo-400/30'
+                }`}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+                {f === 'pending' && pendingCount > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px]">{pendingCount}</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

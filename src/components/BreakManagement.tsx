@@ -26,6 +26,7 @@ const BreakManagement: React.FC<Props> = ({ staff, user }) => {
   const [endDate, setEndDate] = useState(today);
   const [staffFilter, setStaffFilter] = useState<string>('all');
   const [locationFilter, setLocationFilter] = useState<string>(user.role === 'manager' ? user.location || 'all' : 'all');
+  const [showFilters, setShowFilters] = useState(false);
 
   // Edit modal
   const [editing, setEditing] = useState<Partial<BreakEvent> | null>(null);
@@ -168,27 +169,44 @@ const BreakManagement: React.FC<Props> = ({ staff, user }) => {
           </div>
 
           {/* Filters */}
-          <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-bg)] p-3 flex flex-wrap items-end gap-3">
-            <div className="flex items-center gap-1 text-xs text-[var(--text-muted)]"><Filter size={12} /> Filters</div>
-            <Field label="From"><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="input-premium" /></Field>
-            <Field label="To"><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="input-premium" /></Field>
-            <Field label="Staff">
-              <select value={staffFilter} onChange={e => setStaffFilter(e.target.value)} className="input-premium">
-                <option value="all">All</option>
-                {filteredStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </Field>
-            {user.role === 'admin' && (
-              <Field label="Location">
-                <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)} className="input-premium">
+          <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-bg)] p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]">
+                <Filter size={14} className="text-indigo-400" />
+                <span>Filter Options</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="sm:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] text-xs font-medium text-[var(--text-primary)]"
+                >
+                  <span>{showFilters ? 'Hide Filters' : 'Show Filters'}</span>
+                </button>
+                <button onClick={() => setEditing({ date: today, source: 'manual' })} className="btn-premium py-1.5 px-3 text-xs flex items-center gap-1">
+                  <Plus size={14} /> Add Manual Break
+                </button>
+              </div>
+            </div>
+
+            <div className={`${showFilters ? 'flex' : 'hidden sm:flex'} flex-wrap items-end gap-3 pt-2 sm:pt-0 border-t sm:border-0 border-[var(--glass-border)]`}>
+              <Field label="From"><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="input-premium" /></Field>
+              <Field label="To"><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="input-premium" /></Field>
+              <Field label="Staff">
+                <select value={staffFilter} onChange={e => setStaffFilter(e.target.value)} className="input-premium">
                   <option value="all">All</option>
-                  {locations.map(l => <option key={l} value={l}>{l}</option>)}
+                  {filteredStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </Field>
-            )}
-            <button onClick={() => setEditing({ date: today, source: 'manual' })} className="btn-premium flex items-center gap-1">
-              <Plus size={14} /> Add Manual Break
-            </button>
+              {user.role === 'admin' && (
+                <Field label="Location">
+                  <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)} className="input-premium">
+                    <option value="all">All</option>
+                    {locations.map(l => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </Field>
+              )}
+            </div>
           </div>
 
           {/* Table */}

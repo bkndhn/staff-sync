@@ -16,7 +16,8 @@ import {
   Info,
   DollarSign,
   TrendingDown,
-  Building
+  Building,
+  Filter
 } from 'lucide-react';
 import {
   calculateAttendanceMetrics,
@@ -104,6 +105,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
   const [toDate, setToDate] = useState<string>(() => getDateRangeFromType('today').to);
   const [activeBreakdownTab, setActiveBreakdownTab] = useState<'late' | 'early' | 'absent' | 'ontime'>('late');
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const [showFilters, setShowFilters] = useState(false);
 
   const [globalShiftWindows, setGlobalShiftWindows] = useState<any>(DEFAULT_SHIFT_WINDOWS);
   const [salaryCategories, setSalaryCategories] = useState<any[]>([]);
@@ -585,21 +587,36 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
 
       {/* Date Filters Panel */}
       <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6 rounded-3xl shadow-[var(--shadow-soft)] space-y-4">
-        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--glass-border)] pb-4">
-          {(['today', 'yesterday', 'week', 'month', 'year', 'custom'] as const).map(type => (
-            <button
-              key={type}
-              onClick={() => handleFilterTypeChange(type)}
-              className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold capitalize transition-all ${
-                filterType === type
-                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/20'
-                  : 'bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-indigo-500/30'
-              }`}
-            >
-              {type}
-            </button>
-          ))}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)]">
+            <Filter size={16} className="text-indigo-400" />
+            <span>Filter Options</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="sm:hidden flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)] text-xs font-semibold text-[var(--text-primary)]"
+          >
+            <span>{showFilters ? 'Hide Filters' : 'Show Filters'}</span>
+          </button>
         </div>
+
+        <div className={`${showFilters ? 'block' : 'hidden sm:block'} space-y-4 pt-2 sm:pt-0`}>
+          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--glass-border)] pb-4">
+            {(['today', 'yesterday', 'week', 'month', 'year', 'custom'] as const).map(type => (
+              <button
+                key={type}
+                onClick={() => handleFilterTypeChange(type)}
+                className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold capitalize transition-all ${
+                  filterType === type
+                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/20'
+                    : 'bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-indigo-500/30'
+                }`}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
 
         {filterType === 'custom' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
@@ -632,6 +649,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
             <span>Date Rule Error: "To Date" cannot be earlier than "From Date". Metrics computation paused.</span>
           </div>
         )}
+        </div>
       </div>
 
       {!isDateInvalid && (
