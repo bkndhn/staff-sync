@@ -1942,10 +1942,12 @@ thead th {
   color: var(--text-secondary) !important;
 }
 
-/* Remove any white/light backgrounds on containers */
+/* Remove any white/light backgrounds on containers.
+   Only plain surface utilities — never translucent overlays like bg-slate-900/40. */
 .bg-white,
-[class*="bg-gray-5"],
-[class*="bg-slate-"] {
+.bg-gray-50,
+.bg-slate-50,
+.bg-slate-100 {
   background-color: var(--glass-bg) !important;
 }
 
@@ -2321,7 +2323,8 @@ body:not(.light-theme) .text-gray-500 { color: rgba(255, 255, 255, 0.62) !import
 body.light-theme .bg-white,
 body.light-theme .bg-gray-50,
 body.light-theme .bg-gray-100,
-body.light-theme [class*="bg-slate-"] {
+body.light-theme .bg-slate-50,
+body.light-theme .bg-slate-100 {
   background-color: #ffffff !important;
 }
 
@@ -2863,4 +2866,119 @@ body.light-theme [class*="bg-[#"].text-white {
 /* Fix any child SVGs to match their text color */
 body.light-theme .text-white svg {
   color: inherit !important;
+}
+
+
+/* ============================================================
+   FINAL CONTRAST HARDENING (loaded last — wins every conflict)
+   Fixes washed-out placeholders, invisible button labels and
+   low-contrast helper text across the admin + super admin UI.
+   ============================================================ */
+
+/* 1. Placeholders — always solid, never translucent */
+input::placeholder,
+textarea::placeholder,
+.input-premium::placeholder,
+select:invalid {
+  color: #94A3B8 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #94A3B8;
+}
+
+body.light-theme input::placeholder,
+body.light-theme textarea::placeholder,
+body.light-theme .input-premium::placeholder {
+  color: #64748B !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #64748B;
+}
+
+/* 2. Typed input text always full contrast */
+input,
+select,
+textarea {
+  -webkit-text-fill-color: currentColor;
+}
+body.light-theme input,
+body.light-theme select,
+body.light-theme textarea {
+  color: #0B1220 !important;
+}
+
+/* 3. Solid colour buttons keep white labels (blue / red / green / amber) */
+.bg-blue-500, .bg-blue-600, .bg-blue-700, .bg-blue-800,
+.bg-indigo-500, .bg-indigo-600, .bg-indigo-700,
+.bg-sky-500, .bg-sky-600,
+.bg-emerald-500, .bg-emerald-600, .bg-emerald-700,
+.bg-green-600, .bg-green-700,
+.bg-red-500, .bg-red-600, .bg-red-700,
+.bg-amber-500, .bg-amber-600,
+.bg-orange-500, .bg-orange-600,
+.bg-slate-800, .bg-slate-900 {
+  color: #FFFFFF !important;
+}
+.bg-blue-500 *, .bg-blue-600 *, .bg-blue-700 *, .bg-blue-800 *,
+.bg-indigo-500 *, .bg-indigo-600 *, .bg-indigo-700 *,
+.bg-sky-500 *, .bg-sky-600 *,
+.bg-emerald-500 *, .bg-emerald-600 *, .bg-emerald-700 *,
+.bg-green-600 *, .bg-green-700 *,
+.bg-red-500 *, .bg-red-600 *, .bg-red-700 *,
+.bg-amber-500 *, .bg-amber-600 *,
+.bg-orange-500 *, .bg-orange-600 *,
+.bg-slate-800 *, .bg-slate-900 * {
+  color: inherit !important;
+}
+/* Gradient buttons/pills (from-blue-… to-blue-…) */
+[class*="from-blue-"], [class*="from-indigo-"], [class*="from-sky-"],
+[class*="from-blue-"] *, [class*="from-indigo-"] *, [class*="from-sky-"] * {
+  color: #FFFFFF !important;
+}
+/* …but never repaint tinted surfaces (bg-blue-50 / /10 overlays) */
+[class*="bg-blue-50"], [class*="bg-blue-100"],
+[class*="bg-red-50"], [class*="bg-emerald-50"], [class*="bg-amber-50"],
+[class*="bg-blue-50"] *, [class*="bg-blue-100"] * {
+  color: inherit !important;
+}
+
+/* 4. Disabled controls stay readable instead of fading to invisible */
+button:disabled,
+button[disabled],
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+body.light-theme button:disabled:not([class*="bg-transparent"]) {
+  background-color: #E2E8F0 !important;
+  color: #64748B !important;
+  border-color: #CBD5E1 !important;
+}
+body:not(.light-theme) button:disabled:not([class*="bg-transparent"]) {
+  background-color: #1E293B !important;
+  color: #94A3B8 !important;
+}
+body.light-theme button:disabled svg,
+body:not(.light-theme) button:disabled svg { color: currentColor !important; }
+
+/* 5. Muted helper text minimum contrast */
+body.light-theme .text-slate-400,
+body.light-theme .text-gray-400,
+body.light-theme .text-slate-500,
+body.light-theme .text-gray-500 { color: #64748B !important; }
+body.light-theme .text-slate-600,
+body.light-theme .text-gray-600 { color: #475569 !important; }
+body:not(.light-theme) .text-slate-400,
+body:not(.light-theme) .text-slate-500,
+body:not(.light-theme) .text-slate-600 { color: #94A3B8 !important; }
+
+/* 6. Segmented tabs / chips: readable in both states */
+body.light-theme [class*="bg-blue-6"] > span,
+body.light-theme [class*="bg-blue-6"] svg { color: #FFFFFF !important; }
+
+/* 7. Modal overlays must stay dim (not repainted white) */
+.fixed.inset-0[class*="bg-slate-9"],
+.fixed.inset-0[class*="bg-black"],
+.fixed.inset-0[class*="bg-gray-9"] {
+  background-color: rgba(15, 23, 42, 0.45) !important;
 }
