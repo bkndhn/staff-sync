@@ -537,10 +537,23 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     setDragOverIndex(null);
   };
 
+  const getNextEmployeeCode = (existingStaff: Staff[]): string => {
+    const numericCodes = existingStaff
+      .map(s => {
+        const code = s.employeeCode || (s.deviceId?.startsWith('dev_') ? '' : s.deviceId) || '';
+        const num = parseInt(code, 10);
+        return !isNaN(num) && num > 0 ? num : 0;
+      })
+      .filter(n => n > 0);
+    const maxCode = numericCodes.length > 0 ? Math.max(...numericCodes) : 0;
+    return String(maxCode + 1);
+  };
+
   const resetForm = () => {
+    const nextCode = getNextEmployeeCode(staff);
     setFormData({
       name: '',
-      employeeCode: '',
+      employeeCode: nextCode,
       location: locations[0]?.name || 'Big Shop',
       floor: '',
       designation: '',
@@ -568,7 +581,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       statutoryDeductions: {},
       pfNumber: '',
       esiNumber: '',
-      deviceId: '',
+      deviceId: nextCode,
       isStatutory: false
     });
   };
@@ -582,14 +595,17 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       await customAlert('Please enter a valid 10-digit mobile number');
       return;
     }
-    const deviceIdTrim = (formData.deviceId || '').trim();
+    const deviceIdTrim = (formData.deviceId || formData.employeeCode || '').trim();
     if (!deviceIdTrim) {
       await customAlert('Biometric Device ID / Employee Code is required');
       return;
     }
-    const duplicateDevice = staff.find(s => s.id !== editingStaff?.id && (s.deviceId || '').trim() === deviceIdTrim);
+    const duplicateDevice = staff.find(s => 
+      s.id !== editingStaff?.id && 
+      ((s.deviceId || '').trim() === deviceIdTrim || (s.employeeCode || '').trim() === deviceIdTrim)
+    );
     if (duplicateDevice) {
-      await customAlert(`Device ID "${deviceIdTrim}" is already assigned to ${duplicateDevice.name}`);
+      await customAlert(`Employee Code / Device ID "${deviceIdTrim}" is already assigned to ${duplicateDevice.name}`);
       return;
     }
 
@@ -639,10 +655,11 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     const freshLocations = await locationService.getLocations();
     setLocations(freshLocations);
 
+    const existingCode = member.employeeCode || (member.deviceId?.startsWith('dev_') ? '' : member.deviceId) || '';
     const supplements = member.salarySupplements || {};
     setFormData({
       name: member.name,
-      employeeCode: member.employeeCode || '',
+      employeeCode: existingCode,
       location: member.location,
       floor: member.floor || '',
       designation: member.designation || '',
@@ -670,7 +687,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       statutoryDeductions: member.statutoryDeductions || {},
       pfNumber: member.pfNumber || '',
       esiNumber: member.esiNumber || '',
-      deviceId: member.deviceId?.startsWith('dev_') ? '' : (member.deviceId || ''),
+      deviceId: existingCode,
       isStatutory: !!member.isStatutory
     });
     setEditingStaff(member);
@@ -1608,13 +1625,21 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                       Joined {new Date(member.joinedDate).toLocaleDateString()}
                     </div>
                     <div className="flex items-center gap-1">
-                      <button onClick={(e) => { e.stopPropagation(); handleEdit(member); }} className="p-2 rounded-lg bg-indigo-500/15 text-indigo-300 active:bg-indigo-500/30" aria-label="Edit">
+                      <button onClick={(e) => { e.stopPropagation(); handleEdit(member); }} className="p-2 rounded-lg bg-indigo-500/15 text-indigo-300 active:bg-indigo-500/30" title="Edit">
                         <Edit2 size={14} />
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); setFaceModalStaff(member); }} className="p-2 rounded-lg bg-purple-500/15 text-purple-300 active:bg-purple-500/30" aria-label="Face samples">
+                      <button onClick={(e) => { e.stopPropagation(); setFaceModalStaff(member); }} className="p-2 rounded-lg bg-purple-500/15 text-purple-300 active:bg-purple-500/30" title="Face samples">
                         <Camera size={14} />
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(member); }} className="p-2 rounded-lg bg-red-500/15 text-red-300 active:bg-red-500/30" aria-label="Archive">
+                      {member.deviceId && (
+                        <button onClick={(e) => { e.stopPropagation(); handleResetDevice(member.id, member.name); }} className="p-2 rounded-lg bg-orange-500/15 text-orange-400 active:bg-orange-500/30" title="Reset Device Lock">
+                          <ShieldOff size={14} />
+                        </button>
+                      )}
+                      <button onClick={(e) => { e.stopPropagation(); handleResetStaffPassword(member.id, member.name); }} className="p-2 rounded-lg bg-amber-500/15 text-amber-400 active:bg-amber-500/30" title="Reset Password">
+                        <RotateCcw size={14} />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); handleDelete(member); }} className="p-2 rounded-lg bg-red-500/15 text-red-300 active:bg-red-500/30" title="Archive">
                         <Archive size={14} />
                       </button>
                     </div>
