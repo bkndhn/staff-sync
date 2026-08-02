@@ -831,16 +831,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
           <div onClick={() => setShowHikeDueModal(true)} className="glass-card-static p-4 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-colors border-l-4 border-amber-500">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-amber-500/20 rounded-full">
-                <TrendingUp className="text-amber-400" size={20} />
+                <TrendingUp className="text-amber-600 dark:text-amber-400" size={20} />
               </div>
               <div>
-                <h3 className="font-semibold text-amber-400">Salary Hike Due</h3>
-                <p className="text-sm text-white/60">
+                <h3 className="font-semibold text-amber-700 dark:text-amber-400">Salary Hike Due</h3>
+                <p className="text-sm text-[var(--text-muted)]">
                   {staffDueForHike.length} staff member{staffDueForHike.length !== 1 ? 's are' : ' is'} eligible for a salary hike
                 </p>
               </div>
             </div>
-            <span className="text-amber-400 text-sm font-medium">Click to view →</span>
+            <span className="text-amber-700 dark:text-amber-400 text-sm font-medium">Click to view →</span>
           </div>
         );
       })()}

@@ -2997,3 +2997,155 @@ body.light-theme [class*="bg-blue-6"] svg { color: #FFFFFF !important; }
 .fixed.inset-0[class*="bg-gray-9"] {
   background-color: rgba(15, 23, 42, 0.45) !important;
 }
+
+/* ============================================================
+   8. COMPREHENSIVE LIGHT-THEME COLOR CONTRAST FIX
+   Bump all 300/400 shade text colors (designed for dark bg)
+   to their 600/700 equivalents so they are readable on white.
+   ============================================================ */
+
+/* Amber */
+body.light-theme .text-amber-300 { color: #D97706 !important; }
+body.light-theme .text-amber-400 { color: #B45309 !important; }
+
+/* Blue */
+body.light-theme .text-blue-300  { color: #2563EB !important; }
+body.light-theme .text-blue-400  { color: #1D4ED8 !important; }
+
+/* Cyan */
+body.light-theme .text-cyan-300  { color: #0891B2 !important; }
+body.light-theme .text-cyan-400  { color: #0E7490 !important; }
+
+/* Emerald */
+body.light-theme .text-emerald-300 { color: #059669 !important; }
+body.light-theme .text-emerald-400 { color: #047857 !important; }
+
+/* Green */
+body.light-theme .text-green-300 { color: #16A34A !important; }
+body.light-theme .text-green-400 { color: #15803D !important; }
+
+/* Indigo */
+body.light-theme .text-indigo-300 { color: #4F46E5 !important; }
+body.light-theme .text-indigo-400 { color: #4338CA !important; }
+
+/* Orange */
+body.light-theme .text-orange-300 { color: #EA580C !important; }
+body.light-theme .text-orange-400 { color: #C2410C !important; }
+
+/* Purple */
+body.light-theme .text-purple-300 { color: #7C3AED !important; }
+body.light-theme .text-purple-400 { color: #6D28D9 !important; }
+
+/* Red */
+body.light-theme .text-red-300    { color: #DC2626 !important; }
+body.light-theme .text-red-400    { color: #B91C1C !important; }
+
+/* Rose */
+body.light-theme .text-rose-300   { color: #E11D48 !important; }
+body.light-theme .text-rose-400   { color: #BE123C !important; }
+
+/* Teal */
+body.light-theme .text-teal-300  { color: #0D9488 !important; }
+body.light-theme .text-teal-400  { color: #0F766E !important; }
+
+/* Yellow */
+body.light-theme .text-yellow-300 { color: #CA8A04 !important; }
+body.light-theme .text-yellow-400 { color: #A16207 !important; }
+
+/* Sky */
+body.light-theme .text-sky-300   { color: #0284C7 !important; }
+body.light-theme .text-sky-400   { color: #0369A1 !important; }
+
+/* Violet / Pink / Lime (less common but cover them) */
+body.light-theme .text-violet-300 { color: #7C3AED !important; }
+body.light-theme .text-violet-400 { color: #6D28D9 !important; }
+body.light-theme .text-pink-300   { color: #DB2777 !important; }
+body.light-theme .text-pink-400   { color: #BE185D !important; }
+body.light-theme .text-lime-300   { color: #65A30D !important; }
+body.light-theme .text-lime-400   { color: #4D7C0F !important; }
+
+/* ============================================================
+   9. GLASS-CARD-STATIC: force all descendant text readable
+   in light theme regardless of original color classes.
+   ============================================================ */
+body.light-theme .glass-card-static,
+body.light-theme .glass-card {
+  color: #1E293B !important;
+}
+body.light-theme .glass-card-static h1,
+body.light-theme .glass-card-static h2,
+body.light-theme .glass-card-static h3,
+body.light-theme .glass-card-static h4,
+body.light-theme .glass-card-static h5,
+body.light-theme .glass-card h1,
+body.light-theme .glass-card h2,
+body.light-theme .glass-card h3,
+body.light-theme .glass-card h4,
+body.light-theme .glass-card h5 {
+  color: #0F172A !important;
+}
+body.light-theme .glass-card-static p,
+body.light-theme .glass-card-static span:not([class*="bg-"]):not([class*="badge"]):not([class*="rounded-full"]),
+body.light-theme .glass-card p,
+body.light-theme .glass-card span:not([class*="bg-"]):not([class*="badge"]):not([class*="rounded-full"]) {
+  color: #334155 !important;
+}
+
+/* ============================================================
+   10. EXCEPTION: Keep white text INSIDE colored bg containers
+   even when nested inside glass-card-static.
+   These selectors are MORE specific than section 9 above.
+   ============================================================ */
+body.light-theme .glass-card-static [class*="bg-blue-5"] *,
+body.light-theme .glass-card-static [class*="bg-blue-6"] *,
+body.light-theme .glass-card-static [class*="bg-blue-7"] *,
+body.light-theme .glass-card-static [class*="bg-indigo-5"] *,
+body.light-theme .glass-card-static [class*="bg-indigo-6"] *,
+body.light-theme .glass-card-static [class*="bg-emerald-5"] *,
+body.light-theme .glass-card-static [class*="bg-emerald-6"] *,
+body.light-theme .glass-card-static [class*="bg-red-5"] *,
+body.light-theme .glass-card-static [class*="bg-red-6"] *,
+body.light-theme .glass-card-static [class*="bg-green-5"] *,
+body.light-theme .glass-card-static [class*="bg-green-6"] *,
+body.light-theme .glass-card-static [class*="bg-amber-5"] *,
+body.light-theme .glass-card-static [class*="bg-amber-6"] *,
+body.light-theme .glass-card-static [class*="bg-orange-5"] *,
+body.light-theme .glass-card-static [class*="bg-orange-6"] *,
+body.light-theme .glass-card-static [class*="bg-purple-5"] *,
+body.light-theme .glass-card-static [class*="bg-purple-6"] *,
+body.light-theme .glass-card-static [class*="bg-gradient"] *,
+body.light-theme .glass-card-static .btn-premium *,
+body.light-theme .glass-card [class*="bg-blue-5"] *,
+body.light-theme .glass-card [class*="bg-blue-6"] *,
+body.light-theme .glass-card [class*="bg-blue-7"] *,
+body.light-theme .glass-card [class*="bg-indigo-5"] *,
+body.light-theme .glass-card [class*="bg-indigo-6"] *,
+body.light-theme .glass-card [class*="bg-emerald-5"] *,
+body.light-theme .glass-card [class*="bg-emerald-6"] *,
+body.light-theme .glass-card [class*="bg-red-5"] *,
+body.light-theme .glass-card [class*="bg-red-6"] *,
+body.light-theme .glass-card .btn-premium * {
+  color: #FFFFFF !important;
+}
+
+/* Colored text inside glass cards should use their darker light-theme variant */
+body.light-theme .glass-card-static .text-amber-400,
+body.light-theme .glass-card .text-amber-400 { color: #B45309 !important; }
+body.light-theme .glass-card-static .text-emerald-400,
+body.light-theme .glass-card .text-emerald-400 { color: #047857 !important; }
+body.light-theme .glass-card-static .text-blue-400,
+body.light-theme .glass-card .text-blue-400 { color: #1D4ED8 !important; }
+body.light-theme .glass-card-static .text-red-400,
+body.light-theme .glass-card .text-red-400 { color: #B91C1C !important; }
+body.light-theme .glass-card-static .text-indigo-400,
+body.light-theme .glass-card .text-indigo-400 { color: #4338CA !important; }
+body.light-theme .glass-card-static .text-purple-400,
+body.light-theme .glass-card .text-purple-400 { color: #6D28D9 !important; }
+body.light-theme .glass-card-static .text-orange-400,
+body.light-theme .glass-card .text-orange-400 { color: #C2410C !important; }
+
+/* Status badge text remains white on colored pill backgrounds */
+body.light-theme .glass-card-static [class*="rounded-full"][class*="bg-"],
+body.light-theme .glass-card [class*="rounded-full"][class*="bg-"] {
+  color: inherit !important;
+}
