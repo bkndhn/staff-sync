@@ -1100,7 +1100,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 className="text-xs border-none outline-none focus:ring-0 p-0 w-[55px] md:w-[70px] bg-transparent"
               />
             </div>
-            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-1 md:px-2 py-1">
+            <div className="hidden md:flex items-center gap-1 border border-gray-200 rounded-lg px-1 md:px-2 py-1">
               <label className="text-[10px] uppercase text-gray-500 font-bold">OUT</label>
               <input 
                 type="time" 
