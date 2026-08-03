@@ -113,21 +113,23 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="sm:col-span-2 relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 z-10" size={18} />
           <input
             type="text"
             placeholder="Search by staff name, details, or user…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input-premium pl-10 text-sm py-2.5 w-full"
+            style={{ paddingLeft: '2.75rem' }}
+            className="input-premium text-sm py-2.5 w-full"
           />
         </div>
         <div className="relative">
-          <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+          <Filter className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 z-10" size={18} />
           <select
             value={selectedAction}
             onChange={(e) => setSelectedAction(e.target.value)}
-            className="input-premium pl-10 text-sm py-2.5 w-full appearance-none pr-8 cursor-pointer"
+            style={{ paddingLeft: '2.75rem', paddingRight: '2rem' }}
+            className="input-premium text-sm py-2.5 w-full appearance-none cursor-pointer"
           >
             <option value="all">All Event Types</option>
             <option value="attendance_override">Attendance Override</option>
@@ -140,6 +142,7 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
           </select>
         </div>
       </div>
+
 
       <div className="card-premium overflow-hidden border border-slate-700">
         {loading ? (

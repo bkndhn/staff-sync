@@ -14,7 +14,7 @@ import { compressImage } from '../utils/imageCompression';
 import { generateDeviceFingerprint } from '../utils/deviceFingerprint';
 
 interface LoginProps {
-  onLogin: (user: { id?: string; email: string; role: string; location?: string; floor?: string; floorId?: string; staffId?: string; staffName?: string }) => void;
+  onLogin: (user: { id?: string; email: string; role: string; location?: string; floor?: string; floorId?: string; staffId?: string; staffName?: string; staffRecord?: any }) => void;
 }
 
 

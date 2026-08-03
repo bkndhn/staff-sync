@@ -3,6 +3,7 @@ import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shie
 import { userService, AppUser, CreateUserInput, UpdateUserInput } from '../services/userService';
 import { locationService, Location } from '../services/locationService';
 import { staffService } from '../services/staffService';
+import { floorService } from '../services/floorService';
 import { appSettingsService } from '../services/appSettingsService';
 import { getQRRefreshSeconds, setQRRefreshSeconds } from '../utils/qrCrypto';
 import ShiftWindowsPanel from './ShiftWindowsPanel';
@@ -223,7 +224,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
         location: '',
         floor: ''
     });
-    const [availableFloors, setAvailableFloors] = useState<string[]>([]);
+    const [floorOptions, setFloorOptions] = useState<{ name: string; locationName: string }[]>([]);
     const [showPassword, setShowPassword] = useState(false);
 
     // Fetch users and locations on mount
@@ -236,16 +237,23 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [usersData, locationsData, staffData] = await Promise.all([
+            const [usersData, locationsData, staffData, floorsData] = await Promise.all([
                 userService.getUsers(),
                 locationService.getLocations(),
-                staffService.getAll()
+                staffService.getAll(),
+                floorService.getFloors()
             ]);
             setUsers(usersData);
             setLocations(locationsData);
-            
-            const uniqueFloors = Array.from(new Set(staffData.filter(s => s.floor).map(s => s.floor))) as string[];
-            setAvailableFloors(uniqueFloors.sort());
+
+            const map = new Map<string, { name: string; locationName: string }>();
+            floorsData
+                .filter(f => f.isActive !== false)
+                .forEach(f => map.set(`${f.locationName}||${f.name}`, { name: f.name, locationName: f.locationName }));
+            staffData
+                .filter(s => s.floor && s.location)
+                .forEach(s => map.set(`${s.location}||${s.floor}`, { name: s.floor!, locationName: s.location }));
+            setFloorOptions(Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name)));
         } catch (err) {
             console.error('Error loading data:', err);
             setError('Failed to load data');
@@ -840,7 +848,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                                     <label className="block text-sm font-medium text-white/70 mb-1">Location *</label>
                                     <select
                                         value={formData.location}
-                                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                        onChange={(e) => setFormData({ ...formData, location: e.target.value, floor: '' })}
                                         className="input-premium w-full"
                                         required
                                     >
@@ -881,9 +889,11 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                                         required
                                     >
                                         <option value="">Select Floor</option>
-                                        {availableFloors.map(f => (
-                                            <option key={f} value={f}>{f}</option>
-                                        ))}
+                                        {floorOptions
+                                            .filter(f => !formData.location || f.locationName === formData.location)
+                                            .map(f => (
+                                                <option key={`${f.locationName}-${f.name}`} value={f.name}>{f.name}</option>
+                                            ))}
                                     </select>
                                 </div>
                             )}
