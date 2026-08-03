@@ -3,6 +3,7 @@ import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shie
 import { userService, AppUser, CreateUserInput, UpdateUserInput } from '../services/userService';
 import { locationService, Location } from '../services/locationService';
 import { staffService } from '../services/staffService';
+import { floorService } from '../services/floorService';
 import { appSettingsService } from '../services/appSettingsService';
 import { getQRRefreshSeconds, setQRRefreshSeconds } from '../utils/qrCrypto';
 import ShiftWindowsPanel from './ShiftWindowsPanel';
@@ -847,7 +848,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                                     <label className="block text-sm font-medium text-white/70 mb-1">Location *</label>
                                     <select
                                         value={formData.location}
-                                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                        onChange={(e) => setFormData({ ...formData, location: e.target.value, floor: '' })}
                                         className="input-premium w-full"
                                         required
                                     >
