@@ -12,6 +12,7 @@ import { customConfirm } from './CustomDialog';
 import { User } from '../types';
 import { userService } from '../services/userService';
 import { AuditLogViewer } from './AuditLogViewer';
+import TenantStatusBanner from './TenantStatusBanner';
 
 interface Props {
   user: User;
@@ -290,7 +291,14 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
               <ul className="space-y-3">
                 {filtered.map(t => {
                   return (
-                    <li key={t.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <li key={t.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+                      {(t.status !== 'ACTIVE' || t.staff_portal_enabled === false) && (
+                        <TenantStatusBanner
+                          tenant={t}
+                          role="super_admin"
+                          onEnableStaffPortal={() => toggleStaffPortal(t)}
+                        />
+                      )}
                       <div className="flex items-start gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                           <Building2 size={18} />

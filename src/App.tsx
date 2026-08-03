@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard';
 import AttendanceTracker from './components/AttendanceTracker';
 import SalaryHikeModal from './components/SalaryHikeModal';
 import PermissionsMatrix from './components/PermissionsMatrix';
+import { ShiftRoster } from './components/ShiftRoster';
 import { Staff, Attendance, OldStaffRecord, SalaryHike, NavigationTab, AdvanceDeduction, User } from './types';
 import { staffService } from './services/staffService';
 import { attendanceService } from './services/attendanceService';
@@ -19,6 +20,7 @@ import { AuditLogViewer } from './components/AuditLogViewer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { auditLogService } from './services/auditLogService';
 import { offlineSyncService } from './services/offlineSyncService';
+import { punchEventService } from './services/punchEventService';
 import { useOfflineSync } from './hooks/useOfflineSync';
 import { usePayrollAutoGenerate } from './hooks/usePayrollAutoGenerate';
 import { offlineDbService } from './services/offlineDb';
@@ -31,6 +33,7 @@ import { locationDesignationShiftService } from './services/locationDesignationS
 import { resolveActiveRule } from './utils/attendanceRules';
 import { appSettingsService } from './services/appSettingsService';
 import { CustomDialogProvider, customAlert } from './components/CustomDialog';
+import TenantStatusBanner from './components/TenantStatusBanner';
 
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
 const SalaryManagement = React.lazy(() => import('./components/SalaryManagement'));
@@ -42,6 +45,7 @@ const LeaveManagement = React.lazy(() => import('./components/LeaveManagement'))
 const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
+const ActionCenter = React.lazy(() => import('./components/ActionCenter'));
 const SecurityFindings = React.lazy(() => import('./components/SecurityFindings'));
 const ProfileSettings = React.lazy(() => import('./components/ProfileSettings'));
 
@@ -84,6 +88,7 @@ const ComponentLoader = () => <SkeletonLoader />;
 function App() {
   // ── Capacitor Offline Sync — auto-syncs punches when network restores ────────
   const { status: offlineSyncStatus } = useOfflineSync();
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const [user, setUser] = useState<User | null>(() => {
 
@@ -167,10 +172,25 @@ function App() {
       }
     };
 
+    const handleOnline = () => {
+      setIsOnline(true);
+      punchEventService.syncPending();
+    };
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
     window.addEventListener('offline-sync-complete', handleSyncComplete);
     navigator.serviceWorker?.addEventListener('message', handleMessage);
 
+    // Initial check
+    if (navigator.onLine) {
+      punchEventService.syncPending();
+    }
+
     return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
       window.removeEventListener('offline-sync-complete', handleSyncComplete);
       navigator.serviceWorker?.removeEventListener('message', handleMessage);
     };
@@ -722,7 +742,11 @@ function App() {
       });
     } catch (error: any) {
       console.error('Error adding staff:', error);
-      await customAlert(`Failed to add staff: ${error.message || 'Unknown error'}`);
+      if (error?.message === 'DUPLICATE_PHONE') {
+        await customAlert('This mobile number is already registered. Please use a unique 10-digit number.');
+      } else {
+        await customAlert('Failed to add staff member. Please check your connection and try again.');
+      }
     }
   };
 
@@ -816,7 +840,11 @@ function App() {
             }
           } catch (error: any) {
             console.error('Error updating staff:', error);
-            await customAlert(`Failed to save: ${error.message || 'Unknown error'}`);
+            if (error?.message === 'DUPLICATE_PHONE') {
+              await customAlert('This mobile number is already registered. Please use a unique 10-digit number.');
+            } else {
+              await customAlert('Failed to save: ' + (error.message || 'Unknown error'));
+            }
           }
         }
       });
@@ -849,7 +877,11 @@ function App() {
 
       } catch (error: any) {
         console.error('Error updating staff:', error);
-        await customAlert(`Failed to save: ${error.message || 'Unknown error'}`);
+        if (error?.message === 'DUPLICATE_PHONE') {
+          await customAlert('This mobile number is already registered. Please use a unique 10-digit number.');
+        } else {
+          await customAlert('Failed to save: ' + (error.message || 'Unknown error'));
+        }
       }
     }
   };
@@ -960,8 +992,13 @@ function App() {
       // Update local state
       setStaff(prev => [...prev, savedStaff]);
       setOldStaffRecords(prev => prev.filter(r => r.id !== record.id));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error rejoining staff:', error);
+      if (error?.message === 'DUPLICATE_PHONE') {
+        await customAlert('This mobile number is already registered. Please use a unique 10-digit number.');
+      } else {
+        await customAlert('Failed to rejoin staff. Please try again.');
+      }
     }
   };
 
@@ -1140,6 +1177,17 @@ function App() {
             />
           </Suspense>
         );
+      case 'Shift Roster':
+        if (user?.role !== 'admin' && user?.role !== 'manager') return null;
+        return (
+          <Suspense fallback={<ComponentLoader />}>
+            <ShiftRoster
+              staff={filteredStaffData}
+              userLocation={user?.location || ''}
+              userRole={user?.role}
+            />
+          </Suspense>
+        );
       case 'Attendance':
         return (
           <AttendanceTracker
@@ -1250,6 +1298,12 @@ function App() {
             <ProfileSettings user={user!} onUpdateUser={setUser} />
           </Suspense>
         );
+      case 'Action Center':
+        return (
+          <Suspense fallback={<ComponentLoader />}>
+            <ActionCenter user={user} />
+          </Suspense>
+        );
 
       default:
         return null;
@@ -1317,11 +1371,6 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {user.tenant && user.tenant.status !== 'ACTIVE' && (
-        <div className="bg-red-600 text-white p-3 text-center text-sm font-medium z-50">
-          ⚠️ This workspace is currently {user.tenant.status.toLowerCase()}. Staff and managers cannot log in. Please resolve this issue in the billing or contact the super admin.
-        </div>
-      )}
       <Navigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -1335,6 +1384,7 @@ function App() {
       <main
         className="w-full px-4 sm:px-6 lg:px-8 flex-1 pb-24 md:pb-8 md:pt-20 ml-0 md:ml-[var(--sidebar-w,232px)] transition-[margin] duration-200"
       >
+        <TenantStatusBanner tenant={user.tenant} role={user.role} className="mb-4" />
 
         <ErrorBoundary moduleName={activeTab}>
           {renderContent()}

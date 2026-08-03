@@ -26,6 +26,7 @@ const BreakManagement: React.FC<Props> = ({ staff, user }) => {
   const [endDate, setEndDate] = useState(today);
   const [staffFilter, setStaffFilter] = useState<string>('all');
   const [locationFilter, setLocationFilter] = useState<string>(user.role === 'manager' ? user.location || 'all' : 'all');
+  const [floorFilter, setFloorFilter] = useState<string>(user.role === 'supervisor' || user.role === 'floor_supervisor' ? user.floor || 'all' : 'all');
   const [showFilters, setShowFilters] = useState(false);
 
   // Edit modal
@@ -52,10 +53,12 @@ const BreakManagement: React.FC<Props> = ({ staff, user }) => {
   useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [startDate, endDate, staffFilter, locationFilter]);
 
   const filteredStaff = useMemo(
-    () => user.role === 'manager' && user.location
-      ? staff.filter(s => s.location === user.location)
-      : staff,
-    [staff, user]
+    () => staff.filter(s => {
+      if (locationFilter !== 'all' && s.location !== locationFilter) return false;
+      if (floorFilter !== 'all' && s.floor !== floorFilter) return false;
+      return true;
+    }),
+    [staff, locationFilter, floorFilter]
   );
 
   const locations = useMemo(
@@ -63,10 +66,21 @@ const BreakManagement: React.FC<Props> = ({ staff, user }) => {
     [staff]
   );
 
-  const summary = useMemo(() => breakEventService.summarize(events), [events]);
+  const floors = useMemo(
+    () => Array.from(new Set(staff.map(s => s.floor).filter(Boolean))),
+    [staff]
+  );
+
+  const filteredEvents = useMemo(() => {
+    if (floorFilter === 'all') return events;
+    const floorStaffIds = new Set(staff.filter(s => s.floor === floorFilter).map(s => s.id));
+    return events.filter(e => floorStaffIds.has(e.staffId));
+  }, [events, staff, floorFilter]);
+
+  const summary = useMemo(() => breakEventService.summarize(filteredEvents), [filteredEvents]);
 
   const exportCsv = () => {
-    const rows = events.map(e => ({
+    const rows = filteredEvents.map(e => ({
       Date: e.date,
       Staff: e.staffName,
       Location: e.location,
@@ -201,11 +215,17 @@ const BreakManagement: React.FC<Props> = ({ staff, user }) => {
               {user.role === 'admin' && (
                 <Field label="Location">
                   <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)} className="input-premium">
-                    <option value="all">All</option>
+                    <option value="all">All Locations</option>
                     {locations.map(l => <option key={l} value={l}>{l}</option>)}
                   </select>
                 </Field>
               )}
+              <Field label="Floor">
+                <select value={floorFilter} onChange={e => setFloorFilter(e.target.value)} className="input-premium">
+                  <option value="all">All Floors</option>
+                  {floors.map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </Field>
             </div>
           </div>
 
@@ -220,7 +240,7 @@ const BreakManagement: React.FC<Props> = ({ staff, user }) => {
                 </tr>
               </thead>
               <tbody>
-                {events.map(e => (
+                {filteredEvents.map(e => (
                   <tr key={e.id} className="border-t border-[var(--glass-border)] hover:bg-white/5">
                     <td className="p-3">{e.date}</td>
                     <td className="p-3">
@@ -241,7 +261,7 @@ const BreakManagement: React.FC<Props> = ({ staff, user }) => {
                     </td>
                   </tr>
                 ))}
-                {events.length === 0 && (
+                {filteredEvents.length === 0 && (
                   <tr><td colSpan={9} className="p-8 text-center text-[var(--text-muted)]">No break records for selected filters.</td></tr>
                 )}
               </tbody>

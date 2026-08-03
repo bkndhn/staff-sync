@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { dataApi } from '../lib/dataApi';
 
 export interface FaceEmbedding {
   id: string;
@@ -34,7 +35,7 @@ const fromDb = (d: any): FaceEmbedding => ({
 
 export const faceEmbeddingService = {
   async getByStaff(staffId: string): Promise<FaceEmbedding[]> {
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('face_embeddings')
       .select('*')
       .eq('staff_id', staffId)
@@ -44,7 +45,7 @@ export const faceEmbeddingService = {
   },
 
   async getAllApproved(): Promise<FaceEmbedding[]> {
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('face_embeddings')
       .select('*')
       .eq('is_approved', true);
@@ -75,14 +76,19 @@ export const faceEmbeddingService = {
   }): Promise<FaceEmbedding> {
     let imagePath: string | undefined;
     if (input.imageBlob) {
-      const path = `${input.staffId}/${Date.now()}-${input.angleLabel}.jpg`;
-      const { error: upErr } = await supabase.storage
-        .from('face-samples')
-        .upload(path, input.imageBlob, { contentType: 'image/jpeg', upsert: false });
-      if (!upErr) imagePath = path;
+      try {
+        const path = `${input.staffId}/${Date.now()}-${input.angleLabel}.jpg`;
+        const { error: upErr } = await supabase.storage
+          .from('face-samples')
+          .upload(path, input.imageBlob, { contentType: 'image/jpeg', upsert: false });
+        if (!upErr) imagePath = path;
+        else console.warn('Failed to upload face thumbnail to storage, saving embedding without image:', upErr);
+      } catch (err) {
+        console.warn('Storage error, saving embedding without image:', err);
+      }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('face_embeddings')
       .insert([{
         staff_id: input.staffId,
@@ -100,7 +106,7 @@ export const faceEmbeddingService = {
       .single();
     if (error) throw error;
 
-    await supabase.from('face_registration_logs').insert([{
+    await dataApi.from('face_registration_logs').insert([{
       staff_id: input.staffId,
       embedding_id: data.id,
       action: 'created',
@@ -111,20 +117,24 @@ export const faceEmbeddingService = {
   },
 
   async delete(id: string, actor?: string, reason?: string): Promise<void> {
-    const { data: row } = await supabase
+    const { data: row } = await dataApi
       .from('face_embeddings')
       .select('staff_id, image_path')
       .eq('id', id)
       .maybeSingle();
 
-    const { error } = await supabase.from('face_embeddings').delete().eq('id', id);
+    const { error } = await dataApi.from('face_embeddings').delete().eq('id', id);
     if (error) throw error;
 
     if (row?.image_path) {
-      await supabase.storage.from('face-samples').remove([row.image_path]);
+      try {
+        await supabase.storage.from('face-samples').remove([row.image_path]);
+      } catch (err) {
+        console.warn('Failed to delete image from storage:', err);
+      }
     }
     if (row?.staff_id) {
-      await supabase.from('face_registration_logs').insert([{
+      await dataApi.from('face_registration_logs').insert([{
         staff_id: row.staff_id,
         embedding_id: id,
         action: 'deleted',
@@ -135,14 +145,14 @@ export const faceEmbeddingService = {
   },
 
   async setApproval(id: string, approved: boolean, actor?: string): Promise<void> {
-    const { data: row, error } = await supabase
+    const { data: row, error } = await dataApi
       .from('face_embeddings')
       .update({ is_approved: approved })
       .eq('id', id)
       .select('staff_id')
       .single();
     if (error) throw error;
-    await supabase.from('face_registration_logs').insert([{
+    await dataApi.from('face_registration_logs').insert([{
       staff_id: row.staff_id,
       embedding_id: id,
       action: approved ? 'approved' : 'rejected',

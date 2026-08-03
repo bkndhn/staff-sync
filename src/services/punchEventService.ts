@@ -136,6 +136,50 @@ export const punchEventService = {
     }
     return { firstIn, lastOut, minutes: Math.max(0, minutes), count: sorted.length };
   },
+
+  /**
+   * Syncs all pending offline punches to Supabase.
+   * Called automatically when the network returns.
+   */
+  async syncPending(): Promise<void> {
+    if (!navigator.onLine) return;
+    
+    try {
+      const allLocal = await db.punchEvents.toArray();
+      const pending = allLocal.filter(e => e.id.startsWith('evt_'));
+      
+      if (pending.length === 0) return;
+      
+      console.log(`[Sync] Found ${pending.length} offline punches. Syncing...`);
+      
+      for (const event of pending) {
+        const { error } = await supabase
+          .from('punch_events' as any)
+          .insert([{
+            staff_id: event.staffId,
+            staff_name: event.staffName,
+            location: event.location,
+            date: event.date,
+            event_time: event.eventTime,
+            kind: event.kind,
+            source: event.source,
+            match_distance: event.matchDistance,
+            liveness_score: event.livenessScore,
+            device_label: event.deviceLabel,
+          }]);
+          
+        if (!error) {
+          await db.punchEvents.delete(event.id);
+        } else {
+          console.error(`[Sync] Failed to sync event ${event.id}:`, error);
+        }
+      }
+      
+      console.log('[Sync] Offline punches synced successfully.');
+    } catch (e) {
+      console.error('[Sync] Error during background sync:', e);
+    }
+  },
 };
 
 const toMin = (t: string): number => {

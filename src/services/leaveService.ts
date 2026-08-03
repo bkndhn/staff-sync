@@ -13,6 +13,9 @@ export interface LeaveRequest {
   managerComment?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  currentApprovalLevel?: number;
+  requiredApprovalLevels?: number;
+  approvalHistory?: Array<{ level: number; role: string; user: string; action: string; comment?: string; date: string }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,6 +43,9 @@ const mapRow = (row: any): LeaveRequest => ({
   managerComment: row.manager_comment,
   reviewedBy: row.reviewed_by,
   reviewedAt: row.reviewed_at,
+  currentApprovalLevel: row.current_approval_level,
+  requiredApprovalLevels: row.required_approval_levels,
+  approvalHistory: row.approval_history || [],
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -78,6 +84,18 @@ export const leaveService = {
   },
 
   async create(input: CreateLeaveInput): Promise<LeaveRequest | null> {
+    // Check for active workflow configs to determine required levels
+    const { data: configs } = await supabase.from('workflow_configs' as any).select('*').eq('entity_type', 'leave_request').eq('is_active', true);
+    
+    let requiredLevels = 1;
+    if (configs && configs.length > 0) {
+      // For simplicity, just use the first active workflow
+      const levels = configs[0].levels;
+      if (Array.isArray(levels) && levels.length > 0) {
+        requiredLevels = Math.max(...levels.map((l: any) => l.level));
+      }
+    }
+
     const { data, error } = await supabase
       .from('leave_requests' as any)
       .insert({
@@ -89,6 +107,9 @@ export const leaveService = {
         leave_type: input.leaveType,
         reason: input.reason,
         status: 'pending',
+        current_approval_level: 1,
+        required_approval_levels: requiredLevels,
+        approval_history: []
       })
       .select()
       .single();
@@ -97,19 +118,66 @@ export const leaveService = {
     return data ? mapRow(data) : null;
   },
 
-  async updateStatus(id: string, status: string, comment: string, reviewedBy: string): Promise<boolean> {
+  async updateStatus(
+    id: string, 
+    status: string, 
+    comment: string, 
+    reviewedBy: string, 
+    role: string = 'manager',
+    currentRequest?: LeaveRequest
+  ): Promise<boolean> {
+    
+    let nextStatus = status;
+    let nextLevel = (currentRequest?.currentApprovalLevel || 1);
+    const requiredLevels = currentRequest?.requiredApprovalLevels || 1;
+    
+    // If it's an approval and there are more levels required, it remains pending and moves to next level
+    if (status === 'approved' && nextLevel < requiredLevels) {
+      nextStatus = 'pending';
+      nextLevel += 1;
+    }
+
+    const historyEntry = {
+      level: currentRequest?.currentApprovalLevel || 1,
+      role,
+      user: reviewedBy,
+      action: status, // the user's action (approved/rejected)
+      comment,
+      date: new Date().toISOString()
+    };
+
+    const newHistory = [...(currentRequest?.approvalHistory || []), historyEntry];
+
     const { error } = await supabase
       .from('leave_requests' as any)
       .update({
-        status,
-        manager_comment: comment,
-        reviewed_by: reviewedBy,
+        status: nextStatus,
+        manager_comment: comment, // keep latest comment for backward compatibility
+        reviewed_by: reviewedBy,  // keep latest reviewer
         reviewed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        current_approval_level: nextLevel,
+        approval_history: newHistory
       })
       .eq('id', id);
 
     if (error) { console.error('Error updating leave:', error); return false; }
+    
+    // Trigger push notification if fully approved/rejected
+    if (nextStatus === 'approved' || nextStatus === 'rejected') {
+      try {
+        await supabase.functions.invoke('send-notification', {
+          body: {
+            staffId: currentRequest?.staffId,
+            title: `Leave ${nextStatus === 'approved' ? 'Approved' : 'Rejected'}`,
+            body: `Your leave on ${currentRequest?.leaveDate} has been ${nextStatus}. ${comment ? 'Comment: ' + comment : ''}`
+          }
+        });
+      } catch (e) {
+        console.error('Failed to send push notification', e);
+      }
+    }
+
     return true;
   },
 };

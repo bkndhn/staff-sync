@@ -52,6 +52,9 @@ export const staffService = {
     }
 
     if (error) {
+      if (error.message?.includes('staff_contact_number_key') || error.message?.includes('duplicate key value')) {
+        throw new Error('DUPLICATE_PHONE');
+      }
       console.error('Error adding staff:', error);
       throw error;
     }
@@ -85,7 +88,7 @@ export const staffService = {
     if (updates.mealAllowanceThreshold !== undefined) (dbUpdates as any).meal_allowance_threshold = updates.mealAllowanceThreshold;
     if (updates.staffAccommodation !== undefined) (dbUpdates as any).staff_accommodation = updates.staffAccommodation;
     if (updates.allowanceCalcModes !== undefined) (dbUpdates as any).allowance_calc_modes = updates.allowanceCalcModes;
-    if (updates.contactNumber !== undefined) (dbUpdates as any).contact_number = updates.contactNumber;
+    if (updates.contactNumber !== undefined) (dbUpdates as any).contact_number = updates.contactNumber || null;
     if (updates.address !== undefined) (dbUpdates as any).address = updates.address;
     if (updates.photo !== undefined) (dbUpdates as any).photo_url = updates.photo;
     if (updates.bankAccountNumber !== undefined) (dbUpdates as any).bank_account_number = updates.bankAccountNumber;
@@ -118,6 +121,9 @@ export const staffService = {
     }
 
     if (error) {
+      if (error.message?.includes('staff_contact_number_key') || error.message?.includes('duplicate key value')) {
+        throw new Error('DUPLICATE_PHONE');
+      }
       console.error('Error updating staff:', error);
       throw error;
     }
@@ -240,7 +246,7 @@ export const staffService = {
       staff_accommodation: staff.staffAccommodation || '',
       allowance_calc_modes: staff.allowanceCalcModes || {},
       display_order: staff.displayOrder || 0,
-      contact_number: staff.contactNumber,
+      contact_number: staff.contactNumber || null,
       address: staff.address,
       photo_url: staff.photo,
       bank_account_number: staff.bankAccountNumber || null,

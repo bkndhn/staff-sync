@@ -178,23 +178,34 @@ self.addEventListener('message', (event) => {
 
 // Push notification handler
 self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    if (event.data) {
+      data = event.data.json();
+    }
+  } catch (e) {
+    data = { body: event.data?.text() };
+  }
+
+  const title = data.title || 'Staff Management';
   const options = {
-    body: event.data?.text() || 'New notification from Staff Management',
-    icon: '/image.png',
-    badge: '/image.png',
+    body: data.body || 'New notification',
+    icon: data.icon || '/image.png',
+    badge: data.icon || '/image.png',
     vibrate: [100, 50, 100],
     data: {
+      actionUrl: data.actionUrl || '/',
       dateOfArrival: Date.now(),
       primaryKey: 1
     },
     actions: [
-      { action: 'open', title: 'Open App' },
+      { action: 'open', title: 'Open' },
       { action: 'close', title: 'Close' }
     ]
   };
 
   event.waitUntil(
-    self.registration.showNotification('Staff Management', options)
+    self.registration.showNotification(title, options)
   );
 });
 
@@ -202,9 +213,20 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  if (event.action === 'open') {
+  if (event.action !== 'close') {
+    const targetUrl = event.notification.data?.actionUrl || '/';
     event.waitUntil(
-      clients.openWindow('/')
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+        for (let i = 0; i < windowClients.length; i++) {
+          const client = windowClients[i];
+          if (client.url.includes(targetUrl) && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        if (clients.openWindow) {
+          return clients.openWindow(targetUrl);
+        }
+      })
     );
   }
 });

@@ -34,7 +34,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().split('T')[0]);
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
-  const [dateFilterEnabled, setDateFilterEnabled] = useState(true);
+  const [dateFilterEnabled, setDateFilterEnabled] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [locationFilter, setLocationFilter] = useState<string>('all');
   const [floorFilter, setFloorFilter] = useState<string>('all');
@@ -82,7 +82,9 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
       actionModal.leave.id,
       actionModal.action,
       comment,
-      userName || (userRole === 'admin' ? 'Admin' : `${userLocation} Manager`)
+      userName || (userRole === 'admin' ? 'Admin' : `${userLocation} Manager`),
+      userRole,
+      actionModal.leave
     );
     if (success) {
       await loadLeaves();
@@ -360,7 +362,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
                         onClick={() => { setActionModal({ leave, action: 'approved' }); setComment(''); }}
                         className="px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-colors flex items-center gap-1"
                       >
-                        <Check size={14} /> Approve
+                        <Check size={14} /> Approve {(leave.requiredApprovalLevels || 1) > 1 ? `(L${leave.currentApprovalLevel || 1}/${leave.requiredApprovalLevels})` : ''}
                       </button>
                       <button
                         onClick={() => { setActionModal({ leave, action: 'rejected' }); setComment(''); }}

@@ -137,7 +137,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         setMessage({ kind: 'err', text: 'Multiple faces detected. Only one person should be in frame.' });
         return;
       }
-      if (result.qualityScore < 0.40) {
+      if (result.qualityScore < 0.35) {
         setMessage({ kind: 'warn', text: 'Low quality detection. Improve lighting and try again.' });
         return;
       }
@@ -198,6 +198,10 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
       }
       if (result.faceCount > 1) {
         setMessage({ kind: 'err', text: 'Multiple faces detected. Only one person should be in the photo.' });
+        return;
+      }
+      if (result.qualityScore < 0.35) {
+        setMessage({ kind: 'warn', text: 'Low quality detection. Improve lighting and try a clearer photo.' });
         return;
       }
       
@@ -301,7 +305,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         </p>
 
         {/* Camera preview */}
-        <div className="relative w-full h-[50vh] md:h-[60vh] lg:h-[70vh] bg-black rounded-2xl overflow-hidden border border-[var(--glass-border)] shadow-2xl">
+        <div className="relative w-full h-[40vh] min-h-[300px] md:h-[60vh] lg:h-[70vh] max-h-[600px] bg-black rounded-2xl overflow-hidden border border-[var(--glass-border)] shadow-2xl">
           <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
           <canvas ref={canvasRef} className="hidden" />
           {!cameraOn && (

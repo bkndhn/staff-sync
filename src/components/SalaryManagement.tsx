@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { dataApi } from '../lib/dataApi';
 import { Staff, Attendance, SalaryDetail, AdvanceDeduction, PartTimeSalaryDetail, SalaryOverride, PayrollRun, PayrollSnapshot } from '../types';
-import { DollarSign, Download, Users, Calendar, TrendingUp, Edit2, Save, X, FileSpreadsheet, FileText, MessageCircle, Filter, Plus, Trash2 } from 'lucide-react';
+import { DollarSign, Download, Users, Calendar, TrendingUp, Edit2, Save, X, FileSpreadsheet, FileText, MessageCircle, Filter, Plus, Trash2, Check, RefreshCw, HandCoins } from 'lucide-react';
+import { staffService } from '../services/staffService';
+import { salaryDisbursementService } from '../services/salaryDisbursementService';
 import { calculateAttendanceMetrics, calculateSalary, calculatePartTimeSalary, roundToNearest10, computeScheduledDeductions } from '../utils/salaryCalculations';
 import type { DeductionBreakdown } from '../utils/salaryCalculations';
 import { exportSalaryToExcel, exportSalaryPDF, generateSalarySlipPDF, exportBulkSalarySlipsPDF, exportStatutoryToExcel } from '../utils/exportUtils';
@@ -11,6 +13,7 @@ import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryServi
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
 import { appSettingsService } from '../services/appSettingsService';
 import { payrollService } from '../services/payrollService';
+import { leaveService, type LeaveRequest } from '../services/leaveService';
 import BulkSalarySender from './BulkSalarySender';
 import { customAlert, customConfirm } from './CustomDialog';
 import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/roleVisibility';
@@ -55,9 +58,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [payrollRun, setPayrollRun] = useState<PayrollRun | null>(null);
   const [snapshots, setSnapshots] = useState<PayrollSnapshot[]>([]);
   const [generatingPayroll, setGeneratingPayroll] = useState(false);
+  const [approvedLeaves, setApprovedLeaves] = useState<LeaveRequest[]>([]);
 
   useEffect(() => {
-    const loadPayroll = async () => {
+    const loadData = async () => {
       try {
         const run = await payrollService.getPayrollRun(selectedMonth, selectedYear);
         setPayrollRun(run);
@@ -67,11 +71,16 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         } else {
           setSnapshots([]);
         }
+
+        // Load approved leaves for this month to include in attendance
+        const allLeaves = await leaveService.getAll();
+        const approved = allLeaves.filter(l => l.status === 'approved');
+        setApprovedLeaves(approved);
       } catch (error) {
-        console.error('Failed to load payroll run:', error);
+        console.error('Failed to load data:', error);
       }
     };
-    loadPayroll();
+    loadData();
   }, [selectedMonth, selectedYear]);
 
   // Fetch locations on mount
@@ -400,7 +409,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     }
 
     return filteredStaff.map(member => {
-      const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth);
+      const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
       const memberAdvances = advances.find(adv =>
         adv.staffId === member.id &&
         adv.month === selectedMonth &&
@@ -742,7 +751,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     setGeneratingPayroll(true);
     try {
       const fullDetails = activeStaff.map(member => {
-        const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth);
+        const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
         const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
         const memberAdvanceEntries = advanceEntries[member.id] || [];
         return calculateSalary(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides, scheduledDeductions[member.id]?.total || 0);
@@ -765,7 +774,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     setGeneratingPayroll(true);
     try {
       const fullDetails = activeStaff.map(member => {
-        const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth);
+        const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
         const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
         const memberAdvanceEntries = advanceEntries[member.id] || [];
         return calculateSalary(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides, scheduledDeductions[member.id]?.total || 0);
@@ -1786,6 +1795,22 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           title={staffMember?.contactNumber ? `Send via WhatsApp to ${staffMember.contactNumber}` : 'No phone number - Add in Staff Management'}
                         >
                           <MessageCircle size={16} />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!confirm(`Mark ₹${detail.netSalary} as paid for ${staffMember?.name} and notify them?`)) return;
+                            const ok = await salaryDisbursementService.markAsPaidAndNotify(
+                              detail.staffId,
+                              `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`,
+                              detail.netSalary,
+                              staffMember?.paymentMode || 'bank'
+                            );
+                            if (ok) customAlert('Salary marked as paid and staff notified!');
+                          }}
+                          className="inline-flex items-center justify-center p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                          title="Mark as Paid & Notify"
+                        >
+                          <Check size={16} />
                         </button>
                       </div>
                     </td>

@@ -12,6 +12,7 @@ import DeviceIntegration from './DeviceIntegration';
 import SalaryOverridesPanel from './SalaryOverridesPanel';
 import StatutoryPortalSettingsPanel from './StatutoryPortalSettingsPanel';
 import FaceTuningPanel from './face/FaceTuningPanel';
+import { WorkflowBuilder } from './WorkflowBuilder';
 
 interface SettingsProps {
     userRole: string;
@@ -577,6 +578,11 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
             {(userRole === 'admin' || userRole === 'manager') && <FaceTuningPanel />}
             </SettingsSection>
 
+            {userRole === 'admin' && (
+                <SettingsSection title="Enterprise Workflows" subtitle="Configure multi-level approval chains for leaves and expenses" icon={Users}>
+                    <WorkflowBuilder />
+                </SettingsSection>
+            )}
 
             <SettingsSection title="Data & Backup" subtitle="Export a full snapshot" icon={Save}>
             {/* Backup all data (admin only) */}

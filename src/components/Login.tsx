@@ -12,6 +12,7 @@ import { userService } from '../services/userService';
 import { supabase } from '../lib/supabase';
 import { compressImage } from '../utils/imageCompression';
 import { generateDeviceFingerprint } from '../utils/deviceFingerprint';
+import TenantStatusBanner from './TenantStatusBanner';
 
 interface LoginProps {
   onLogin: (user: { id?: string; email: string; role: string; location?: string; floor?: string; floorId?: string; staffId?: string; staffName?: string; staffRecord?: any }) => void;
@@ -300,7 +301,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-blue-500/10 to-sky-400/10 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gradient-to-r from-sky-400/10 to-blue-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
 
-      <div className="max-w-md w-full relative z-10">
+      <div className="max-w-md w-full relative z-10 space-y-4">
+        {!staffLoginEnabled && (
+          <TenantStatusBanner
+            tenant={{ staff_portal_enabled: false }}
+            role="staff"
+          />
+        )}
         <div className="glass-card-static p-8 md:p-10">
           {/* Header */}
           <div className="text-center mb-6">

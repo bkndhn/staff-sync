@@ -51,7 +51,8 @@ export const calculateAttendanceMetrics = (
   staffId: string,
   attendance: Attendance[],
   year: number,
-  month: number
+  month: number,
+  approvedLeaves: any[] = []
 ) => {
   const monthlyAttendance = (Array.isArray(attendance) ? attendance : []).filter(record => {
     const recordDate = new Date(record.date);
@@ -61,9 +62,35 @@ export const calculateAttendanceMetrics = (
       !record.isPartTime; // Only full-time staff
   });
 
-  const presentDays = monthlyAttendance
+  const presentDaysFromAttendance = monthlyAttendance
     .filter(record => record.status === 'Present')
     .reduce((sum, record) => sum + (record.attendanceValue || 1), 0);
+
+  // Add approved leave days as present days
+  // Only count days in this month/year
+  let presentDaysFromLeaves = 0;
+  approvedLeaves.forEach(leave => {
+    if (leave.staffId !== staffId || leave.status !== 'approved') return;
+    
+    const startDate = new Date(leave.leaveDate);
+    const endDate = leave.leaveEndDate ? new Date(leave.leaveEndDate) : startDate;
+    
+    // Iterate through the date range
+    let current = new Date(startDate);
+    while (current <= endDate) {
+      if (current.getMonth() === month && current.getFullYear() === year) {
+        // Only count if they weren't already marked present
+        const dateStr = current.toISOString().split('T')[0];
+        const hasPresentRecord = monthlyAttendance.some(a => a.date === dateStr && a.status === 'Present');
+        if (!hasPresentRecord && !isSunday(dateStr)) {
+          presentDaysFromLeaves += 1;
+        }
+      }
+      current.setDate(current.getDate() + 1);
+    }
+  });
+
+  const presentDays = presentDaysFromAttendance + presentDaysFromLeaves;
 
   const halfDays = monthlyAttendance
     .filter(record => record.status === 'Half Day')

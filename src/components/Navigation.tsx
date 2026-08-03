@@ -60,6 +60,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Attendance', label: 'Attendance', icon: Calendar, key: 'attendance' },
         { id: 'Salary Management', label: 'Salary', icon: DollarSign, key: 'salary' },
         { id: 'Leave Management', label: 'Leave', icon: FileText, key: 'leave' },
+        { id: 'Action Center', label: 'Action Center', icon: AlertTriangle, key: 'action_center' },
         { id: 'Settings', label: 'Settings', icon: SettingsIcon, key: 'settings' },
         { id: 'Profile', label: 'Profile', icon: UserCircle, key: 'settings' },
       ];
@@ -70,6 +71,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
         { id: 'Workforce Insights' as NavigationTab, label: 'Insights', icon: TrendingUp },
         { id: 'Staff Management' as NavigationTab, label: 'Staff', icon: Users },
+        { id: 'Shift Roster' as NavigationTab, label: 'Roster', icon: Calendar },
         { id: 'Attendance' as NavigationTab, label: 'Attendance', icon: Calendar },
         { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
         { id: 'Salary Management' as NavigationTab, label: 'Salary', icon: DollarSign },
@@ -87,6 +89,7 @@ const Navigation: React.FC<NavigationProps> = ({
       return [
         { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
         { id: 'Staff Management' as NavigationTab, label: 'Staff', icon: Users },
+        { id: 'Shift Roster' as NavigationTab, label: 'Roster', icon: Calendar },
         { id: 'Attendance' as NavigationTab, label: 'Attendance', icon: Calendar },
         { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
         { id: 'Part-Time Staff' as NavigationTab, label: 'Part-Time', icon: Clock },

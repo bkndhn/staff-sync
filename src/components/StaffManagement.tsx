@@ -112,6 +112,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const [editLocationValue, setEditLocationValue] = useState('');
   const [editLocationIp, setEditLocationIp] = useState('');
   const [editLocationPort, setEditLocationPort] = useState(4370);
+  const [editLocationLat, setEditLocationLat] = useState<number | ''>('');
+  const [editLocationLng, setEditLocationLng] = useState<number | ''>('');
+  const [editLocationRadius, setEditLocationRadius] = useState<number | ''>('');
   const [editCategoryValue, setEditCategoryValue] = useState('');
   const [editDesignationValue, setEditDesignationValue] = useState('');
 
@@ -317,13 +320,24 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
           await customAlert("Failed to update location. Please try again.");
         }
     }
-    
-    // Update device IP if changed
-    if (editLocationIp !== (loc.device_ip || '')) {
-        const port = editLocationPort || 4370;
-        await locationService.updateLocationDevice(id, editLocationIp, port);
-        setLocations(prev => prev.map(l => l.id === id ? { ...l, device_ip: editLocationIp, device_port: port } : l));
-    }
+    // Update config
+    const port = editLocationPort || 4370;
+    const config = {
+        device_ip: editLocationIp,
+        device_port: port,
+        latitude: editLocationLat === '' ? undefined : Number(editLocationLat),
+        longitude: editLocationLng === '' ? undefined : Number(editLocationLng),
+        radius_meters: editLocationRadius === '' ? undefined : Number(editLocationRadius)
+    };
+    await locationService.updateLocationConfig(id, config);
+    setLocations(prev => prev.map(l => l.id === id ? { 
+        ...l, 
+        device_ip: editLocationIp, 
+        device_port: port,
+        latitude: config.latitude,
+        longitude: config.longitude,
+        radius_meters: config.radius_meters
+    } : l));
     
     setEditingLocation(null);
     setEditLocationValue('');
@@ -1928,6 +1942,41 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                         <button onClick={() => setEditingLocation(null)} className="p-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg" title="Cancel"><X size={16} /></button>
                       </div>
                       
+                      {/* Geofencing Settings */}
+                      <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex flex-col gap-2">
+                        <label className="text-xs font-semibold text-blue-300">Geofencing Validation (Optional)</label>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <input
+                            type="number"
+                            value={editLocationLat}
+                            onChange={(e) => setEditLocationLat(e.target.value ? Number(e.target.value) : '')}
+                            placeholder="Latitude (e.g. 28.7041)"
+                            className="input-premium flex-1 min-w-[120px] text-xs py-1.5"
+                            step="any"
+                          />
+                          <input
+                            type="number"
+                            value={editLocationLng}
+                            onChange={(e) => setEditLocationLng(e.target.value ? Number(e.target.value) : '')}
+                            placeholder="Longitude (e.g. 77.1025)"
+                            className="input-premium flex-1 min-w-[120px] text-xs py-1.5"
+                            step="any"
+                          />
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              value={editLocationRadius}
+                              onChange={(e) => setEditLocationRadius(e.target.value ? Number(e.target.value) : '')}
+                              placeholder="Radius"
+                              className="input-premium w-20 text-xs py-1.5"
+                            />
+                            <span className="text-[10px] text-blue-200">meters</span>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-blue-200/50">Restrict mobile face attendance to this zone. Leave blank to disable.</p>
+                      </div>
+
+                      {/* Device Settings */}
                       <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg flex flex-col gap-2">
                         <label className="text-xs font-semibold text-indigo-300">Biometric Device (eSSL/ZKTeco) Settings</label>
                         <div className="flex items-center gap-2">
@@ -1955,7 +2004,15 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                           <span className="text-sm font-bold text-[var(--text-primary)]">{loc.name}</span>
                           <div className="flex items-center gap-1">
                             <button
-                              onClick={() => { setEditingLocation(loc); setEditLocationValue(loc.name); setEditLocationIp(loc.device_ip || ''); setEditLocationPort(loc.device_port || 4370); }}
+                              onClick={() => { 
+                                setEditingLocation(loc); 
+                                setEditLocationValue(loc.name); 
+                                setEditLocationIp(loc.device_ip || ''); 
+                                setEditLocationPort(loc.device_port || 4370);
+                                setEditLocationLat(loc.latitude ?? '');
+                                setEditLocationLng(loc.longitude ?? '');
+                                setEditLocationRadius(loc.radius_meters ?? '');
+                              }}
                               className="p-1.5 text-blue-400 hover:bg-white/10 rounded-lg transition-colors"
                               title="Edit"
                             >

@@ -90,6 +90,18 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [locationDesignationConfigs, setLocationDesignationConfigs] = useState<LocationDesignationShiftConfig[]>([]);
   const [globalKioskSettingsState, setGlobalKioskSettingsState] = useState<any | null>(null);
+  const [locations, setLocations] = useState<any[]>([]);
+
+  // Haversine distance
+  const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3;
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+  };
 
   const availableLocations = useMemo(() => Array.from(new Set(staff.map(s => s.location).filter(Boolean))), [staff]);
   const [selectedLocation, setSelectedLocation] = useState<string>(
@@ -208,13 +220,14 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         setEmbeddingsError(null);
         const locationName = selectedLocation;
 
-        const [list, sw, locCfgArr, kioskSettings, desigs, locDesigConfigs] = await Promise.all([
+        const [list, sw, locCfgArr, kioskSettings, desigs, locDesigConfigs, allLocs] = await Promise.all([
           db.faceEmbeddings.toArray(),
           shiftService.loadGlobal(true),
           db.locationShiftConfig.where('locationName').equals(locationName).toArray(),
           appSettingsService.getKioskGlobalSettings(),
           db.designations.toArray(),
           db.locationDesignationShiftConfig.toArray(),
+          locationService.getLocations()
         ]);
 
         const filteredList = list.filter(e => e.isApproved !== false);
@@ -229,6 +242,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           setDesignations(desigs);
           setLocationDesignationConfigs(locDesigConfigs);
           setGlobalKioskSettingsState(kioskSettings);
+          setLocations(allLocs);
           const rawThreshold = kioskSettings.matchThreshold || 0.60;
           COSINE_THRESHOLD = rawThreshold <= 1.0 ? Math.min(0.50, rawThreshold * 0.63) : 0.38;
         }
@@ -320,6 +334,26 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
   // ---- Smart multi-punch toggle --------------------------------------------
   const punch = useCallback(async (s: Staff, distance: number, livenessScore: number) => {
+    const locConfig = locations.find(l => l.name === s.location);
+    if (locConfig && locConfig.latitude != null && locConfig.longitude != null) {
+      const radius = locConfig.radius_meters || 100;
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 10000 });
+        });
+        const dist = getDistanceInMeters(pos.coords.latitude, pos.coords.longitude, locConfig.latitude, locConfig.longitude);
+        if (dist > radius) {
+          haptics.error();
+          setMessage({ kind: 'err', text: `Geofence block: You are ${Math.round(dist)}m away from ${s.location} (Max: ${radius}m).` });
+          return;
+        }
+      } catch (err: any) {
+        haptics.error();
+        setMessage({ kind: 'err', text: `Geofence failed: Could not get GPS location. ${err.message}` });
+        return;
+      }
+    }
+
     const time = formatNow();
     const last = lastPunchRef.current[s.id];
     const existing = attendance.find(a => a.staffId === s.id && a.date === today && !a.isPartTime);
@@ -396,7 +430,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       haptics.error();
       setMessage({ kind: 'err', text: `Failed to punch ${s.name}: ${e?.message || e}` });
     }
-  }, [attendance, today, onAttendancePatch, shiftWindows, haptics]);
+  }, [attendance, today, onAttendancePatch, shiftWindows, haptics, locations]);
 
 
   // ---- Continuous recognition loop (time-throttled per device profile) -----
@@ -535,7 +569,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
       <PerfOverlay />
       {/* ── Left Side: Full Height Camera Feed ── */}
-      <div className="face-camera-panel flex-1 min-h-[500px] md:min-h-[600px] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
+      <div className="face-camera-panel flex-1 h-[55vh] min-h-[350px] md:h-auto md:min-h-[600px] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
         {/* HUD Overlay */}
         <div className="absolute top-0 left-0 right-0 z-30 p-4 md:p-6 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between gap-3 flex-wrap pointer-events-none">
           <div>

@@ -11,6 +11,8 @@ import { salaryOverrideService } from '../services/salaryOverrideService';
 import { salaryCategoryService, type SalaryCategory } from '../services/salaryCategoryService';
 import { leaveService, LeaveRequest } from '../services/leaveService';
 import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryService';
+import { salaryDisbursementService, SalaryDisbursement } from '../services/salaryDisbursementService';
+import { grievanceService, StaffGrievance } from '../services/grievanceService';
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
 import FaceRegistration from './FaceRegistration';
 import YearlyAttendanceSummary from './YearlyAttendanceSummary';
@@ -22,11 +24,13 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { db } from '../lib/db';
 import { appSettingsService } from '../services/appSettingsService';
+import { pushService } from '../services/pushService';
 import { resolveActiveRule, calculateAttendanceStatus } from '../utils/attendanceRules';
 import BreakControls from './BreakControls';
 import { breakEventService } from '../services/breakService';
 import { BreakEvent } from '../types';
 import { Coffee, X } from 'lucide-react';
+import TenantStatusBanner from './TenantStatusBanner';
 
 interface StaffPortalProps {
   staff: Staff;
@@ -37,7 +41,7 @@ interface StaffPortalProps {
 }
 
 const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHikes, advances, allStaff }) => {
-  const [activeSection, setActiveSection] = useState<'overview' | 'attendance' | 'yearly' | 'salary' | 'hikes' | 'leave' | 'face'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'attendance' | 'yearly' | 'salary' | 'hikes' | 'leave' | 'face' | 'grievances' | 'disbursements'>('overview');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [yearlyViewYear, setYearlyViewYear] = useState(new Date().getFullYear());
@@ -51,6 +55,32 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [breakEvents, setBreakEvents] = useState<BreakEvent[]>([]);
   const [expandedDayBreaks, setExpandedDayBreaks] = useState<string | null>(null);
+  const [disbursements, setDisbursements] = useState<SalaryDisbursement[]>([]);
+  const [grievances, setGrievances] = useState<StaffGrievance[]>([]);
+  const [showGrievanceForm, setShowGrievanceForm] = useState(false);
+  const [grievanceForm, setGrievanceForm] = useState({ type: 'attendance' as 'attendance' | 'salary' | 'other', targetDate: '', description: '' });
+  const [grievanceSubmitting, setGrievanceSubmitting] = useState(false);
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushStatus, setPushStatus] = useState<NotificationPermission>('default');
+
+  useEffect(() => {
+    pushService.isSupported().then(supported => {
+      setPushSupported(supported);
+      if (supported) {
+        pushService.getSubscriptionStatus().then(setPushStatus);
+      }
+    });
+  }, []);
+
+  const handleSubscribePush = async () => {
+    const success = await pushService.subscribe(staff.id, undefined);
+    if (success) {
+      setPushStatus('granted');
+      alert('Notifications enabled successfully!');
+    } else {
+      alert('Failed to enable notifications. Please check browser permissions.');
+    }
+  };
 
   useEffect(() => {
     const monthStart = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
@@ -131,6 +161,12 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     advanceEntryService.getByStaff(staff.id)
       .then(setAdvanceEntries)
       .catch((err) => console.error('Error loading advance entries:', err));
+    salaryDisbursementService.getByStaffId(staff.id)
+      .then(setDisbursements)
+      .catch((err) => console.error('Error loading disbursements:', err));
+    grievanceService.getByStaffId(staff.id)
+      .then(setGrievances)
+      .catch((err) => console.error('Error loading grievances:', err));
   }, [staff.id]);
 
   const currentMonthAdvanceEntries = useMemo(() => 
@@ -159,6 +195,44 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
   const handleQRScanSuccess = async (payload: any): Promise<import('./QRAttendanceScanner').ScanConfirmation> => {
     try {
+      // 1. Geofence Validation
+      try {
+        const { locationService } = await import('../services/locationService');
+        const allLocs = await locationService.getLocations();
+        const locConfig = allLocs.find(l => l.name === staff.location);
+        
+        if (locConfig && locConfig.latitude != null && locConfig.longitude != null) {
+          const radius = locConfig.radius_meters || 100;
+          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 10000 });
+          });
+          
+          // Haversine distance
+          const getDist = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI/180;
+            const φ2 = lat2 * Math.PI/180;
+            const a = Math.sin((lat2-lat1)*Math.PI/180/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin((lon2-lon1)*Math.PI/180/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          };
+          
+          const dist = getDist(pos.coords.latitude, pos.coords.longitude, locConfig.latitude, locConfig.longitude);
+          if (dist > radius) {
+            return {
+              ok: false,
+              title: 'Geofence Block',
+              subtitle: `You are ${Math.round(dist)}m away from ${staff.location} (Max: ${radius}m).`
+            };
+          }
+        }
+      } catch (err: any) {
+        return {
+          ok: false,
+          title: 'Geofence Failed',
+          subtitle: `Could not verify GPS location: ${err.message}`
+        };
+      }
+
       const today = new Date().toISOString().split('T')[0];
       const nowTime = new Date().toTimeString().split(' ')[0];
 
@@ -525,13 +599,17 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     { id: 'yearly' as const, label: 'Yearly', icon: CalendarDays },
     { id: 'salary' as const, label: 'Salary', icon: IndianRupee },
     { id: 'hikes' as const, label: 'Hikes', icon: TrendingUp },
-    { id: 'leave' as const, label: 'Leave', icon: FileText },
+    { id: 'leave', label: 'Leave', icon: FileText },
+    { id: 'grievances', label: 'Issues', icon: AlertTriangle },
+    { id: 'disbursements', label: 'Salary Inbox', icon: CreditCard },
+    { id: 'face', label: 'Face Registration', icon: Camera }
   ];
 
   const isWideTab = activeSection === 'attendance' || activeSection === 'yearly';
 
   return (
     <div className={`p-2 md:p-6 pb-24 md:pb-6 space-y-4 ${isWideTab ? 'w-full' : 'max-w-4xl mx-auto'}`}>
+      <TenantStatusBanner tenant={(staff as any).tenant} role="staff" />
       {/* Punch confirmation now shown inside the scanner overlay */}
       {/* Section Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -597,6 +675,16 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               </div>
               {!isLeftStaff && (
                 <div className="ml-auto flex items-center gap-2">
+                  {/* Push Notifications Enable */}
+                  {pushSupported && pushStatus !== 'granted' && pushStatus !== 'denied' && (
+                    <button
+                      onClick={handleSubscribePush}
+                      className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-500/30 transition-colors"
+                    >
+                      <AlertTriangle size={14} />
+                      Enable Alerts
+                    </button>
+                  )}
                   {/* QR Scanner button temporarily hidden */}
                 </div>
               )}
@@ -1413,6 +1501,163 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* SALARY INBOX */}
+      {activeSection === 'disbursements' && (
+        <div className="space-y-4">
+          <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-6 rounded-2xl shadow-[var(--shadow-soft)]">
+            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+              <CreditCard size={20} className="text-emerald-500" /> Salary Inbox
+            </h3>
+            {disbursements.length === 0 ? (
+              <p className="text-sm text-[var(--text-muted)] italic text-center py-4">No salary disbursements recorded yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {disbursements.map((d) => (
+                  <div key={d.id} className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-[var(--text-primary)]">Salary Credited ({d.monthYear})</div>
+                      <div className="text-xs text-[var(--text-muted)] mt-1 flex items-center gap-2">
+                        <span>{new Date(d.disbursedAt).toLocaleString()}</span>
+                        <span>•</span>
+                        <span className="uppercase">{d.paymentMode}</span>
+                        {d.transactionRef && <span>• Ref: {d.transactionRef}</span>}
+                      </div>
+                      {d.notes && <div className="text-sm text-[var(--text-secondary)] mt-2">{d.notes}</div>}
+                    </div>
+                    <div className="text-lg font-bold text-emerald-500">
+                      ₹{d.amount.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* GRIEVANCES */}
+      {activeSection === 'grievances' && (
+        <div className="space-y-4">
+          {/* Apply Grievance Button */}
+          {!isLeftStaff && (
+            <button
+              onClick={() => setShowGrievanceForm(true)}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/30 transition-all active:scale-[0.98]"
+            >
+              <AlertTriangle size={18} /> Report an Issue
+            </button>
+          )}
+
+          {/* Grievance Form */}
+          {showGrievanceForm && (
+            <div className="bg-[var(--bg-card)] border border-red-500/30 p-5 sm:p-6 rounded-2xl shadow-[var(--shadow-soft)] animate-in fade-in slide-in-from-top-4 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-orange-500"></div>
+              <div className="flex justify-between items-center mb-5">
+                <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                  <AlertTriangle className="text-red-500" size={20} /> Report Discrepancy
+                </h3>
+                <button onClick={() => setShowGrievanceForm(false)} className="p-2 hover:bg-[var(--glass-bg)] rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setGrievanceSubmitting(true);
+                const ok = await grievanceService.reportIssue(staff.id, grievanceForm.type, grievanceForm.description, grievanceForm.targetDate);
+                setGrievanceSubmitting(false);
+                if (ok) {
+                  alert('Issue reported successfully!');
+                  setShowGrievanceForm(false);
+                  setGrievanceForm({ type: 'attendance', targetDate: '', description: '' });
+                  grievanceService.getByStaffId(staff.id).then(setGrievances);
+                } else {
+                  alert('Failed to report issue');
+                }
+              }} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Issue Type</label>
+                    <select
+                      required
+                      value={grievanceForm.type}
+                      onChange={(e) => setGrievanceForm({ ...grievanceForm, type: e.target.value as any })}
+                      className="input-premium"
+                    >
+                      <option value="attendance">Attendance Issue</option>
+                      <option value="salary">Salary / Deduction Issue</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Date of Issue (Optional)</label>
+                    <input
+                      type="date"
+                      value={grievanceForm.targetDate}
+                      onChange={(e) => setGrievanceForm({ ...grievanceForm, targetDate: e.target.value })}
+                      className="input-premium"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Description</label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={grievanceForm.description}
+                    onChange={(e) => setGrievanceForm({ ...grievanceForm, description: e.target.value })}
+                    className="input-premium"
+                    placeholder="Describe the issue in detail..."
+                  ></textarea>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => setShowGrievanceForm(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--glass-border)] text-[var(--text-secondary)] font-medium hover:bg-[var(--glass-bg)] transition-colors">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={grievanceSubmitting} className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600 transition-colors disabled:opacity-50">
+                    {grievanceSubmitting ? 'Submitting...' : 'Submit Report'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Grievance History */}
+          <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-6 rounded-2xl shadow-[var(--shadow-soft)]">
+            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-4">Past Reports</h3>
+            {grievances.length === 0 ? (
+              <p className="text-sm text-[var(--text-muted)] italic text-center py-4">No issues reported yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {grievances.map((g) => (
+                  <div key={g.id} className="p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)]">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <span className="text-sm font-semibold capitalize text-[var(--text-primary)]">{g.type} Issue</span>
+                        {g.targetDate && <span className="text-xs text-[var(--text-muted)] ml-2">({g.targetDate})</span>}
+                      </div>
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full capitalize ${
+                        g.status === 'resolved' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                        g.status === 'rejected' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                        'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                      }`}>
+                        {g.status} {g.status === 'pending' || g.status === 'escalated' ? `(L${g.currentApprovalLevel})` : ''}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[var(--text-secondary)]">{g.description}</p>
+                    {g.resolutionNotes && (
+                      <div className="mt-3 p-3 bg-indigo-500/10 rounded-lg text-sm text-[var(--text-primary)] border border-indigo-500/20">
+                        <span className="font-semibold block mb-1">Reply:</span>
+                        {g.resolutionNotes}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
