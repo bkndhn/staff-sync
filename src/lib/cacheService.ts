@@ -218,4 +218,32 @@ export function debouncedSave(
     saveTimers.set(key, timer);
 }
 
+export async function hardResetAppCache(): Promise<void> {
+  try {
+    cacheService.clearAll();
+    localStorage.clear();
+    sessionStorage.clear();
+
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.unregister();
+      }
+    }
+
+    if ('indexedDB' in window && (window.indexedDB as any).databases) {
+      try {
+        const dbs = await (window.indexedDB as any).databases();
+        for (const dbInfo of dbs) {
+          if (dbInfo.name) window.indexedDB.deleteDatabase(dbInfo.name);
+        }
+      } catch { /* ignore */ }
+    }
+  } catch (err) {
+    console.error('Hard reset error:', err);
+  } finally {
+    window.location.href = window.location.origin + window.location.pathname + '?reset=' + Date.now();
+  }
+}
+
 export default cacheService;

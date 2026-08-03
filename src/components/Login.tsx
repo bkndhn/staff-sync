@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 import { compressImage } from '../utils/imageCompression';
 import { generateDeviceFingerprint } from '../utils/deviceFingerprint';
 import TenantStatusBanner from './TenantStatusBanner';
+import { hardResetAppCache } from '../lib/cacheService';
 
 interface LoginProps {
   onLogin: (user: { id?: string; email: string; role: string; location?: string; floor?: string; floorId?: string; staffId?: string; staffName?: string; staffRecord?: any }) => void;
@@ -594,6 +595,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             {loginMode === 'admin' ? 'Secure login for authorized personnel only'
               : 'View-only access to your own records'}
           </p>
+
+          <div className="mt-4 pt-4 border-t border-[var(--glass-border)] text-center">
+            <button
+              type="button"
+              onClick={hardResetAppCache}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300 hover:bg-amber-500/20 text-xs font-semibold transition-colors shadow-sm"
+              title="Purges all local storage, service worker, and cached app data"
+            >
+              ⚡ Hard Reset App & Clear Cache
+            </button>
+          </div>
 
 
         </div>

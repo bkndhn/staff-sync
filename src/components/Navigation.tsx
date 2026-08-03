@@ -4,10 +4,11 @@ import {
   BarChart3, Users, Calendar, DollarSign, Clock, Archive, LogOut,
   AlertTriangle, Settings as SettingsIcon, FileText, ScanFace,
   ShieldAlert, Shield, TrendingUp, Coffee, Sun, Moon,
-  PanelLeftClose, PanelLeftOpen, UserCircle, Key
+  PanelLeftClose, PanelLeftOpen, UserCircle, Key, RefreshCw, Zap
 } from 'lucide-react';
 import { SyncBadge } from './SyncBadge';
 import { statutoryPortalService, StatutoryPortalConfig, DEFAULT_STATUTORY_CONFIG } from '../services/statutoryPortalService';
+import { hardResetAppCache } from '../lib/cacheService';
 
 interface NavigationProps {
   activeTab: NavigationTab;
@@ -196,6 +197,15 @@ const Navigation: React.FC<NavigationProps> = ({
           </div>
           <div className="text-[10px] text-white/40">{user.role === 'staff' ? 'Staff Portal' : user.email}</div>
         </div>
+        <button
+          type="button"
+          onClick={hardResetAppCache}
+          className="p-2 rounded-lg text-amber-300 hover:text-amber-200 bg-amber-500/15 hover:bg-amber-500/25 transition-all text-xs flex items-center gap-1 font-semibold"
+          title="Hard Reset App & Purge All Local Cache"
+        >
+          <Zap size={15} />
+          <span className="hidden xl:inline">Hard Reset</span>
+        </button>
         {themeBtn}
         {logoutBtn}
       </div>
@@ -206,19 +216,14 @@ const Navigation: React.FC<NavigationProps> = ({
           <h1 className="text-base font-bold text-gradient truncate">Staff Mgmt</h1>
           <div className="flex items-center gap-1">
             <SyncBadge />
-            {canToggleScope && (
-              <button
-                onClick={() => onStatutoryScopeChange!(statutoryScope === 'statutory' ? 'all' : 'statutory')}
-                className={`p-2 rounded-lg text-[10px] font-semibold ${
-                  statutoryScope === 'statutory'
-                    ? 'bg-emerald-500/20 text-emerald-300'
-                    : 'bg-indigo-500/20 text-indigo-200'
-                }`}
-                title={statutoryScope === 'statutory' ? 'Statutory only — tap for all' : 'All staff — tap for statutory'}
-              >
-                {statutoryScope === 'statutory' ? 'STAT' : 'ALL'}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={hardResetAppCache}
+              className="p-2 rounded-lg text-amber-300 bg-amber-500/15"
+              title="Hard Reset App & Clear Cache"
+            >
+              <Zap size={15} />
+            </button>
             {themeBtn}
             <button
               onClick={() => setShowLogoutModal(true)}
