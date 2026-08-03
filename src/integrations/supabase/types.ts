@@ -217,6 +217,7 @@ export type Database = {
           location_id: string | null
           password_hash: string
           role: string
+          super_admin_role: string | null
           tenant_id: string | null
           updated_at: string | null
         }
@@ -233,6 +234,7 @@ export type Database = {
           location_id?: string | null
           password_hash: string
           role: string
+          super_admin_role?: string | null
           tenant_id?: string | null
           updated_at?: string | null
         }
@@ -249,6 +251,7 @@ export type Database = {
           location_id?: string | null
           password_hash?: string
           role?: string
+          super_admin_role?: string | null
           tenant_id?: string | null
           updated_at?: string | null
         }
@@ -762,7 +765,9 @@ export type Database = {
       }
       leave_requests: {
         Row: {
+          approval_history: Json | null
           created_at: string | null
+          current_approval_level: number | null
           id: string
           leave_date: string
           leave_end_date: string | null
@@ -770,6 +775,7 @@ export type Database = {
           location: string
           manager_comment: string | null
           reason: string
+          required_approval_levels: number | null
           reviewed_at: string | null
           reviewed_by: string | null
           staff_id: string
@@ -779,7 +785,9 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          approval_history?: Json | null
           created_at?: string | null
+          current_approval_level?: number | null
           id?: string
           leave_date: string
           leave_end_date?: string | null
@@ -787,6 +795,7 @@ export type Database = {
           location: string
           manager_comment?: string | null
           reason: string
+          required_approval_levels?: number | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           staff_id: string
@@ -796,7 +805,9 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          approval_history?: Json | null
           created_at?: string | null
+          current_approval_level?: number | null
           id?: string
           leave_date?: string
           leave_end_date?: string | null
@@ -804,6 +815,7 @@ export type Database = {
           location?: string
           manager_comment?: string | null
           reason?: string
+          required_approval_levels?: number | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           staff_id?: string
@@ -973,7 +985,10 @@ export type Database = {
           id: string
           is_active: boolean | null
           last_sync_time: string | null
+          latitude: number | null
+          longitude: number | null
           name: string
+          radius_meters: number | null
           tenant_id: string | null
           updated_at: string | null
         }
@@ -987,7 +1002,10 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_sync_time?: string | null
+          latitude?: number | null
+          longitude?: number | null
           name: string
+          radius_meters?: number | null
           tenant_id?: string | null
           updated_at?: string | null
         }
@@ -1001,7 +1019,10 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_sync_time?: string | null
+          latitude?: number | null
+          longitude?: number | null
           name?: string
+          radius_meters?: number | null
           tenant_id?: string | null
           updated_at?: string | null
         }
@@ -1350,6 +1371,74 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          app_user_id: string | null
+          auth: string
+          created_at: string | null
+          device_name: string | null
+          endpoint: string
+          id: string
+          p256dh: string
+          staff_id: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          app_user_id?: string | null
+          auth: string
+          created_at?: string | null
+          device_name?: string | null
+          endpoint: string
+          id?: string
+          p256dh: string
+          staff_id?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          app_user_id?: string | null
+          auth?: string
+          created_at?: string | null
+          device_name?: string | null
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          staff_id?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_app_user_id_fkey"
+            columns: ["app_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_app_user_id_fkey"
+            columns: ["app_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salary_categories: {
         Row: {
           created_at: string | null
@@ -1384,6 +1473,60 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "salary_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salary_disbursements: {
+        Row: {
+          amount: number
+          created_at: string | null
+          disbursed_at: string | null
+          id: string
+          month_year: string
+          notes: string | null
+          payment_mode: string
+          staff_id: string | null
+          tenant_id: string | null
+          transaction_ref: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          disbursed_at?: string | null
+          id?: string
+          month_year: string
+          notes?: string | null
+          payment_mode: string
+          staff_id?: string | null
+          tenant_id?: string | null
+          transaction_ref?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          disbursed_at?: string | null
+          id?: string
+          month_year?: string
+          notes?: string | null
+          payment_mode?: string
+          staff_id?: string | null
+          tenant_id?: string | null
+          transaction_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_disbursements_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_disbursements_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1497,6 +1640,57 @@ export type Database = {
           },
           {
             foreignKeyName: "salary_manual_overrides_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_rosters: {
+        Row: {
+          created_at: string | null
+          date: string
+          id: string
+          is_published: boolean | null
+          location: string
+          shift_key: string
+          staff_id: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          id?: string
+          is_published?: boolean | null
+          location: string
+          shift_key: string
+          staff_id?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          id?: string
+          is_published?: boolean | null
+          location?: string
+          shift_key?: string
+          staff_id?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_rosters_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_rosters_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1656,6 +1850,69 @@ export type Database = {
           },
         ]
       }
+      staff_grievances: {
+        Row: {
+          approval_history: Json | null
+          created_at: string | null
+          current_approval_level: number | null
+          description: string
+          id: string
+          required_approval_levels: number | null
+          resolution_notes: string | null
+          staff_id: string | null
+          status: string | null
+          target_date: string | null
+          tenant_id: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          approval_history?: Json | null
+          created_at?: string | null
+          current_approval_level?: number | null
+          description: string
+          id?: string
+          required_approval_levels?: number | null
+          resolution_notes?: string | null
+          staff_id?: string | null
+          status?: string | null
+          target_date?: string | null
+          tenant_id?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          approval_history?: Json | null
+          created_at?: string | null
+          current_approval_level?: number | null
+          description?: string
+          id?: string
+          required_approval_levels?: number | null
+          resolution_notes?: string | null
+          staff_id?: string | null
+          status?: string | null
+          target_date?: string | null
+          tenant_id?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_grievances_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_grievances_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       statutory_portal_config: {
         Row: {
           created_at: string | null
@@ -1771,6 +2028,47 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      workflow_configs: {
+        Row: {
+          created_at: string | null
+          entity_type: string
+          id: string
+          is_active: boolean | null
+          levels: Json
+          name: string
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          entity_type?: string
+          id?: string
+          is_active?: boolean | null
+          levels?: Json
+          name: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          entity_type?: string
+          id?: string
+          is_active?: boolean | null
+          levels?: Json
+          name?: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
