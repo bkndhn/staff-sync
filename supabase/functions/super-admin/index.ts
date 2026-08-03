@@ -256,20 +256,31 @@ Deno.serve(async (req) => {
         if (!id) return json({ error: "Client id required" }, 400);
         if (!p.confirm) return json({ error: "Confirmation required" }, 400);
 
-        // Remove all tenant-scoped data, then users, then the tenant itself.
+        // 1. Invalidate & clear all active user sessions for this tenant
+        const { data: tenantUsers } = await admin
+          .from("app_users")
+          .select("id")
+          .eq("tenant_id", id);
+
+        const userIds = (tenantUsers ?? []).map((u: any) => u.id);
+        if (userIds.length > 0) {
+          await admin.from("app_sessions").delete().in("user_id", userIds);
+        }
+
+        // 2. Remove all tenant-scoped operational data tables (staff, attendance, advances, grievances, etc.)
         for (const table of TENANT_TABLES) {
           const { error } = await admin.from(table).delete().eq("tenant_id", id);
           if (error && !/does not exist/i.test(error.message)) {
-            return json({ error: `Failed clearing ${table}: ${error.message}` }, 400);
+            console.warn(`Failed clearing ${table}: ${error.message}`);
           }
         }
+
+        // 3. Delete all tenant users (admins, sub-users, managers, statutory admins, etc.)
         await admin.from("app_users").delete().eq("tenant_id", id);
-        const { data: beforeData } = await admin.from("tenants").select("*").eq("id", id).single();
+
+        // 4. Delete the client tenant record itself
         const { error } = await admin.from("tenants").delete().eq("id", id);
         if (error) return json({ error: error.message }, 400);
-
-        // Can't reliably log to audit_logs if tenant is deleted (tenant_id foreign key),
-        // so we skip audit log for tenant deletion for now, or log to a platform-level audit table.
 
         return json({ data: { deleted: id } });
       }

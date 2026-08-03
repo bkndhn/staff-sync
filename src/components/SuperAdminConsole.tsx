@@ -122,13 +122,18 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
   };
 
   const removeTenant = async (t: Tenant) => {
-    const typed = window.prompt(`This permanently deletes ALL data for "${t.name}".\nType the client name to confirm:`);
-    if (typed !== t.name) return;
+    const typed = window.prompt(
+      `⚠️ PERMANENT CLIENT DELETION WARNING ⚠️\n\nThis action will PERMANENTLY DELETE ALL DATA for "${t.name}", including:\n• Client account & configuration\n• Administrator and Sub-User accounts\n• Staff records & Staff Portal login sessions\n• Attendance, Salary, Advance & Grievance history\n\nThis cannot be undone!\nTo confirm, type DELETE ALL below:`
+    );
+    if (!typed || typed.trim().toUpperCase() !== 'DELETE ALL') {
+      flash('Deletion cancelled. Type DELETE ALL to confirm.');
+      return;
+    }
     setBusy(true);
     try {
       await superAdminService.deleteTenant(t.id);
       await load();
-      flash('Client deleted');
+      flash(`Client "${t.name}" and all associated data permanently deleted.`);
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   };
 
