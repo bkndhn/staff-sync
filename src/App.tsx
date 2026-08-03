@@ -1247,7 +1247,7 @@ function App() {
       case 'Profile':
         return (
           <Suspense fallback={<ComponentLoader />}>
-            <ProfileSettings user={user} onUpdateUser={setUser} />
+            <ProfileSettings user={user!} onUpdateUser={setUser} />
           </Suspense>
         );
 
