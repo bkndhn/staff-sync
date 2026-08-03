@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Check, X, Clock, MessageSquare, FileText, Search, Filter } from 'lucide-react';
 import { leaveService, LeaveRequest } from '../services/leaveService';
+import { staffService } from '../services/staffService';
 
 interface LeaveManagementProps {
   userRole: 'admin' | 'manager';
@@ -35,6 +36,9 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [dateFilterEnabled, setDateFilterEnabled] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  const [locationFilter, setLocationFilter] = useState<string>('all');
+  const [floorFilter, setFloorFilter] = useState<string>('all');
+  const [staffMeta, setStaffMeta] = useState<Record<string, { location: string; floor?: string }>>({});
 
   const loadLeaves = async () => {
     setLoading(true);
@@ -51,6 +55,25 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
   };
 
   useEffect(() => { loadLeaves(); }, [userRole, userLocation]);
+
+  useEffect(() => {
+    staffService.getAll().then(list => {
+      const map: Record<string, { location: string; floor?: string }> = {};
+      list.forEach(s => { map[s.id] = { location: s.location, floor: s.floor }; });
+      setStaffMeta(map);
+    }).catch(() => {});
+  }, []);
+
+  const leaveLocation = (l: LeaveRequest) => staffMeta[l.staffId]?.location || l.location;
+  const leaveFloor = (l: LeaveRequest) => staffMeta[l.staffId]?.floor || '';
+
+  const locationOptions = Array.from(new Set(leaves.map(leaveLocation).filter(Boolean))).sort();
+  const floorOptions = Array.from(new Set(
+    leaves
+      .filter(l => locationFilter === 'all' || leaveLocation(l) === locationFilter)
+      .map(leaveFloor)
+      .filter(Boolean)
+  )).sort();
 
   const handleAction = async () => {
     if (!actionModal) return;
@@ -79,6 +102,10 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
       if (!l.staffName.toLowerCase().includes(q) && !l.location.toLowerCase().includes(q)) return false;
     }
     
+    // Location / floor filters
+    if (locationFilter !== 'all' && leaveLocation(l) !== locationFilter) return false;
+    if (floorFilter !== 'all' && leaveFloor(l) !== floorFilter) return false;
+
     // Date filter
     if (dateFilterEnabled) {
       const leaveStart = l.leaveDate;
@@ -196,6 +223,36 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
             ) : (
               <button onClick={resetToToday} className="px-2 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors">
                 Today
+              </button>
+            )}
+          </div>
+
+          {/* Location & Floor filters */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="text-xs text-[var(--text-muted)] whitespace-nowrap">Location:</label>
+            <select
+              value={locationFilter}
+              onChange={e => { setLocationFilter(e.target.value); setFloorFilter('all'); }}
+              className="px-2 py-1.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--text-primary)] text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+            >
+              <option value="all">All Locations</option>
+              {locationOptions.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+            </select>
+            <label className="text-xs text-[var(--text-muted)] whitespace-nowrap">Floor:</label>
+            <select
+              value={floorFilter}
+              onChange={e => setFloorFilter(e.target.value)}
+              className="px-2 py-1.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--text-primary)] text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+            >
+              <option value="all">All Floors</option>
+              {floorOptions.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+            {(locationFilter !== 'all' || floorFilter !== 'all') && (
+              <button
+                onClick={() => { setLocationFilter('all'); setFloorFilter('all'); }}
+                className="px-2 py-1.5 rounded-lg text-xs font-semibold bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+              >
+                Clear
               </button>
             )}
           </div>
