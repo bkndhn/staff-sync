@@ -1060,19 +1060,38 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       {/* Controls */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-6">
         {/* Date and Bulk Actions Row */}
-        <div className="flex flex-row items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-gray-700 hidden sm:inline">Date:</label>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="text-xs font-medium text-gray-700">Date:</label>
              <input
               type="date"
               value={selectedDate}
               max={new Date().toISOString().split('T')[0]}
               onChange={(e) => onDateChange(e.target.value)}
-              className="filter-chip"
+              className="filter-chip flex-1 min-w-0 md:flex-none"
             />
+            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1 md:hidden">
+              <label className="text-[10px] uppercase text-gray-500 font-bold">IN</label>
+              <input
+                type="time"
+                value={bulkInTime}
+                onChange={e => setBulkInTime(e.target.value)}
+                className="text-xs border-none outline-none focus:ring-0 p-0 w-[70px] bg-transparent"
+              />
+            </div>
+            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1 md:hidden">
+              <label className="text-[10px] uppercase text-gray-500 font-bold">OUT</label>
+              <input
+                type="time"
+                value={bulkOutTime}
+                onChange={e => setBulkOutTime(e.target.value)}
+                className="text-xs border-none outline-none focus:ring-0 p-0 w-[70px] bg-transparent"
+              />
+            </div>
           </div>
           <div className="flex flex-row items-center gap-1 md:gap-2 w-full md:w-auto">
-            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-1 md:px-2 py-1">
+            <div className="hidden md:flex items-center gap-1 border border-gray-200 rounded-lg px-1 md:px-2 py-1">
+
               <label className="text-[10px] uppercase text-gray-500 font-bold">IN</label>
               <input 
                 type="time" 
