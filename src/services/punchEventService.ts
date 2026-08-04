@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { dataApi } from '../lib/dataApi';
 import { db } from '../lib/db';
 
 export interface PunchEvent {
@@ -51,7 +51,7 @@ export const punchEventService = {
     }
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await dataApi
         .from('punch_events' as any)
         .insert([{
           staff_id: input.staffId,
@@ -101,7 +101,7 @@ export const punchEventService = {
       return localEvents.sort((a, b) => a.eventTime.localeCompare(b.eventTime));
     }
 
-    let q = supabase.from('punch_events' as any).select('*').eq('date', date).order('event_time', { ascending: true });
+    let q = dataApi.from('punch_events').select('*').eq('date', date).order('event_time', { ascending: true });
     if (staffId) q = q.eq('staff_id', staffId);
     const { data, error } = await q;
     
@@ -153,7 +153,7 @@ export const punchEventService = {
       console.log(`[Sync] Found ${pending.length} offline punches. Syncing...`);
       
       for (const event of pending) {
-        const { error } = await supabase
+        const { error } = await dataApi
           .from('punch_events' as any)
           .insert([{
             staff_id: event.staffId,

@@ -307,7 +307,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                     email: formData.email,
                     full_name: formData.full_name,
                     role: formData.role,
-                    location: (formData.role === 'manager' || formData.role === 'floor_supervisor') ? formData.location : null,
+                    location: (formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.location : null,
                     floor: formData.role === 'floor_supervisor' ? formData.floor : null
                 };
 
@@ -335,7 +335,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                     password: formData.password,
                     full_name: formData.full_name,
                     role: formData.role,
-                    location: (formData.role === 'manager' || formData.role === 'floor_supervisor') ? formData.location : null,
+                    location: (formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.location : null,
                     floor: formData.role === 'floor_supervisor' ? formData.floor : null
                 };
 
@@ -361,13 +361,6 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                 // Prevent deleting yourself
         if (showDeleteModal.email === currentUserEmail) {
             setError("You cannot delete your own account.");
-            setShowDeleteModal(null);
-            return;
-        }
-
-        // Prevent deleting administrators (unless current user is super_admin)
-        if (showDeleteModal.role === "admin" && userRole !== "super_admin") {
-            setError("Administrator accounts are protected and cannot be deleted.");
             setShowDeleteModal(null);
             return;
         }
@@ -801,7 +794,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                                     <Edit2 size={16} color="#ffffff" />
                                                 </button>
                                                 <button
-                                                    onClick={() => setShowDeleteModal(user)} disabled={user.role === "admin" && userRole !== "super_admin"}
+                                                    onClick={() => setShowDeleteModal(user)}
                                                     className="p-2 rounded-lg bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 transition-colors"
                                                     style={{ color: '#ffffff' }}
                                                     title="Delete User"
@@ -872,7 +865,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                     </button>
                                 </div>
                             </div>
-                            {(formData.role === 'manager' || formData.role === 'floor_supervisor') && (
+                            {(formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor') && (
                                 <div>
                                     <label className="block text-sm font-medium text-white/70 mb-1">Location *</label>
                                     <select

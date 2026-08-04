@@ -15,6 +15,10 @@ export interface QueuedPunch {
   salaryOverride?: boolean;
   arrivalTime?: string;
   leavingTime?: string;
+  floor?: string;
+  isUninformed?: boolean;
+  appliedRuleType?: string;
+  appliedRuleDetails?: any;
   queuedAt: number; // timestamp
 }
 
@@ -28,6 +32,12 @@ export const offlineSyncService = {
     };
 
     await db.pendingPunches.put(queuedPunch);
+    try {
+      const registration = await navigator.serviceWorker?.ready;
+      if (registration && 'sync' in registration) {
+        await (registration as ServiceWorkerRegistration & { sync: { register(tag: string): Promise<void> } }).sync.register('sync-attendance');
+      }
+    } catch { /* network listeners remain the fallback */ }
     console.log(`[OfflineSync] Enqueued punch locally for staff: ${queuedPunch.staffId}`);
     return queuedPunch;
   },

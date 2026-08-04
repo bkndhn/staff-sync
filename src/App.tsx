@@ -24,7 +24,6 @@ import { offlineSyncService } from './services/offlineSyncService';
 import { punchEventService } from './services/punchEventService';
 import { useOfflineSync } from './hooks/useOfflineSync';
 import { usePayrollAutoGenerate } from './hooks/usePayrollAutoGenerate';
-import { offlineDbService } from './services/offlineDb';
 import { db } from './lib/db';
 import { useRealtimeUpdates } from './hooks/useRealtimeUpdates';
 
@@ -428,6 +427,12 @@ function App() {
   );
 
   const handleLogin = (userData: { id?: string; email: string; role: string; location?: string; floor?: string; floorId?: string; staffId?: string; staffName?: string }) => {
+    cacheService.clearAll();
+    setStaff([]);
+    setAttendance([]);
+    setAdvances([]);
+    setOldStaffRecords([]);
+    setSalaryHikes([]);
     setUser(userData as User);
   };
 
@@ -436,6 +441,12 @@ function App() {
     
     localStorage.removeItem('staffManagementLogin');
     localStorage.removeItem('activeTab');
+    cacheService.clearAll();
+    setStaff([]);
+    setAttendance([]);
+    setAdvances([]);
+    setOldStaffRecords([]);
+    setSalaryHikes([]);
     setUser(null);
     setActiveTab('Dashboard');
   };
@@ -450,7 +461,7 @@ function App() {
       return staff;
     } else if (user?.role === 'manager' && user.location) {
       return staff.filter(member => member.location === user.location);
-    } else if (user?.role === 'floor_supervisor' && user.location) {
+    } else if ((user?.role === 'supervisor' || user?.role === 'floor_supervisor') && user.location) {
       // If floor is set, filter strictly by floor; otherwise fall back to location only
       if (user.floor) {
         const result = staff.filter(member => member.location === user.location && member.floor === user.floor);
@@ -479,7 +490,7 @@ function App() {
           ? true // Allow all part-time staff for managers
           : locationStaffIds.includes(record.staffId)
       );
-    } else if (user?.role === 'floor_supervisor' && user.location) {
+    } else if ((user?.role === 'supervisor' || user?.role === 'floor_supervisor') && user.location) {
       // If floor is set, filter strictly by floor; otherwise fall back to location
       const floorStaffIds = user.floor
         ? staff.filter(m => m.location === user.location && m.floor === user.floor).map(m => m.id)
@@ -640,6 +651,17 @@ function App() {
       patchAttendance({ id: previousAttendance?.id || `temp-${Date.now()}`, ...attendanceRecord } as any);
 
       const savedAttendance = await attendanceService.upsert(attendanceRecord);
+
+      if (user?.role !== 'staff') {
+        import('./services/notificationService').then(({ notificationService }) =>
+          notificationService.sendToStaff({
+            staffId,
+            title: 'Attendance updated',
+            body: `${date}: ${status}${shift ? ` (${shift})` : ''}`,
+            actionUrl: '/?tab=My%20Portal',
+          })
+        ).catch(() => {});
+      }
 
       // Audit Log
       auditLogService.log({
