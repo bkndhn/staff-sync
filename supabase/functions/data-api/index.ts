@@ -51,7 +51,7 @@ const ACL: Record<string, TableAcl> = {
   // ── Leave ───────────────────────────────────────────────────────────────────
   leave_requests:                    { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"],                   write: ["admin","manager","staff","supervisor","floor_supervisor"], locationCol: "location", staffIdCol: "staff_id" },
   // ── Advances / Payroll ──────────────────────────────────────────────────────
-  advances:                          { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager"],           locationCol: "location", staffIdCol: "staff_id" },
+  advances:                          { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager"],           staffIdCol: "staff_id" },
   advance_entries:                   { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager"],           staffIdCol: "staff_id" },
   payroll_runs:                      { read: ["admin","super_admin"],                                                 write: ["admin"] },
   payroll_snapshots:                 { read: ["admin","super_admin"],                                                 write: ["admin"] },
