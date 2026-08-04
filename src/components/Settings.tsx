@@ -223,7 +223,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
         email: '',
         password: '',
         full_name: '',
-        role: 'manager' as 'admin' | 'manager' | 'floor_supervisor',
+        role: 'manager' as 'admin' | 'manager' | 'floor_supervisor' | 'supervisor' | 'statutory_admin',
         location: '',
         floor: ''
     });

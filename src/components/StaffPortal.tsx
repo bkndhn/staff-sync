@@ -616,7 +616,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         {sections.map(s => (
           <button
             key={s.id}
-            onClick={() => setActiveSection(s.id)}
+            onClick={() => setActiveSection(s.id as any)}
             className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-semibold whitespace-nowrap transition-all ${
               activeSection === s.id
                 ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25'

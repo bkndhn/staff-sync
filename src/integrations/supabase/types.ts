@@ -173,6 +173,7 @@ export type Database = {
           created_at: string | null
           id: string
           key: string
+          statutory_login_details: Json | null
           tenant_id: string | null
           updated_at: string | null
           value: string
@@ -181,6 +182,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           key: string
+          statutory_login_details?: Json | null
           tenant_id?: string | null
           updated_at?: string | null
           value: string
@@ -189,6 +191,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           key?: string
+          statutory_login_details?: Json | null
           tenant_id?: string | null
           updated_at?: string | null
           value?: string
@@ -205,6 +208,7 @@ export type Database = {
       }
       app_users: {
         Row: {
+          auth_id: string | null
           created_at: string | null
           email: string
           floor: string | null
@@ -222,6 +226,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          auth_id?: string | null
           created_at?: string | null
           email: string
           floor?: string | null
@@ -239,6 +244,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          auth_id?: string | null
           created_at?: string | null
           email?: string
           floor?: string | null
@@ -1958,6 +1964,7 @@ export type Database = {
           contact_phone: string | null
           created_at: string | null
           id: string
+          location_limit: number
           name: string
           notes: string | null
           plan: string
@@ -1965,6 +1972,7 @@ export type Database = {
           staff_limit: number
           staff_portal_enabled: boolean
           status: string
+          sub_user_limit: number
           updated_at: string
         }
         Insert: {
@@ -1973,6 +1981,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string | null
           id?: string
+          location_limit?: number
           name: string
           notes?: string | null
           plan?: string
@@ -1980,6 +1989,7 @@ export type Database = {
           staff_limit?: number
           staff_portal_enabled?: boolean
           status?: string
+          sub_user_limit?: number
           updated_at?: string
         }
         Update: {
@@ -1988,6 +1998,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string | null
           id?: string
+          location_limit?: number
           name?: string
           notes?: string | null
           plan?: string
@@ -1995,6 +2006,7 @@ export type Database = {
           staff_limit?: number
           staff_portal_enabled?: boolean
           status?: string
+          sub_user_limit?: number
           updated_at?: string
         }
         Relationships: []

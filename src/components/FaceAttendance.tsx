@@ -9,6 +9,7 @@ import { isSunday } from '../utils/salaryCalculations';
 import { shiftService, formatTime12h, ShiftWindows, minutesBetween } from '../services/shiftService';
 import { locationShiftService, LocationShiftConfig, DEFAULT_LOCATION_CONFIG } from '../services/locationShiftService';
 import { appSettingsService } from '../services/appSettingsService';
+import { locationService } from '../services/locationService';
 import { calculateAttendanceStatus, resolveAttendanceRules, resolveActiveRule } from '../utils/attendanceRules';
 import QRAttendanceGenerator from './QRAttendanceGenerator';
 import { buildCentroidIndex, findBestMatch as findCosineMatch, type StaffEmbedding } from '../lib/embeddingMatcher';
@@ -230,7 +231,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           locationService.getLocations()
         ]);
 
-        const filteredList = list.filter(e => e.isApproved !== false);
+        const filteredList = list.filter((e: any) => e.isApproved !== false);
         const locCfg = locCfgArr.length > 0 ? locCfgArr[0] : null;
 
         if (!cancelled) {

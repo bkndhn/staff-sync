@@ -15,6 +15,7 @@ const PAGE_LABELS: Record<keyof StatutoryPortalConfig['visiblePages'], string> =
   leave: 'Leave',
   profile: 'Profile',
   settings: 'Settings',
+  action_center: 'Action Center',
 };
 const WIDGET_LABELS: Record<keyof StatutoryPortalConfig['dashboardWidgets'], string> = {
   staffCount: 'Staff Count',

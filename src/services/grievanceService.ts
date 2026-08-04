@@ -50,7 +50,7 @@ export const grievanceService = {
 
     let results = (data || []).map(mapRow);
     if (location && location !== 'all') {
-      results = results.filter(g => g.location === location);
+      results = results.filter((g: any) => g.location === location);
     }
     return results;
   },
@@ -67,7 +67,7 @@ export const grievanceService = {
     
     let requiredLevels = 1;
     if (configs && configs.length > 0) {
-      const levels = configs[0].levels;
+      const levels = (configs[0] as any).levels;
       if (Array.isArray(levels) && levels.length > 0) {
         requiredLevels = Math.max(...levels.map((l: any) => l.level));
       }
