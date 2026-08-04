@@ -39,7 +39,7 @@ export default function ActionCenter({ user }: ActionCenterProps) {
       selectedGrievance.id,
       action,
       resolutionNotes,
-      user?.name || user?.email || 'Admin',
+      (user as any)?.name || user?.email || 'Admin',
       user?.role || 'admin',
       selectedGrievance
     );

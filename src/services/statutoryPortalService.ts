@@ -11,6 +11,7 @@ export interface StatutoryPortalConfig {
     leave: boolean;
     profile: boolean;
     settings: boolean;
+    action_center: boolean;
   };
   dashboardWidgets: {
     staffCount: boolean;

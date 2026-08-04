@@ -90,7 +90,7 @@ export const leaveService = {
     let requiredLevels = 1;
     if (configs && configs.length > 0) {
       // For simplicity, just use the first active workflow
-      const levels = configs[0].levels;
+      const levels = (configs[0] as any).levels;
       if (Array.isArray(levels) && levels.length > 0) {
         requiredLevels = Math.max(...levels.map((l: any) => l.level));
       }
