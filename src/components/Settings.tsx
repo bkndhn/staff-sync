@@ -145,7 +145,7 @@ const UserCard: React.FC<{
     user: AppUser;
     onEdit: () => void;
     onDelete: () => void;
-    formatLastLogin: (lastLogin: string | null | undefined) => string;
+    formatLastLogin: (lastLogin: string | null | undefined) => string; currentUserRole: string;
 }> = ({ user, onEdit, onDelete, formatLastLogin, currentUserRole }) => {
     return (
         <div className="glass-card-static p-4 rounded-xl space-y-3">
@@ -186,7 +186,7 @@ const UserCard: React.FC<{
                 </button>
                 <button
                     onClick={onDelete}
-                    disabled={user.role === "admin" && currentUserRole !== "super_admin"} className="flex-1 py-2.5 px-3 rounded-lg bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                    disabled={user.role === "admin" && currentUserRole !== "super_admin"} disabled={user.role === "admin" && currentUserRole !== "super_admin"} className="flex-1 py-2.5 px-3 rounded-lg bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 transition-colors flex items-center justify-center gap-2 font-medium"
                     style={{ color: '#ffffff' }}
                 >
                     <Trash2 size={16} color="#ffffff" />
@@ -733,6 +733,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                     ) : (
                         filteredUsers.map(user => (
                             <UserCard
+                                    currentUserRole={userRole}
                                 key={user.id}
                                 user={user}
                                 onEdit={() => handleEdit(user)}
@@ -800,8 +801,8 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                                     <Edit2 size={16} color="#ffffff" />
                                                 </button>
                                                 <button
-                                                    onClick={() => setShowDeleteModal(user)}
-                                                    className="p-2 rounded-lg bg-red-600 hover:bg-red-700 transition-colors"
+                                                    onClick={() => setShowDeleteModal(user)} disabled={user.role === "admin" && userRole !== "super_admin"}
+                                                    className="p-2 rounded-lg bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 transition-colors"
                                                     style={{ color: '#ffffff' }}
                                                     title="Delete User"
                                                 >
