@@ -110,7 +110,7 @@ export const punchEventService = {
       return localEvents.sort((a, b) => a.eventTime.localeCompare(b.eventTime)); 
     }
     
-    const remoteEvents = (data || []).map(fromDb);
+    const remoteEvents: PunchEvent[] = (data || []).map(fromDb);
     
     // Merge remote and local (in case there are pending local punches not yet synced)
     const remoteIds = new Set(remoteEvents.map(e => e.id));

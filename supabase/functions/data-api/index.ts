@@ -43,6 +43,7 @@ const ACL: Record<string, TableAcl> = {
   staff:                             { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager"],           locationCol: "location", floorCol: "floor", staffIdCol: "id" },
   attendance:                        { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"],                   write: ["admin","manager","supervisor","floor_supervisor"], locationCol: "location", floorCol: "floor", staffIdCol: "staff_id" },
   punch_events:                      { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"],                   write: ["admin","manager","supervisor","floor_supervisor"], locationCol: "location", staffIdCol: "staff_id" },
+  push_subscriptions:                { read: ["admin","manager","staff","supervisor","floor_supervisor"],                                 write: ["admin","manager","staff","supervisor","floor_supervisor"], staffIdCol: "staff_id" },
   // ── Breaks ──────────────────────────────────────────────────────────────────
   break_events:                      { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"],                   write: ["admin","manager","staff","supervisor","floor_supervisor"], locationCol: "location", staffIdCol: "staff_id" },
   break_types:                       { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"],                   write: ["admin"] },
@@ -300,6 +301,33 @@ Deno.serve(async (req) => {
         beforeData = res.data;
       } catch (e) {
         console.error("Failed to fetch before data for audit log", e);
+      }
+    }
+
+    if (body.table === "app_users" && body.op === "update" && role === "admin") {
+      const targetId = body.filters?.find((f) => f.col === "id" && f.op === "eq")?.val;
+      if (typeof targetId !== "string") {
+        return new Response(JSON.stringify({ error: "A single user must be selected" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const { data: target } = await admin.from("app_users")
+        .select("id, role, tenant_id, is_active").eq("id", targetId).eq("tenant_id", tenantId).maybeSingle();
+      if (!target || target.role === "super_admin") {
+        return new Response(JSON.stringify({ error: "User not found in your client" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const deactivating = body.values && !Array.isArray(body.values) && body.values.is_active === false;
+      if (deactivating && target.id === user.id) {
+        return new Response(JSON.stringify({ error: "You cannot deactivate your own account" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (deactivating && target.role === "admin") {
+        const { count } = await admin.from("app_users").select("id", { count: "exact", head: true })
+          .eq("tenant_id", tenantId).eq("role", "admin").eq("is_active", true).neq("id", target.id);
+        if ((count ?? 0) < 1) {
+          return new Response(JSON.stringify({ error: "At least one active client admin must remain" }),
+            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
       }
     }
 
