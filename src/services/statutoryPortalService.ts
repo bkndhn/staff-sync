@@ -37,7 +37,7 @@ export interface StatutoryPortalConfig {
 export const DEFAULT_STATUTORY_CONFIG: StatutoryPortalConfig = {
   visiblePages: {
     dashboard: true, staff: true, attendance: true, salary: true,
-    reports: false, leave: false, profile: false, settings: false,
+    reports: false, leave: false, profile: false, settings: false, action_center: false,
   },
   dashboardWidgets: {
     staffCount: true, attendance: true, salary: true,
