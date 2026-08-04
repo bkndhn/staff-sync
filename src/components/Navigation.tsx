@@ -95,6 +95,9 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
       ];
     }
+    if (user.role === 'supervisor') {
+      return baseTabs.filter(item => ['Dashboard', 'Attendance', 'Break Management', 'Part-Time Staff', 'Leave Management', 'Profile'].includes(item.name));
+    }
     return [
       { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
       { id: 'Workforce Insights' as NavigationTab, label: 'Insights', icon: TrendingUp },

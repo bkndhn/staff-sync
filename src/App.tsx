@@ -296,7 +296,7 @@ function App() {
     if (!user) return;
     const saved = localStorage.getItem('activeTab') as NavigationTab | null;
     const statutoryAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Salary Management', 'Leave Management', 'Settings'];
-    const supervisorAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Break Management', 'Part-Time Staff', 'Leave Management'];
+    const supervisorAllowed: NavigationTab[] = ['Dashboard', 'Attendance', 'Break Management', 'Part-Time Staff', 'Leave Management'];
     const validForRole = (tab: NavigationTab | null): boolean => {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
@@ -1291,7 +1291,7 @@ function App() {
           />
         );
       case 'Break Management':
-        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'floor_supervisor') return null;
+        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'supervisor' && user?.role !== 'floor_supervisor') return null;
         return (
           <Suspense fallback={<ComponentLoader />}>
             <BreakManagement staff={filteredStaffData} user={user!} />
@@ -1343,7 +1343,7 @@ function App() {
           </Suspense>
         );
       case 'Leave Management':
-        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'statutory_admin' && user?.role !== 'floor_supervisor') return null;
+        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'statutory_admin' && user?.role !== 'supervisor' && user?.role !== 'floor_supervisor') return null;
 
         return (
           <Suspense fallback={<ComponentLoader />}>
@@ -1351,7 +1351,7 @@ function App() {
               userRole={user?.role as 'admin' | 'manager'}
               userLocation={user?.location}
               userName={user?.role === 'admin' ? 'Admin' : `${user?.location} Manager`}
-              userFloor={user?.role === 'floor_supervisor' ? user?.floor : undefined}
+              userFloor={user?.role === 'supervisor' || user?.role === 'floor_supervisor' ? user?.floor : undefined}
             />
           </Suspense>
         );

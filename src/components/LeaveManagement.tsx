@@ -4,7 +4,7 @@ import { leaveService, LeaveRequest } from '../services/leaveService';
 import { staffService } from '../services/staffService';
 
 interface LeaveManagementProps {
-  userRole: 'admin' | 'manager';
+  userRole: 'admin' | 'manager' | 'supervisor' | 'floor_supervisor' | 'statutory_admin';
   userLocation?: string;
   userName?: string;
   userFloor?: string;
