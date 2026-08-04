@@ -96,7 +96,14 @@ const Navigation: React.FC<NavigationProps> = ({
       ];
     }
     if (user.role === 'supervisor') {
-      return baseTabs.filter(item => ['Dashboard', 'Attendance', 'Break Management', 'Part-Time Staff', 'Leave Management', 'Profile'].includes(item.name));
+      return [
+        { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
+        { id: 'Attendance' as NavigationTab, label: 'Attendance', icon: Calendar },
+        { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
+        { id: 'Part-Time Staff' as NavigationTab, label: 'Part-Time', icon: Clock },
+        { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
+        { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
+      ];
     }
     return [
       { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
