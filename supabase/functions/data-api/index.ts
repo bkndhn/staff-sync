@@ -76,7 +76,7 @@ const ACL: Record<string, TableAcl> = {
   location_designation_shift_config: { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   statutory_portal_config:           { read: ["admin","manager","staff","statutory_admin","super_admin"],              write: ["admin"] },
   shift_rosters:                     { read: ["admin","manager","supervisor","floor_supervisor","super_admin"],                           write: ["admin","manager"] },
-  workflow_configs:                  { read: ["admin","super_admin"],                                                  write: ["admin"] },
+  workflow_configs:                  { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   staff_grievances:                  { read: ["admin","manager","super_admin"],                                        write: ["admin","manager","staff"] },
   // ── Platform-level ──────────────────────────────────────────────────────────
   app_users:                         { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["super_admin","admin"] },
@@ -264,6 +264,14 @@ Deno.serve(async (req) => {
       scopeFilters.push({ col: acl.locationCol, op: "eq", val: user.location });
     }
     if (role === "supervisor" || role === "floor_supervisor") {
+      if (!user.location) {
+        return new Response(JSON.stringify({ error: "Supervisor is not assigned to a location" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (acl.floorCol && !user.floor) {
+        return new Response(JSON.stringify({ error: "Supervisor is not assigned to a floor" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       if (acl.locationCol && user.location) {
         scopeFilters.push({ col: acl.locationCol, op: "eq", val: user.location });
       }

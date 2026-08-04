@@ -308,7 +308,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                     full_name: formData.full_name,
                     role: formData.role,
                     location: (formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.location : null,
-                    floor: formData.role === 'floor_supervisor' ? formData.floor : null
+                    floor: (formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.floor : null
                 };
 
                 if (formData.password) {
@@ -336,7 +336,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                     full_name: formData.full_name,
                     role: formData.role,
                     location: (formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.location : null,
-                    floor: formData.role === 'floor_supervisor' ? formData.floor : null
+                    floor: (formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.floor : null
                 };
 
                 const created = await userService.createUser(input);
@@ -891,7 +891,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                             ...prev, 
                                             role: newRole,
                                             location: newRole === 'admin' || newRole === 'statutory_admin' ? '' : prev.location,
-                                            floor: newRole !== 'floor_supervisor' ? '' : prev.floor
+                                             floor: (newRole !== 'supervisor' && newRole !== 'floor_supervisor') ? '' : prev.floor
                                         }));
                                     }}
                                     className="input-premium w-full"
@@ -903,7 +903,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                     <option value="statutory_admin">Statutory Admin</option>
                                 </select>
                             </div>
-                            {formData.role === 'floor_supervisor' && (
+                            {(formData.role === 'supervisor' || formData.role === 'floor_supervisor') && (
                                 <div>
                                     <label className="block text-sm font-medium text-white/70 mb-1">Floor *</label>
                                     <select
