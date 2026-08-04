@@ -48,14 +48,14 @@ export const TenantStatusBanner: React.FC<TenantStatusBannerProps> = ({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-sm text-white tracking-wide">
+                <h3 className="font-semibold text-sm tracking-wide" style={{ color: '#fef2f2' }}>
                   Workspace Suspended ({tenant.status?.toUpperCase()})
                 </h3>
                 <span className="inline-block rounded bg-red-950 px-2 py-0.5 text-[11px] font-bold text-red-200 uppercase">
                   Action Required
                 </span>
               </div>
-              <p className="text-xs text-red-100 mt-1 leading-relaxed">
+              <p className="text-xs mt-1 leading-relaxed" style={{ color: '#fee2e2' }}>
                 {tenant.name || 'This workspace'} is currently suspended by platform administration. Operational features and staff logins are blocked or restricted.
               </p>
             </div>
@@ -85,14 +85,14 @@ export const TenantStatusBanner: React.FC<TenantStatusBannerProps> = ({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-sm text-amber-100 tracking-wide">
+                <h3 className="font-semibold text-sm tracking-wide" style={{ color: '#fef3c7' }}>
                   Staff Self-Service Portal Disabled
                 </h3>
                 <span className="inline-block rounded bg-amber-900 px-2 py-0.5 text-[11px] font-bold text-amber-200 uppercase">
                   Portal Off
                 </span>
               </div>
-              <p className="text-xs text-amber-200 mt-1 leading-relaxed">
+              <p className="text-xs mt-1 leading-relaxed" style={{ color: '#fde68a' }}>
                 {role === 'staff'
                   ? 'Access to the mobile staff app has been turned off for this workspace by your manager or administrator.'
                   : 'Staff members cannot log into the staff portal to check attendance or payslips because access is disabled.'}

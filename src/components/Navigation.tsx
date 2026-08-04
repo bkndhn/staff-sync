@@ -86,14 +86,11 @@ const Navigation: React.FC<NavigationProps> = ({
       ];
     }
     if (user.role === 'floor_supervisor') {
-      // Floor supervisor: attendance-focused, own floor only.
+      // Floor supervisor: own-floor attendance only — no staff management or roster.
       return [
         { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
-        { id: 'Staff Management' as NavigationTab, label: 'Staff', icon: Users },
-        { id: 'Shift Roster' as NavigationTab, label: 'Roster', icon: Calendar },
         { id: 'Attendance' as NavigationTab, label: 'Attendance', icon: Calendar },
         { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
-        { id: 'Part-Time Staff' as NavigationTab, label: 'Part-Time', icon: Clock },
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
         { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
       ];

@@ -45,6 +45,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [staffPhoto, setStaffPhoto] = useState<string>('');
 
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [fullName, setFullName] = useState('');
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,42 +77,133 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));
 
     try {
-      const result = await userService.validateLogin(sanitizedEmail, password);
+      if (isSignUp) {
+        if (!fullName.trim()) {
+          setError('Please enter your full name');
+          setLoading(false);
+          return;
+        }
+        
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: sanitizedEmail,
+          password: password,
+          options: {
+            data: {
+              full_name: fullName.trim()
+            }
+          }
+        });
+        
+        if (signUpError) {
+          setError(signUpError.message);
+          setLoading(false);
+          return;
+        }
+        
+        if (!data.session) {
+          setError('Sign up successful! Please check your email to verify your account.');
+          setLoading(false);
+          return;
+        }
+        
+        // If a session is returned, proceed to log them in by fetching their profile
+        const result = await userService.validateLogin(sanitizedEmail, password);
+        if (result) {
+          const { user: dbUser, sessionToken } = result;
+          clearFailedAttempts(sanitizedEmail);
 
-      if (result) {
-        const { user: dbUser, sessionToken } = result;
-        clearFailedAttempts(sanitizedEmail);
+          const session = {
+            ...createSecureSession({
+              email: dbUser.email,
+              role: dbUser.role,
+              location: dbUser.location,
+              floor: (dbUser as any).floor,
+              floorId: (dbUser as any).floor_id,
+            }),
+            sessionToken
+          };
 
-        const session = {
-          ...createSecureSession({
+          localStorage.setItem('staffManagementLogin', JSON.stringify(session));
+          if (sessionToken) localStorage.setItem('sessionToken', sessionToken);
+
+          onLogin({
+            id: dbUser.id,
             email: dbUser.email,
             role: dbUser.role,
-            location: dbUser.location,
-            floor: (dbUser as any).floor,
-            floorId: (dbUser as any).floor_id,
-          }),
-          sessionToken
-        };
-
-        localStorage.setItem('staffManagementLogin', JSON.stringify(session));
-
-        onLogin({
-          id: dbUser.id,
-          email: dbUser.email,
-          role: dbUser.role,
-          location: dbUser.location || undefined,
-          floor: (dbUser as any).floor || undefined,
-          floorId: (dbUser as any).floor_id || undefined,
-        });
+            location: dbUser.location || undefined,
+            floor: (dbUser as any).floor || undefined,
+            floorId: (dbUser as any).floor_id || undefined,
+          });
+        } else {
+          // Changed from setError to alert or just setting a success-like error message
+          // since the user wants to manually match them in the DB afterwards.
+          setError('Account successfully created! Please manually link this new email to your existing profile in the Supabase Dashboard, then sign in again.');
+        }
       } else {
-        recordFailedAttempt(sanitizedEmail);
-        setError('Invalid email address or password. Please check and try again.');
+        const result = await userService.validateLogin(sanitizedEmail, password);
+
+        if (result) {
+          const { user: dbUser, sessionToken } = result;
+          clearFailedAttempts(sanitizedEmail);
+
+          const session = {
+            ...createSecureSession({
+              email: dbUser.email,
+              role: dbUser.role,
+              location: dbUser.location,
+              floor: (dbUser as any).floor,
+              floorId: (dbUser as any).floor_id,
+            }),
+            sessionToken
+          };
+
+          localStorage.setItem('staffManagementLogin', JSON.stringify(session));
+          if (sessionToken) localStorage.setItem('sessionToken', sessionToken);
+
+          onLogin({
+            id: dbUser.id,
+            email: dbUser.email,
+            role: dbUser.role,
+            location: dbUser.location || undefined,
+            floor: (dbUser as any).floor || undefined,
+            floorId: (dbUser as any).floor_id || undefined,
+          });
+        } else {
+          recordFailedAttempt(sanitizedEmail);
+          setError('Invalid email address or password. Please check and try again.');
+        }
       }
     } catch (err) {
       console.error('Login error:', err);
       setError('Unable to connect to server. Please try again.');
     }
 
+    setLoading(false);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError('Please enter your email address to reset password');
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (resetError) {
+        setError(resetError.message);
+      } else {
+        alert('Password reset link sent to your email!');
+      }
+    } catch (err) {
+      setError('Unable to request password reset. Please try again.');
+    }
+    
     setLoading(false);
   };
 
@@ -360,6 +453,19 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           {/* Admin Login Form */}
           {loginMode === 'admin' && (
             <form onSubmit={handleAdminSubmit} className="space-y-5">
+              {isSignUp && (
+                <div>
+                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Full Name</label>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="input-premium"
+                    placeholder="Enter your full name"
+                    required
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Email Address</label>
                 <input
@@ -391,6 +497,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     {showPassword ? <EyeOff size={18} className="text-slate-600 dark:text-slate-300" /> : <Eye size={18} className="text-slate-600 dark:text-slate-300" />}
                   </button>
                 </div>
+                {!isSignUp && (
+                  <div className="flex justify-end mt-1">
+                    <button 
+                      type="button" 
+                      onClick={handleForgotPassword}
+                      className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                )}
               </div>
 
               {error && (
@@ -403,13 +520,23 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               <button type="submit" disabled={loading} className="w-full btn-premium py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group">
                 <span className="relative z-10 flex items-center justify-center gap-2 !text-white">
                   {loading ? (
-                    <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span className="!text-white">Signing in...</span></>
+                    <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span className="!text-white">{isSignUp ? 'Creating...' : 'Signing in...'}</span></>
                   ) : (
-                    <><Lock size={18} className="!text-white" /><span className="!text-white">Sign In</span></>
+                    <><Lock size={18} className="!text-white" /><span className="!text-white">{isSignUp ? 'Create Account' : 'Sign In'}</span></>
                   )}
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
               </button>
+              
+              <div className="text-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
+                  className="text-sm text-[var(--text-muted)] hover:text-blue-500 transition-colors"
+                >
+                  {isSignUp ? 'Already have an account? Sign In' : 'Need a migration account? Sign Up'}
+                </button>
+              </div>
             </form>
           )}
 

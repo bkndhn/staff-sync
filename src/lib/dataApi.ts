@@ -66,16 +66,14 @@ class QueryBuilder<T = any> implements PromiseLike<{ data: T | null; error: Erro
     onRejected?: ((reason: unknown) => TR2 | PromiseLike<TR2>) | null,
   ): Promise<TR1 | TR2> {
     try {
-      // Session token is stored inside the `staffManagementLogin` blob by
-      // Login.tsx. Fall back to a bare `sessionToken` key for any legacy
-      // callers that set it directly.
-      let token = localStorage.getItem("sessionToken");
-      if (!token) {
-        try {
-          const raw = localStorage.getItem("staffManagementLogin");
-          if (raw) token = JSON.parse(raw)?.sessionToken || null;
-        } catch { /* ignore malformed cache */ }
-      }
+      // Session token priority: staffManagementLogin blob (always fresh from
+      // latest login) → bare sessionToken key (legacy/staff logins).
+      let token: string | null = null;
+      try {
+        const raw = localStorage.getItem("staffManagementLogin");
+        if (raw) token = JSON.parse(raw)?.sessionToken || null;
+      } catch { /* ignore malformed cache */ }
+      if (!token) token = localStorage.getItem("sessionToken");
       if (!token) {
         // Not logged in yet — short-circuit so screens render empty
         // instead of throwing on a 401 from the edge function.
@@ -92,6 +90,7 @@ class QueryBuilder<T = any> implements PromiseLike<{ data: T | null; error: Erro
           "Content-Type": "application/json",
           apikey: SUPABASE_PUBLISHABLE_KEY,
           "x-session-token": token,
+          ...(token.startsWith("eyJ") ? { "Authorization": `Bearer ${token}` } : {}),
           ...(impersonated ? { "x-tenant-id": impersonated } : {}),
         },
         body: JSON.stringify(this.state),

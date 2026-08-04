@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, Suspense, useRef } fr
 import Navigation from './components/Navigation';
 import SuperAdminConsole from './components/SuperAdminConsole';
 import Login from './components/Login';
+import ResetPassword from './components/ResetPassword';
 import Dashboard from './components/Dashboard';
 import AttendanceTracker from './components/AttendanceTracker';
 import SalaryHikeModal from './components/SalaryHikeModal';
@@ -118,6 +119,54 @@ function App() {
   useEffect(() => {
     try { localStorage.removeItem('impersonateTenantName'); } catch { /* ignore */ }
   }, []);
+
+  // ── Background profile refresh — picks up missing fields (floor, etc.) ──
+  useEffect(() => {
+    if (!user || user.role === 'staff' || user.role === 'super_admin') return;
+    // Only refresh if key fields are missing
+    const saved = localStorage.getItem('staffManagementLogin');
+    if (!saved) return;
+    const session = JSON.parse(saved);
+    const token = session?.sessionToken;
+    if (!token) return;
+
+    const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || "https://nsmppwnpdxomjmgrtqka.supabase.co";
+    const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY || (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zbXBwd25wZHhvbWptZ3J0cWthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1NDM3NjksImV4cCI6MjA2NzExOTc2OX0.gVzJ4uPAmFT5yngvdcFsHXHH1cUL-nIq0e71Gx8ALOk";
+
+    fetch(`${SUPABASE_URL}/functions/v1/data-api`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'x-session-token': token,
+        ...(token.startsWith('eyJ') ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        table: 'app_users',
+        op: 'select',
+        filters: [{ col: 'email', op: 'eq', val: user.email }],
+        columns: 'id, email, full_name, role, location, location_id, floor, floor_id',
+        single: true,
+      }),
+    })
+      .then(r => r.json())
+      .then(json => {
+        const fresh = Array.isArray(json.data) ? json.data[0] : json.data;
+        if (!fresh) return;
+        // Merge fresh server data into user state
+        const updated = { ...user, location: fresh.location, floor: fresh.floor, floorId: fresh.floor_id };
+        setUser(updated as any);
+        // Also update localStorage so next load is immediate
+        if (session.user) {
+          session.user.location = fresh.location;
+          session.user.floor = fresh.floor;
+          session.user.floorId = fresh.floor_id;
+          localStorage.setItem('staffManagementLogin', JSON.stringify(session));
+        }
+      })
+      .catch(() => { /* silent — best-effort refresh */ });
+  }, []); // Run once on mount
+
   const [activeTab, setActiveTabState] = useState<NavigationTab>(() => {
     const saved = localStorage.getItem('activeTab');
     return (saved as NavigationTab) || 'Dashboard';
@@ -254,6 +303,11 @@ function App() {
       if (user.role === 'staff') return tab === 'My Portal';
       if (user.role === 'statutory_admin') return statutoryAllowed.includes(tab);
       if (user.role === 'supervisor') return supervisorAllowed.includes(tab);
+      // floor_supervisor: same pages as Navigation shows them — no Staff/Roster
+      if (user.role === 'floor_supervisor') {
+        const floorSupervisorAllowed: NavigationTab[] = ['Dashboard', 'Attendance', 'Break Management', 'Leave Management', 'Profile'];
+        return floorSupervisorAllowed.includes(tab);
+      }
       if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security';
       return tab !== 'My Portal';
     };
@@ -373,7 +427,7 @@ function App() {
     }, [])
   );
 
-  const handleLogin = (userData: { id?: string; email: string; role: string; location?: string; staffId?: string; staffName?: string }) => {
+  const handleLogin = (userData: { id?: string; email: string; role: string; location?: string; floor?: string; floorId?: string; staffId?: string; staffName?: string }) => {
     setUser(userData as User);
   };
 
@@ -388,12 +442,24 @@ function App() {
 
   // Filter staff based on user role and location - memoized for performance
   const filteredStaff = useMemo(() => {
+    // DEBUG: trace filtering
+    if (user?.role === 'floor_supervisor') {
+      console.log('[DEBUG filteredStaff] role:', user?.role, 'location:', user?.location, 'floor:', user?.floor, 'staff count:', staff.length, 'staff floors:', staff.map(s => `${s.name}:${s.floor}:${s.location}`));
+    }
     if (user?.role === 'admin' || user?.role === 'statutory_admin' || user?.role === 'super_admin') {
       return staff;
     } else if (user?.role === 'manager' && user.location) {
       return staff.filter(member => member.location === user.location);
-    } else if (user?.role === 'floor_supervisor' && user.location && user.floor) {
-      return staff.filter(member => member.location === user.location && member.floor === user.floor);
+    } else if (user?.role === 'floor_supervisor' && user.location) {
+      // If floor is set, filter strictly by floor; otherwise fall back to location only
+      if (user.floor) {
+        const result = staff.filter(member => member.location === user.location && member.floor === user.floor);
+        console.log('[DEBUG filteredStaff] floor filter result:', result.length);
+        return result;
+      }
+      const result = staff.filter(member => member.location === user.location);
+      console.log('[DEBUG filteredStaff] location-only filter result:', result.length);
+      return result;
     }
     return [];
   }, [staff, user?.role, user?.location, user?.floor]);
@@ -413,10 +479,11 @@ function App() {
           ? true // Allow all part-time staff for managers
           : locationStaffIds.includes(record.staffId)
       );
-    } else if (user?.role === 'floor_supervisor' && user.location && user.floor) {
-      const floorStaffIds = staff
-        .filter(m => m.location === user.location && m.floor === user.floor)
-        .map(m => m.id);
+    } else if (user?.role === 'floor_supervisor' && user.location) {
+      // If floor is set, filter strictly by floor; otherwise fall back to location
+      const floorStaffIds = user.floor
+        ? staff.filter(m => m.location === user.location && m.floor === user.floor).map(m => m.id)
+        : staff.filter(m => m.location === user.location).map(m => m.id);
       return attendance.filter(r => floorStaffIds.includes(r.staffId));
     }
     return [];
@@ -1202,7 +1269,7 @@ function App() {
           />
         );
       case 'Break Management':
-        if (user?.role !== 'admin' && user?.role !== 'manager') return null;
+        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'floor_supervisor') return null;
         return (
           <Suspense fallback={<ComponentLoader />}>
             <BreakManagement staff={filteredStaffData} user={user!} />
@@ -1250,11 +1317,11 @@ function App() {
         if (user?.role !== 'admin' && user?.role !== 'statutory_admin') return null;
         return (
           <Suspense fallback={<ComponentLoader />}>
-            <Settings userRole={user?.role || 'manager'} />
+            <Settings userRole={user?.role || 'manager'} currentUserEmail={user?.email} />
           </Suspense>
         );
       case 'Leave Management':
-        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'statutory_admin') return null;
+        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'statutory_admin' && user?.role !== 'floor_supervisor') return null;
 
         return (
           <Suspense fallback={<ComponentLoader />}>
@@ -1262,6 +1329,7 @@ function App() {
               userRole={user?.role as 'admin' | 'manager'}
               userLocation={user?.location}
               userName={user?.role === 'admin' ? 'Admin' : `${user?.location} Manager`}
+              userFloor={user?.role === 'floor_supervisor' ? user?.floor : undefined}
             />
           </Suspense>
         );
@@ -1354,6 +1422,10 @@ function App() {
   }
 
   if (!user) {
+    const isResetPasswordRoute = window.location.pathname === '/reset-password';
+    if (isResetPasswordRoute) {
+      return <ResetPassword />;
+    }
     return <Login onLogin={handleLogin} />;
   }
 

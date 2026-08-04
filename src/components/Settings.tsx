@@ -11,11 +11,13 @@ import AttendanceRulesPanel from './AttendanceRulesPanel';
 import DeviceIntegration from './DeviceIntegration';
 import SalaryOverridesPanel from './SalaryOverridesPanel';
 import StatutoryPortalSettingsPanel from './StatutoryPortalSettingsPanel';
+import StatutoryCredentialsPanel from './StatutoryCredentialsPanel';
 import FaceTuningPanel from './face/FaceTuningPanel';
 import { WorkflowBuilder } from './WorkflowBuilder';
 
 interface SettingsProps {
     userRole: string;
+    currentUserEmail?: string;
 }
 
 // Native-style collapsible settings section
@@ -195,7 +197,7 @@ const UserCard: React.FC<{
     );
 };
 
-const Settings: React.FC<SettingsProps> = ({ userRole }) => {
+const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
     const [users, setUsers] = useState<AppUser[]>([]);
     const [locations, setLocations] = useState<Location[]>([]);
     const [loading, setLoading] = useState(true);
@@ -286,7 +288,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
             email: user.email,
             password: '',
             full_name: user.full_name,
-            role: (user.role === 'admin' || user.role === 'manager' || user.role === 'floor_supervisor') ? user.role : 'manager',
+            role: (['admin','manager','floor_supervisor','supervisor','statutory_admin'].includes(user.role) ? user.role : 'manager') as any,
             location: user.location || '',
             floor: user.floor || ''
         });
@@ -344,26 +346,35 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                     setShowAddModal(false);
                     resetForm();
                 } else {
-                    setError('Failed to create user. Email may already exist.');
+                    setError('Failed to create user. Please try again.');
                 }
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error saving user:', err);
-            setError('An error occurred while saving');
+            setError(err?.message || 'An error occurred while saving');
         }
     };
 
     const handleDelete = async () => {
         if (!showDeleteModal) return;
 
+        // Prevent deleting yourself
+        if (showDeleteModal.email === currentUserEmail) {
+            setError('You cannot delete your own account.');
+            setShowDeleteModal(null);
+            return;
+        }
+
         try {
             const success = await userService.deleteUser(showDeleteModal.id);
             if (success) {
-                setUsers(prev => prev.filter(u => u.id !== showDeleteModal.id));
                 setSuccess('User deleted successfully');
                 setShowDeleteModal(null);
+                // Always reload full list so stale data is cleared
+                const fresh = await userService.getUsers();
+                setUsers(fresh);
             } else {
-                setError('Failed to delete user');
+                setError('Failed to delete user. They may not belong to your account.');
             }
         } catch (err) {
             console.error('Error deleting user:', err);
@@ -573,8 +584,12 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                 </div>
             )}
 
-            {/* Statutory Portal Configuration (admin only) */}
-            {userRole === 'admin' && <StatutoryPortalSettingsPanel />}
+            {userRole === 'admin' && (
+                <>
+                    <StatutoryPortalSettingsPanel />
+                    <StatutoryCredentialsPanel />
+                </>
+            )}
             {(userRole === 'admin' || userRole === 'manager') && <FaceTuningPanel />}
             </SettingsSection>
 
@@ -870,11 +885,11 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                                 <select
                                     value={formData.role}
                                     onChange={(e) => {
-                                        const newRole = e.target.value as 'admin' | 'manager' | 'floor_supervisor';
+                                        const newRole = e.target.value as 'admin' | 'manager' | 'floor_supervisor' | 'supervisor' | 'statutory_admin';
                                         setFormData(prev => ({ 
                                             ...prev, 
                                             role: newRole,
-                                            location: newRole === 'admin' ? '' : prev.location,
+                                            location: newRole === 'admin' || newRole === 'statutory_admin' ? '' : prev.location,
                                             floor: newRole !== 'floor_supervisor' ? '' : prev.floor
                                         }));
                                     }}
@@ -882,7 +897,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole }) => {
                                 >
                                     <option value="admin">Admin</option>
                                     <option value="manager">Manager</option>
+                                    <option value="supervisor">Supervisor</option>
                                     <option value="floor_supervisor">Floor Supervisor</option>
+                                    <option value="statutory_admin">Statutory Admin</option>
                                 </select>
                             </div>
                             {formData.role === 'floor_supervisor' && (

@@ -7,6 +7,7 @@ interface LeaveManagementProps {
   userRole: 'admin' | 'manager';
   userLocation?: string;
   userName?: string;
+  userFloor?: string;
 }
 
 const leaveTypeLabels: Record<string, string> = {
@@ -24,7 +25,7 @@ const statusColors: Record<string, string> = {
   postponed: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
 };
 
-const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocation, userName }) => {
+const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocation, userName, userFloor }) => {
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'postponed'>('all');
@@ -37,7 +38,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
   const [dateFilterEnabled, setDateFilterEnabled] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [locationFilter, setLocationFilter] = useState<string>('all');
-  const [floorFilter, setFloorFilter] = useState<string>('all');
+  const [floorFilter, setFloorFilter] = useState<string>(userFloor || 'all');
   const [staffMeta, setStaffMeta] = useState<Record<string, { location: string; floor?: string }>>({});
 
   const loadLeaves = async () => {

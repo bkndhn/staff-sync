@@ -216,6 +216,14 @@ body.light-theme p {
   color: #1a1a2e !important;
 }
 
+/* Preserve text colors inside colored-background banners in light theme */
+body.light-theme [role="alert"] p,
+body.light-theme [role="alert"] h3,
+body.light-theme [role="alert"] span,
+body.light-theme [role="alert"] svg {
+  color: inherit !important;
+}
+
 body.light-theme label {
   color: rgba(26, 26, 46, 0.7) !important;
 }

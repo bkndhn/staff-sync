@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
 };
 
-const VALID_ROLES = ['admin', 'manager'];
+const VALID_ROLES = ['admin', 'manager', 'supervisor', 'floor_supervisor', 'statutory_admin'];
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isValidEmail(email: string): boolean {
@@ -17,12 +17,59 @@ function isValidRole(role: string): boolean {
   return VALID_ROLES.includes(role);
 }
 
-// Validate session token and check admin role
+// Unified session validator — accepts BOTH:
+//   1. Legacy 64-char tokens stored in app_sessions
+//   2. Supabase JWT access tokens (long, starts with "eyJ")
 async function validateAdminSession(
   supabase: ReturnType<typeof createClient>,
   sessionToken: string | null
-): Promise<{ valid: boolean; error?: string }> {
-  if (!sessionToken || typeof sessionToken !== 'string' || sessionToken.length !== 64) {
+): Promise<{ valid: boolean; tenantId?: string; userId?: string; error?: string }> {
+  if (!sessionToken || typeof sessionToken !== 'string' || sessionToken.length < 10) {
+    return { valid: false, error: 'Missing or invalid session token' };
+  }
+
+  // ── Path A: Supabase JWT (starts with "eyJ") ─────────────────────────────
+  if (sessionToken.startsWith('eyJ')) {
+    try {
+      // Create a user-scoped client using the JWT to identify the caller
+      const userClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: `Bearer ${sessionToken}` } } }
+      );
+      const { data: { user }, error: authErr } = await userClient.auth.getUser();
+      if (authErr || !user) {
+        return { valid: false, error: 'JWT verification failed' };
+      }
+
+      // Fetch the app_user profile using the service role (no RLS)
+      const { data: profile, error: profileErr } = await supabase
+        .from('app_users')
+        .select('id, role, is_active, tenant_id')
+        .eq('auth_id', user.id)
+        .maybeSingle();
+
+      // Fallback: match by email if auth_id not set yet
+      const appUser = profile || (await supabase
+        .from('app_users')
+        .select('id, role, is_active, tenant_id')
+        .eq('email', user.email!)
+        .maybeSingle()
+      ).data;
+
+      if (!appUser) return { valid: false, error: 'User profile not found' };
+      if (!appUser.is_active) return { valid: false, error: 'User account is inactive' };
+      if (appUser.role !== 'admin') return { valid: false, error: 'Admin role required' };
+
+      return { valid: true, tenantId: appUser.tenant_id, userId: appUser.id };
+    } catch (e) {
+      console.error('JWT validation error:', e);
+      return { valid: false, error: 'JWT validation failed' };
+    }
+  }
+
+  // ── Path B: Legacy 64-char token from app_sessions ────────────────────────
+  if (sessionToken.length !== 64) {
     return { valid: false, error: 'Missing or invalid session token' };
   }
 
@@ -36,16 +83,21 @@ async function validateAdminSession(
   if (error || !session) {
     return { valid: false, error: 'Invalid or expired session' };
   }
-
   if (new Date(session.expires_at) < new Date()) {
     return { valid: false, error: 'Session expired' };
   }
-
   if (session.role !== 'admin') {
     return { valid: false, error: 'Admin role required' };
   }
 
-  return { valid: true };
+  // Get tenant_id for the legacy user
+  const { data: appUser } = await supabase
+    .from('app_users')
+    .select('tenant_id')
+    .eq('id', session.user_id)
+    .maybeSingle();
+
+  return { valid: true, tenantId: appUser?.tenant_id, userId: session.user_id };
 }
 
 Deno.serve(async (req) => {
@@ -59,8 +111,12 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Require admin session token
-    const sessionToken = req.headers.get('x-session-token');
+    // Accept token from x-session-token header OR Authorization Bearer header
+    const sessionToken =
+      req.headers.get('x-session-token') ||
+      (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '') ||
+      null;
+
     const sessionCheck = await validateAdminSession(supabase, sessionToken);
     if (!sessionCheck.valid) {
       return new Response(
@@ -79,16 +135,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { email, password, full_name, role, location, location_id } = body as {
+    const { email, password, full_name, role, location, location_id, floor } = body as {
       email?: string;
       password?: string;
       full_name?: string;
       role?: string;
       location?: string;
       location_id?: string;
+      floor?: string;
     };
 
-    // Comprehensive input validation
+    // Input validation
     if (!email || typeof email !== 'string' || !isValidEmail(email.trim())) {
       return new Response(
         JSON.stringify({ error: 'Valid email address is required (max 254 characters)' }),
@@ -112,7 +169,7 @@ Deno.serve(async (req) => {
 
     if (!role || typeof role !== 'string' || !isValidRole(role)) {
       return new Response(
-        JSON.stringify({ error: `Role must be one of: ${VALID_ROLES.join(', ')}` }),
+        JSON.stringify({ error: `Invalid role "${role}". Must be one of: ${VALID_ROLES.join(', ')}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -133,6 +190,20 @@ Deno.serve(async (req) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
+    // Check if email already exists to give a clear error
+    const { data: existing } = await supabase
+      .from('app_users')
+      .select('id')
+      .eq('email', email.trim().toLowerCase())
+      .maybeSingle();
+
+    if (existing) {
+      return new Response(
+        JSON.stringify({ error: 'A user with this email already exists. Please use a different email.' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { data, error } = await supabase
       .from('app_users')
       .insert([{
@@ -142,20 +213,24 @@ Deno.serve(async (req) => {
         role,
         location: location?.trim() || null,
         location_id: location_id || null,
-        is_active: true
+        floor: floor?.trim() || null,
+        is_active: true,
+        // Always scope new users to the same tenant as the creator
+        tenant_id: sessionCheck.tenantId || null,
       }])
-      .select('id, email, full_name, role, location, location_id, is_active')
+      .select('id, email, full_name, role, location, location_id, floor, is_active, tenant_id')
       .single();
 
     if (error) {
+      console.error('DB insert error:', error);
       if (error.code === '23505') {
         return new Response(
-          JSON.stringify({ error: 'A user with this email already exists' }),
+          JSON.stringify({ error: 'A user with this email already exists. Please use a different email.' }),
           { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       return new Response(
-        JSON.stringify({ error: 'Failed to create user' }),
+        JSON.stringify({ error: `Failed to create user: ${error.message}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

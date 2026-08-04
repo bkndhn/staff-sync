@@ -9,24 +9,6 @@ const SUPABASE_PUBLISHABLE_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zbXBwd25wZHhvbWptZ3J0cWthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1NDM3NjksImV4cCI6MjA2NzExOTc2OX0.gVzJ4uPAmFT5yngvdcFsHXHH1cUL-nIq0e71Gx8ALOk';
 const FN_URL = `${SUPABASE_URL}/functions/v1/super-admin`;
 
-export interface Tenant {
-  id: string;
-  name: string;
-  slug?: string | null;
-  status: string;
-  staff_limit: number;
-  plan?: string | null;
-  contact_name?: string | null;
-  contact_email?: string | null;
-  contact_phone?: string | null;
-  notes?: string | null;
-  staff_portal_enabled?: boolean;
-  created_at?: string;
-  staff_count?: number;
-  active_staff_count?: number;
-  user_count?: number;
-}
-
 export interface TenantUser {
   id: string;
   email: string;
@@ -40,14 +22,34 @@ export interface TenantUser {
   created_at?: string;
 }
 
+export interface Tenant {
+  id: string;
+  name: string;
+  slug?: string | null;
+  status: string;
+  staff_limit: number;
+  location_limit?: number;
+  sub_user_limit?: number;
+  plan?: string | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  notes?: string | null;
+  staff_portal_enabled?: boolean;
+  created_at?: string;
+  staff_count?: number;
+  user_count?: number;
+  users?: TenantUser[];
+}
+
+
 export interface PlatformOverview {
   tenants: number;
   activeTenants: number;
   suspendedTenants: number;
   totalSeats: number;
-  staff: number;
-  users: number;
-  attendanceToday: number;
+  totalStaff?: number;
+  totalUsers?: number;
 }
 
 async function call<T>(action: string, payload: Record<string, unknown> = {}): Promise<T> {
@@ -66,6 +68,7 @@ async function call<T>(action: string, payload: Record<string, unknown> = {}): P
       'Content-Type': 'application/json',
       apikey: SUPABASE_PUBLISHABLE_KEY,
       'x-session-token': token,
+      ...(token.startsWith("eyJ") ? { 'Authorization': `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({ action, payload }),
   });
@@ -77,12 +80,12 @@ async function call<T>(action: string, payload: Record<string, unknown> = {}): P
 export const superAdminService = {
   overview: () => call<PlatformOverview>('overview'),
   listTenants: () => call<Tenant[]>('list_tenants'),
+  listTenantUsers: (tenantId: string) => call<TenantUser[]>('list_tenant_users', { tenant_id: tenantId }),
   createTenant: (payload: Record<string, unknown>) =>
     call<{ tenant: Tenant; adminUser: TenantUser | null }>('create_tenant', payload),
   updateTenant: (payload: Record<string, unknown>) => call<Tenant>('update_tenant', payload),
   deleteTenant: (id: string) => call<{ deleted: string }>('delete_tenant', { id, confirm: true }),
   tenantStats: (id: string) => call<Record<string, number>>('tenant_stats', { id }),
-
 };
 
 /** Kept so any stale impersonation state from earlier builds is cleared. */

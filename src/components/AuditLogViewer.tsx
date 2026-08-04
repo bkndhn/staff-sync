@@ -22,6 +22,28 @@ const humanizeField = (key: string): string =>
     .trim()
     .replace(/^./, c => c.toUpperCase());
 
+// ── Dark colour tokens (always dark, immune to light-theme overrides) ──────────
+const C = {
+  bg:         '#0f172a',
+  bgCard:     '#1e293b',
+  bgCardHov:  '#263347',
+  bgHdr:      '#162032',
+  border:     '#334155',
+  borderSoft: '#1e3a5f',
+  text:       '#f1f5f9',
+  textSub:    '#cbd5e1',
+  textMuted:  '#64748b',
+  textFaint:  '#475569',
+  purple:     '#c084fc',
+  purpleBg:   'rgba(168,85,247,0.12)',
+  purpleBdr:  'rgba(168,85,247,0.25)',
+  blue:       '#60a5fa',
+  amber:      '#fbbf24',
+  rose:       '#f87171',
+  teal:       '#2dd4bf',
+  emerald:    '#34d399',
+};
+
 export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ currentUserEmail }) => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,17 +82,25 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
   });
 
   const getActionBadge = (action: AuditLog['action']) => {
-    const map: Record<string, { bg: string; text: string; label: string }> = {
-      attendance_override: { bg: 'bg-amber-500/10 border-amber-500/20', text: 'text-amber-400', label: 'Attendance Override' },
-      salary_edit: { bg: 'bg-blue-500/10 border-blue-500/20', text: 'text-blue-400', label: 'Salary Edit' },
-      staff_update: { bg: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-400', label: 'Staff Update' },
-      staff_create: { bg: 'bg-teal-500/10 border-teal-500/20', text: 'text-teal-400', label: 'Staff Created' },
-      staff_delete: { bg: 'bg-rose-500/10 border-rose-500/20', text: 'text-rose-400', label: 'Staff Removed' },
-      bulk_update: { bg: 'bg-purple-500/10 border-purple-500/20', text: 'text-purple-400', label: 'Bulk Action' },
-      settings_update: { bg: 'bg-indigo-500/10 border-indigo-500/20', text: 'text-indigo-400', label: 'Settings Update' },
+    const map: Record<string, { bg: string; border: string; color: string; label: string }> = {
+      attendance_override: { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)', color: C.amber,   label: 'Attendance Override' },
+      salary_edit:         { bg: 'rgba(96,165,250,0.12)', border: 'rgba(96,165,250,0.3)', color: C.blue,    label: 'Salary Edit' },
+      staff_update:        { bg: 'rgba(52,211,153,0.12)', border: 'rgba(52,211,153,0.3)', color: C.emerald, label: 'Staff Update' },
+      staff_create:        { bg: 'rgba(45,212,191,0.12)', border: 'rgba(45,212,191,0.3)', color: C.teal,    label: 'Staff Created' },
+      staff_delete:        { bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.3)', color: C.rose,  label: 'Staff Removed' },
+      bulk_update:         { bg: C.purpleBg, border: C.purpleBdr, color: C.purple, label: 'Bulk Action' },
+      settings_update:     { bg: 'rgba(129,140,248,0.12)', border: 'rgba(129,140,248,0.3)', color: '#818cf8', label: 'Settings Update' },
     };
-    const cfg = map[action] || { bg: 'bg-gray-500/10 border-gray-500/20', text: 'text-gray-400', label: action };
-    return <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${cfg.bg} ${cfg.text} border`}>{cfg.label}</span>;
+    const cfg = map[action] || { bg: 'rgba(100,116,139,0.12)', border: 'rgba(100,116,139,0.3)', color: C.textMuted, label: action };
+    return (
+      <span style={{
+        background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color,
+        padding: '2px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+        letterSpacing: '0.02em', display: 'inline-block',
+      }}>
+        {cfg.label}
+      </span>
+    );
   };
 
   const formatDate = (isoStr: string) => {
@@ -82,158 +112,231 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
     } catch { return isoStr; }
   };
 
+  // All rendered inside a single dark wrapper — immune to body.light-theme overrides
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-24">
-      <div className="card-premium p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
-            <ShieldAlert className="text-purple-400" size={24} />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2 flex-wrap">
-              System Audit Trail
-              <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono">
-                {filteredLogs.length} Records
-              </span>
-            </h2>
-            <p className="text-slate-400 text-xs sm:text-sm">Before/after diffs for staff, attendance, salary, and settings changes.</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
-          <button onClick={fetchLogs} disabled={loading} className="btn-premium px-3 py-2 text-xs flex items-center gap-1.5">
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-          <button onClick={handleClear} className="btn-premium btn-premium-danger px-3 py-2 text-xs flex items-center gap-1.5">
-            <Trash2 size={14} />
-            <span className="hidden sm:inline">Clear</span>
-          </button>
-        </div>
-      </div>
+    <div data-audit-dark="true" style={{
+      background: C.bg, borderRadius: 16, padding: '16px',
+      minHeight: '60vh', color: C.text,
+    }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: '100%' }}>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="sm:col-span-2 relative">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 z-10" size={18} />
-          <input
-            type="text"
-            placeholder="Search by staff name, details, or user…"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ paddingLeft: '2.75rem' }}
-            className="input-premium text-sm py-2.5 w-full"
-          />
-        </div>
-        <div className="relative">
-          <Filter className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 z-10" size={18} />
-          <select
-            value={selectedAction}
-            onChange={(e) => setSelectedAction(e.target.value)}
-            style={{ paddingLeft: '2.75rem', paddingRight: '2rem' }}
-            className="input-premium text-sm py-2.5 w-full appearance-none cursor-pointer"
-          >
-            <option value="all">All Event Types</option>
-            <option value="attendance_override">Attendance Override</option>
-            <option value="salary_edit">Salary Edit</option>
-            <option value="staff_update">Staff Update</option>
-            <option value="staff_create">Staff Created</option>
-            <option value="staff_delete">Staff Removed</option>
-            <option value="bulk_update">Bulk Action</option>
-            <option value="settings_update">Settings Update</option>
-          </select>
-        </div>
-      </div>
-
-
-      <div className="card-premium overflow-hidden border border-slate-700">
-        {loading ? (
-          <div className="p-12 text-center space-y-3">
-            <RefreshCw className="mx-auto animate-spin text-purple-400" size={28} />
-            <p className="text-sm text-slate-400">Loading audit trail…</p>
+        {/* Header */}
+        <div style={{
+          background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 14,
+          padding: '16px 20px', display: 'flex', flexWrap: 'wrap',
+          justifyContent: 'space-between', alignItems: 'center', gap: 12,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12,
+              background: C.purpleBg, border: `1px solid ${C.purpleBdr}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <ShieldAlert style={{ color: C.purple }} size={22} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 18, fontWeight: 700, color: C.text }}>System Audit Trail</span>
+                <span style={{
+                  fontSize: 11, padding: '1px 8px', borderRadius: 999,
+                  background: C.purpleBg, color: C.purple, border: `1px solid ${C.purpleBdr}`,
+                  fontFamily: 'monospace', fontWeight: 600,
+                }}>
+                  {filteredLogs.length} Records
+                </span>
+              </div>
+              <p style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>
+                Before/after diffs for staff, attendance, salary, and settings changes.
+              </p>
+            </div>
           </div>
-        ) : filteredLogs.length === 0 ? (
-          <div className="p-12 text-center space-y-2">
-            <ShieldAlert className="mx-auto text-slate-600" size={40} />
-            <p className="text-sm font-semibold text-slate-400">No audit logs found</p>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">Changes to staff, attendance, salary, and settings will appear here with before/after values.</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={fetchLogs} disabled={loading} style={{
+              background: '#3b82f6', color: '#fff', border: 'none',
+              borderRadius: 999, padding: '8px 16px', fontSize: 12,
+              fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+              Refresh
+            </button>
+            <button onClick={handleClear} style={{
+              background: '#ef4444', color: '#fff', border: 'none',
+              borderRadius: 999, padding: '8px 16px', fontSize: 12,
+              fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <Trash2 size={14} />
+              Clear
+            </button>
           </div>
-        ) : (
-          <div className="divide-y divide-slate-700">
-            {filteredLogs.map((log) => {
-              const hasDiff = (log.changes && log.changes.length > 0);
-              const isOpen = !!expanded[log.id];
-              return (
-                <div key={log.id} className="p-4 sm:p-5 hover:bg-slate-800 transition-colors">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div className="space-y-1.5 flex-1 pr-4 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {getActionBadge(log.action)}
-                        {log.staffName && (
-                          <span className="text-xs font-semibold text-slate-200">
-                            Target: <span className="text-blue-400">{log.staffName}</span>
-                          </span>
-                        )}
+        </div>
+
+        {/* Search + Filter */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
+          <div style={{ position: 'relative' }}>
+            <Search size={16} style={{
+              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+              color: C.textMuted, pointerEvents: 'none',
+            }} />
+            <input
+              type="text"
+              placeholder="Search by staff name, details, or user…"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%', paddingLeft: 36, paddingRight: 12, paddingTop: 10, paddingBottom: 10,
+                background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 10,
+                color: C.text, fontSize: 13, outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+          </div>
+          <div style={{ position: 'relative' }}>
+            <Filter size={15} style={{
+              position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+              color: C.textMuted, pointerEvents: 'none',
+            }} />
+            <select
+              value={selectedAction}
+              onChange={e => setSelectedAction(e.target.value)}
+              style={{
+                paddingLeft: 32, paddingRight: 24, paddingTop: 10, paddingBottom: 10,
+                background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 10,
+                color: C.text, fontSize: 13, outline: 'none', cursor: 'pointer',
+                appearance: 'none', WebkitAppearance: 'none',
+              }}
+            >
+              <option value="all" style={{ background: C.bgCard, color: C.text }}>All Event Types</option>
+              <option value="attendance_override" style={{ background: C.bgCard, color: C.text }}>Attendance Override</option>
+              <option value="salary_edit" style={{ background: C.bgCard, color: C.text }}>Salary Edit</option>
+              <option value="staff_update" style={{ background: C.bgCard, color: C.text }}>Staff Update</option>
+              <option value="staff_create" style={{ background: C.bgCard, color: C.text }}>Staff Created</option>
+              <option value="staff_delete" style={{ background: C.bgCard, color: C.text }}>Staff Removed</option>
+              <option value="bulk_update" style={{ background: C.bgCard, color: C.text }}>Bulk Action</option>
+              <option value="settings_update" style={{ background: C.bgCard, color: C.text }}>Settings Update</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Log list */}
+        <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden' }}>
+          {loading ? (
+            <div style={{ padding: 48, textAlign: 'center' }}>
+              <RefreshCw style={{ margin: '0 auto 12px', color: C.purple, animation: 'spin 1s linear infinite' }} size={28} />
+              <p style={{ color: C.textMuted, fontSize: 13 }}>Loading audit trail…</p>
+            </div>
+          ) : filteredLogs.length === 0 ? (
+            <div style={{ padding: 48, textAlign: 'center' }}>
+              <ShieldAlert style={{ margin: '0 auto 12px', color: C.textFaint }} size={40} />
+              <p style={{ color: C.textSub, fontSize: 13, fontWeight: 600 }}>No audit logs found</p>
+              <p style={{ color: C.textMuted, fontSize: 12, marginTop: 4 }}>
+                Changes to staff, attendance, salary, and settings will appear here with before/after values.
+              </p>
+            </div>
+          ) : (
+            <div>
+              {filteredLogs.map((log, idx) => {
+                const hasDiff = (log.changes && log.changes.length > 0);
+                const isOpen = !!expanded[log.id];
+                return (
+                  <div key={log.id} style={{
+                    padding: '14px 18px',
+                    borderBottom: idx < filteredLogs.length - 1 ? `1px solid ${C.border}` : 'none',
+                    background: 'transparent',
+                    transition: 'background 0.15s',
+                  }}
+                    onMouseEnter={e => (e.currentTarget.style.background = C.bgCardHov)}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                          {getActionBadge(log.action)}
+                          {log.staffName && (
+                            <span style={{ fontSize: 12, fontWeight: 600, color: C.textSub }}>
+                              Target: <span style={{ color: C.blue }}>{log.staffName}</span>
+                            </span>
+                          )}
+                          {hasDiff && (
+                            <span style={{
+                              fontSize: 10, padding: '2px 6px', borderRadius: 4,
+                              background: C.purpleBg, color: C.purple, border: `1px solid ${C.purpleBdr}`,
+                              fontFamily: 'monospace',
+                            }}>
+                              {log.changes!.length} field{log.changes!.length > 1 ? 's' : ''} changed
+                            </span>
+                          )}
+                        </div>
+                        <p style={{ fontSize: 13, fontWeight: 500, color: C.textSub, lineHeight: 1.5, margin: 0, wordBreak: 'break-word' }}>
+                          {log.details}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5, fontSize: 11, fontFamily: 'monospace', color: C.textMuted }}>
+                          <span>By: <span style={{ color: '#94a3b8', fontWeight: 600 }}>{log.performedBy}</span></span>
+                          {log.performedBy === currentUserEmail && (
+                            <span style={{
+                              fontSize: 10, padding: '1px 6px', borderRadius: 4,
+                              background: '#1e293b', color: '#64748b', border: `1px solid ${C.border}`,
+                            }}>You</span>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: 'flex-end' }}>
                         {hasDiff && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/25 font-mono">
-                            {log.changes!.length} field{log.changes!.length > 1 ? 's' : ''} changed
-                          </span>
+                          <button
+                            onClick={() => setExpanded(e => ({ ...e, [log.id]: !e[log.id] }))}
+                            style={{
+                              fontSize: 11, display: 'flex', alignItems: 'center', gap: 4,
+                              padding: '4px 8px', borderRadius: 6, color: C.purple,
+                              background: 'transparent', border: `1px solid transparent`, cursor: 'pointer',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = C.purpleBg; e.currentTarget.style.borderColor = C.purpleBdr; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
+                          >
+                            {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                            {isOpen ? 'Hide diff' : 'View diff'}
+                          </button>
                         )}
-                      </div>
-                      <p className="text-xs sm:text-sm font-medium text-slate-300 leading-relaxed break-words">
-                        {log.details}
-                      </p>
-                      <div className="flex items-center gap-3 text-[11px] text-slate-500 pt-1 font-mono">
-                        <span>By: <span className="text-slate-400 font-semibold">{log.performedBy}</span></span>
-                        {log.performedBy === currentUserEmail && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-700 text-slate-400">You</span>
-                        )}
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: 6, fontSize: 11,
+                          color: C.textMuted, fontFamily: 'monospace',
+                          background: '#0f172a', padding: '6px 10px', borderRadius: 8,
+                          border: `1px solid ${C.border}`,
+                        }}>
+                          <Clock size={12} style={{ color: C.purple, opacity: 0.7, flexShrink: 0 }} />
+                          <span style={{ color: C.textMuted }}>{formatDate(log.timestamp)}</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 self-end sm:self-center whitespace-nowrap">
-                      {hasDiff && (
-                        <button
-                          onClick={() => setExpanded(e => ({ ...e, [log.id]: !e[log.id] }))}
-                          className="text-[11px] flex items-center gap-1 px-2 py-1 rounded-md text-purple-300 hover:bg-purple-500/10 border border-transparent hover:border-purple-500/25"
-                        >
-                          {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                          {isOpen ? 'Hide diff' : 'View diff'}
-                        </button>
-                      )}
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-mono bg-slate-800/50 px-2.5 py-1.5 rounded-lg border border-slate-700">
-                        <Clock size={12} className="text-purple-400/70 flex-shrink-0" />
-                        <span>{formatDate(log.timestamp)}</span>
-                      </div>
-                    </div>
-                  </div>
 
-                  {isOpen && hasDiff && (
-                    <div className="mt-3 rounded-lg border border-slate-700 overflow-hidden">
-                      <table className="w-full text-xs">
-                        <thead className="bg-slate-800/50 text-slate-400 uppercase tracking-wider text-[10px]">
-                          <tr>
-                            <th className="text-left p-2">Field</th>
-                            <th className="text-left p-2 text-rose-300/80">Before</th>
-                            <th className="text-left p-2 w-8"></th>
-                            <th className="text-left p-2 text-emerald-300/80">After</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-700">
-                          {log.changes!.map((c, i) => (
-                            <tr key={i}>
-                              <td className="p-2 font-semibold text-slate-300">{c.label ? humanizeField(c.label) : humanizeField(c.field)}</td>
-                              <td className="p-2 font-mono text-rose-300/80 line-through decoration-rose-400/30">{formatValue(c.oldValue)}</td>
-                              <td className="p-2 text-slate-600"><ArrowRight size={12} /></td>
-                              <td className="p-2 font-mono text-emerald-300">{formatValue(c.newValue)}</td>
+                    {isOpen && hasDiff && (
+                      <div style={{ marginTop: 12, border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden' }}>
+                        <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr style={{ background: 'rgba(15,23,42,0.7)' }}>
+                              <th style={{ textAlign: 'left', padding: '6px 10px', color: C.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Field</th>
+                              <th style={{ textAlign: 'left', padding: '6px 10px', color: '#f87171', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Before</th>
+                              <th style={{ width: 28, padding: '6px 4px' }}></th>
+                              <th style={{ textAlign: 'left', padding: '6px 10px', color: C.emerald, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>After</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+                          </thead>
+                          <tbody>
+                            {log.changes!.map((c, i) => (
+                              <tr key={i} style={{ borderTop: `1px solid ${C.border}` }}>
+                                <td style={{ padding: '6px 10px', fontWeight: 600, color: C.textSub }}>{c.label ? humanizeField(c.label) : humanizeField(c.field)}</td>
+                                <td style={{ padding: '6px 10px', fontFamily: 'monospace', color: '#f87171', textDecoration: 'line-through', opacity: 0.75 }}>{formatValue(c.oldValue)}</td>
+                                <td style={{ padding: '6px 4px', color: C.textFaint }}><ArrowRight size={12} /></td>
+                                <td style={{ padding: '6px 10px', fontFamily: 'monospace', color: C.emerald }}>{formatValue(c.newValue)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
