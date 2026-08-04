@@ -186,7 +186,7 @@ const UserCard: React.FC<{
                 </button>
                 <button
                     onClick={onDelete}
-                    disabled={user.role === "admin" && currentUserRole !== "super_admin"} disabled={user.role === "admin" && currentUserRole !== "super_admin"} className="flex-1 py-2.5 px-3 rounded-lg bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                    disabled={user.role === "admin" && currentUserRole !== "super_admin"} className="flex-1 py-2.5 px-3 rounded-lg bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 transition-colors flex items-center justify-center gap-2 font-medium"
                     style={{ color: '#ffffff' }}
                 >
                     <Trash2 size={16} color="#ffffff" />
@@ -358,18 +358,18 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
     const handleDelete = async () => {
         if (!showDeleteModal) return;
 
-        // Prevent deleting yourself
+                // Prevent deleting yourself
         if (showDeleteModal.email === currentUserEmail) {
-            setError('You cannot delete your own account.');
+            setError("You cannot delete your own account.");
             setShowDeleteModal(null);
             return;
+        }
+
         // Prevent deleting administrators (unless current user is super_admin)
         if (showDeleteModal.role === "admin" && userRole !== "super_admin") {
             setError("Administrator accounts are protected and cannot be deleted.");
             setShowDeleteModal(null);
             return;
-        }
-
         }
 
         try {
