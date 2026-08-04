@@ -24,7 +24,6 @@ import { offlineSyncService } from './services/offlineSyncService';
 import { punchEventService } from './services/punchEventService';
 import { useOfflineSync } from './hooks/useOfflineSync';
 import { usePayrollAutoGenerate } from './hooks/usePayrollAutoGenerate';
-import { offlineDbService } from './services/offlineDb';
 import { db } from './lib/db';
 import { useRealtimeUpdates } from './hooks/useRealtimeUpdates';
 
@@ -297,7 +296,7 @@ function App() {
     if (!user) return;
     const saved = localStorage.getItem('activeTab') as NavigationTab | null;
     const statutoryAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Salary Management', 'Leave Management', 'Settings'];
-    const supervisorAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Break Management', 'Part-Time Staff', 'Leave Management'];
+    const supervisorAllowed: NavigationTab[] = ['Dashboard', 'Attendance', 'Break Management', 'Part-Time Staff', 'Leave Management'];
     const validForRole = (tab: NavigationTab | null): boolean => {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
@@ -428,6 +427,12 @@ function App() {
   );
 
   const handleLogin = (userData: { id?: string; email: string; role: string; location?: string; floor?: string; floorId?: string; staffId?: string; staffName?: string }) => {
+    cacheService.clearAll();
+    setStaff([]);
+    setAttendance([]);
+    setAdvances([]);
+    setOldStaffRecords([]);
+    setSalaryHikes([]);
     setUser(userData as User);
   };
 
@@ -436,6 +441,12 @@ function App() {
     
     localStorage.removeItem('staffManagementLogin');
     localStorage.removeItem('activeTab');
+    cacheService.clearAll();
+    setStaff([]);
+    setAttendance([]);
+    setAdvances([]);
+    setOldStaffRecords([]);
+    setSalaryHikes([]);
     setUser(null);
     setActiveTab('Dashboard');
   };
@@ -450,7 +461,7 @@ function App() {
       return staff;
     } else if (user?.role === 'manager' && user.location) {
       return staff.filter(member => member.location === user.location);
-    } else if (user?.role === 'floor_supervisor' && user.location) {
+    } else if ((user?.role === 'supervisor' || user?.role === 'floor_supervisor') && user.location) {
       // If floor is set, filter strictly by floor; otherwise fall back to location only
       if (user.floor) {
         const result = staff.filter(member => member.location === user.location && member.floor === user.floor);
@@ -479,7 +490,7 @@ function App() {
           ? true // Allow all part-time staff for managers
           : locationStaffIds.includes(record.staffId)
       );
-    } else if (user?.role === 'floor_supervisor' && user.location) {
+    } else if ((user?.role === 'supervisor' || user?.role === 'floor_supervisor') && user.location) {
       // If floor is set, filter strictly by floor; otherwise fall back to location
       const floorStaffIds = user.floor
         ? staff.filter(m => m.location === user.location && m.floor === user.floor).map(m => m.id)
@@ -640,6 +651,17 @@ function App() {
       patchAttendance({ id: previousAttendance?.id || `temp-${Date.now()}`, ...attendanceRecord } as any);
 
       const savedAttendance = await attendanceService.upsert(attendanceRecord);
+
+      if (user?.role !== 'staff') {
+        import('./services/notificationService').then(({ notificationService }) =>
+          notificationService.sendToStaff({
+            staffId,
+            title: 'Attendance updated',
+            body: `${date}: ${status}${shift ? ` (${shift})` : ''}`,
+            actionUrl: '/?tab=My%20Portal',
+          })
+        ).catch(() => {});
+      }
 
       // Audit Log
       auditLogService.log({
@@ -1269,7 +1291,7 @@ function App() {
           />
         );
       case 'Break Management':
-        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'floor_supervisor') return null;
+        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'supervisor' && user?.role !== 'floor_supervisor') return null;
         return (
           <Suspense fallback={<ComponentLoader />}>
             <BreakManagement staff={filteredStaffData} user={user!} />
@@ -1321,7 +1343,7 @@ function App() {
           </Suspense>
         );
       case 'Leave Management':
-        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'statutory_admin' && user?.role !== 'floor_supervisor') return null;
+        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'statutory_admin' && user?.role !== 'supervisor' && user?.role !== 'floor_supervisor') return null;
 
         return (
           <Suspense fallback={<ComponentLoader />}>
@@ -1329,7 +1351,7 @@ function App() {
               userRole={user?.role as 'admin' | 'manager'}
               userLocation={user?.location}
               userName={user?.role === 'admin' ? 'Admin' : `${user?.location} Manager`}
-              userFloor={user?.role === 'floor_supervisor' ? user?.floor : undefined}
+              userFloor={user?.role === 'supervisor' || user?.role === 'floor_supervisor' ? user?.floor : undefined}
             />
           </Suspense>
         );

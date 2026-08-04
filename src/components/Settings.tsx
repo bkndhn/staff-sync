@@ -145,8 +145,8 @@ const UserCard: React.FC<{
     user: AppUser;
     onEdit: () => void;
     onDelete: () => void;
-    formatLastLogin: (lastLogin: string | null | undefined) => string;
-}> = ({ user, onEdit, onDelete, formatLastLogin }) => {
+    formatLastLogin: (lastLogin: string | null | undefined) => string; currentUserRole: string;
+}> = ({ user, onEdit, onDelete, formatLastLogin, currentUserRole }) => {
     return (
         <div className="glass-card-static p-4 rounded-xl space-y-3">
             <div className="flex items-start justify-between">
@@ -186,7 +186,7 @@ const UserCard: React.FC<{
                 </button>
                 <button
                     onClick={onDelete}
-                    className="flex-1 py-2.5 px-3 rounded-lg bg-red-600 hover:bg-red-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                    disabled={user.role === "admin" && currentUserRole !== "super_admin"} className="flex-1 py-2.5 px-3 rounded-lg bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 transition-colors flex items-center justify-center gap-2 font-medium"
                     style={{ color: '#ffffff' }}
                 >
                     <Trash2 size={16} color="#ffffff" />
@@ -307,8 +307,8 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                     email: formData.email,
                     full_name: formData.full_name,
                     role: formData.role,
-                    location: (formData.role === 'manager' || formData.role === 'floor_supervisor') ? formData.location : null,
-                    floor: formData.role === 'floor_supervisor' ? formData.floor : null
+                    location: (formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.location : null,
+                    floor: (formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.floor : null
                 };
 
                 if (formData.password) {
@@ -335,8 +335,8 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                     password: formData.password,
                     full_name: formData.full_name,
                     role: formData.role,
-                    location: (formData.role === 'manager' || formData.role === 'floor_supervisor') ? formData.location : null,
-                    floor: formData.role === 'floor_supervisor' ? formData.floor : null
+                    location: (formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.location : null,
+                    floor: (formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.floor : null
                 };
 
                 const created = await userService.createUser(input);
@@ -358,9 +358,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
     const handleDelete = async () => {
         if (!showDeleteModal) return;
 
-        // Prevent deleting yourself
+                // Prevent deleting yourself
         if (showDeleteModal.email === currentUserEmail) {
-            setError('You cannot delete your own account.');
+            setError("You cannot delete your own account.");
             setShowDeleteModal(null);
             return;
         }
@@ -726,6 +726,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                     ) : (
                         filteredUsers.map(user => (
                             <UserCard
+                                    currentUserRole={userRole}
                                 key={user.id}
                                 user={user}
                                 onEdit={() => handleEdit(user)}
@@ -794,7 +795,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                                 </button>
                                                 <button
                                                     onClick={() => setShowDeleteModal(user)}
-                                                    className="p-2 rounded-lg bg-red-600 hover:bg-red-700 transition-colors"
+                                                    className="p-2 rounded-lg bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 transition-colors"
                                                     style={{ color: '#ffffff' }}
                                                     title="Delete User"
                                                 >
@@ -864,7 +865,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                     </button>
                                 </div>
                             </div>
-                            {(formData.role === 'manager' || formData.role === 'floor_supervisor') && (
+                            {(formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor') && (
                                 <div>
                                     <label className="block text-sm font-medium text-white/70 mb-1">Location *</label>
                                     <select
@@ -890,7 +891,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                             ...prev, 
                                             role: newRole,
                                             location: newRole === 'admin' || newRole === 'statutory_admin' ? '' : prev.location,
-                                            floor: newRole !== 'floor_supervisor' ? '' : prev.floor
+                                             floor: (newRole !== 'supervisor' && newRole !== 'floor_supervisor') ? '' : prev.floor
                                         }));
                                     }}
                                     className="input-premium w-full"
@@ -902,7 +903,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                     <option value="statutory_admin">Statutory Admin</option>
                                 </select>
                             </div>
-                            {formData.role === 'floor_supervisor' && (
+                            {(formData.role === 'supervisor' || formData.role === 'floor_supervisor') && (
                                 <div>
                                     <label className="block text-sm font-medium text-white/70 mb-1">Floor *</label>
                                     <select

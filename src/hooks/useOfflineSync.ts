@@ -5,7 +5,9 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import { Network } from '@capacitor/network';
-import { syncPendingPunches, offlineDbService } from '../services/offlineDb';
+import { attendanceService } from '../services/attendanceService';
+import { offlineSyncService } from '../services/offlineSyncService';
+import { punchEventService } from '../services/punchEventService';
 
 export interface SyncStatus {
   isOnline: boolean;
@@ -25,15 +27,19 @@ export function useOfflineSync() {
   });
 
   const refreshPendingCount = useCallback(async () => {
-    const count = await offlineDbService.getPendingCount();
+    const count = (await offlineSyncService.getPendingPunches()).length;
     setStatus(prev => ({ ...prev, pendingCount: count }));
   }, []);
 
   const runSync = useCallback(async () => {
     setStatus(prev => ({ ...prev, isSyncing: true }));
     try {
-      const result = await syncPendingPunches();
-      const count = await offlineDbService.getPendingCount();
+      const result = await offlineSyncService.flushQueue((punch) => {
+        const { id, queuedAt, ...payload } = punch;
+        return attendanceService.upsertRemoteOnly(payload);
+      });
+      await punchEventService.syncPending();
+      const count = (await offlineSyncService.getPendingPunches()).length;
       setStatus(prev => ({
         ...prev,
         isSyncing: false,

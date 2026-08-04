@@ -1,7 +1,8 @@
 import { dataApi } from '../lib/dataApi';
+import { notificationService } from './notificationService';
 
 // You need to replace this with your actual VAPID public key
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyerxJRv5Ioo18hx3J6p1XQ6HQQa4uJ8fJj0E_l7l3g";
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -30,9 +31,11 @@ export const pushService = {
       let subscription = await registration.pushManager.getSubscription();
       
       if (!subscription) {
+        const publicKey = VAPID_PUBLIC_KEY || await notificationService.getVapidPublicKey();
+        if (!publicKey) throw new Error('Push notification key is unavailable');
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          applicationServerKey: urlBase64ToUint8Array(publicKey)
         });
       }
 

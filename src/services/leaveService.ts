@@ -1,4 +1,5 @@
-import { supabase } from '../lib/supabase';
+import { dataApi } from '../lib/dataApi';
+import { notificationService } from './notificationService';
 
 export interface LeaveRequest {
   id: string;
@@ -52,7 +53,7 @@ const mapRow = (row: any): LeaveRequest => ({
 
 export const leaveService = {
   async getByStaffId(staffId: string): Promise<LeaveRequest[]> {
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('leave_requests' as any)
       .select('*')
       .eq('staff_id', staffId)
@@ -63,7 +64,7 @@ export const leaveService = {
   },
 
   async getByLocation(location: string): Promise<LeaveRequest[]> {
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('leave_requests' as any)
       .select('*')
       .eq('location', location)
@@ -74,7 +75,7 @@ export const leaveService = {
   },
 
   async getAll(): Promise<LeaveRequest[]> {
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('leave_requests' as any)
       .select('*')
       .order('created_at', { ascending: false });
@@ -85,7 +86,7 @@ export const leaveService = {
 
   async create(input: CreateLeaveInput): Promise<LeaveRequest | null> {
     // Check for active workflow configs to determine required levels
-    const { data: configs } = await supabase.from('workflow_configs' as any).select('*').eq('entity_type', 'leave_request').eq('is_active', true);
+    const { data: configs } = await dataApi.from('workflow_configs').select('*').eq('entity_type', 'leave_request').eq('is_active', true);
     
     let requiredLevels = 1;
     if (configs && configs.length > 0) {
@@ -96,7 +97,7 @@ export const leaveService = {
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await dataApi
       .from('leave_requests' as any)
       .insert({
         staff_id: input.staffId,
@@ -148,7 +149,7 @@ export const leaveService = {
 
     const newHistory = [...(currentRequest?.approvalHistory || []), historyEntry];
 
-    const { error } = await supabase
+    const { error } = await dataApi
       .from('leave_requests' as any)
       .update({
         status: nextStatus,
@@ -166,12 +167,11 @@ export const leaveService = {
     // Trigger push notification if fully approved/rejected
     if (nextStatus === 'approved' || nextStatus === 'rejected') {
       try {
-        await supabase.functions.invoke('send-notification', {
-          body: {
-            staffId: currentRequest?.staffId,
-            title: `Leave ${nextStatus === 'approved' ? 'Approved' : 'Rejected'}`,
-            body: `Your leave on ${currentRequest?.leaveDate} has been ${nextStatus}. ${comment ? 'Comment: ' + comment : ''}`
-          }
+        if (currentRequest?.staffId) await notificationService.sendToStaff({
+          staffId: currentRequest.staffId,
+          title: `Leave ${nextStatus === 'approved' ? 'Approved' : 'Rejected'}`,
+          body: `Your leave on ${currentRequest.leaveDate} has been ${nextStatus}. ${comment ? 'Comment: ' + comment : ''}`,
+          actionUrl: '/?tab=My%20Portal',
         });
       } catch (e) {
         console.error('Failed to send push notification', e);
