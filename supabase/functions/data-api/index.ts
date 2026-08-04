@@ -381,12 +381,28 @@ Deno.serve(async (req) => {
         break;
       }
       case "update": {
+        // Protect admin users from deactivation
+        if (body.table === "app_users" && (body.values as any)?.is_active === false && !isSuper) {
+          const targets = Array.isArray(beforeData) ? beforeData : [beforeData].filter(Boolean);
+          if (targets.some((t: any) => t?.role === "admin")) {
+            return new Response(JSON.stringify({ error: "Administrator accounts cannot be deactivated." }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        }
         query = query.update(body.values ?? {});
         query = applyFilters(query, [...scopeFilters, ...(body.filters ?? [])]);
         query = query.select();
         break;
       }
       case "delete": {
+        // Protect admin users from deletion
+        if (body.table === "app_users" && !isSuper) {
+          const targets = Array.isArray(beforeData) ? beforeData : [beforeData].filter(Boolean);
+          if (targets.some((t: any) => t?.role === "admin")) {
+            return new Response(JSON.stringify({ error: "Administrator accounts cannot be deleted." }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        }
         query = query.delete();
         query = applyFilters(query, [...scopeFilters, ...(body.filters ?? [])]);
         query = query.select();
