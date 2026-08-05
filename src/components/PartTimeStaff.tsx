@@ -1385,15 +1385,21 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             <div className="flex-1 md:w-1/3">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Floor (Applies to all)</label>
                                 <select
-                                    value={bulkFloor}
+                                    value={bulkFloor || userFloor || ''}
                                     onChange={(e) => setBulkFloor(e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                     disabled={!!userFloor}
                                 >
-                                    {!userFloor && <option value="">None</option>}
-                                    {floors.filter(f => f.locationName === bulkLocation && (!userFloor || f.name === userFloor)).map(floor => (
-                                        <option key={floor.id} value={floor.name}>{floor.name}</option>
-                                    ))}
+                                    {userFloor ? (
+                                        <option value={userFloor}>{userFloor}</option>
+                                    ) : (
+                                        <>
+                                            <option value="">None</option>
+                                            {floors.filter(f => !bulkLocation || f.locationName === bulkLocation).map(floor => (
+                                                <option key={floor.id} value={floor.name}>{floor.name}</option>
+                                            ))}
+                                        </>
+                                    )}
                                 </select>
                             </div>
                         </div>
@@ -1641,15 +1647,21 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                             {availableLocations.map(loc => (<option key={loc} value={loc}>{loc}</option>))}
                                                         </select>
                                                         <select
-                                                            value={editData.floor}
+                                                            value={editData.floor || userFloor || ''}
                                                             onChange={(e) => setEditData({ ...editData, floor: e.target.value })}
                                                             className="px-2 py-1 text-xs border rounded"
                                                             disabled={!!userFloor}
                                                         >
-                                                            {!userFloor && <option value="">None</option>}
-                                                            {floors.filter(f => f.locationName === editData.location && (!userFloor || f.name === userFloor)).map(floor => (
-                                                                <option key={floor.id} value={floor.name}>{floor.name}</option>
-                                                            ))}
+                                                            {userFloor ? (
+                                                                <option value={userFloor}>{userFloor}</option>
+                                                            ) : (
+                                                                <>
+                                                                    <option value="">None</option>
+                                                                    {floors.filter(f => !editData.location || f.locationName === editData.location).map(floor => (
+                                                                        <option key={floor.id} value={floor.name}>{floor.name}</option>
+                                                                    ))}
+                                                                </>
+                                                            )}
                                                         </select>
                                                         <select
                                                             value={editData.shift}
