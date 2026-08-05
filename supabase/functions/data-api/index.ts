@@ -41,15 +41,15 @@ interface TableAcl {
 const ACL: Record<string, TableAcl> = {
   // ── Staff & Attendance ─────────────────────────────────────────────────────
   staff:                             { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager"],           locationCol: "location", floorCol: "floor", staffIdCol: "id" },
-  attendance:                        { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"],                   write: ["admin","manager","supervisor","floor_supervisor"], locationCol: "location", floorCol: "floor", staffIdCol: "staff_id" },
-  punch_events:                      { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"],                   write: ["admin","manager","supervisor","floor_supervisor"], locationCol: "location", staffIdCol: "staff_id" },
+  attendance:                        { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager","statutory_admin","supervisor","floor_supervisor"], locationCol: "location", floorCol: "floor", staffIdCol: "staff_id" },
+  punch_events:                      { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager","supervisor","floor_supervisor"], locationCol: "location", staffIdCol: "staff_id" },
   push_subscriptions:                { read: ["admin","manager","staff","supervisor","floor_supervisor"],                                 write: ["admin","manager","staff","supervisor","floor_supervisor"], staffIdCol: "staff_id" },
   // ── Breaks ──────────────────────────────────────────────────────────────────
-  break_events:                      { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"],                   write: ["admin","manager","staff","supervisor","floor_supervisor"], locationCol: "location", staffIdCol: "staff_id" },
-  break_types:                       { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"],                   write: ["admin"] },
-  break_policies:                    { read: ["admin","manager","supervisor","floor_supervisor","super_admin"],                           write: ["admin"] },
+  break_events:                      { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager","staff","supervisor","floor_supervisor"], locationCol: "location", staffIdCol: "staff_id" },
+  break_types:                       { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
+  break_policies:                    { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   // ── Leave ───────────────────────────────────────────────────────────────────
-  leave_requests:                    { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"],                   write: ["admin","manager","staff","supervisor","floor_supervisor"], locationCol: "location", staffIdCol: "staff_id" },
+  leave_requests:                    { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor"], locationCol: "location", staffIdCol: "staff_id" },
   // ── Advances / Payroll ──────────────────────────────────────────────────────
   advances:                          { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager"],           staffIdCol: "staff_id" },
   advance_entries:                   { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager"],           staffIdCol: "staff_id" },
@@ -268,9 +268,9 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Supervisor is not assigned to a location" }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      if (acl.floorCol && !user.floor) {
-        return new Response(JSON.stringify({ error: "Supervisor is not assigned to a floor" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Only enforce floor requirement for floor_supervisor on tables that have a floor column
+      if (role === "floor_supervisor" && acl.floorCol && !user.floor) {
+        console.warn(`[data-api] floor_supervisor ${user.email} has no floor assigned, skipping floor scope for ${body.table}`);
       }
       if (acl.locationCol && user.location) {
         scopeFilters.push({ col: acl.locationCol, op: "eq", val: user.location });

@@ -17,6 +17,7 @@ interface PartTimeStaffProps {
     onUpdateAttendance: (staffId: string, date: string, status: 'Present' | 'Half Day' | 'Absent', isPartTime?: boolean, staffName?: string, shift?: 'Morning' | 'Evening' | 'Both', location?: string, salary?: number, salaryOverride?: boolean, arrivalTime?: string, leavingTime?: string, floor?: string) => void;
     onDeletePartTimeAttendance: (attendanceId: string) => void;
     userLocation?: string;
+    userFloor?: string;
     userRole?: string;
 }
 
@@ -33,13 +34,16 @@ const TimeInput: React.FC<{
     value: string;
     onChange: (value: string) => void;
     className?: string;
-}> = ({ value, onChange, className }) => {
+    defaultAmPm?: 'am' | 'pm';
+}> = ({ value, onChange, className, defaultAmPm }) => {
     // Helper to convert 24h to 12h
     const get12h = (time24: string) => {
-        if (!time24) return { h: "09", m: "00", p: "am" };
+        if (!time24) {
+            return { h: defaultAmPm === 'pm' ? '09' : '10', m: defaultAmPm === 'pm' ? '30' : '00', p: defaultAmPm || 'am' };
+        }
         const [hStr, mStr] = time24.split(":");
-        const hInt = parseInt(hStr || "0");
-        const p = hInt >= 12 ? "pm" : "am";
+        let hInt = parseInt(hStr || "0");
+        let p = hInt >= 12 ? "pm" : (defaultAmPm === 'pm' && hInt > 0 && hInt < 12 ? 'pm' : 'am');
         const h = hInt % 12 || 12;
         return { h: h.toString().padStart(2, "0"), m: mStr || "00", p };
     };
@@ -150,6 +154,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     onUpdateAttendance,
     onDeletePartTimeAttendance,
     userLocation,
+    userFloor,
     userRole
 }) => {
     const [selectedDate, setSelectedDate] = useState<string>(
@@ -657,15 +662,19 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         floorService.getFloors().then(setFloors);
     }, []);
 
-    // Update bulkFloor when bulkLocation changes
+    // Update bulkFloor when bulkLocation changes or userFloor is set
     useEffect(() => {
+        if (userFloor) {
+            setBulkFloor(userFloor);
+            return;
+        }
         const availableFloors = floors.filter(f => f.locationName === bulkLocation);
         if (availableFloors.length > 0) {
             setBulkFloor(availableFloors[0].name);
         } else {
             setBulkFloor('');
         }
-    }, [bulkLocation, floors]);
+    }, [bulkLocation, floors, userFloor]);
 
     // Get recent names for smart suggestions
     const getRecentNames = () => {
@@ -1326,7 +1335,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             <span className="hidden sm:inline">Export PDF</span>
                             <span className="sm:hidden">PDF</span>
                         </button>
-                        {(!userRole || userRole === 'admin' || userRole === 'manager' || userRole === 'super_admin' || userRole === 'owner') && (
+                        {(!userRole || userRole === 'admin' || userRole === 'manager' || userRole === 'supervisor' || userRole === 'super_admin' || userRole === 'owner') && (
                             <button
                                 onClick={() => setShowSettings(true)}
                                 className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm"
@@ -1379,9 +1388,10 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     value={bulkFloor}
                                     onChange={(e) => setBulkFloor(e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    disabled={!!userFloor}
                                 >
-                                    <option value="">None</option>
-                                    {floors.filter(f => f.locationName === bulkLocation).map(floor => (
+                                    {!userFloor && <option value="">None</option>}
+                                    {floors.filter(f => f.locationName === bulkLocation && (!userFloor || f.name === userFloor)).map(floor => (
                                         <option key={floor.id} value={floor.name}>{floor.name}</option>
                                     ))}
                                 </select>
@@ -1459,6 +1469,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                 <TimeInput
                                                     value={staffEntry.arrivalTime}
                                                     onChange={(val) => handleBulkRowChange(index, 'arrivalTime', val)}
+                                                    defaultAmPm="am"
                                                 />
                                             </div>
                                             <div>
@@ -1466,6 +1477,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                 <TimeInput
                                                     value={staffEntry.leavingTime}
                                                     onChange={(val) => handleBulkRowChange(index, 'leavingTime', val)}
+                                                    defaultAmPm="pm"
                                                 />
                                             </div>
                                         </div>
@@ -1632,9 +1644,10 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                             value={editData.floor}
                                                             onChange={(e) => setEditData({ ...editData, floor: e.target.value })}
                                                             className="px-2 py-1 text-xs border rounded"
+                                                            disabled={!!userFloor}
                                                         >
-                                                            <option value="">None</option>
-                                                            {floors.filter(f => f.locationName === editData.location).map(floor => (
+                                                            {!userFloor && <option value="">None</option>}
+                                                            {floors.filter(f => f.locationName === editData.location && (!userFloor || f.name === userFloor)).map(floor => (
                                                                 <option key={floor.id} value={floor.name}>{floor.name}</option>
                                                             ))}
                                                         </select>
@@ -1662,6 +1675,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                                 <TimeInput
                                                                     value={editData.arrivalTime}
                                                                     onChange={(val) => setEditData({ ...editData, arrivalTime: val })}
+                                                                    defaultAmPm="am"
                                                                 />
                                                             </div>
                                                             <div className="flex items-center gap-1">
@@ -1669,6 +1683,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                                 <TimeInput
                                                                     value={editData.leavingTime}
                                                                     onChange={(val) => setEditData({ ...editData, leavingTime: val })}
+                                                                    defaultAmPm="pm"
                                                                 />
                                                             </div>
                                                         </div>

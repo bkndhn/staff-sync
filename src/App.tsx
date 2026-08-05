@@ -530,11 +530,12 @@ function App() {
     appliedRuleDetails?: any,
     isUninformed?: boolean
   ) => {
-    // Check if manager is trying to edit non-today attendance
-    if (user?.role === 'manager') {
+    // Check if non-admin is trying to edit non-today attendance
+    if (user?.role === 'manager' || user?.role === 'supervisor' || user?.role === 'floor_supervisor') {
       const today = new Date().toISOString().split('T')[0];
       if (date !== today) {
-        await customAlert('Managers can only edit today\'s attendance');
+        const roleLabel = user?.role === 'floor_supervisor' ? 'Floor Supervisors' : (user?.role === 'supervisor' ? 'Supervisors' : 'Managers');
+        await customAlert(`${roleLabel} can only edit today's attendance`);
         return;
       }
     }
@@ -590,15 +591,23 @@ function App() {
     const finalFloor = floor || staffMember?.floor;
 
     if (!finalLeavingTime && (status === 'Present' || status === 'Half Day')) {
-      // Check location (either passed directly or from staff record if we had it, but loop doesn't give staff record here easily)
-      // However, we can use the location passed in arg.
-      // If location arg is missing, we might miss this default, but standard flow usually passes it or it exists on record.
-      // For full-time staff, location is usually constant.
-
-      // Ensure consistent check for Godown
       const locToCheck = finalLocation || '';
       if (locToCheck.toLowerCase().includes('godown')) {
         finalLeavingTime = '21:00';
+      } else {
+        finalLeavingTime = '21:30';
+      }
+    }
+
+    // Default leaving time hours 1..11 to PM (13..23) unless AM is specified
+    if (finalLeavingTime) {
+      const match = finalLeavingTime.match(/^(\d{1,2}):(\d{2})$/);
+      if (match) {
+        let h = parseInt(match[1]);
+        if (h > 0 && h < 12) {
+          h += 12;
+          finalLeavingTime = `${h.toString().padStart(2, '0')}:${match[2]}`;
+        }
       }
     }
 
@@ -1312,14 +1321,16 @@ function App() {
           </Suspense>
         );
       case 'Part-Time Staff':
+        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'supervisor' && user?.role !== 'floor_supervisor' && user?.role !== 'super_admin') return null;
         return (
           <Suspense fallback={<ComponentLoader />}>
             <PartTimeStaff
               attendance={filteredAttendanceData}
-              staff={staff}
+              staff={filteredStaffData}
               onUpdateAttendance={updateAttendance}
               onDeletePartTimeAttendance={deletePartTimeAttendance}
               userLocation={user?.location}
+              userFloor={user?.floor}
               userRole={user?.role}
             />
           </Suspense>
@@ -1350,7 +1361,7 @@ function App() {
             <LeaveManagement
               userRole={user?.role as 'admin' | 'manager'}
               userLocation={user?.location}
-              userName={user?.role === 'admin' ? 'Admin' : `${user?.location} Manager`}
+              userName={user?.role === 'admin' ? 'Admin' : (user?.role === 'supervisor' || user?.role === 'floor_supervisor') ? `${user?.location} Supervisor` : `${user?.location} Manager`}
               userFloor={user?.role === 'supervisor' || user?.role === 'floor_supervisor' ? user?.floor : undefined}
             />
           </Suspense>

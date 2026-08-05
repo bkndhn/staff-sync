@@ -69,14 +69,27 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showBulkHalfDayModal, setShowBulkHalfDayModal] = useState(false);
   const [bulkHalfDayShift, setBulkHalfDayShift] = useState<'Morning' | 'Evening'>('Morning');
-  const [bulkInTime, setBulkInTime] = useState<string>('');
-  const [bulkOutTime, setBulkOutTime] = useState<string>('');
+  const [bulkInTime, setBulkInTime] = useState<string>('10:00');
+  const [bulkOutTime, setBulkOutTime] = useState<string>('21:30');
   const [individualTimes, setIndividualTimes] = useState<Record<string, { inTime: string, outTime: string }>>({});
   const [managerCanOverride, setManagerCanOverride] = useState(true);
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [locationDesignationConfigs, setLocationDesignationConfigs] = useState<LocationDesignationShiftConfig[]>([]);
   const [locationConfigs, setLocationConfigs] = useState<any[]>([]);
   const [globalKioskSettings, setGlobalKioskSettings] = useState<any | null>(null);
+
+  const normalizeOutTime = (time?: string) => {
+    if (!time) return time;
+    const match = time.match(/^(\d{1,2}):(\d{2})$/);
+    if (match) {
+      let h = parseInt(match[1]);
+      if (h > 0 && h < 12) {
+        h += 12;
+        return `${h.toString().padStart(2, '0')}:${match[2]}`;
+      }
+    }
+    return time;
+  };
 
   const handleIndividualTimeChange = (staffId: string, field: 'inTime' | 'outTime', value: string) => {
     setIndividualTimes(prev => ({
@@ -95,7 +108,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       }
     }
     const inTime = individualTimes[staffId]?.inTime || currentData.arrivalTime;
-    const outTime = individualTimes[staffId]?.outTime || currentData.leavingTime;
+    const rawOutTime = individualTimes[staffId]?.outTime || currentData.leavingTime;
+    const outTime = normalizeOutTime(rawOutTime);
     // Sanitize shift — UI uses '-' as a placeholder when there's no shift,
     // but DB CHECK constraint only allows Morning/Evening/Both. Drop invalid values.
     const rawShift = shift || currentData.shift;
@@ -129,9 +143,10 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const activeStaff = staff.filter(member => member.isActive);
   const today = new Date().toISOString().split('T')[0];
   
-  // Logic: Admins can always edit. Managers can edit ONLY IF managerCanOverride is true (can edit any date). 
-  // We'll restrict managers from editing AT ALL if managerCanOverride is false.
-  const canEditDate = userRole === 'admin' || managerCanOverride;
+  // Logic: Admins can always edit any date. Managers/supervisors can ALWAYS edit today.
+  // managerCanOverride controls whether they can edit OTHER (past) dates.
+  const isToday = selectedDate === today;
+  const canEditDate = userRole === 'admin' || isToday || managerCanOverride;
 
   const getAttendanceForDate = (staffId: string, date: string) => {
     const record = attendance.find(a => a.staffId === staffId && a.date === date && !a.isPartTime);

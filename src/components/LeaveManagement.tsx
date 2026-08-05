@@ -38,7 +38,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
   const [dateFilterEnabled, setDateFilterEnabled] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [locationFilter, setLocationFilter] = useState<string>('all');
-  const [floorFilter, setFloorFilter] = useState<string>(userFloor || 'all');
+  const [floorFilter, setFloorFilter] = useState<string>('all');
   const [staffMeta, setStaffMeta] = useState<Record<string, { location: string; floor?: string }>>({});
 
   const loadLeaves = async () => {
@@ -95,7 +95,19 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
     setProcessing(false);
   };
 
-  const filtered = leaves.filter(l => {
+  // For supervisor/floor_supervisor, auto-scope leaves to their floor
+  const scopedLeaves = React.useMemo(() => {
+    if ((userRole === 'supervisor' || userRole === 'floor_supervisor') && userFloor) {
+      return leaves.filter(l => {
+        const staffFloor = staffMeta[l.staffId]?.floor;
+        // Only show leaves from staff on the supervisor's floor
+        return staffFloor === userFloor;
+      });
+    }
+    return leaves;
+  }, [leaves, staffMeta, userRole, userFloor]);
+
+  const filtered = scopedLeaves.filter(l => {
     // Status filter
     if (filter !== 'all' && l.status !== filter) return false;
     
@@ -105,7 +117,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
       if (!l.staffName.toLowerCase().includes(q) && !l.location.toLowerCase().includes(q)) return false;
     }
     
-    // Location / floor filters
+    // Location / floor filters (UI dropdowns — on top of auto-scope)
     if (locationFilter !== 'all' && leaveLocation(l) !== locationFilter) return false;
     if (floorFilter !== 'all' && leaveFloor(l) !== floorFilter) return false;
 
@@ -119,7 +131,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
     return true;
   });
 
-  const pendingCount = leaves.filter(l => l.status === 'pending').length;
+  const pendingCount = scopedLeaves.filter(l => l.status === 'pending').length;
 
   const clearDateFilter = () => {
     setDateFilterEnabled(false);
@@ -133,12 +145,12 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
   };
 
   const stats = {
-    total: leaves.length,
-    pending: leaves.filter(l => l.status === 'pending').length,
-    approved: leaves.filter(l => l.status === 'approved').length,
-    rejected: leaves.filter(l => l.status === 'rejected').length,
-    postponed: leaves.filter(l => l.status === 'postponed').length,
-    thisMonth: leaves.filter(l => {
+    total: filtered.length,
+    pending: filtered.filter(l => l.status === 'pending').length,
+    approved: filtered.filter(l => l.status === 'approved').length,
+    rejected: filtered.filter(l => l.status === 'rejected').length,
+    postponed: filtered.filter(l => l.status === 'postponed').length,
+    thisMonth: filtered.filter(l => {
       const d = new Date(l.leaveDate);
       const now = new Date();
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
