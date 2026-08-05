@@ -625,6 +625,48 @@ export type Database = {
           },
         ]
       }
+      device_status: {
+        Row: {
+          created_at: string
+          device_id: string
+          device_name: string | null
+          id: string
+          ip_address: string | null
+          last_seen_at: string
+          location: string | null
+          status: string
+          tenant_id: string | null
+          total_punches_today: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          device_name?: string | null
+          id?: string
+          ip_address?: string | null
+          last_seen_at?: string
+          location?: string | null
+          status?: string
+          tenant_id?: string | null
+          total_punches_today?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          device_name?: string | null
+          id?: string
+          ip_address?: string | null
+          last_seen_at?: string
+          location?: string | null
+          status?: string
+          tenant_id?: string | null
+          total_punches_today?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       face_embeddings: {
         Row: {
           angle_label: string
