@@ -45,9 +45,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [staffPhoto, setStaffPhoto] = useState<string>('');
 
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [fullName, setFullName] = useState('');
-
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -77,101 +74,37 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));
 
     try {
-      if (isSignUp) {
-        if (!fullName.trim()) {
-          setError('Please enter your full name');
-          setLoading(false);
-          return;
-        }
-        
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email: sanitizedEmail,
-          password: password,
-          options: {
-            data: {
-              full_name: fullName.trim()
-            }
-          }
+      const result = await userService.validateLogin(sanitizedEmail, password);
+
+      if (result) {
+        const { user: dbUser, sessionToken } = result;
+        clearFailedAttempts(sanitizedEmail);
+
+        const session = {
+          ...createSecureSession({
+            email: dbUser.email,
+            role: dbUser.role,
+            location: dbUser.location,
+            floor: (dbUser as any).floor,
+            floorId: (dbUser as any).floor_id,
+          }),
+          sessionToken
+        };
+
+        localStorage.setItem('staffManagementLogin', JSON.stringify(session));
+        if (sessionToken) localStorage.setItem('sessionToken', sessionToken);
+
+        onLogin({
+          id: dbUser.id,
+          email: dbUser.email,
+          role: dbUser.role,
+          location: dbUser.location || undefined,
+          floor: (dbUser as any).floor || undefined,
+          floorId: (dbUser as any).floor_id || undefined,
         });
-        
-        if (signUpError) {
-          setError(signUpError.message);
-          setLoading(false);
-          return;
-        }
-        
-        if (!data.session) {
-          setError('Sign up successful! Please check your email to verify your account.');
-          setLoading(false);
-          return;
-        }
-        
-        // If a session is returned, proceed to log them in by fetching their profile
-        const result = await userService.validateLogin(sanitizedEmail, password);
-        if (result) {
-          const { user: dbUser, sessionToken } = result;
-          clearFailedAttempts(sanitizedEmail);
-
-          const session = {
-            ...createSecureSession({
-              email: dbUser.email,
-              role: dbUser.role,
-              location: dbUser.location,
-              floor: (dbUser as any).floor,
-              floorId: (dbUser as any).floor_id,
-            }),
-            sessionToken
-          };
-
-          localStorage.setItem('staffManagementLogin', JSON.stringify(session));
-          if (sessionToken) localStorage.setItem('sessionToken', sessionToken);
-
-          onLogin({
-            id: dbUser.id,
-            email: dbUser.email,
-            role: dbUser.role,
-            location: dbUser.location || undefined,
-            floor: (dbUser as any).floor || undefined,
-            floorId: (dbUser as any).floor_id || undefined,
-          });
-        } else {
-          // Changed from setError to alert or just setting a success-like error message
-          // since the user wants to manually match them in the DB afterwards.
-          setError('Account successfully created! Please manually link this new email to your existing profile in the Supabase Dashboard, then sign in again.');
-        }
       } else {
-        const result = await userService.validateLogin(sanitizedEmail, password);
-
-        if (result) {
-          const { user: dbUser, sessionToken } = result;
-          clearFailedAttempts(sanitizedEmail);
-
-          const session = {
-            ...createSecureSession({
-              email: dbUser.email,
-              role: dbUser.role,
-              location: dbUser.location,
-              floor: (dbUser as any).floor,
-              floorId: (dbUser as any).floor_id,
-            }),
-            sessionToken
-          };
-
-          localStorage.setItem('staffManagementLogin', JSON.stringify(session));
-          if (sessionToken) localStorage.setItem('sessionToken', sessionToken);
-
-          onLogin({
-            id: dbUser.id,
-            email: dbUser.email,
-            role: dbUser.role,
-            location: dbUser.location || undefined,
-            floor: (dbUser as any).floor || undefined,
-            floorId: (dbUser as any).floor_id || undefined,
-          });
-        } else {
-          recordFailedAttempt(sanitizedEmail);
-          setError('Invalid email address or password. Please check and try again.');
-        }
+        recordFailedAttempt(sanitizedEmail);
+        setError('Invalid email address or password. Please check and try again.');
       }
     } catch (err) {
       console.error('Login error:', err);
@@ -390,7 +323,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-x-clip">
       {/* Soft blue background wash */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-blue-500/10 to-sky-400/10 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gradient-to-r from-sky-400/10 to-blue-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
@@ -453,19 +386,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           {/* Admin Login Form */}
           {loginMode === 'admin' && (
             <form onSubmit={handleAdminSubmit} className="space-y-5">
-              {isSignUp && (
-                <div>
-                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Full Name</label>
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="input-premium"
-                    placeholder="Enter your full name"
-                    required
-                  />
-                </div>
-              )}
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Email Address</label>
                 <input
@@ -497,17 +417,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     {showPassword ? <EyeOff size={18} className="text-slate-600 dark:text-slate-300" /> : <Eye size={18} className="text-slate-600 dark:text-slate-300" />}
                   </button>
                 </div>
-                {!isSignUp && (
-                  <div className="flex justify-end mt-1">
-                    <button 
-                      type="button" 
-                      onClick={handleForgotPassword}
-                      className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
-                    >
-                      Forgot Password?
-                    </button>
-                  </div>
-                )}
+                <div className="flex justify-end mt-1">
+                  <button 
+                    type="button" 
+                    onClick={handleForgotPassword}
+                    className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
               </div>
 
               {error && (
@@ -520,23 +438,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               <button type="submit" disabled={loading} className="w-full btn-premium py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group">
                 <span className="relative z-10 flex items-center justify-center gap-2 !text-white">
                   {loading ? (
-                    <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span className="!text-white">{isSignUp ? 'Creating...' : 'Signing in...'}</span></>
+                    <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span className="!text-white">Signing in...</span></>
                   ) : (
-                    <><Lock size={18} className="!text-white" /><span className="!text-white">{isSignUp ? 'Create Account' : 'Sign In'}</span></>
+                    <><Lock size={18} className="!text-white" /><span className="!text-white">Sign In</span></>
                   )}
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
               </button>
-              
-              <div className="text-center mt-4">
-                <button
-                  type="button"
-                  onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
-                  className="text-sm text-[var(--text-muted)] hover:text-blue-500 transition-colors"
-                >
-                  {isSignUp ? 'Already have an account? Sign In' : 'Need a migration account? Sign Up'}
-                </button>
-              </div>
             </form>
           )}
 

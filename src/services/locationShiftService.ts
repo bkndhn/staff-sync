@@ -31,6 +31,8 @@ export interface BranchShiftConfig {
   allowManagerOverride: boolean;
 }
 
+export type LocationShiftConfig = BranchShiftConfig;
+
 export const DEFAULT_LOCATION_CONFIG: Omit<LocationShiftConfig, 'locationName'> = {
   shiftStart: '09:00',
   shiftEnd: '18:00',

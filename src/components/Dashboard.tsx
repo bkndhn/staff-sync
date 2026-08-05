@@ -35,7 +35,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   selectedDate,
   onDateChange,
   userRole = 'manager',
-  userBranch = '',
+  userLocation = '',
   isDarkTheme,
   toggleTheme,
   statutoryMode = false,
@@ -161,6 +161,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     setLocationOrder(names);
     localStorage.setItem(LOCATION_ORDER_KEY, JSON.stringify(names));
   };
+  const moveLocation = moveBranch;
 
   const handleLocDragStart = (index: number) => {
     setDragIndex(index);
@@ -398,7 +399,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           </button>
 
 
-          <div className="w-[120px] md:w-[140px] lg:w-32">
+          <div className="flex-1 min-w-[120px] max-w-[160px] md:flex-none">
             <label className="block text-[10px] uppercase tracking-wider font-bold text-white/40 mb-1 ml-1">Group By</label>
             <select
               value={groupBy}
@@ -411,14 +412,14 @@ const Dashboard: React.FC<DashboardProps> = ({
             </select>
           </div>
 
-          <div className="w-[160px] md:w-[180px] lg:w-48">
+          <div className="flex-1 min-w-[140px] max-w-[190px] md:flex-none">
             <label className="block text-[10px] uppercase tracking-wider font-bold text-white/40 mb-1 ml-1">Select Date</label>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => onDateChange(e.target.value)}
               max={new Date().toISOString().split('T')[0]}
-              className="input-premium py-2 px-3 text-sm"
+              className="input-premium py-2 px-3 text-sm w-full"
             />
           </div>
 

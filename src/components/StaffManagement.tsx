@@ -4,8 +4,8 @@ import { Users, Plus, Edit2, Trash2, Archive, Calendar, TrendingUp, MapPin, Doll
 import { calculateExperience } from '../utils/salaryCalculations';
 import { STATUTORY_DEFINITIONS, defaultConfigFor } from '../utils/statutoryDeductions';
 import type { StatutoryDeduction, DeductionBase } from '../types';
-import PayrollHikeHistory from './SalaryHikeHistory';
-import PayrollHikeDueModal from './SalaryHikeDueModal';
+import SalaryHikeHistory, { PayrollHikeHistory } from './SalaryHikeHistory';
+import SalaryHikeDueModal, { PayrollHikeDueModal } from './SalaryHikeDueModal';
 import BulkStaffUpload from './BulkStaffUpload';
 import FaceRegistration from './FaceRegistration';
 import { settingsService } from '../services/settingsService';
@@ -93,14 +93,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showFloorManager, setShowFloorManager] = useState(false);
   const [showDesignationManager, setShowDesignationManager] = useState(false);
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [salaryCategories, setSalaryCategories] = useState<SalaryCategory[]>(() => salaryCategoryService.getCategoriesSync());
-  const [floors, setFloors] = useState<Floor[]>([]);
+  const [locations, setLocations] = useState<Branch[]>([]);
+  const [salaryCategories, setSalaryCategories] = useState<PayrollCategory[]>(() => salaryCategoryService.getCategoriesSync());
+  const [floors, setFloors] = useState<Zone[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [newLocation, setNewLocation] = useState('');
   const [newCategory, setNewCategory] = useState('');
   const [newFloor, setNewFloor] = useState('');
   const [newFloorLocation, setNewFloorLocation] = useState('');
+  const newFloorBranch = newFloorLocation;
+  const setNewFloorBranch = setNewFloorLocation;
   const [editingFloor, setEditingFloor] = useState<Zone | null>(null);
   const [editFloorValue, setEditFloorValue] = useState('');
   const [applyToAllLocations, setApplyToAllLocations] = useState(false);
@@ -492,6 +494,13 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     setApplyDeleteToAllLocations(false);
   };
 
+  const handleCreateLocation = handleCreateBranch;
+  const handleUpdateLocation = handleUpdateBranch;
+  const handleDeleteLocation = handleDeleteBranch;
+  const handleAddFloor = handleAddZone;
+  const handleUpdateFloor = handleUpdateZone;
+  const handleDeleteFloor = handleDeleteZone;
+
   // Designation handlers
   const handleAddDesignation = async () => {
     if (!newDesignation.trim()) return;
@@ -554,7 +563,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   };
 
   const calculateMemberTotalPayroll = (member: Staff) => {
-    let total = member.basicPayroll + member.incentive + member.hra + (member.mealAllowance || 0);
+    let total = (member.basicPayroll ?? member.basicSalary ?? 0) + (member.incentive ?? 0) + (member.hra ?? 0) + (member.mealAllowance || 0);
     const customCategories = salaryCategories.filter(c => !['basic', 'incentive', 'hra', 'meal_allowance'].includes(c.id) && !c.isDeleted);
     total += customCategories.reduce((sum, cat) => sum + (member.salarySupplements?.[cat.id] || member.salarySupplements?.[cat.key] || 0), 0);
     return total;
@@ -664,7 +673,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       settingsService.updateStaffSupplement(editingStaff.id, formData.salarySupplements);
       onUpdateStaff(editingStaff.id, {
         ...formData,
-        totalSalary,
+        totalPayroll,
+        totalSalary: totalPayroll,
         experience,
         type: 'full-time',
         sundayPenalty: formData.sundayPenalty,
@@ -686,7 +696,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     } else {
       onAddStaff({
         ...formData,
-        totalSalary,
+        totalPayroll,
+        totalSalary: totalPayroll,
         type: 'full-time',
         isActive: true,
         experience
@@ -709,7 +720,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       location: member.location,
       floor: member.floor || '',
       designation: member.designation || '',
-      basicPayroll: member.basicSalary,
+      basicPayroll: member.basicPayroll ?? member.basicSalary ?? 0,
       incentive: member.incentive,
       hra: member.hra,
       mealAllowance: member.mealAllowance || 0,
@@ -1142,7 +1153,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               <label className="block text-sm font-medium text-white/70 mb-1">
                 {salaryCategories.find(c => c.id === 'basic')?.name || 'Basic Payroll'}
               </label>
-              <input type="number" value={formData.basicSalary} onChange={(e) => setFormData({ ...formData, basicPayroll: Number(e.target.value) })} className="input-premium" required />
+              <input type="number" value={formData.basicPayroll} onChange={(e) => setFormData({ ...formData, basicPayroll: Number(e.target.value) })} className="input-premium" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1">
@@ -1573,7 +1584,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             <SalaryHikeHistory
               salaryHikes={getStaffSalaryHikes(showSalaryHistory.id)}
               staffName={showSalaryHistory.name}
-              currentSalary={showSalaryHistory.totalSalary}
+              currentSalary={showSalaryHistory.totalPayroll ?? showSalaryHistory.totalSalary ?? 0}
+              currentPayroll={showSalaryHistory.totalPayroll ?? showSalaryHistory.totalSalary ?? 0}
               staff={showSalaryHistory}
               onRefresh={onRefreshStaff}
             />
@@ -1794,9 +1806,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                     {visibleColumns.experience !== false && <td className="px-3 py-4 text-sm text-blue-600 font-medium text-center">
                       {calculateExperience(member.joinedDate)}
                     </td>}
-                    {visibleColumns.basic !== false && <td className="px-3 py-4 text-sm text-center">₹{member.basicSalary.toLocaleString()}</td>}
-                    {visibleColumns.incentive !== false && <td className="px-3 py-4 text-sm text-center">₹{member.incentive.toLocaleString()}</td>}
-                    {visibleColumns.hra !== false && <td className="px-3 py-4 text-sm text-center">₹{member.hra.toLocaleString()}</td>}
+                    {visibleColumns.basic !== false && <td className="px-3 py-4 text-sm text-center">₹{(member.basicSalary ?? member.basicPayroll ?? 0).toLocaleString()}</td>}
+                    {visibleColumns.incentive !== false && <td className="px-3 py-4 text-sm text-center">₹{(member.incentive || 0).toLocaleString()}</td>}
+                    {visibleColumns.hra !== false && <td className="px-3 py-4 text-sm text-center">₹{(member.hra || 0).toLocaleString()}</td>}
                     {visibleColumns.meal !== false && <td className="px-3 py-4 text-sm text-center">₹{(member.mealAllowance || 0).toLocaleString()}</td>}
                     {activeCustomCategories.map(category => (
                       <td key={category.id} className="px-3 py-4 text-sm text-center">

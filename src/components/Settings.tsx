@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode, ChevronDown, Cpu } from 'lucide-react';
 import { userService, AppUser, CreateUserInput, UpdateUserInput } from '../services/userService';
-import { locationService, Branch } from '../services/locationService';
+import { locationService, Branch, type Location } from '../services/locationService';
 import { staffService } from '../services/staffService';
 import { floorService } from '../services/floorService';
 import { appSettingsService } from '../services/appSettingsService';
@@ -10,11 +10,13 @@ import ShiftWindowsPanel from './ShiftWindowsPanel';
 import AttendanceRulesPanel from './AttendanceRulesPanel';
 import DeviceIntegration from './DeviceIntegration';
 import PayrollOverridesPanel from './SalaryOverridesPanel';
+const SalaryOverridesPanel = PayrollOverridesPanel;
 import StatutoryPortalSettingsPanel from './StatutoryPortalSettingsPanel';
 import StatutoryCredentialsPanel from './StatutoryCredentialsPanel';
 import FaceTuningPanel from './face/FaceTuningPanel';
 import { WorkflowBuilder } from './WorkflowBuilder';
 import { BiometricIntegrationHub } from './BiometricIntegrationHub';
+import { GeofenceSettingsPanel } from './GeofenceSettingsPanel';
 
 interface SettingsProps {
     userRole: string;
@@ -241,12 +243,18 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [usersData, locationsData, staffData, floorsData] = await Promise.all([
+            const [usersRes, locationsRes, staffRes, floorsRes] = await Promise.allSettled([
                 userService.getUsers(),
                 locationService.getLocations(),
                 staffService.getAll(),
                 floorService.getFloors()
             ]);
+
+            const usersData = usersRes.status === 'fulfilled' ? usersRes.value : [];
+            const locationsData = locationsRes.status === 'fulfilled' ? locationsRes.value : [];
+            const staffData = staffRes.status === 'fulfilled' ? staffRes.value : [];
+            const floorsData = floorsRes.status === 'fulfilled' ? floorsRes.value : [];
+
             setUsers(usersData);
             setLocations(locationsData);
 
@@ -446,25 +454,62 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
 
             <SettingsSection title="General" subtitle="Login, QR and hike defaults" icon={SettingsIcon}>
             {/* Staff Self-Service Toggle */}
-            <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                        <Users size={20} className="text-emerald-400" />
+            <div className="glass-card-static p-4 rounded-xl flex items-center justify-between gap-4 border border-gray-100 dark:border-white/10 shadow-sm hover:shadow transition-all">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${staffLoginEnabled ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-gray-100 text-gray-400 dark:bg-white/5'}`}>
+                        <Users size={20} />
                     </div>
-                    <div>
-                        <h3 className="font-semibold text-[var(--text-primary)] text-sm">Staff Self-Service Login</h3>
-                        <p className="text-xs text-[var(--text-muted)]">Allow staff to log in and view their own records (salary, attendance, hikes)</p>
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-[var(--text-primary)] text-sm">Staff Self-Service Login</h3>
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${staffLoginEnabled ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-gray-500/10 text-gray-500 border border-gray-500/20'}`}>
+                                {staffLoginEnabled ? 'Enabled' : 'Disabled'}
+                            </span>
+                        </div>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">Allow staff members to log in to the portal to view their own salary, attendance, and hikes</p>
                     </div>
                 </div>
                 <button
+                    type="button"
+                    role="switch"
+                    aria-checked={staffLoginEnabled}
                     onClick={() => {
                         const newVal = !staffLoginEnabled;
                         setStaffLoginEnabled(newVal);
                         localStorage.setItem('staffLoginEnabled', String(newVal));
                     }}
-                    className={`relative w-14 h-7 rounded-full transition-colors ${staffLoginEnabled ? 'bg-emerald-500' : 'bg-gray-500'}`}
+                    style={{
+                        position: 'relative',
+                        width: '50px',
+                        height: '26px',
+                        minWidth: '50px',
+                        maxWidth: '50px',
+                        minHeight: '26px',
+                        maxHeight: '26px',
+                        borderRadius: '13px',
+                        padding: '2px',
+                        backgroundColor: staffLoginEnabled ? '#10b981' : '#cbd5e1',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s ease',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        boxSizing: 'border-box',
+                        outline: 'none',
+                    }}
                 >
-                    <div className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${staffLoginEnabled ? 'translate-x-7' : 'translate-x-0.5'}`} />
+                    <span
+                        style={{
+                            display: 'block',
+                            width: '22px',
+                            height: '22px',
+                            borderRadius: '50%',
+                            backgroundColor: '#ffffff',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
+                            transform: staffLoginEnabled ? 'translateX(24px)' : 'translateX(0px)',
+                            transition: 'transform 0.2s ease',
+                        }}
+                    />
                 </button>
             </div>
 
@@ -601,6 +646,11 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                 </>
             )}
             {(userRole === 'admin' || userRole === 'manager') && <FaceTuningPanel />}
+            {userRole === 'admin' && (
+                <div className="mt-4">
+                    <GeofenceSettingsPanel />
+                </div>
+            )}
             </SettingsSection>
 
             {userRole === 'admin' && (
@@ -875,6 +925,28 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                     </button>
                                 </div>
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-white/70 mb-1">Role *</label>
+                                <select
+                                    value={formData.role}
+                                    onChange={(e) => {
+                                        const newRole = e.target.value as 'admin' | 'manager' | 'floor_supervisor' | 'supervisor' | 'statutory_admin';
+                                        setFormData(prev => ({ 
+                                            ...prev, 
+                                            role: newRole,
+                                            location: newRole === 'admin' || newRole === 'statutory_admin' ? '' : prev.location,
+                                            floor: (newRole !== 'supervisor' && newRole !== 'floor_supervisor') ? '' : prev.floor
+                                        }));
+                                    }}
+                                    className="input-premium w-full"
+                                >
+                                    <option value="admin">Admin</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="supervisor">Supervisor</option>
+                                    <option value="floor_supervisor">Zone Supervisor</option>
+                                    <option value="statutory_admin">Statutory Admin</option>
+                                </select>
+                            </div>
                             {(formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor') && (
                                 <div>
                                     <label className="block text-sm font-medium text-white/70 mb-1">Branch *</label>
@@ -891,28 +963,6 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                     </select>
                                 </div>
                             )}
-                            <div>
-                                <label className="block text-sm font-medium text-white/70 mb-1">Role *</label>
-                                <select
-                                    value={formData.role}
-                                    onChange={(e) => {
-                                        const newRole = e.target.value as 'admin' | 'manager' | 'floor_supervisor' | 'supervisor' | 'statutory_admin';
-                                        setFormData(prev => ({ 
-                                            ...prev, 
-                                            role: newRole,
-                                            location: newRole === 'admin' || newRole === 'statutory_admin' ? '' : prev.location,
-                                             floor: (newRole !== 'supervisor' && newRole !== 'floor_supervisor') ? '' : prev.floor
-                                        }));
-                                    }}
-                                    className="input-premium w-full"
-                                >
-                                    <option value="admin">Admin</option>
-                                    <option value="manager">Manager</option>
-                                    <option value="supervisor">Supervisor</option>
-                                    <option value="floor_supervisor">Zone Supervisor</option>
-                                    <option value="statutory_admin">Statutory Admin</option>
-                                </select>
-                            </div>
                             {(formData.role === 'supervisor' || formData.role === 'floor_supervisor') && (
                                 <div>
                                     <label className="block text-sm font-medium text-white/70 mb-1">Zone *</label>

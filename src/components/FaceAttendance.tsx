@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity, Zap, QrCode, UserPlus, RefreshCw, WifiOff } from 'lucide-react';
-import { Staff, Attendance, Designation, BranchDesignationShiftConfig } from '../types';
+import { Staff, Attendance, Designation, BranchDesignationShiftConfig, type LocationDesignationShiftConfig, type LocationShiftConfig } from '../types';
 import { useFaceEngine } from '../hooks/useFaceEngine';
 import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
 import { attendanceService } from '../services/attendanceService';
@@ -55,7 +55,7 @@ const formatNow = () => {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 };
 
-const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole, userBranch }) => {
+const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole, userLocation }) => {
   const { ready, loading, error, detect } = useFaceEngine(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -106,12 +106,12 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
   const availableLocations = useMemo(() => Array.from(new Set(staff.map(s => s.location).filter(Boolean))), [staff]);
   const [selectedLocation, setSelectedLocation] = useState<string>(
-    userRole === 'manager' ? (userBranch || staff[0]?.location || '') : (availableLocations.length > 0 ? availableLocations[0] : 'Main Branch')
+    userRole === 'manager' ? (userLocation || staff[0]?.location || '') : (availableLocations.length > 0 ? availableLocations[0] : 'Main Branch')
   );
 
   useEffect(() => {
     // If a manager's location wasn't ready on first mount, force sync it once available
-    if (userRole === 'manager' && userBranch && selectedBranch !== userLocation) {
+    if (userRole === 'manager' && userLocation && selectedLocation !== userLocation) {
       setSelectedLocation(userLocation);
     }
   }, [userRole, userLocation, selectedLocation]);

@@ -5,7 +5,7 @@ import {
   ExternalLink, Copy, Check, RefreshCw, Fingerprint, Server, Globe, MapPin
 } from 'lucide-react';
 import { customAlert } from './CustomDialog';
-import { locationService, type Branch } from '../services/locationService';
+import { locationService, type Branch, type Location } from '../services/locationService';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface PunchRecord {

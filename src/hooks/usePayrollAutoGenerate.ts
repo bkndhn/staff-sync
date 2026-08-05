@@ -5,7 +5,7 @@ import { staffService } from '../services/staffService';
 import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryService';
 import { attendanceService } from '../services/attendanceService';
 import { salaryOverrideService } from '../services/salaryOverrideService';
-import { calculateAttendanceMetrics, calculateSalary, computeScheduledDeductions } from '../utils/salaryCalculations';
+import { calculateAttendanceMetrics, calculatePayroll, computeScheduledDeductions } from '../utils/salaryCalculations';
 import { supabase } from '../lib/supabase';
 
 export const usePayrollAutoGenerate = (user: any) => {

@@ -8,7 +8,7 @@ import { locationService } from '../services/locationService';
 import { appSettingsService } from '../services/appSettingsService';
 import { designationService, type Designation } from '../services/designationService';
 import { locationDesignationShiftService } from '../services/locationDesignationShiftService';
-import { type BranchDesignationShiftConfig } from '../types';
+import { type BranchDesignationShiftConfig, type LocationDesignationShiftConfig } from '../types';
 import { customConfirm } from './CustomDialog';
 
 // ─── Global Settings Panel ────────────────────────────────────────────────────
@@ -457,6 +457,7 @@ interface BranchRowProps {
   onReset: (locationName: string) => Promise<void>;
   onRefreshOverrides: () => Promise<void>;
 }
+type LocationRowProps = BranchRowProps;
 
 const BranchConfigRow: React.FC<LocationRowProps> = ({
   locationName, config, designations, locationDesignationConfigs,
@@ -691,6 +692,7 @@ const BranchConfigRow: React.FC<LocationRowProps> = ({
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
 type PanelTab = 'global' | 'locations' | 'designations';
+const LocationConfigRow = BranchConfigRow;
 
 const AttendanceRulesPanel: React.FC = () => {
   const [tab, setTab] = useState<PanelTab>('global');

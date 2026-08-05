@@ -10,10 +10,12 @@ export interface Staff {
   ratePerDay?: number;
   ratePerShift?: number;
   experience: string;
-  basicPayroll: number;
+  basicPayroll?: number;
+  basicSalary?: number;
   incentive: number;
   hra: number;
-  totalPayroll: number;
+  totalPayroll?: number;
+  totalSalary?: number;
   joinedDate: string;
   isActive: boolean;
   sundayPenalty?: boolean;
@@ -110,9 +112,11 @@ export interface PayrollDetail {
   mealAllowance: number;
   lateComingDeduction?: number;
   earlyLeaveDeduction?: number;
-  grossPayroll: number;
+  grossPayroll?: number;
+  grossSalary?: number;
   newAdv: number;
-  netPayroll: number;
+  netPayroll?: number;
+  netSalary?: number;
   isProcessed: boolean;
   statutoryTotal?: number;
   statutoryBreakdown?: Array<{ key: string; label: string; amount: number }>;
@@ -173,10 +177,12 @@ export interface OldStaffRecord {
   location: string;
   type: 'full-time' | 'part-time';
   experience: string;
-  basicPayroll: number;
+  basicPayroll?: number;
+  basicSalary?: number;
   incentive: number;
   hra: number;
-  totalPayroll: number;
+  totalPayroll?: number;
+  totalSalary?: number;
   joinedDate: string;
   leftDate: string;
   reason: string;
@@ -206,8 +212,10 @@ export interface AdvanceDeduction {
 export interface PayrollHike {
   id: string;
   staffId: string;
-  oldPayroll: number;
-  newPayroll: number;
+  oldPayroll?: number;
+  oldSalary?: number;
+  newPayroll?: number;
+  newSalary?: number;
   hikeDate: string;
   reason?: string;
   breakdown?: Record<string, number>;
@@ -322,7 +330,8 @@ export interface PartTimeAdvanceRecord {
   advanceGiven: number;
   earnings: number;
   adjustment: number;
-  pendingPayroll: number;
+  pendingPayroll?: number;
+  pendingSalary?: number;
   closingBalance: number;
   notes?: string;
   createdAt: string;
@@ -402,3 +411,30 @@ export interface BranchDesignationShiftConfig {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface Branch {
+  id: string;
+  name: string;
+  isDefault?: boolean;
+  address?: string;
+  phone?: string;
+  displayOrder?: number;
+}
+export interface Floor {
+  id?: string;
+  name?: string;
+  location?: string;
+  displayOrder?: number;
+}
+export type Location = Branch;
+
+// Backward-compatibility type aliases
+export type SalaryCategory = PayrollCategory;
+export type SalaryOverride = PayrollOverride;
+export type SalaryHike = PayrollHike;
+export type SalaryDisbursement = any;
+export type LocationShiftConfig = any;
+export type LocationDesignationShiftConfig = BranchDesignationShiftConfig;
+export type WeeklySalary = WeeklyPayroll;
+export type DailySalary = DailyPayroll;
+

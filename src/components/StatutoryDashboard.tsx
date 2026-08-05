@@ -56,11 +56,13 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
     const cfg = s.statutoryDeductions?.[key];
     if (!cfg?.enabled) return 0;
     if (cfg.base === 'fixed') return cfg.fixedAmount || 0;
+    const basic = s.basicPayroll ?? s.basicSalary ?? 0;
+    const total = s.totalPayroll ?? s.totalSalary ?? 0;
     const base =
-      cfg.base === 'basic' ? s.basicPayroll :
-      cfg.base === 'basic_hra' ? s.basicPayroll + s.hra :
-      cfg.base === 'gross' ? s.totalPayroll :
-      s.basicSalary;
+      (cfg.base === 'basic' ? basic :
+      cfg.base === 'basic_hra' ? basic + (s.hra || 0) :
+      cfg.base === 'gross' ? total :
+      basic);
     return Math.round((base * (cfg.percentage || 0)) / 100);
   };
 

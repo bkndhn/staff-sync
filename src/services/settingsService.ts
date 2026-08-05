@@ -1,5 +1,3 @@
-
-
 export interface PayrollCategory {
     id: string;
     name: string;
@@ -20,7 +18,8 @@ const STORAGE_KEYS = {
     LOCATIONS: 'staff_management_locations',
     SALARY_CATEGORIES: 'staff_management_salary_categories',
     SALARY_SUPPLEMENTS: 'staff_management_salary_supplements',
-    PART_TIME_RATES: 'staff_management_part_time_rates'
+    PART_TIME_RATES: 'staff_management_part_time_rates',
+    REQUIRE_GEOFENCE: 'staff_management_require_geofence'
 };
 
 const DEFAULT_LOCATIONS = ['Big Shop', 'Small Shop', 'Godown'];
@@ -61,10 +60,10 @@ export const settingsService = {
     updateLocation(oldBranch: string, newBranch: string): string[] {
         console.warn('Use locationService.updateBranch instead');
         const locations = this.getLocations();
-        const index = locations.indexOf(oldLocation);
+        const index = locations.indexOf(oldBranch);
         if (index !== -1) {
             const newLocations = [...locations];
-            newLocations[index] = newLocation;
+            newLocations[index] = newBranch;
             localStorage.setItem(STORAGE_KEYS.LOCATIONS, JSON.stringify(newLocations));
             return newLocations;
         }
@@ -158,5 +157,14 @@ export const settingsService = {
     updatePartTimeRates(rates: PartTimeRates): PartTimeRates {
         localStorage.setItem(STORAGE_KEYS.PART_TIME_RATES, JSON.stringify(rates));
         return rates;
+    },
+
+    getRequireGeofence(): boolean {
+        const stored = localStorage.getItem(STORAGE_KEYS.REQUIRE_GEOFENCE);
+        return stored ? JSON.parse(stored) : false;
+    },
+
+    setRequireGeofence(require: boolean): void {
+        localStorage.setItem(STORAGE_KEYS.REQUIRE_GEOFENCE, JSON.stringify(require));
     }
 };

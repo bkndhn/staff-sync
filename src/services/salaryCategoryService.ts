@@ -18,6 +18,8 @@ export interface PayrollCategory {
   isDeleted?: boolean;
 }
 
+export type SalaryCategory = PayrollCategory;
+
 const BUILT_IN_IDS = ['basic', 'incentive', 'hra', 'meal_allowance'];
 
 const DEFAULT_BUILT_INS: PayrollCategory[] = [

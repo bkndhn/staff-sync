@@ -1,24 +1,22 @@
 import React from 'react';
 import { TrendingUp, Calendar, DollarSign } from 'lucide-react';
-import { PayrollHike, Staff } from '../types';
+import { PayrollHike, SalaryHike, Staff } from '../types';
 import { settingsService } from '../services/settingsService';
 import { customConfirm, customAlert } from './CustomDialog';
 
-interface PayrollHikeHistoryProps {
+interface SalaryHikeHistoryProps {
   salaryHikes: PayrollHike[];
   staffName: string;
-  currentPayroll: number;
+  currentPayroll?: number;
+  currentSalary?: number;
   staff?: Staff;
   onRefresh?: () => Promise<void>;
 }
 
-const PayrollHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
-  salaryHikes,
-  staffName,
-  currentSalary,
-  staff,
-  onRefresh
-}) => {
+export const SalaryHikeHistory: React.FC<SalaryHikeHistoryProps> = (props) => {
+  const { salaryHikes, staffName, staff, onRefresh } = props;
+  const currentSalary = props.currentSalary ?? props.currentPayroll ?? 0;
+  const currentPayroll = currentSalary;
   const latestHike = salaryHikes[0];
 
   const getMonthsSinceHike = (hikeDate: string): number => {
@@ -61,8 +59,8 @@ const PayrollHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
     setEditingHike(hike);
     setPastHikeForm({
       date: hike.hikeDate,
-      oldPayroll: hike.oldSalary,
-      newPayroll: hike.newSalary,
+      oldPayroll: hike.oldPayroll ?? hike.oldSalary ?? 0,
+      newPayroll: hike.newPayroll ?? hike.newSalary ?? 0,
       reason: hike.reason || '',
       breakdown: hike.breakdown || {}
     });
@@ -99,9 +97,9 @@ const PayrollHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
     if (!staff) return;
 
     const initialBreakdown: Record<string, number> = {
-      basic: staff.basicSalary,
-      incentive: staff.incentive,
-      hra: staff.hra,
+      basic: staff.basicPayroll ?? staff.basicSalary ?? 0,
+      incentive: staff.incentive ?? 0,
+      hra: staff.hra ?? 0,
       meal_allowance: staff.mealAllowance || 0,
       ...(staff.salarySupplements || {})
     };
@@ -109,8 +107,8 @@ const PayrollHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
     setEditingHike(null);
     setPastHikeForm({
       date: new Date().toISOString().split('T')[0],
-      oldPayroll: staff.totalSalary,
-      newPayroll: staff.totalSalary,
+      oldPayroll: staff.totalPayroll ?? staff.totalSalary ?? 0,
+      newPayroll: staff.totalPayroll ?? staff.totalSalary ?? 0,
       reason: '',
       breakdown: initialBreakdown
     });
@@ -126,8 +124,8 @@ const PayrollHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
 
       const hikeData = {
         staffId: staff.id,
-        oldPayroll: pastHikeForm.oldSalary,
-        newPayroll: pastHikeForm.newSalary,
+        oldPayroll: pastHikeForm.oldPayroll,
+        newPayroll: pastHikeForm.newPayroll,
         hikeDate: pastHikeForm.date,
         reason: pastHikeForm.reason,
         breakdown: pastHikeForm.breakdown
@@ -177,7 +175,7 @@ const PayrollHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
               </div>
               <div>
                 <span className="font-medium text-force-medium">Last Payroll:</span>
-                <div className="font-semibold text-force-dark">₹{latestHike.oldSalary.toLocaleString()}</div>
+                <div className="font-semibold text-force-dark">₹{(latestHike.oldPayroll ?? latestHike.oldSalary ?? 0).toLocaleString()}</div>
               </div>
             </>
           )}
@@ -196,7 +194,7 @@ const PayrollHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
             <div className="font-semibold text-force-medium">
               {previousSalaryData.previousPayroll ? (
                 <span title={`Changed on ${new Date(previousSalaryData.changeDate!).toLocaleDateString()}`} className="text-force-medium">
-                  ₹{previousSalaryData.previousSalary.toLocaleString()}
+                  ₹{(previousSalaryData.previousPayroll ?? (previousSalaryData as any).previousSalary ?? 0).toLocaleString()}
                   <span className="text-xs ml-1 text-gray-500">
                     ({new Date(previousSalaryData.changeDate!).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })})
                   </span>
@@ -212,7 +210,7 @@ const PayrollHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
           <div className="mt-3 pt-3 border-t border-green-200">
             <span className="font-medium text-force-medium">Difference:</span>
             <span className="ml-2 font-semibold text-green-600">
-              +₹{(currentPayroll - latestHike.oldSalary).toLocaleString()}
+              +₹{(currentPayroll - (latestHike.oldPayroll ?? latestHike.oldSalary ?? 0)).toLocaleString()}
             </span>
           </div>
         )}
@@ -266,7 +264,7 @@ const PayrollHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
                   <input
                     type="number"
                     required
-                    value={pastHikeForm.oldSalary}
+                    value={pastHikeForm.oldPayroll}
                     onChange={e => setPastHikeForm({ ...pastHikeForm, oldPayroll: Number(e.target.value) })}
                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                     placeholder="e.g. 10000"
@@ -276,7 +274,7 @@ const PayrollHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
                   <label className="block text-xs font-bold text-blue-800 mb-1 uppercase tracking-tighter">New TOTAL Payroll (Calculated)</label>
                   <div className="w-full px-3 py-2 text-lg border-2 border-blue-200 bg-blue-50 rounded-lg font-bold text-blue-900 shadow-inner flex items-center justify-between">
                     <span className="text-blue-400">₹</span>
-                    <span>{pastHikeForm.newSalary.toLocaleString()}</span>
+                    <span>{pastHikeForm.newPayroll.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -323,8 +321,8 @@ const PayrollHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
                 <div className="bg-green-50 p-2 rounded border border-green-100 text-xs text-green-800 flex items-center gap-2">
                   <TrendingUp size={14} />
                   <span>
-                    Hike Amount: <strong>₹{(pastHikeForm.newPayroll - pastHikeForm.oldSalary).toLocaleString()}</strong>
-                    {' '}({Math.round(((pastHikeForm.newPayroll - pastHikeForm.oldSalary) / pastHikeForm.oldSalary) * 100)}% increase)
+                    Hike Amount: <strong>₹{(pastHikeForm.newPayroll - pastHikeForm.oldPayroll).toLocaleString()}</strong>
+                    {' '}({Math.round(((pastHikeForm.newPayroll - pastHikeForm.oldPayroll) / pastHikeForm.oldPayroll) * 100)}% increase)
                   </span>
                 </div>
               )}
@@ -377,11 +375,11 @@ const PayrollHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
                   <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 w-full sm:w-auto">
                     <div className="text-right">
                       <div className="text-[10px] text-gray-500 mb-0.5">
-                        ₹{hike.oldSalary.toLocaleString()} → ₹{hike.newSalary.toLocaleString()}
+                        ₹{(hike.oldPayroll ?? hike.oldSalary ?? 0).toLocaleString()} → ₹{(hike.newPayroll ?? hike.newSalary ?? 0).toLocaleString()}
                       </div>
                       <div className="text-sm sm:text-base font-bold text-green-600 flex items-center justify-end gap-1">
                         <TrendingUp size={14} className="sm:w-4 sm:h-4" />
-                        ₹{(hike.newPayroll - hike.oldSalary).toLocaleString()}
+                        ₹{((hike.newPayroll ?? hike.newSalary ?? 0) - (hike.oldPayroll ?? hike.oldSalary ?? 0)).toLocaleString()}
                       </div>
                     </div>
                     {/* Edit/Delete Actions */}
@@ -433,9 +431,9 @@ const PayrollHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
 
                           // If latest hike has missing new breakdown, derive from current staff values
                           if (index === 0 && newValue === 0 && staff) {
-                            if (category.id === 'basic') newValue = staff.basicSalary;
-                            else if (category.id === 'incentive') newValue = staff.incentive;
-                            else if (category.id === 'hra') newValue = staff.hra;
+                            if (category.id === 'basic') newValue = staff.basicPayroll ?? staff.basicSalary ?? 0;
+                            else if (category.id === 'incentive') newValue = staff.incentive ?? 0;
+                            else if (category.id === 'hra') newValue = staff.hra ?? 0;
                             else if (category.id === 'meal_allowance') newValue = staff.mealAllowance || 0;
                             else newValue = staff.salarySupplements?.[category.id] || staff.salarySupplements?.[category.key] || 0;
                           }
@@ -489,4 +487,5 @@ const PayrollHikeHistory: React.FC<SalaryHikeHistoryProps> = ({
   );
 };
 
-export default PayrollHikeHistory;
+export const PayrollHikeHistory = SalaryHikeHistory;
+export default SalaryHikeHistory;

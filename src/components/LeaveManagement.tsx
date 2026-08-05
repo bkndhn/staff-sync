@@ -25,7 +25,8 @@ const statusColors: Record<string, string> = {
   postponed: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
 };
 
-const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocation, userName, userZone }) => {
+const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocation, userName, userFloor }) => {
+  const userZone = userFloor;
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'postponed'>('all');
@@ -46,7 +47,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
     try {
       const data = userRole === 'admin'
         ? await leaveService.getAll()
-        : await leaveService.getByLocation(userBranch || '');
+        : await leaveService.getByLocation(userLocation || '');
       setLeaves(data);
     } catch (err) {
       console.error('Error loading leaves:', err);
@@ -67,6 +68,8 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
 
   const leaveBranch = (l: LeaveRequest) => staffMeta[l.staffId]?.location || l.location;
   const leaveZone = (l: LeaveRequest) => staffMeta[l.staffId]?.floor || '';
+  const leaveLocation = leaveBranch;
+  const leaveFloor = leaveZone;
 
   const locationOptions = Array.from(new Set(leaves.map(leaveLocation).filter(Boolean))).sort();
   const floorOptions = Array.from(new Set(

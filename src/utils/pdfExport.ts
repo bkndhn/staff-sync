@@ -93,8 +93,8 @@ export const exportSalaryPDF = (
       `₹${detail.hraEarned}`,
       `₹${detail.sundayPenalty}`,
       `₹${detail.statutoryTotal || 0}`,
-      `₹${detail.grossSalary}`,
-      `₹${detail.netSalary}`,
+      `₹${detail.grossPayroll ?? detail.grossSalary ?? 0}`,
+      `₹${detail.netPayroll ?? detail.netSalary ?? 0}`,
       `₹${detail.newAdv}`
     ];
   });
@@ -170,7 +170,7 @@ export const exportOldStaffPDF = (
       type: record.type,
       experience: record.experience,
       tenure,
-      salary: `₹${record.totalSalary.toLocaleString()}`,
+      salary: `₹${(record.totalPayroll ?? record.totalSalary ?? 0).toLocaleString()}`,
       advance: `₹${record.totalAdvanceOutstanding.toLocaleString()}`,
       reason: record.reason
     };

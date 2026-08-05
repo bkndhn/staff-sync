@@ -103,7 +103,7 @@ export const partTimeAdvanceService = {
             advance_given: advanceGiven,
             earnings,
             adjustment,
-            pending_salary: pendingSalary,
+            pending_salary: pendingPayroll,
             closing_balance: closingBalance,
             notes: record.notes
         };

@@ -12,6 +12,8 @@ export interface PayrollDisbursement {
   disbursedAt: string;
 }
 
+export type SalaryDisbursement = PayrollDisbursement;
+
 export const salaryDisbursementService = {
   async getByStaffId(staffId: string): Promise<SalaryDisbursement[]> {
     const { data, error } = await dataApi

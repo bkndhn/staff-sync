@@ -2,14 +2,16 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Attendance, PartTimeSalaryDetail, Staff } from '../types';
 import { Clock, Plus, Download, Calendar, DollarSign, Edit2, Save, X, FileSpreadsheet, Trash2, Settings, CheckCircle, ChevronDown, ChevronUp, MessageCircle, Filter, Sparkles, Zap, Sun } from 'lucide-react';
 import { calculatePartTimeSalary, getPartTimeDailySalary, isSunday, getCurrencyBreakdown } from '../utils/salaryCalculations';
+const getPartTimeDailyPayroll = getPartTimeDailySalary;
 import ListFilterBar from './ui/ListFilterBar';
 import { exportSalaryToExcel, exportPartTimeSalaryPDF } from '../utils/exportUtils';
 import { settingsService } from '../services/settingsService';
 import { partTimeAdvanceService } from '../services/partTimeAdvanceService';
 import { partTimeSettlementService } from '../services/partTimeSettlementService';
-import { floorService, Zone } from '../services/floorService';
+import { floorService, Zone, type Floor } from '../services/floorService';
 import { PartTimeAdvanceRecord } from '../types';
 import { customAlert } from './CustomDialog';
+import { AIPredictor } from './AIPredictor';
 
 interface PartTimeStaffProps {
     attendance: Attendance[];
@@ -157,6 +159,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     userFloor,
     userRole
 }) => {
+    const userZone = userFloor;
     const [selectedDate, setSelectedDate] = useState<string>(
         new Date().toISOString().split('T')[0]
     );
@@ -186,11 +189,11 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     });
     const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
     const [locationFilter, setLocationFilter] = useState<string>(
-        userBranch ? userBranch as any : 'All'
+        userLocation ? userLocation as any : 'All'
     );
     // Payroll Report Filter: Defaults to ['All'] for admins, otherwise defaults to user's location in array
     const [reportLocationFilter, setReportLocationFilter] = useState<string[]>(
-        (!userRole || userRole === 'admin' || userRole === 'super_admin') ? ['All'] : (userBranch ? [userLocation] : ['All'])
+        (!userRole || userRole === 'admin' || userRole === 'super_admin') ? ['All'] : (userLocation ? [userLocation] : ['All'])
     );
     const [showLocationDropdown, setShowLocationDropdown] = useState(false);
     const [showReportFilters, setShowReportFilters] = useState(false);
@@ -624,8 +627,10 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         floor: ''
     }]);
 
-    const [bulkLocation, setBulkLocation] = useState(userBranch || 'Big Shop');
+    const [bulkLocation, setBulkLocation] = useState(userLocation || 'Big Shop');
     const [bulkFloor, setBulkFloor] = useState('');
+    const bulkZone = bulkFloor;
+    const setBulkZone = setBulkFloor;
 
     const [newStaffData, setNewStaffData] = useState<{
         name: string;
@@ -637,7 +642,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         floor: string;
     }>(() => {
         const config = getDefaultShiftConfig();
-        const location = (userBranch || 'Big Shop') as string;
+        const location = (userLocation || 'Big Shop') as string;
         const initialLeavingTime = (location === 'Godown') ? '21:00' : config.leavingTime;
 
         return {
@@ -651,9 +656,9 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         };
     });
 
-    // Update bulkBranch when availableLocations loads
+    // Update bulkLocation when availableLocations loads
     useEffect(() => {
-        if (!userBranch && availableLocations.length > 0) {
+        if (!userLocation && availableLocations.length > 0) {
             setBulkLocation(availableLocations[0]);
         }
     }, [availableLocations, userLocation]);
@@ -662,7 +667,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         floorService.getFloors().then(setFloors);
     }, []);
 
-    // Update bulkZone when bulkBranch changes or userZone is set
+    // Update bulkZone when bulkLocation changes or userZone is set
     useEffect(() => {
         if (userFloor) {
             setBulkFloor(userFloor);
@@ -816,7 +821,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         monthlyAttendance.forEach(record => {
             if (record.staffName) {
                 const key = record.staffName.toLowerCase();
-                const validZone = record.floor && record.floor !== '-' ? record.floor : null;
+                const validFloor = record.floor && record.floor !== '-' ? record.floor : null;
                 
                 if (!uniqueStaff.has(key)) {
                     const floorSet = new Set<string>();
@@ -838,7 +843,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
         return Array.from(uniqueStaff.values()).map(staff => {
             const floorsArray = Array.from(staff.floors);
-            return calculatePartTimePayroll(
+            return calculatePartTimeSalary(
                 staff.name,
                 Array.from(staff.locations).join(', '),
                 floorsArray.length > 0 ? floorsArray.join(', ') : '-',
@@ -881,7 +886,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         // 10:00 for Morning/Both
         const defaultArrival = '10:00';
         // 21:00 for Godown, 21:30 for others
-        const defaultLeaving = bulkBranch === 'Godown' ? '21:00' : '21:30';
+        const defaultLeaving = bulkLocation === 'Godown' ? '21:00' : '21:30';
 
         setBulkStaffList([...bulkStaffList, {
             name: '',
@@ -934,7 +939,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 newList[index].leavingTime = '15:00';
             } else {
                 // Evening or Both
-                newList[index].leavingTime = bulkBranch === 'Godown' ? '21:00' : '21:30';
+                newList[index].leavingTime = bulkLocation === 'Godown' ? '21:00' : '21:30';
             }
         }
 
@@ -945,7 +950,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const curDate = new Date(selectedDate);
         let foundDateStr = '';
         let foundRecords: Attendance[] = [];
-        const targetLoc = userBranch || bulkLocation;
+        const targetLoc = userLocation || bulkLocation;
         const targetFlr = userZone || bulkFloor;
 
         for (let i = 1; i <= 7; i++) {
@@ -991,7 +996,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const daysBack = curDate.getDay() === 0 ? 7 : (curDate.getDay() || 7);
         checkD.setDate(checkD.getDate() - daysBack);
         const sunDateStr = checkD.toISOString().split('T')[0];
-        const targetLoc = userBranch || bulkLocation;
+        const targetLoc = userLocation || bulkLocation;
         const targetFlr = userZone || bulkFloor;
 
         const recs = attendance.filter(r =>
@@ -1024,7 +1029,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
         const errors: string[] = [];
         const validEntries: typeof bulkStaffList = [];
-        const targetLoc = userBranch || bulkLocation;
+        const targetLoc = userLocation || bulkLocation;
         const targetFlr = userZone || bulkFloor;
 
         bulkStaffList.forEach((staffData, index) => {
@@ -1065,9 +1070,10 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             if (staffData.shift === 'Morning' || staffData.shift === 'Evening') {
                 defaultPayroll = Math.round(defaultPayroll / 2);
             }
+            const defaultSalary = defaultPayroll;
 
-            const finalPayroll = staffData.salary > 0 ? staffData.salary : defaultSalary;
-            const isSalaryEdited = staffData.salary > 0 && staffData.salary !== defaultSalary;
+            const finalPayroll = staffData.salary > 0 ? staffData.salary : defaultPayroll;
+            const isSalaryEdited = staffData.salary > 0 && staffData.salary !== defaultPayroll;
             const arrivalTime = staffData.arrivalTime || new Date().toTimeString().slice(0, 5);
             let leavingTime = staffData.leavingTime;
             if (!leavingTime) {
@@ -1077,13 +1083,13 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             onUpdateAttendance(
                 staffId, selectedDate, 'Present', true,
                 staffData.name.trim(), staffData.shift, targetLoc,
-                finalSalary, isSalaryEdited, arrivalTime, leavingTime, userZone || staffData.floor || bulkFloor
+                finalPayroll, isSalaryEdited, arrivalTime, leavingTime, userZone || staffData.floor || bulkFloor
             );
         });
 
         // Reset form
         const config = getDefaultShiftConfig();
-        const initialLeavingTime = (bulkBranch === 'Godown') ? '21:00' : config.leavingTime;
+        const initialLeavingTime = (bulkLocation === 'Godown') ? '21:00' : config.leavingTime;
 
         setBulkStaffList([{
             name: '',
@@ -1211,10 +1217,11 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         if (newStaffData.shift === 'Morning' || newStaffData.shift === 'Evening') {
             defaultPayroll = Math.round(defaultPayroll / 2); // Half day rate
         }
+        const defaultSalary = defaultPayroll;
 
         // Use manual salary if provided, otherwise use calculated default
-        const finalPayroll = newStaffData.salary > 0 ? newStaffData.salary : defaultSalary;
-        const isSalaryEdited = newStaffData.salary > 0 && newStaffData.salary !== defaultSalary;
+        const finalPayroll = newStaffData.salary > 0 ? newStaffData.salary : defaultPayroll;
+        const isSalaryEdited = newStaffData.salary > 0 && newStaffData.salary !== defaultPayroll;
 
         // Set default arrival time to current time if not provided to current time if not provided
         const defaultArrivalTime = newStaffData.arrivalTime || new Date().toTimeString().slice(0, 5);
@@ -1237,7 +1244,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             newStaffData.name,
             newStaffData.shift,
             newStaffData.location,
-            finalSalary,
+            finalPayroll,
             isSalaryEdited,
             defaultArrivalTime,
             defaultLeavingTime,
@@ -1245,7 +1252,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         );
         setNewStaffData({
             name: '',
-            location: (userBranch || 'Big Shop') as any,
+            location: (userLocation || 'Big Shop') as any,
             shift: (new Date().getDay() === 0 ? 'Both' : 'Morning') as 'Morning' | 'Evening' | 'Both',
             salary: 0,
             arrivalTime: '',
@@ -1291,10 +1298,12 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const defaultPayroll = getPartTimeDailyPayroll(attendanceRecord.date);
         const calculatedPayroll = (editData.shift === 'Morning' || editData.shift === 'Evening')
             ? Math.round(defaultPayroll / 2)
-            : defaultSalary;
+            : defaultPayroll;
+        const defaultSalary = defaultPayroll;
+        const calculatedSalary = calculatedPayroll;
 
         // Only mark as edited if salary actually changed from calculated default
-        const isSalaryEdited = editData.salary !== calculatedSalary;
+        const isSalaryEdited = editData.salary !== calculatedPayroll;
 
         onUpdateAttendance(
             attendanceRecord.staffId,
@@ -1392,7 +1401,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                     <div className="flex items-center gap-3">
                         <Clock size={32} />
                         <h1 className="text-xl md:text-3xl font-bold">flex staff Management</h1>
-                        {userBranch && (
+                        {userLocation && (
                             <span className="px-3 py-1 bg-white/20 rounded-full text-sm">
                                 {userLocation}
                             </span>
@@ -1436,6 +1445,15 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                         </button>
                     </div>
                 </div>
+            </div>
+
+            {/* AI Predictor Banner */}
+            <div className="mb-6">
+                <AIPredictor 
+                    attendance={attendance} 
+                    userLocation={userLocation} 
+                    userFloor={userFloor} 
+                />
             </div>
 
             {/* Add flex staff Form (Bulk) */}
@@ -1503,7 +1521,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     ) : (
                                         <>
                                             <option value="">None</option>
-                                            {floors.filter(f => !bulkBranch || f.locationName === bulkLocation).map(floor => (
+                                            {floors.filter(f => !bulkLocation || f.locationName === bulkLocation).map(floor => (
                                                 <option key={floor.id} value={floor.name}>{floor.name}</option>
                                             ))}
                                         </>
@@ -1572,7 +1590,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                         if (staffEntry.shift === 'Morning' || staffEntry.shift === 'Evening') {
                                                             defaultPayroll = Math.round(defaultPayroll / 2);
                                                         }
-                                                        return `${defaultSalary}`;
+                                                        return `${defaultPayroll}`;
                                                     })()}
                                                 />
                                             </div>
@@ -1645,7 +1663,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             Sunday - ₹400 rate
                         </span>
                     )}
-                    {!userBranch && (
+                    {!userLocation && (
                         <div className="flex items-center gap-2">
                             <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Filter by Branch</label>
                             <select
@@ -1670,7 +1688,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                         flex staff Attendance - {new Date(selectedDate).toLocaleDateString()}
                         {(locationFilter !== 'All' || userLocation) && (
                             <span className="text-sm text-gray-500">
-                                ({userBranch || locationFilter})
+                                ({userLocation || locationFilter})
                             </span>
                         )}
                     </h2>
@@ -1875,7 +1893,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                         <DollarSign className="text-green-600" size={20} />
                         flex staff Payroll Report
-                        {userBranch && (
+                        {userLocation && (
                             <span className="text-sm text-gray-500">- {userLocation}</span>
                         )}
                     </h2>
@@ -2605,7 +2623,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                             {record.closingBalance > 0 ? `₹${record.closingBalance}` : '-'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-green-600">
-                                            {record.pendingPayroll > 0 ? `₹${record.pendingSalary}` : '-'}
+                                            {(record.pendingPayroll ?? record.pendingSalary ?? 0) > 0 ? `₹${record.pendingPayroll ?? record.pendingSalary}` : '-'}
                                         </td>
                                     </tr>
                                 ))
@@ -2675,7 +2693,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     <td className="px-6 py-4 text-right">₹{pastReportData.reduce((s, r) => s + r.advanceGiven, 0)}</td>
                                     <td className="px-6 py-4 text-right">₹{pastReportData.reduce((s, r) => s + r.adjustment, 0)}</td>
                                     <td className="px-6 py-4 text-right">₹{pastReportData.reduce((s, r) => s + (reportViewType === 'Detailed' ? r.closingBalance : 0), 0)}</td>
-                                    <td className="px-6 py-4 text-right">₹{pastReportData.reduce((s, r) => s + (reportViewType === 'Detailed' ? r.pendingPayroll : 0), 0)}</td>
+                                    <td className="px-6 py-4 text-right">₹{pastReportData.reduce((s, r) => s + (reportViewType === 'Detailed' ? (r.pendingPayroll ?? r.pendingSalary ?? 0) : 0), 0)}</td>
                                 </tr>
                             </tfoot>
                         )}

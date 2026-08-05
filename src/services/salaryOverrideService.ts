@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { PayrollOverride } from '../types';
+import type { PayrollOverride, PayrollOverride as SalaryOverride } from '../types';
 
 export const salaryOverrideService = {
     async getOverrides(month: number, year: number) {

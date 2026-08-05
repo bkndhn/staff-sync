@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { PayrollHike } from '../types';
+import { PayrollHike, PayrollHike as SalaryHike } from '../types';
 
 export interface DatabaseSalaryHike {
   id: string;
@@ -123,7 +123,9 @@ export const salaryHikeService = {
       id: dbHike.id,
       staffId: dbHike.staff_id,
       oldPayroll: dbHike.old_salary,
+      oldSalary: dbHike.old_salary,
       newPayroll: dbHike.new_salary,
+      newSalary: dbHike.new_salary,
       hikeDate: dbHike.hike_date,
       reason: dbHike.reason,
       breakdown: dbHike.breakdown,
@@ -134,8 +136,8 @@ export const salaryHikeService = {
   mapToDatabase(hike: Omit<SalaryHike, 'id' | 'createdAt'>): Omit<DatabaseSalaryHike, 'id' | 'created_at'> {
     return {
       staff_id: hike.staffId,
-      old_salary: hike.oldSalary,
-      new_salary: hike.newSalary,
+      old_salary: hike.oldSalary ?? hike.oldPayroll ?? 0,
+      new_salary: hike.newSalary ?? hike.newPayroll ?? 0,
       hike_date: hike.hikeDate,
       reason: hike.reason,
       breakdown: hike.breakdown

@@ -6,7 +6,7 @@ import {
   CalendarDays, Trash2, Plus, Camera, QrCode
 } from 'lucide-react';
 import { Staff, Attendance, PayrollHike, AdvanceDeduction, PayrollOverride } from '../types';
-import { calculateAttendanceMetrics, calculateSalary, getDaysInMonth, isSunday, roundToNearest10, getPreviousMonthAdvance } from '../utils/salaryCalculations';
+import { calculateAttendanceMetrics, calculateSalary, calculatePayroll, getDaysInMonth, isSunday, roundToNearest10, getPreviousMonthAdvance } from '../utils/salaryCalculations';
 import { salaryOverrideService } from '../services/salaryOverrideService';
 import { salaryCategoryService, type PayrollCategory } from '../services/salaryCategoryService';
 import { leaveService, LeaveRequest } from '../services/leaveService';
@@ -45,8 +45,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [yearlyViewYear, setYearlyViewYear] = useState(new Date().getFullYear());
-  const [overrides, setOverrides] = useState<SalaryOverride | null>(null);
-  const [salaryCategories, setSalaryCategories] = useState<SalaryCategory[]>([]);
+  const [overrides, setOverrides] = useState<PayrollOverride | null>(null);
+  const [salaryCategories, setSalaryCategories] = useState<PayrollCategory[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [showLeaveForm, setShowLeaveForm] = useState(false);
   const [leaveForm, setLeaveForm] = useState({ leaveDate: '', leaveEndDate: '', leaveType: 'casual' as const, reason: '' });
@@ -55,7 +55,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [breakEvents, setBreakEvents] = useState<BreakEvent[]>([]);
   const [expandedDayBreaks, setExpandedDayBreaks] = useState<string | null>(null);
-  const [disbursements, setDisbursements] = useState<SalaryDisbursement[]>([]);
+  const [disbursements, setDisbursements] = useState<PayrollDisbursement[]>([]);
   const [grievances, setGrievances] = useState<StaffGrievance[]>([]);
   const [showGrievanceForm, setShowGrievanceForm] = useState(false);
   const [grievanceForm, setGrievanceForm] = useState({ type: 'attendance' as 'attendance' | 'salary' | 'other', targetDate: '', description: '' });
@@ -198,15 +198,37 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       // 1. Geofence Validation
       try {
         const { locationService } = await import('../services/locationService');
+        const { settingsService } = await import('../services/settingsService');
         const allLocs = await locationService.getLocations();
-        const locConfig = allLocs.find(l => l.name === staff.location);
+        const locConfig: any = allLocs.find(l => l.name === staff.location);
+        const requireGeofence = settingsService.getRequireGeofence();
         
         if (locConfig && locConfig.latitude != null && locConfig.longitude != null) {
+          if (requireGeofence) {
+            return {
+              ok: false,
+              title: 'Mobile App Required',
+              subtitle: `Your branch requires strict geofencing. Please use the Geofence Mobile App to clock in.`
+            };
+          }
+
           const radius = locConfig.radius_meters || 100;
           const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 10000 });
+            navigator.geolocation.getCurrentPosition(resolve, reject, { 
+              enableHighAccuracy: true, 
+              timeout: 10000, 
+              maximumAge: 0 
+            });
           });
           
+          // Anti-Spoofing Heuristics
+          if (pos.coords.accuracy === 0) {
+             return { ok: false, title: 'Fake GPS Detected', subtitle: 'GPS accuracy is 0m. Please disable mock location apps.' };
+          }
+          if (pos.coords.accuracy > 150) {
+             return { ok: false, title: 'Low GPS Accuracy', subtitle: `Your GPS is too inaccurate (${Math.round(pos.coords.accuracy)}m). Step outside for a clear sky view.` };
+          }
+
           // Haversine distance
           const getDist = (lat1: number, lon1: number, lat2: number, lon2: number) => {
             const R = 6371e3;
@@ -1325,13 +1347,13 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-[var(--text-muted)] font-medium">{new Date(hike.hikeDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                       <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                        +Rs. {(hike.newPayroll - hike.oldSalary).toLocaleString('en-IN')}
+                        +Rs. {((hike.newSalary ?? hike.newPayroll ?? 0) - (hike.oldSalary ?? hike.oldPayroll ?? 0)).toLocaleString('en-IN')}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-[var(--text-primary)]">
-                      <span className="text-sm text-[var(--text-muted)]">Rs. {hike.oldSalary.toLocaleString('en-IN')}</span>
+                      <span className="text-sm text-[var(--text-muted)]">Rs. {(hike.oldSalary ?? hike.oldPayroll ?? 0).toLocaleString('en-IN')}</span>
                       <span className="text-[var(--text-muted)]">→</span>
-                      <span className="text-sm font-bold text-[var(--text-primary)]">Rs. {hike.newSalary.toLocaleString('en-IN')}</span>
+                      <span className="text-sm font-bold text-[var(--text-primary)]">Rs. {(hike.newSalary ?? hike.newPayroll ?? 0).toLocaleString('en-IN')}</span>
                     </div>
                     {hike.reason && <p className="text-xs text-[var(--text-muted)] mt-1.5 italic">"{hike.reason}"</p>}
                     {hike.breakdown && (
@@ -1724,6 +1746,9 @@ const PayrollRow: React.FC<{ label: string; value: string; bold?: boolean; highl
     }`}>{value}</span>
   </div>
 );
+
+const SalaryCard = PayrollCard;
+const SalaryRow = PayrollRow;
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const styles: Record<string, string> = {

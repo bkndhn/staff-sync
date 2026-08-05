@@ -5,10 +5,10 @@ import Login from './components/Login';
 import ResetPassword from './components/ResetPassword';
 import Dashboard from './components/Dashboard';
 import AttendanceTracker from './components/AttendanceTracker';
-import PayrollHikeModal from './components/SalaryHikeModal';
+import SalaryHikeModal, { PayrollHikeModal } from './components/SalaryHikeModal';
 import PermissionsMatrix from './components/PermissionsMatrix';
 import { ShiftRoster } from './components/ShiftRoster';
-import { Staff, Attendance, OldStaffRecord, PayrollHike, NavigationTab, AdvanceDeduction, User } from './types';
+import { Staff, Attendance, OldStaffRecord, PayrollHike, SalaryHike, NavigationTab, AdvanceDeduction, User } from './types';
 import { staffService } from './services/staffService';
 import { attendanceService } from './services/attendanceService';
 import { advanceService } from './services/advanceService';
@@ -37,6 +37,7 @@ import TenantStatusBanner from './components/TenantStatusBanner';
 
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
 const PayrollManagement = React.lazy(() => import('./components/SalaryManagement'));
+const SalaryManagement = PayrollManagement;
 const PartTimeStaff = React.lazy(() => import('./components/PartTimeStaff'));
 const OldStaffRecords = React.lazy(() => import('./components/OldStaffRecords'));
 const Settings = React.lazy(() => import('./components/Settings'));
@@ -197,7 +198,9 @@ function App() {
     staffId: string;
     staffName: string;
     currentPayroll: number;
+    currentSalary?: number;
     newPayroll: number;
+    newSalary?: number;
     onConfirm: (isHike: boolean, reason?: string, hikeDate?: string) => void;
   } | null>(null);
 
@@ -640,15 +643,15 @@ function App() {
       isPartTime: !!isPartTime,
       staffName: finalStaffName,
       shift: shift as any,
-      location: finalLocation,
-      floor: finalFloor,
+      location: finalBranch,
+      floor: finalZone,
       salary,
       salaryOverride,
       arrivalTime: finalArrivalTime,
       leavingTime: finalLeavingTime,
       appliedRuleType: finalAppliedRuleType,
       appliedRuleDetails: finalAppliedRuleDetails,
-      isUninformed: !!isUninformed
+      isUninformed: status === 'Absent' ? !!isUninformed : false
     };
 
     try {
@@ -777,6 +780,7 @@ function App() {
         ...(leavingTime ? { leavingTime } : {}),
         appliedRuleType: resolved?.appliedRuleType || null,
         appliedRuleDetails: resolved?.rules || null,
+        isUninformed: false,
       };
     });
 
@@ -822,9 +826,10 @@ function App() {
 
     try {
       // Set initial salary for hike tracking
-      const staffWithInitialPayroll = {
+      const staffWithInitialSalary = {
         ...newStaff,
-        initialPayroll: newStaff.totalSalary
+        initialSalary: newStaff.totalPayroll ?? newStaff.totalSalary ?? 0,
+        initialPayroll: newStaff.totalPayroll ?? newStaff.totalSalary ?? 0
       };
 
       const savedStaff = await staffService.create(staffWithInitialSalary);
@@ -859,8 +864,9 @@ function App() {
     const currentStaff = staff.find(s => s.id === id);
     if (!currentStaff) return;
 
-    // Check if salary is being changed
-    const isSalaryChange = updatedStaff.totalPayroll && updatedStaff.totalPayroll !== currentStaff.totalSalary;
+    const curSal = currentStaff.totalPayroll ?? currentStaff.totalSalary ?? 0;
+    const newSal = updatedStaff.totalPayroll ?? updatedStaff.totalSalary ?? 0;
+    const isSalaryChange = newSal > 0 && newSal !== curSal;
 
     if (isSalaryChange) {
       // Show salary hike modal
@@ -868,8 +874,10 @@ function App() {
         isOpen: true,
         staffId: id,
         staffName: currentStaff.name,
-        currentPayroll: currentStaff.totalSalary,
-        newPayroll: updatedStaff.totalSalary!,
+        currentPayroll: curSal,
+        currentSalary: curSal,
+        newPayroll: newSal,
+        newSalary: newSal,
         onConfirm: async (isHike: boolean, reason?: string, hikeDate?: string) => {
           try {
             // Update staff record
@@ -882,18 +890,18 @@ function App() {
             if (isHike) {
               // Build breakdown from the NEW values being set
               const breakdown: Record<string, number> = {
-                basic: updatedStaff.basicPayroll ?? currentStaff.basicSalary,
-                incentive: updatedStaff.incentive ?? currentStaff.incentive,
-                hra: updatedStaff.hra ?? currentStaff.hra,
+                basic: updatedStaff.basicPayroll ?? updatedStaff.basicSalary ?? currentStaff.basicPayroll ?? currentStaff.basicSalary ?? 0,
+                incentive: updatedStaff.incentive ?? currentStaff.incentive ?? 0,
+                hra: updatedStaff.hra ?? currentStaff.hra ?? 0,
                 meal_allowance: updatedStaff.mealAllowance ?? currentStaff.mealAllowance ?? 0,
                 ...(updatedStaff.salarySupplements ?? currentStaff.salarySupplements ?? {})
               };
 
               // Also store the OLD values with a prefix for accurate diff display
               const oldBreakdown: Record<string, number> = {
-                old_basic: currentStaff.basicSalary,
-                old_incentive: currentStaff.incentive,
-                old_hra: currentStaff.hra,
+                old_basic: currentStaff.basicPayroll ?? currentStaff.basicSalary ?? 0,
+                old_incentive: currentStaff.incentive ?? 0,
+                old_hra: currentStaff.hra ?? 0,
                 old_meal_allowance: currentStaff.mealAllowance ?? 0,
                 ...Object.fromEntries(
                   Object.entries(currentStaff.salarySupplements ?? {}).map(([k, v]) => [`old_${k}`, v])
@@ -902,8 +910,10 @@ function App() {
 
               const salaryHike = {
                 staffId: id,
-                oldPayroll: currentStaff.totalSalary,
-                newPayroll: updatedStaff.totalSalary!,
+                oldPayroll: currentStaff.totalPayroll ?? currentStaff.totalSalary ?? 0,
+                oldSalary: currentStaff.totalPayroll ?? currentStaff.totalSalary ?? 0,
+                newPayroll: updatedStaff.totalPayroll ?? updatedStaff.totalSalary ?? 0,
+                newSalary: updatedStaff.totalPayroll ?? updatedStaff.totalSalary ?? 0,
                 hikeDate: hikeDate || new Date().toISOString().split('T')[0],
                 reason,
                 breakdown: { ...breakdown, ...oldBreakdown }
@@ -1008,10 +1018,12 @@ function App() {
         location: staffMember.location,
         type: staffMember.type,
         experience: staffMember.experience,
-        basicPayroll: staffMember.basicSalary,
-        incentive: staffMember.incentive,
-        hra: staffMember.hra,
-        totalPayroll: staffMember.totalSalary,
+        basicPayroll: staffMember.basicPayroll ?? staffMember.basicSalary ?? 0,
+        basicSalary: staffMember.basicPayroll ?? staffMember.basicSalary ?? 0,
+        incentive: staffMember.incentive ?? 0,
+        hra: staffMember.hra ?? 0,
+        totalPayroll: staffMember.totalPayroll ?? staffMember.totalSalary ?? 0,
+        totalSalary: staffMember.totalPayroll ?? staffMember.totalSalary ?? 0,
         joinedDate: staffMember.joinedDate,
         leftDate: new Date().toLocaleDateString('en-US'),
         reason,
@@ -1053,13 +1065,16 @@ function App() {
         location: record.location,
         type: record.type,
         experience: record.experience,
-        basicPayroll: record.basicSalary,
-        incentive: record.incentive,
-        hra: record.hra,
-        totalPayroll: record.totalSalary,
+        basicPayroll: record.basicPayroll ?? record.basicSalary ?? 0,
+        basicSalary: record.basicPayroll ?? record.basicSalary ?? 0,
+        incentive: record.incentive ?? 0,
+        hra: record.hra ?? 0,
+        totalPayroll: record.totalPayroll ?? record.totalSalary ?? 0,
+        totalSalary: record.totalPayroll ?? record.totalSalary ?? 0,
         joinedDate: new Date().toLocaleDateString('en-US'), // New join date
         isActive: true,
-        initialPayroll: record.totalSalary
+        initialPayroll: record.totalPayroll ?? record.totalSalary ?? 0,
+        initialSalary: record.totalPayroll ?? record.totalSalary ?? 0
       };
 
       const savedStaff = await staffService.create(restoredStaff);
@@ -1457,14 +1472,29 @@ function App() {
   if (!user) {
     const isResetPasswordRoute = window.location.pathname === '/reset-password';
     if (isResetPasswordRoute) {
-      return <ResetPassword />;
+      return (
+        <>
+          <ResetPassword />
+          <CustomDialogProvider />
+        </>
+      );
     }
-    return <Login onLogin={handleLogin} />;
+    return (
+      <>
+        <Login onLogin={handleLogin} />
+        <CustomDialogProvider />
+      </>
+    );
   }
 
   // Super admin: platform control plane only — never client operational data.
   if (user.role === 'super_admin') {
-    return <SuperAdminConsole user={user} onLogout={handleLogout} onUpdateUser={setUser} />;
+    return (
+      <>
+        <SuperAdminConsole user={user} onLogout={handleLogout} onUpdateUser={setUser} />
+        <CustomDialogProvider />
+      </>
+    );
   }
 
 
@@ -1487,13 +1517,15 @@ function App() {
         onStatutoryScopeChange={setStatutoryScope}
       />
       <main
-        className="w-full px-4 sm:px-6 lg:px-8 flex-1 pb-24 md:pb-8 md:pt-20 ml-0 md:ml-[var(--sidebar-w,232px)] transition-[margin] duration-200"
+        className="w-full md:w-[calc(100%-var(--sidebar-w,232px))] md:ml-[var(--sidebar-w,232px)] px-2 sm:px-4 lg:px-6 flex-1 pb-24 md:pb-8 md:pt-20 transition-all duration-200 box-border min-w-0 max-w-full"
       >
-        <TenantStatusBanner tenant={user.tenant} role={user.role} className="mb-4" />
+        <div className="w-full max-w-full mx-auto min-w-0">
+          <TenantStatusBanner tenant={user.tenant} role={user.role} className="mb-4" />
 
-        <ErrorBoundary moduleName={activeTab}>
-          {renderContent()}
-        </ErrorBoundary>
+          <ErrorBoundary moduleName={activeTab}>
+            {renderContent()}
+          </ErrorBoundary>
+        </div>
       </main>
 
 
@@ -1502,8 +1534,10 @@ function App() {
           isOpen={salaryHikeModal.isOpen}
           onClose={() => setSalaryHikeModal(null)}
           staffName={salaryHikeModal.staffName}
-          currentSalary={salaryHikeModal.currentSalary}
-          newSalary={salaryHikeModal.newSalary}
+          currentSalary={salaryHikeModal.currentSalary ?? salaryHikeModal.currentPayroll ?? 0}
+          currentPayroll={salaryHikeModal.currentPayroll ?? salaryHikeModal.currentSalary ?? 0}
+          newSalary={salaryHikeModal.newSalary ?? salaryHikeModal.newPayroll ?? 0}
+          newPayroll={salaryHikeModal.newPayroll ?? salaryHikeModal.newSalary ?? 0}
           onConfirm={salaryHikeModal.onConfirm}
         />
       )}

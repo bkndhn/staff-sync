@@ -2,11 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, Wand2, Save, Send } from 'lucide-react';
 import { shiftRosterService, ShiftRoster as ShiftRosterModel } from '../services/shiftRosterService';
 import { Staff } from '../types';
-import { customAlert } from './CustomDialog';
+import { customAlert, customConfirm } from './CustomDialog';
 
 interface ShiftRosterProps {
   staff: Staff[];
-  userBranch: string;
+  userLocation: string;
   userRole: string;
 }
 
@@ -103,8 +103,8 @@ export const ShiftRoster: React.FC<ShiftRosterProps> = ({ staff, userLocation, u
     }));
   };
 
-  const handleAIFill = () => {
-    if (!confirm('Auto-fill remaining shifts based on standard patterns?')) return;
+  const handleAIFill = async () => {
+    if (!await customConfirm('Auto-fill remaining shifts based on standard patterns?')) return;
     
     const newChanges = { ...localChanges };
     activeStaff.forEach(s => {
@@ -154,7 +154,7 @@ export const ShiftRoster: React.FC<ShiftRosterProps> = ({ staff, userLocation, u
   };
 
   const handlePublish = async () => {
-    if (!confirm('Publish this roster? Staff will receive a push notification with their schedule.')) return;
+    if (!await customConfirm('Publish this roster? Staff will receive a push notification with their schedule.')) return;
     
     await handleSave(); // save first
     

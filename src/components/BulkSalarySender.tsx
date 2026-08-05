@@ -117,7 +117,7 @@ const BulkSalarySender: React.FC<BulkSalarySenderProps> = ({
                                 </div>
                                 <div className="ml-auto text-right">
                                     <p className="text-sm text-gray-500">Net Payroll</p>
-                                    <p className="text-lg font-bold text-green-600">₹{currentDetail?.netSalary.toLocaleString()}</p>
+                                    <p className="text-lg font-bold text-green-600">₹{(currentDetail?.netPayroll ?? currentDetail?.netSalary ?? 0).toLocaleString()}</p>
                                 </div>
                             </div>
 

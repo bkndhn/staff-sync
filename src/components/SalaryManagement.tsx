@@ -5,6 +5,9 @@ import { DollarSign, Download, Users, Calendar, TrendingUp, Edit2, Save, X, File
 import { staffService } from '../services/staffService';
 import { salaryDisbursementService } from '../services/salaryDisbursementService';
 import { calculateAttendanceMetrics, calculateSalary, calculatePartTimeSalary, roundToNearest10, computeScheduledDeductions } from '../utils/salaryCalculations';
+const calculatePayroll = calculateSalary;
+const calculatePartTimePayroll = calculatePartTimeSalary;
+type SalaryCategory = PayrollCategory;
 import type { DeductionBreakdown } from '../utils/salaryCalculations';
 import { exportSalaryToExcel, exportSalaryPDF, generateSalarySlipPDF, exportBulkSalarySlipsPDF, exportStatutoryToExcel } from '../utils/exportUtils';
 import { salaryCategoryService, type PayrollCategory } from '../services/salaryCategoryService';
@@ -25,8 +28,11 @@ interface PayrollManagementProps {
   onUpdateAdvances: (staffId: string, month: number, year: number, advances: Partial<AdvanceDeduction>) => void;
   userRole?: AppRole;
 }
+export type SalaryManagementProps = PayrollManagementProps;
 
 interface TempSalaryData {
+  grossPayroll?: number;
+  netPayroll?: number;
   oldAdvance?: number;
   currentAdvance?: number;
   originalCurrentAdvance?: number | null;
@@ -466,19 +472,21 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         basic: resultDetail.basicEarned,
         hra: resultDetail.hraEarned,
         incentive: resultDetail.incentiveEarned,
-        gross: resultDetail.grossSalary,
+        gross: resultDetail.grossPayroll ?? resultDetail.grossSalary ?? 0,
       });
       const statutoryTotal = breakdown.reduce((s, b) => s + b.amount, 0);
+      const netBase = resultDetail.netPayroll ?? resultDetail.netSalary ?? 0;
       if (statutoryTotal > 0) {
         resultDetail = {
           ...resultDetail,
           statutoryTotal,
           statutoryBreakdown: breakdown.map(b => ({ key: b.key, label: b.label, amount: b.amount })),
-          nonStatutoryNet: resultDetail.netSalary,
-          netPayroll: Math.max(0, roundToNearest10(resultDetail.netPayroll - statutoryTotal)),
+          nonStatutoryNet: netBase,
+          netPayroll: Math.max(0, roundToNearest10(netBase - statutoryTotal)),
+          netSalary: Math.max(0, roundToNearest10(netBase - statutoryTotal)),
         };
       } else {
-        resultDetail = { ...resultDetail, statutoryTotal: 0, statutoryBreakdown: [], nonStatutoryNet: resultDetail.netPayroll };
+        resultDetail = { ...resultDetail, statutoryTotal: 0, statutoryBreakdown: [], nonStatutoryNet: netBase };
       }
       return resultDetail;
     });
@@ -518,7 +526,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
 
   const salaryDetails = calculateSalaryDetails();
   const partTimeSalaries = calculatePartTimeSalaries();
-  const totalSalaryDisbursed = salaryDetails.reduce((sum, detail) => sum + detail.netSalary, 0);
+  const totalSalaryDisbursed = salaryDetails.reduce((sum, detail) => sum + (detail.netPayroll ?? detail.netSalary ?? 0), 0);
   const totalPartTimeEarnings = partTimeSalaries.reduce((sum, salary) => sum + salary.totalEarnings, 0);
   const averageAttendance = salaryDetails.length > 0
     ? salaryDetails.reduce((sum, detail) => sum + detail.presentDays + (detail.halfDays * 0.5), 0) / salaryDetails.length
@@ -603,8 +611,8 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         sundayPenaltyOverride: sundayPenaltyVal,
         lateComingDeductionOverride: lateComingDeductionVal,
         earlyLeaveDeductionOverride: earlyLeaveDeductionVal,
-        grossPayroll: grossSalary,
-        netPayroll: netSalary,
+        grossPayroll: grossPayroll,
+        netPayroll: netPayroll,
         newAdvance: newAdvance
       };
     });
@@ -859,8 +867,8 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
       `• Deduction: ₹${detail.deduction.toLocaleString()}\n` +
       `• Sunday Penalty: ₹${detail.sundayPenalty.toLocaleString()}\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
-      `💵 *Gross Payroll:* ₹${detail.grossSalary.toLocaleString()}\n` +
-      `✅ *Net Payroll:* ₹${detail.netSalary.toLocaleString()}\n` +
+      `💵 *Gross Payroll:* ₹${(detail.grossPayroll ?? detail.grossSalary ?? 0).toLocaleString()}\n` +
+      `✅ *Net Payroll:* ₹${(detail.netPayroll ?? detail.netSalary ?? 0).toLocaleString()}\n` +
       `📌 *New Advance:* ₹${detail.newAdv.toLocaleString()}\n` +
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `_Generated on ${new Date().toLocaleDateString()}_`;
@@ -966,8 +974,8 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
       return { totalGross, totalNet, totalNewAdv, totalDeduction, totalOldAdv, totalCurAdv, totalESI, totalPF };
     } else {
       // Calculate from salary details
-      const totalGross = salaryDetails.reduce((sum, d) => sum + d.grossSalary, 0);
-      const totalNet = salaryDetails.reduce((sum, d) => sum + d.netSalary, 0);
+      const totalGross = salaryDetails.reduce((sum, d) => sum + (d.grossPayroll ?? d.grossSalary ?? 0), 0);
+      const totalNet = salaryDetails.reduce((sum, d) => sum + (d.netPayroll ?? d.netSalary ?? 0), 0);
       const totalNewAdv = salaryDetails.reduce((sum, d) => sum + d.newAdv, 0);
       const totalDeduction = salaryDetails.reduce((sum, d) => sum + d.deduction, 0);
       const totalOldAdv = salaryDetails.reduce((sum, d) => sum + d.oldAdv, 0);
@@ -1457,7 +1465,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-[10px] uppercase tracking-wide text-gray-400">Net</p>
-                      <p className="text-base font-bold text-green-700">₹{Math.round(detail.netSalary).toLocaleString()}</p>
+                      <p className="text-base font-bold text-green-700">₹{Math.round(detail.netPayroll ?? detail.netSalary ?? 0).toLocaleString()}</p>
                       {(detail.statutoryTotal || 0) > 0 && (
                         <p className="text-[10px] text-gray-500 mt-1 font-medium">Non-Statutory: ₹{Math.round(detail.nonStatutoryNet || 0).toLocaleString()}</p>
                       )}
@@ -1466,7 +1474,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     <span className="badge-premium badge-success">P {(detail.presentDays + detail.halfDays * 0.5).toFixed(1)}</span>
                     <span className={`badge-premium ${(detail.leaveDays - detail.halfDays * 0.5) > 0 ? 'badge-danger' : 'badge-neutral'}`}>L {(detail.leaveDays - detail.halfDays * 0.5).toFixed(1)}</span>
-                    <span className="badge-premium badge-neutral">Gross ₹{Math.round(detail.grossSalary).toLocaleString()}</span>
+                    <span className="badge-premium badge-neutral">Gross ₹{Math.round(detail.grossPayroll ?? detail.grossSalary ?? 0).toLocaleString()}</span>
                     {detail.newAdv > 0 && <span className="badge-premium badge-warning">Adv ₹{Math.round(detail.newAdv).toLocaleString()}</span>}
                   </div>
                 </button>
@@ -1798,11 +1806,11 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
                         </button>
                         <button
                           onClick={async () => {
-                            if (!confirm(`Mark ₹${detail.netSalary} as paid for ${staffMember?.name} and notify them?`)) return;
+                            if (!await customConfirm(`Mark ₹${detail.netPayroll ?? detail.netSalary ?? 0} as paid for ${staffMember?.name} and notify them?`)) return;
                             const ok = await salaryDisbursementService.markAsPaidAndNotify(
                               detail.staffId,
                               `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`,
-                              detail.netSalary,
+                              detail.netPayroll ?? detail.netSalary ?? 0,
                               staffMember?.paymentMode || 'bank'
                             );
                             if (ok) customAlert('Payroll marked as paid and staff notified!');

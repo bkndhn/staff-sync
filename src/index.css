@@ -61,6 +61,24 @@
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+html {
+  overflow-x: clip !important;
+  overflow-y: scroll !important;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body, #root {
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+  max-width: 100vw !important;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
 /* ============================================
    LIGHT THEME OVERRIDE (Material 3 Light)
    ============================================ */
@@ -216,12 +234,26 @@ body.light-theme p {
   color: #1a1a2e !important;
 }
 
-/* Preserve text colors inside colored-background banners in light theme */
+/* Preserve text colors inside colored-background banners and dark cards in light theme */
 body.light-theme [role="alert"] p,
 body.light-theme [role="alert"] h3,
 body.light-theme [role="alert"] span,
-body.light-theme [role="alert"] svg {
+body.light-theme [role="alert"] svg,
+body.light-theme [class*="bg-gradient"] button,
+body.light-theme [class*="bg-gradient"] button span,
+body.light-theme [class*="from-indigo-950"] button,
+body.light-theme [class*="from-slate-900"] button {
   color: inherit !important;
+}
+
+/* High-specificity override for Biometric Hub dark banner buttons and text in light theme */
+body.light-theme .biometric-hub-banner button,
+body.light-theme .biometric-hub-banner button *,
+body.light-theme .biometric-hub-banner button span,
+body.light-theme .biometric-hub-banner button svg,
+body.light-theme .biometric-hub-banner h2,
+body.light-theme .biometric-hub-banner p {
+  color: #ffffff !important;
 }
 
 body.light-theme label {
@@ -499,15 +531,15 @@ body::before {
    PREMIUM BUTTON STYLES -> MATERIAL BUTTONS
    ============================================ */
 .btn-premium {
-  background: var(--primary-gradient); /* Now a solid color */
+  background: var(--primary-gradient);
   color: var(--on-primary);
   border: none;
-  border-radius: 9999px; /* Fully rounded for Material 3 / Android pill shape */
-  padding: 12px 28px; /* Larger touch target, 48px minimum height */
-  font-weight: 500;
-  font-size: 0.95rem; /* Slightly larger text */
+  border-radius: 12px;
+  padding: 9px 18px;
+  font-weight: 600;
+  font-size: 0.875rem;
   letter-spacing: 0.25px;
-  box-shadow: var(--shadow-medium); /* Stronger default shadow */
+  box-shadow: var(--shadow-medium);
   transition: background-color 200ms ease, box-shadow 200ms ease, transform 100ms ease;
   cursor: pointer;
   position: relative;
@@ -515,7 +547,7 @@ body::before {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px; /* Spacing between icon and text */
+  gap: 8px;
 }
 
 /* Material Ripple effect simulation */
@@ -576,12 +608,12 @@ body::before {
   width: 100%;
   background: var(--bg-card);
   border: 1px solid var(--glass-border-strong);
-  border-radius: 16px; /* Material uses larger radius for modern inputs */
-  padding: 16px 20px;
+  border-radius: 10px;
+  padding: 10px 14px;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: 0.875rem;
   transition: all 200ms ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* Soft inner/outer shadow */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 /* Material Design Android Search Bar */
@@ -589,10 +621,10 @@ body::before {
   width: 100%;
   background: var(--bg-card);
   border: 1px solid transparent;
-  border-radius: 9999px; /* Pill shape for search */
-  padding: 14px 24px;
+  border-radius: 9999px;
+  padding: 10px 18px;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: 0.875rem;
   transition: all 200ms ease;
   box-shadow: var(--shadow-medium);
 }
@@ -689,14 +721,14 @@ option {
 .table-premium th {
   background: var(--bg-secondary);
   color: var(--text-secondary);
-  padding: 16px 12px;
+  padding: 10px 12px;
   text-align: left;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   white-space: nowrap;
-  border-bottom: 1px solid var(--glass-border-strong);
+  border-bottom: 2px solid var(--glass-border-strong);
 }
 
 .table-premium th:first-child {
@@ -709,10 +741,10 @@ option {
 
 .table-premium td {
   background: var(--bg-card);
-  padding: 14px 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--glass-border);
   color: var(--text-primary);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
 }
 
 .table-premium tbody tr {
@@ -787,8 +819,8 @@ option {
 .stat-card {
   background: var(--bg-card);
   border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  padding: 24px;
+  border-radius: 14px;
+  padding: 14px 16px;
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-soft);
@@ -1377,10 +1409,10 @@ option {
 
 .section-header {
   background: var(--primary-gradient);
-  padding: 16px 20px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .section-header h2,
@@ -1391,7 +1423,7 @@ option {
 }
 
 .section-body {
-  padding: 20px;
+  padding: 14px 16px;
 }
 
 /* ============================================
@@ -3182,4 +3214,143 @@ body.light-theme .glass-card .text-orange-400 { color: #C2410C !important; }
 body.light-theme .glass-card-static [class*="rounded-full"][class*="bg-"],
 body.light-theme .glass-card [class*="rounded-full"][class*="bg-"] {
   color: inherit !important;
+}
+
+/* ====================================================================
+   UNIVERSAL COMPACT & FULL-WIDTH RESPONSIVE SYSTEM
+   Ensures zero horizontal overflow and modern compact styling across
+   Desktop, Tablet, and Mobile views.
+   ==================================================================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  overflow-x: clip !important;
+  overflow-y: scroll !important;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body, #root, main {
+  width: 100%;
+  max-width: 100% !important;
+  margin: 0;
+  padding: 0;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+  min-width: 0 !important;
+}
+
+/* Constrain cards and panels to parent container bounds */
+.section-card, .stat-card, .glass-card, .glass-card-static, .table-container, .section-body {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box;
+}
+
+/* Provide clean inner horizontal scroll for tables without stretching page width */
+.table-container, .section-body, .overflow-x-auto {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+table {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Responsive Table & UI Tightening for Tablet (<= 1024px) */
+@media screen and (max-width: 1024px) {
+  .section-body {
+    padding: 12px 14px !important;
+  }
+  
+  .table-premium th {
+    padding: 8px 10px !important;
+    font-size: 0.75rem !important;
+  }
+  
+  .table-premium td {
+    padding: 7px 10px !important;
+    font-size: 0.8125rem !important;
+  }
+}
+
+/* Responsive Table & UI Tightening for Mobile (<= 768px) */
+@media screen and (max-width: 768px) {
+  .section-body {
+    padding: 10px 12px !important;
+  }
+
+  .section-header {
+    padding: 10px 12px !important;
+  }
+  
+  .stat-card {
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+  
+  .table-premium th {
+    padding: 8px 8px !important;
+    font-size: 0.7rem !important;
+  }
+  
+  .table-premium td {
+    padding: 6px 8px !important;
+    font-size: 0.75rem !important;
+  }
+  
+  /* Guarantee every table wraps in scrollable viewport on mobile */
+  table {
+    display: block !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ====================================================================
+   UNIVERSAL TABLE COMPACT TYPOGRAPHY & ROW SPACING
+   Applies consistent compact styling across all tables in every module.
+   ==================================================================== */
+
+table th {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  padding-left: 10px;
+  padding-right: 10px;
+  font-size: 0.75rem !important;
+  white-space: nowrap;
+}
+
+table td {
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+  padding-left: 10px;
+  padding-right: 10px;
+  font-size: 0.8125rem !important;
+}
+
+@media screen and (max-width: 768px) {
+  table th {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+    padding-left: 6px;
+    padding-right: 6px;
+    font-size: 0.7rem !important;
+  }
+  
+  table td {
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+    padding-left: 6px;
+    padding-right: 6px;
+    font-size: 0.75rem !important;
+  }
 }

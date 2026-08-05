@@ -14,15 +14,15 @@ import { type BranchDesignationShiftConfig } from '../types';
 export class StaffSyncDB extends Dexie {
   staff!: Table<Staff, string>;
   faceEmbeddings!: Table<FaceEmbedding, string>;
-  locationShiftConfig!: Table<LocationShiftConfig, string>;
+  locationShiftConfig!: Table<BranchShiftConfig, string>;
   pendingPunches!: Table<QueuedPunch, string>;
   settings!: Table<{ key: string; value: any }, string>;
   locations!: Table<{ id: string; name: string }, string>;
-  salaryCategories!: Table<SalaryCategory, string>;
-  floors!: Table<Floor, string>;
+  salaryCategories!: Table<PayrollCategory, string>;
+  floors!: Table<Zone, string>;
   designations!: Table<Designation, string>;
   punchEvents!: Table<PunchEvent, string>;
-  locationDesignationShiftConfig!: Table<LocationDesignationShiftConfig, string>;
+  locationDesignationShiftConfig!: Table<BranchDesignationShiftConfig, string>;
 
   constructor() {
     super('StaffSyncDB');

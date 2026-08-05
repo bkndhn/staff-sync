@@ -59,7 +59,7 @@ export const generateQRPayload = async (location: string): Promise<string> => {
   return JSON.stringify({ loc: location, ts: timestamp, sig });
 };
 
-export const validateQRPayload = async (payloadStr: string, staffBranch: string): Promise<{ valid: boolean; reason?: string }> => {
+export const validateQRPayload = async (payloadStr: string, staffLocation: string): Promise<{ valid: boolean; reason?: string }> => {
   try {
     const payload = JSON.parse(payloadStr);
     if (!payload.loc || !payload.ts || !payload.sig) {

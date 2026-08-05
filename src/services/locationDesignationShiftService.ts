@@ -1,7 +1,7 @@
 import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
 import { db } from '../lib/db';
-import { type BranchDesignationShiftConfig } from '../types';
+import { type BranchDesignationShiftConfig, type LocationDesignationShiftConfig } from '../types';
 
 const toConfig = (row: any): BranchDesignationShiftConfig => ({
   id: row.id,

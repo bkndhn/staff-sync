@@ -45,7 +45,7 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
     return [...list].sort((a, b) => {
       switch (sort.key) {
         case 'left': return (new Date(a.leftDate).getTime() - new Date(b.leftDate).getTime()) * dir;
-        case 'salary': return (a.totalPayroll - b.totalSalary) * dir;
+        case 'salary': return ((a.totalPayroll ?? a.totalSalary ?? 0) - (b.totalPayroll ?? b.totalSalary ?? 0)) * dir;
         case 'advance': return (a.totalAdvanceOutstanding - b.totalAdvanceOutstanding) * dir;
         default: return a.name.localeCompare(b.name) * dir;
       }
@@ -211,7 +211,7 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-bold text-green-600">₹{record.totalSalary.toLocaleString()}</div>
+                    <div className="text-sm font-bold text-green-600">₹{(record.totalPayroll ?? record.totalSalary ?? 0).toLocaleString()}</div>
                     {record.totalAdvanceOutstanding > 0 && (
                       <div className="text-[11px] text-red-600 font-medium">Adv ₹{record.totalAdvanceOutstanding.toLocaleString()}</div>
                     )}
@@ -233,7 +233,7 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
                       </div>
                       <div className="rounded-xl bg-white border border-gray-100 p-2">
                         <div className="text-[11px] text-gray-500">Basic</div>
-                        <div className="font-medium text-gray-900">₹{record.basicSalary.toLocaleString()}</div>
+                        <div className="font-medium text-gray-900">₹{(record.basicPayroll ?? record.basicSalary ?? 0).toLocaleString()}</div>
                       </div>
                       <div className="rounded-xl bg-white border border-gray-100 p-2">
                         <div className="text-[11px] text-gray-500">Incentive</div>
@@ -376,16 +376,16 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
                         {experience}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ₹{record.basicSalary.toLocaleString()}
+                        ₹{(record.basicPayroll ?? record.basicSalary ?? 0).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ₹{record.incentive.toLocaleString()}
+                        ₹{(record.incentive || 0).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ₹{record.hra.toLocaleString()}
+                        ₹{(record.hra || 0).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
-                        ₹{record.totalSalary.toLocaleString()}
+                        ₹{(record.totalPayroll ?? record.totalSalary ?? 0).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className={`font-semibold ${record.totalAdvanceOutstanding > 0 ? 'text-red-600' : 'text-green-600'}`}>
@@ -500,10 +500,10 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
               <div className="space-y-4">
                 <h4 className="font-semibold text-gray-800 border-b pb-2">Payroll Information</h4>
                 <div className="space-y-2 text-sm">
-                  <div><span className="font-medium">Basic Payroll:</span> ₹{selectedRecord.basicSalary.toLocaleString()}</div>
-                  <div><span className="font-medium">Incentive:</span> ₹{selectedRecord.incentive.toLocaleString()}</div>
-                  <div><span className="font-medium">HRA:</span> ₹{selectedRecord.hra.toLocaleString()}</div>
-                  <div><span className="font-medium">Total Payroll:</span> ₹{selectedRecord.totalSalary.toLocaleString()}</div>
+                  <div><span className="font-medium">Basic Payroll:</span> ₹{(selectedRecord.basicPayroll ?? selectedRecord.basicSalary ?? 0).toLocaleString()}</div>
+                  <div><span className="font-medium">Incentive:</span> ₹{(selectedRecord.incentive || 0).toLocaleString()}</div>
+                  <div><span className="font-medium">HRA:</span> ₹{(selectedRecord.hra || 0).toLocaleString()}</div>
+                  <div><span className="font-medium">Total Payroll:</span> ₹{(selectedRecord.totalPayroll ?? selectedRecord.totalSalary ?? 0).toLocaleString()}</div>
                   <div>
                     <span className="font-medium">Outstanding Advance:</span>
                     <span className={`ml-1 font-semibold ${selectedRecord.totalAdvanceOutstanding > 0 ? 'text-red-600' : 'text-green-600'}`}>

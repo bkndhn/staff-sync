@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Staff, Attendance, AttendanceFilter, Designation, BranchDesignationShiftConfig } from '../types';
+import { Staff, Attendance, AttendanceFilter, Designation, BranchDesignationShiftConfig, type LocationDesignationShiftConfig } from '../types';
 import { Calendar, Download, Check, X, Filter, MapPin, Clock, Upload, Share2, AlertTriangle } from 'lucide-react';
 import { isSunday } from '../utils/salaryCalculations';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, shiftService } from '../services/shiftService';
@@ -61,10 +61,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [accommodationFilter, setAccommodationFilter] = useState<string>('All');
   const [showFilters, setShowFilters] = useState(false);
   const [showHalfDayModal, setShowHalfDayModal] = useState<{ staffId: string, staffName: string } | null>(null);
-  const [showLocationModal, setShowLocationModal] = useState<{ staffId: string, staffName: string, currentBranch: string } | null>(null);
+  const [showLocationModal, setShowLocationModal] = useState<{ staffId: string, staffName: string, currentBranch?: string, currentLocation?: string } | null>(null);
   const [selectedShift, setSelectedShift] = useState<'Morning' | 'Evening'>('Morning');
   const [viewImageModal, setViewImageModal] = useState<{ name: string; photo: string } | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string>('Big Shop');
+  const selectedBranch = selectedLocation;
   const [availableLocations, setAvailableLocations] = useState<string[]>(['Big Shop', 'Small Shop', 'Godown']);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showBulkHalfDayModal, setShowBulkHalfDayModal] = useState(false);
@@ -972,7 +973,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       employeeCode: member.employeeCode || '',
       photo: member.photo || '',
       name: displayName,
-      location: displayLocation,
+      location: displayBranch,
       floor: member.floor || '',
       designation: member.designation || '',
       type: member.type,
@@ -1411,7 +1412,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                           newVal
                         );
                       }}
-                      className={`h-10 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-1 ${data.isUninformed ? 'bg-orange-600 text-white' : 'bg-orange-100 text-orange-800 active:bg-orange-200'}`}
+                      className={`h-10 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-1 ${(data.status === 'Absent' && data.isUninformed) ? 'bg-orange-600 text-white' : 'bg-orange-100 text-orange-800 active:bg-orange-200'}`}
                       title="Uninformed Leave"
                     >UL</button>
                     <button
@@ -1570,7 +1571,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                             );
                           }}
                           className={`w-7 h-7 md:w-auto md:px-2 md:py-1 text-xs font-bold rounded shadow-sm flex items-center justify-center ${
-                            data.isUninformed
+                            (data.status === 'Absent' && data.isUninformed)
                               ? 'bg-orange-600 text-white ring-2 ring-orange-600 ring-offset-1'
                               : 'bg-orange-200 text-orange-900 hover:bg-orange-300 border border-orange-300'
                           } transition-all duration-200`}
@@ -1808,7 +1809,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               <span className="truncate">Change Branch - {showLocationModal.staffName}</span>
             </h3>
             <p className="text-sm md:text-base text-gray-600 mb-3 md:mb-4">
-              Current: <span className="font-medium">{showLocationModal.currentLocation}</span><br />
+              Current: <span className="font-medium">{showLocationModal.currentLocation || showLocationModal.currentBranch || '-'}</span><br />
               <span className="text-xs md:text-sm">Select for {new Date(selectedDate).toLocaleDateString()}:</span>
             </p>
             <div className="space-y-2 md:space-y-3 mb-4 md:mb-6">

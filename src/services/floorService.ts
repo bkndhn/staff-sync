@@ -9,6 +9,8 @@ export interface Zone {
     sortOrder: number;
 }
 
+export type Floor = Zone;
+
 export const floorService = {
     async getFloors(): Promise<Floor[]> {
         const { data, error } = await dataApi
@@ -79,7 +81,7 @@ export const floorService = {
     async updateFloor(id: string, name: string, locationName?: string): Promise<Zone | null> {
         // Fetch old floor to get its old name
         const { data: oldZone } = await dataApi.from('floors').select('name').eq('id', id).single();
-        const oldName = oldFloor?.name;
+        const oldName = oldZone?.name;
 
         const updateData: any = { name, updated_at: new Date().toISOString() };
         if (locationName) {

@@ -25,8 +25,10 @@ const DEFAULT_CONFIG: PayrollOverrideConfig = {
   sundayPenalty: false
 };
 
+export type SalaryOverrideConfig = PayrollOverrideConfig;
+
 const PayrollOverridesPanel: React.FC = () => {
-  const [config, setConfig] = useState<SalaryOverrideConfig>(DEFAULT_CONFIG);
+  const [config, setConfig] = useState<PayrollOverrideConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 

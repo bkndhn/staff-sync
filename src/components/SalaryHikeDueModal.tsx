@@ -3,13 +3,13 @@ import { Staff, PayrollHike } from '../types';
 import { TrendingUp, X, Download } from 'lucide-react';
 import { appSettingsService } from '../services/appSettingsService';
 
-interface PayrollHikeDueModalProps {
+interface SalaryHikeDueModalProps {
     staff: Staff[];
     salaryHikes: PayrollHike[];
     onClose: () => void;
 }
 
-const PayrollHikeDueModal: React.FC<SalaryHikeDueModalProps> = ({
+export const SalaryHikeDueModal: React.FC<SalaryHikeDueModalProps> = ({
     staff,
     salaryHikes,
     onClose
@@ -82,9 +82,9 @@ const PayrollHikeDueModal: React.FC<SalaryHikeDueModalProps> = ({
                 'S.No': index + 1,
                 'Name': member.name,
                 'Branch': member.location,
-                'Past Payroll': lastHike ? lastHike.oldPayroll : (member.initialPayroll || 0),
-                'Current Payroll': member.basicPayroll + member.incentive + member.hra,
-                'Hiked Payroll': lastHike ? (lastHike.newPayroll - lastHike.oldSalary) : 0,
+                'Past Payroll': lastHike ? (lastHike.oldPayroll ?? lastHike.oldSalary ?? 0) : (member.initialSalary ?? (member as any).initialPayroll ?? 0),
+                'Current Payroll': (member.basicPayroll ?? member.basicSalary ?? 0) + (member.incentive ?? 0) + (member.hra ?? 0),
+                'Hiked Payroll': lastHike ? ((lastHike.newPayroll ?? lastHike.newSalary ?? 0) - (lastHike.oldPayroll ?? lastHike.oldSalary ?? 0)) : 0,
                 'Last Hike Date': lastHike ? new Date(lastHike.hikeDate).toLocaleDateString() : 'Never',
                 'Months Since Hike': getMonthsSinceHike(member.id),
                 'Hike Interval': `${getHikeIntervalForStaff(member)} months`,
@@ -140,7 +140,8 @@ const PayrollHikeDueModal: React.FC<SalaryHikeDueModalProps> = ({
                             {staffDueForHike.map((member, index) => {
                                 const hikes = getStaffSalaryHikes(member.id);
                                 const lastHike = hikes[0];
-                                const currentPayroll = member.basicPayroll + member.incentive + member.hra;
+                                const currentPayroll = (member.basicPayroll ?? member.basicSalary ?? 0) + (member.incentive ?? 0) + (member.hra ?? 0);
+                                const currentSalary = currentPayroll;
                                 const interval = getHikeIntervalForStaff(member);
                                 return (
                                     <tr key={member.id} className="hover:bg-gray-50">
@@ -180,4 +181,5 @@ const PayrollHikeDueModal: React.FC<SalaryHikeDueModalProps> = ({
     );
 };
 
-export default PayrollHikeDueModal;
+export const PayrollHikeDueModal = SalaryHikeDueModal;
+export default SalaryHikeDueModal;

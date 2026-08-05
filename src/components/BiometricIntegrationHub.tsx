@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Cpu, Wifi, WifiOff, Copy, Check, Terminal, ShieldCheck, RefreshCw, AlertTriangle, Key, Download, Activity, Layers, Server } from 'lucide-react';
 import { dataApi } from '../lib/dataApi';
-import { staffService, Staff } from '../services/staffService';
+import { staffService } from '../services/staffService';
+import type { Staff } from '../types';
 import { customAlert } from './CustomDialog';
 
 interface DeviceStatus {
@@ -108,15 +109,15 @@ while ($true) {
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
+      <div className="biometric-hub-banner bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-purple-500/20 rounded-xl border border-purple-500/30">
               <Cpu className="text-purple-300 h-8 w-8" />
             </div>
             <div>
-              <h2 className="text-xl md:text-2xl font-bold">Biometric & eSSL Integration Hub</h2>
-              <p className="text-sm text-purple-200">
+              <h2 className="text-xl md:text-2xl font-bold !text-white" style={{ color: '#ffffff' }}>Biometric & eSSL Integration Hub</h2>
+              <p className="text-sm text-purple-200" style={{ color: '#e9d5ff' }}>
                 Enterprise Cloud-Push & Pull Biometric Device Synchronization Engine
               </p>
             </div>
@@ -124,10 +125,11 @@ while ($true) {
           <div className="flex items-center gap-2">
             <button
               onClick={loadData}
-              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-medium transition-colors"
+              style={{ color: '#ffffff' }}
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-medium !text-white transition-colors"
             >
-              <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-              Refresh Status
+              <RefreshCw size={16} className={loading ? "animate-spin" : ""} style={{ color: '#ffffff' }} />
+              <span style={{ color: '#ffffff' }}>Refresh Status</span>
             </button>
           </div>
         </div>
@@ -136,35 +138,39 @@ while ($true) {
         <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-white/10">
           <button
             onClick={() => setActiveTab('devices')}
+            style={{ color: '#ffffff' }}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === 'devices' ? 'bg-purple-500 text-white shadow-lg' : 'bg-white/5 text-purple-200 hover:bg-white/10'
+              activeTab === 'devices' ? 'bg-purple-500 !text-white shadow-lg' : 'bg-white/15 !text-white hover:bg-white/25'
             }`}
           >
-            <Activity size={16} /> Live Hardware Devices ({devices.length})
+            <Activity size={16} style={{ color: '#ffffff' }} /> <span style={{ color: '#ffffff' }}>Live Hardware Devices ({devices.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('webhook')}
+            style={{ color: '#ffffff' }}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === 'webhook' ? 'bg-purple-500 text-white shadow-lg' : 'bg-white/5 text-purple-200 hover:bg-white/10'
+              activeTab === 'webhook' ? 'bg-purple-500 !text-white shadow-lg' : 'bg-white/15 !text-white hover:bg-white/25'
             }`}
           >
-            <Server size={16} /> Cloud Webhook API
+            <Server size={16} style={{ color: '#ffffff' }} /> <span style={{ color: '#ffffff' }}>Cloud Webhook API</span>
           </button>
           <button
             onClick={() => setActiveTab('mapping')}
+            style={{ color: '#ffffff' }}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === 'mapping' ? 'bg-purple-500 text-white shadow-lg' : 'bg-white/5 text-purple-200 hover:bg-white/10'
+              activeTab === 'mapping' ? 'bg-purple-500 !text-white shadow-lg' : 'bg-white/15 !text-white hover:bg-white/25'
             }`}
           >
-            <Layers size={16} /> Enroll Number Mapping ({mappedStaff.length}/{staffList.length})
+            <Layers size={16} style={{ color: '#ffffff' }} /> <span style={{ color: '#ffffff' }}>Enroll Number Mapping ({mappedStaff.length}/{staffList.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('desktopAgent')}
+            style={{ color: '#ffffff' }}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === 'desktopAgent' ? 'bg-purple-500 text-white shadow-lg' : 'bg-white/5 text-purple-200 hover:bg-white/10'
+              activeTab === 'desktopAgent' ? 'bg-purple-500 !text-white shadow-lg' : 'bg-white/15 !text-white hover:bg-white/25'
             }`}
           >
-            <Terminal size={16} /> On-Premise eSSL Windows Agent
+            <Terminal size={16} style={{ color: '#ffffff' }} /> <span style={{ color: '#ffffff' }}>On-Premise eSSL Windows Agent</span>
           </button>
         </div>
       </div>

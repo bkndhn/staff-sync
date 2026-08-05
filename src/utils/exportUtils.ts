@@ -108,8 +108,8 @@ export const exportSalaryToExcel = async (
       row[`${b.label} (Deduction)`] = formatNumberForExport(b.amount);
     });
     row['Statutory Total'] = formatNumberForExport(detail.statutoryTotal || 0);
-    row['Gross Payroll'] = formatNumberForExport(detail.grossSalary);
-    row['Net Payroll'] = formatNumberForExport(detail.netSalary);
+    row['Gross Payroll'] = formatNumberForExport(detail.grossPayroll ?? detail.grossSalary ?? 0);
+    row['Net Payroll'] = formatNumberForExport(detail.netPayroll ?? detail.netSalary ?? 0);
     row['New Advance'] = formatNumberForExport(detail.newAdv);
     return row;
   });
@@ -296,8 +296,8 @@ export const exportSalaryPDF = async (
         ...customVals,
         formatCurrencyForExport(detail.sundayPenalty),
         formatCurrencyForExport(detail.statutoryTotal || 0),
-        formatCurrencyForExport(detail.grossSalary),
-        formatCurrencyForExport(detail.netSalary),
+        formatCurrencyForExport(detail.grossPayroll ?? detail.grossSalary ?? 0),
+        formatCurrencyForExport(detail.netPayroll ?? detail.netSalary ?? 0),
         formatCurrencyForExport(detail.newAdv)
       ];
     });
@@ -469,7 +469,7 @@ export const exportOldStaffPDF = (oldStaffRecords: OldStaffRecord[]) => {
       record.type,
       record.experience,
       tenure,
-      record.totalSalary.toLocaleString(),
+      (record.totalPayroll ?? record.totalSalary ?? 0).toLocaleString(),
       record.totalAdvanceOutstanding.toLocaleString(),
       record.reason
     ];
@@ -643,12 +643,12 @@ const renderCompactSalarySlip = (
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
 
-  doc.text(`Gross: ${fmt(salaryDetail.grossSalary)}`, leftMargin + 5, y + 5);
+  doc.text(`Gross: ${fmt(salaryDetail.grossPayroll ?? salaryDetail.grossSalary ?? 0)}`, leftMargin + 5, y + 5);
   doc.text(`Deductions: ${fmt(totalDeductions)}`, leftMargin + 55, y + 5);
   doc.text(`New Adv: ${fmt(salaryDetail.newAdv)}`, rightHalf + 10, y + 5);
 
   doc.setFontSize(10);
-  doc.text(`NET: ${fmt(salaryDetail.netSalary)}`, pageWidth - leftMargin - 5, y + 8, { align: 'right' });
+  doc.text(`NET: ${fmt(salaryDetail.netPayroll ?? salaryDetail.netSalary ?? 0)}`, pageWidth - leftMargin - 5, y + 8, { align: 'right' });
 
   doc.setTextColor(0, 0, 0);
 };

@@ -22,6 +22,7 @@ import {
 import {
   calculateAttendanceMetrics,
   calculateSalary,
+  calculatePayroll,
   isSunday,
   roundToNearest10
 } from '../utils/salaryCalculations';
@@ -29,6 +30,7 @@ import { salaryOverrideService } from '../services/salaryOverrideService';
 import { salaryCategoryService } from '../services/salaryCategoryService';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, shiftService } from '../services/shiftService';
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
+import { AIPredictor } from './AIPredictor';
 
 interface WorkforceInsightsProps {
   staff: Staff[];
@@ -437,8 +439,8 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
         const statutoryTotal = breakdown.reduce((sum, b) => sum + b.amount, 0);
         const finalNetPayroll = Math.max(0, roundToNearest10(finalDetail.netPayroll - statutoryTotal));
         
-        grossTotal += finalDetail.grossSalary;
-        netTotal += finalNetSalary;
+        grossTotal += finalDetail.grossPayroll;
+        netTotal += finalNetPayroll;
         sundayPenaltyTotal += finalDetail.sundayPenalty;
         
         oldAdvanceTotal += finalDetail.oldAdv;
@@ -526,7 +528,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
       };
     });
     
-    return list.sort((a, b) => b.netPayroll - a.netSalary).slice(0, 5);
+    return list.sort((a, b) => b.netPayroll - a.netPayroll).slice(0, 5);
   }, [visibleStaff, attendance, advances, monthlyOverrides, representedMonths]);
 
   // Toggle expanded details
@@ -654,6 +656,12 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
 
       {!isDateInvalid && (
         <>
+          {/* AI Predictor for Flex Staff */}
+          <AIPredictor 
+            attendance={attendance} 
+            userLocation={userLocation} 
+          />
+
           {/* Top KPIs Grid */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
             <KpiCard
@@ -828,7 +836,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
                       <p className="text-[10px] text-[var(--text-muted)] ml-6 mt-0.5">{emp.designation} • {emp.location}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-emerald-500">₹{emp.netSalary.toLocaleString('en-IN')}</p>
+                      <p className="font-bold text-emerald-500">₹{emp.netPayroll.toLocaleString('en-IN')}</p>
                       <p className="text-[9px] text-[var(--text-muted)]">Net Payroll</p>
                     </div>
                   </div>

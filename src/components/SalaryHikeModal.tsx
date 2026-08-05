@@ -1,30 +1,31 @@
 import React, { useState } from 'react';
 import { TrendingUp, X } from 'lucide-react';
 
-interface PayrollHikeModalProps {
+interface SalaryHikeModalProps {
   isOpen: boolean;
   onClose: () => void;
   staffName: string;
-  currentPayroll: number;
-  newPayroll: number;
+  currentPayroll?: number;
+  currentSalary?: number;
+  newPayroll?: number;
+  newSalary?: number;
   onConfirm: (isHike: boolean, reason?: string, hikeDate?: string) => void;
 }
 
-const PayrollHikeModal: React.FC<SalaryHikeModalProps> = ({
-  isOpen,
-  onClose,
-  staffName,
-  currentSalary,
-  newSalary,
-  onConfirm
-}) => {
+export const SalaryHikeModal: React.FC<SalaryHikeModalProps> = (props) => {
+  const { isOpen, onClose, staffName, onConfirm } = props;
+  const currentSalary = props.currentSalary ?? props.currentPayroll ?? 0;
+  const currentPayroll = currentSalary;
+  const newSalary = props.newSalary ?? props.newPayroll ?? 0;
+  const newPayroll = newSalary;
+
   const [isHike, setIsHike] = useState(true);
   const [reason, setReason] = useState('');
   const [hikeDate, setHikeDate] = useState(new Date().toISOString().split('T')[0]);
 
   if (!isOpen) return null;
 
-  const difference = newPayroll - currentSalary;
+  const difference = newSalary - currentSalary;
   const isIncrease = difference > 0;
 
   const handleConfirm = () => {
@@ -148,4 +149,5 @@ const PayrollHikeModal: React.FC<SalaryHikeModalProps> = ({
   );
 };
 
-export default PayrollHikeModal;
+export const PayrollHikeModal = SalaryHikeModal;
+export default SalaryHikeModal;

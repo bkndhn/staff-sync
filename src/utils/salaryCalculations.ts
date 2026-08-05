@@ -1,4 +1,4 @@
-import { Staff, Attendance, AdvanceDeduction, PartTimeSalaryDetail, WeeklySalary, DailyPayroll } from '../types';
+import { Staff, Attendance, AdvanceDeduction, PartTimeSalaryDetail, WeeklySalary, DailyPayroll, DailySalary } from '../types';
 import { AdvanceEntry } from '../services/advanceEntryService';
 import { settingsService } from '../services/settingsService';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, minutesBetween } from '../services/shiftService';
@@ -40,11 +40,11 @@ export const getPartTimeDailyPayroll = (date: string, isOverride: boolean = fals
   if (isOverride && overrideAmount !== undefined) {
     return overrideAmount;
   }
-
   const rates = settingsService.getPartTimeRates();
   const isSundayDate = isSunday(date);
   return isSundayDate ? rates.sundayRate : rates.weekdayRate;
 };
+export const getPartTimeDailySalary = getPartTimeDailyPayroll;
 
 // Calculate attendance values
 export const calculateAttendanceMetrics = (
@@ -341,7 +341,7 @@ export const calculatePayroll = (
   let earlyCount = 0;
   let recordLateDeduction = 0;
   let recordEarlyDeduction = 0;
-  const dailyRate = staff.basicPayroll / calculationDays;
+  const dailyRate = (staff.basicPayroll ?? staff.basicSalary ?? 0) / calculationDays;
 
   monthlyAttendance.forEach(record => {
     if (record.status === 'Absent') return;
@@ -419,11 +419,12 @@ export const calculatePayroll = (
   let incentiveEarned: number;
   let hraEarned: number;
   let hraDeduction: number = 0; // Track HRA deduction internally
+  const basicAmount = staff.basicPayroll ?? staff.basicSalary ?? 0;
 
   // SCENARIO 3: Fixed salary (calculationDays = 0)
   if (calculationDays === 0) {
     // No calculation based on present days - fixed salary
-    basicEarned = staff.basicSalary;
+    basicEarned = basicAmount;
     incentiveEarned = staff.incentive;
     hraEarned = staff.hra;
   }
@@ -431,9 +432,9 @@ export const calculatePayroll = (
   else if (calculationDays === 26) {
     // Basic calculation: (basicPayroll / 26) * presentDays, rounded to nearest 10
     if (totalPresentDays >= 26) {
-      basicEarned = staff.basicSalary;
+      basicEarned = basicAmount;
     } else {
-      basicEarned = roundToNearest10((staff.basicPayroll / 26) * totalPresentDays);
+      basicEarned = roundToNearest10((basicAmount / 26) * totalPresentDays);
     }
 
     // Incentive and HRA logic
@@ -462,9 +463,9 @@ export const calculatePayroll = (
   else if (calculationDays === 30) {
     // Basic calculation: (basicPayroll / 30) * presentDays, rounded to nearest 10
     if (totalPresentDays >= 30) {
-      basicEarned = staff.basicSalary;
+      basicEarned = basicAmount;
     } else {
-      basicEarned = roundToNearest10((staff.basicPayroll / 30) * totalPresentDays);
+      basicEarned = roundToNearest10((basicAmount / 30) * totalPresentDays);
     }
 
     // Incentive and HRA logic for 30-day calculation
@@ -482,9 +483,9 @@ export const calculatePayroll = (
   else {
     // Use the custom calculationDays value
     if (totalPresentDays >= calculationDays) {
-      basicEarned = staff.basicSalary;
+      basicEarned = basicAmount;
     } else {
-      basicEarned = roundToNearest10((staff.basicPayroll / calculationDays) * totalPresentDays);
+      basicEarned = roundToNearest10((basicAmount / calculationDays) * totalPresentDays);
     }
 
     if (totalPresentDays >= 25) {
@@ -605,13 +606,17 @@ export const calculatePayroll = (
     mealAllowance: roundToNearest10(mealAllowance),
     lateComingDeduction: roundToNearest10(lateComingDeduction),
     earlyLeaveDeduction: roundToNearest10(earlyLeaveDeduction),
-    grossSalary,
+    grossPayroll: roundToNearest10(grossPayroll),
+    grossSalary: roundToNearest10(grossPayroll),
     newAdv,
-    netSalary,
+    netPayroll,
+    netSalary: netPayroll,
     calculationDays, // Include for reference
     isProcessed: false
   };
 };
+
+export const calculateSalary = calculatePayroll;
 
 // Calculate dashboard attendance with half-day support and flex staff
 export const calculateLocationAttendance = (
@@ -694,3 +699,5 @@ export const getCurrencyBreakdown = (amount: number): Record<number, number> => 
 
   return breakdown;
 };
+
+export const calculatePartTimeSalary = calculatePartTimePayroll;
