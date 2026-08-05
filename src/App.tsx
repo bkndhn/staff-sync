@@ -44,6 +44,7 @@ const OldStaffRecords = React.lazy(() => import('./components/OldStaffRecords'))
 const Settings = React.lazy(() => import('./components/Settings'));
 const StaffPortal = React.lazy(() => import('./components/StaffPortal'));
 const LeaveManagement = React.lazy(() => import('./components/LeaveManagement'));
+const LoanManagement = React.lazy(() => import('./components/LoanManagement'));
 const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
@@ -1383,6 +1384,17 @@ function App() {
               userLocation={user?.location}
               userName={user?.role === 'admin' ? 'Admin' : (user?.role === 'supervisor' || user?.role === 'floor_supervisor') ? `${user?.location} Supervisor` : `${user?.location} Manager`}
               userFloor={user?.role === 'supervisor' || user?.role === 'floor_supervisor' ? user?.floor : undefined}
+            />
+          </Suspense>
+        );
+      case 'Loan Requests':
+        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'statutory_admin') return null;
+        return (
+          <Suspense fallback={<ComponentLoader />}>
+            <LoanManagement
+              userRole={user?.role || 'manager'}
+              userName={user?.full_name || user?.email || 'Approver'}
+              userLocation={user?.location}
             />
           </Suspense>
         );
