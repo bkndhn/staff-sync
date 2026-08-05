@@ -882,6 +882,90 @@ export type Database = {
           },
         ]
       }
+      loan_requests: {
+        Row: {
+          advance_entry_id: string | null
+          amount: number
+          approval_history: Json
+          approved_at: string | null
+          created_at: string
+          current_approval_level: number
+          emi_months: number
+          floor: string | null
+          id: string
+          location: string | null
+          reason: string
+          rejection_reason: string | null
+          required_approval_levels: number
+          staff_id: string
+          staff_name: string | null
+          start_month: number
+          start_year: number
+          status: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          advance_entry_id?: string | null
+          amount: number
+          approval_history?: Json
+          approved_at?: string | null
+          created_at?: string
+          current_approval_level?: number
+          emi_months?: number
+          floor?: string | null
+          id?: string
+          location?: string | null
+          reason: string
+          rejection_reason?: string | null
+          required_approval_levels?: number
+          staff_id: string
+          staff_name?: string | null
+          start_month: number
+          start_year: number
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          advance_entry_id?: string | null
+          amount?: number
+          approval_history?: Json
+          approved_at?: string | null
+          created_at?: string
+          current_approval_level?: number
+          emi_months?: number
+          floor?: string | null
+          id?: string
+          location?: string | null
+          reason?: string
+          rejection_reason?: string | null
+          required_approval_levels?: number
+          staff_id?: string
+          staff_name?: string | null
+          start_month?: number
+          start_year?: number
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_requests_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       location_designation_shift_config: {
         Row: {
           created_at: string | null
