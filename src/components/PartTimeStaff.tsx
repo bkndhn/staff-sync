@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Attendance, PartTimeSalaryDetail, Staff } from '../types';
-import { Clock, Plus, Download, Calendar, DollarSign, Edit2, Save, X, FileSpreadsheet, Trash2, Settings, CheckCircle, ChevronDown, ChevronUp, MessageCircle, Filter } from 'lucide-react';
+import { Clock, Plus, Download, Calendar, DollarSign, Edit2, Save, X, FileSpreadsheet, Trash2, Settings, CheckCircle, ChevronDown, ChevronUp, MessageCircle, Filter, Sparkles, Zap, Sun } from 'lucide-react';
 import { calculatePartTimeSalary, getPartTimeDailySalary, isSunday, getCurrencyBreakdown } from '../utils/salaryCalculations';
 import ListFilterBar from './ui/ListFilterBar';
 import { exportSalaryToExcel, exportPartTimeSalaryPDF } from '../utils/exportUtils';
@@ -941,6 +941,80 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         setBulkStaffList(newList);
     };
 
+    const handleCopyYesterdayRoster = async () => {
+        const curDate = new Date(selectedDate);
+        let foundDateStr = '';
+        let foundRecords: Attendance[] = [];
+
+        for (let i = 1; i <= 7; i++) {
+            const checkD = new Date(curDate);
+            checkD.setDate(checkD.getDate() - i);
+            const dStr = checkD.toISOString().split('T')[0];
+
+            const recs = attendance.filter(r =>
+                r.isPartTime &&
+                r.date === dStr &&
+                (!bulkLocation || r.location === bulkLocation) &&
+                (!userFloor || r.floor === userFloor)
+            );
+
+            if (recs.length > 0) {
+                foundDateStr = dStr;
+                foundRecords = recs;
+                break;
+            }
+        }
+
+        if (foundRecords.length === 0) {
+            await customAlert('No recent part-time attendance found in the past 7 days to copy.');
+            return;
+        }
+
+        const newRows = foundRecords.map(r => ({
+            name: r.staffName || '',
+            shift: (r.shift === 'Morning' || r.shift === 'Evening' || r.shift === 'Both' ? r.shift : 'Both') as 'Morning' | 'Evening' | 'Both',
+            salary: r.salary || getPartTimeDailySalary(selectedDate),
+            arrivalTime: r.arrivalTime || '10:00',
+            leavingTime: r.leavingTime || '21:30',
+            floor: r.floor || bulkFloor || userFloor || ''
+        }));
+
+        setBulkStaffList(newRows);
+        await customAlert(`Successfully loaded ${newRows.length} part-time staff from ${foundDateStr}!`);
+    };
+
+    const handleCopySundayCrew = async () => {
+        const curDate = new Date(selectedDate);
+        let checkD = new Date(curDate);
+        const daysBack = curDate.getDay() === 0 ? 7 : (curDate.getDay() || 7);
+        checkD.setDate(checkD.getDate() - daysBack);
+        const sunDateStr = checkD.toISOString().split('T')[0];
+
+        const recs = attendance.filter(r =>
+            r.isPartTime &&
+            r.date === sunDateStr &&
+            (!bulkLocation || r.location === bulkLocation) &&
+            (!userFloor || r.floor === userFloor)
+        );
+
+        if (recs.length === 0) {
+            await customAlert(`No part-time attendance found for previous Sunday (${sunDateStr}).`);
+            return;
+        }
+
+        const newRows = recs.map(r => ({
+            name: r.staffName || '',
+            shift: (r.shift === 'Morning' || r.shift === 'Evening' || r.shift === 'Both' ? r.shift : 'Both') as 'Morning' | 'Evening' | 'Both',
+            salary: getPartTimeDailySalary(selectedDate),
+            arrivalTime: r.arrivalTime || '10:00',
+            leavingTime: r.leavingTime || '21:30',
+            floor: r.floor || bulkFloor || userFloor || ''
+        }));
+
+        setBulkStaffList(newRows);
+        await customAlert(`Successfully loaded ${newRows.length} Sunday Crew members from ${sunDateStr}!`);
+    };
+
     const handleBulkSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -1361,11 +1435,39 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             {/* Add Part-Time Staff Form (Bulk) */}
             {showAddForm && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6">
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-3">
                         <h2 className="text-lg md:text-xl font-bold text-gray-800">Add Part-Time Staff for Today</h2>
                         <button onClick={() => setShowAddForm(false)} className="bg-gray-100 text-gray-500 hover:text-white hover:bg-red-600 p-1.5 rounded-full transition-all shadow-sm">
                             <X size={20} />
                         </button>
+                    </div>
+
+                    {/* Smart Roster Quick-Fill Toolbar */}
+                    <div className="flex flex-wrap gap-2 mb-4 p-3 bg-purple-50 rounded-xl border border-purple-100 items-center justify-between">
+                        <span className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                            <Sparkles size={15} className="text-purple-600" />
+                            Smart Roster Quick-Fill:
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                onClick={handleCopyYesterdayRoster}
+                                className="px-3 py-1.5 bg-white border border-purple-200 text-purple-700 hover:bg-purple-600 hover:text-white rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
+                                title="Pre-fill form with staff who worked yesterday"
+                            >
+                                <Zap size={14} className="text-amber-500" />
+                                Copy Yesterday's Roster
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleCopySundayCrew}
+                                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
+                                title="Pre-fill form with staff who worked last Sunday"
+                            >
+                                <Sun size={14} />
+                                Load Sunday Crew
+                            </button>
+                        </div>
                     </div>
 
                     <form onSubmit={handleBulkSubmit}>
