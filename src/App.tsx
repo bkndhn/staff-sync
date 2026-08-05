@@ -34,6 +34,7 @@ import { resolveActiveRule } from './utils/attendanceRules';
 import { appSettingsService } from './services/appSettingsService';
 import { CustomDialogProvider, customAlert } from './components/CustomDialog';
 import TenantStatusBanner from './components/TenantStatusBanner';
+import { errorTracker } from './services/errorTrackingService';
 
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
 const PayrollManagement = React.lazy(() => import('./components/SalaryManagement'));
@@ -87,6 +88,10 @@ const ComponentLoader = () => <SkeletonLoader />;
 
 
 function App() {
+  useEffect(() => {
+    errorTracker.init();
+  }, []);
+
   // ── Capacitor Offline Sync — auto-syncs punches when network restores ────────
   const { status: offlineSyncStatus } = useOfflineSync();
   const [isOnline, setIsOnline] = useState(navigator.onLine);

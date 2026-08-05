@@ -3,7 +3,7 @@ import {
   Building2, Plus, Search, RefreshCw, Power, Trash2,
   LogOut, ShieldCheck, X, Pencil, BarChart3, Smartphone,
   Settings as SettingsIcon, AlertCircle, Eye, EyeOff, ShieldAlert,
-  Users, ChevronDown, ChevronRight, Mail, UserCheck, UserX, Clock
+  Users, ChevronDown, ChevronRight, Mail, UserCheck, UserX, Clock, Activity, Heart
 } from 'lucide-react';
 import {
   superAdminService, Tenant, TenantUser, PlatformOverview,
@@ -13,6 +13,7 @@ import { User } from '../types';
 import { userService } from '../services/userService';
 import { AuditLogViewer } from './AuditLogViewer';
 import TenantStatusBanner from './TenantStatusBanner';
+import { PlatformHealth } from './PlatformHealth';
 
 interface Props {
   user: User;
@@ -47,7 +48,7 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
   const [editing, setEditing] = useState<Tenant | null>(null);
   const [form, setForm] = useState({ ...blankTenant });
   const [wizardStep, setWizardStep] = useState(1);
-  const [activeTab, setActiveTab] = useState<'Clients' | 'Audit Logs'>('Clients');
+  const [activeTab, setActiveTab] = useState<'Clients' | 'Audit Logs' | 'Platform Health'>('Clients');
 
   const flash = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(''), 3500); };
 
@@ -230,6 +231,12 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
             title="Audit Logs">
             <ShieldAlert size={16} />
           </button>
+          <button
+            onClick={() => setActiveTab('Platform Health')}
+            className={`rounded-lg border p-2 ${activeTab === 'Platform Health' ? 'bg-rose-50 text-rose-600 border-rose-200' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+            title="Platform Health">
+            <Activity size={16} />
+          </button>
           <button onClick={async () => {
             if (await customConfirm("Log out of Super Admin console?")) onLogout();
           }} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50" title="Sign out">
@@ -239,7 +246,7 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
 
         {/* Tab bar */}
         <div className="flex border-t border-slate-100 bg-white">
-          {(['Clients', 'Audit Logs'] as const).map(tab => (
+          {(['Clients', 'Audit Logs', 'Platform Health'] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`flex-1 py-2 text-xs font-semibold transition-colors ${activeTab === tab ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
               {tab}
@@ -422,8 +429,10 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
               <BarChart3 size={12} /> {overview?.totalSeats ?? 0} seats · {overview?.totalStaff ?? 0} staff · {overview?.tenants ?? 0} clients
             </p>
           </>
-        ) : (
+        ) : activeTab === 'Audit Logs' ? (
           <AuditLogViewer currentUserEmail={user.email} />
+        ) : (
+          <PlatformHealth />
         )}
 
       </main>
