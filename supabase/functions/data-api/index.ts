@@ -335,7 +335,18 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Only an admin can delete loan requests" }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+      // Managers/supervisors may only act on the first approval level.
+      if (body.op === "update" && role !== "admin" && role !== "statutory_admin") {
+        const targetId = body.filters?.find((f) => f.col === "id" && f.op === "eq")?.val;
+        const { data: loanRow } = await admin.from("loan_requests")
+          .select("current_approval_level, status").eq("id", targetId as string).maybeSingle();
+        if (!loanRow || loanRow.status !== "pending" || (loanRow.current_approval_level ?? 1) !== 1) {
+          return new Response(JSON.stringify({ error: "This loan needs admin-level approval" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
     }
+
 
     if (body.table === "app_users" && body.op === "update" && role === "admin") {
       const targetId = body.filters?.find((f) => f.col === "id" && f.op === "eq")?.val;
