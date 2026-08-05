@@ -50,6 +50,8 @@ const ACL: Record<string, TableAcl> = {
   break_policies:                    { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   // ── Leave ───────────────────────────────────────────────────────────────────
   leave_requests:                    { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor"], locationCol: "location", staffIdCol: "staff_id" },
+  // ── Loans ───────────────────────────────────────────────────────────────────
+  loan_requests:                     { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager","staff","statutory_admin"], locationCol: "location", staffIdCol: "staff_id" },
   // ── Advances / Payroll ──────────────────────────────────────────────────────
   advances:                          { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager"],           staffIdCol: "staff_id" },
   advance_entries:                   { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager"],           staffIdCol: "staff_id" },
@@ -310,6 +312,28 @@ Deno.serve(async (req) => {
         beforeData = res.data;
       } catch (e) {
         console.error("Failed to fetch before data for audit log", e);
+      }
+    }
+
+    // ── Loan requests: staff may only file their own request ──────────────────
+    if (body.table === "loan_requests") {
+      if (role === "staff") {
+        if (body.op !== "insert") {
+          return new Response(JSON.stringify({ error: "Staff can only submit loan requests" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const rows = Array.isArray(body.values) ? body.values : [body.values ?? {}];
+        for (const r of rows as Record<string, unknown>[]) {
+          r["status"] = "pending";
+          r["current_approval_level"] = 1;
+          r["approval_history"] = [];
+          r["advance_entry_id"] = null;
+          r["approved_at"] = null;
+        }
+      }
+      if (body.op === "delete" && role !== "admin") {
+        return new Response(JSON.stringify({ error: "Only an admin can delete loan requests" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
