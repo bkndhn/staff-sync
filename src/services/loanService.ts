@@ -103,7 +103,7 @@ export function buildSchedule(loan: LoanRequest, totalDeducted = 0) {
 export const loanService = {
   async getThresholds(): Promise<LoanThresholds> {
     try {
-      const raw = await appSettingsService.get(SETTINGS_KEY);
+      const raw = await appSettingsService.getSetting(SETTINGS_KEY);
       if (!raw) return DEFAULT_LOAN_THRESHOLDS;
       return { ...DEFAULT_LOAN_THRESHOLDS, ...JSON.parse(raw) };
     } catch {
@@ -113,7 +113,7 @@ export const loanService = {
 
   async saveThresholds(t: LoanThresholds): Promise<boolean> {
     try {
-      await appSettingsService.set(SETTINGS_KEY, JSON.stringify(t));
+      await appSettingsService.setSetting(SETTINGS_KEY, JSON.stringify(t));
       return true;
     } catch (e) {
       console.error('Error saving loan thresholds:', e);
