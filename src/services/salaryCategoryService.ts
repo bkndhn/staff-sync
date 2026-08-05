@@ -1,7 +1,7 @@
 import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
 
-export interface SalaryCategoryDB {
+export interface PayrollCategoryDB {
   id: string;
   name: string;
   display_name: string;
@@ -10,7 +10,7 @@ export interface SalaryCategoryDB {
   isDeleted?: boolean; // local soft-delete flag (stored in display_name as prefix for now)
 }
 
-export interface SalaryCategory {
+export interface PayrollCategory {
   id: string;
   name: string; // display name
   key: string;  // unique identifier
@@ -20,8 +20,8 @@ export interface SalaryCategory {
 
 const BUILT_IN_IDS = ['basic', 'incentive', 'hra', 'meal_allowance'];
 
-const DEFAULT_BUILT_INS: SalaryCategory[] = [
-  { id: 'basic', name: 'Basic Salary', key: 'basicSalary', isBuiltIn: true },
+const DEFAULT_BUILT_INS: PayrollCategory[] = [
+  { id: 'basic', name: 'Basic Payroll', key: 'basicSalary', isBuiltIn: true },
   { id: 'incentive', name: 'Incentive', key: 'incentive', isBuiltIn: true },
   { id: 'hra', name: 'HRA', key: 'hra', isBuiltIn: true },
   { id: 'meal_allowance', name: 'Meal Allowance', key: 'mealAllowance', isBuiltIn: true },
@@ -52,7 +52,7 @@ export const salaryCategoryService = {
     const builtInOverrides = getBuiltInOverrides();
 
     // Get built-ins with any name overrides and deletion state
-    const builtIns: SalaryCategory[] = DEFAULT_BUILT_INS.map(b => ({
+    const builtIns: PayrollCategory[] = DEFAULT_BUILT_INS.map(b => ({
       ...b,
       name: builtInOverrides[b.id] || b.name,
       isDeleted: builtInOverrides[`${b.id}_deleted`] === 'true',
@@ -67,7 +67,7 @@ export const salaryCategoryService = {
 
       if (error) throw error;
 
-      const custom: SalaryCategory[] = (data || []).map((row: any) => ({
+      const custom: PayrollCategory[] = (data || []).map((row: any) => ({
         id: row.id,
         name: row.display_name,
         key: row.name, // 'name' field stores the key
@@ -85,7 +85,7 @@ export const salaryCategoryService = {
   },
 
   // Get categories synchronously (for components that can't use async)
-  getCategoriesSync(): SalaryCategory[] {
+  getCategoriesSync(): PayrollCategory[] {
     const builtInOverrides = getBuiltInOverrides();
     const builtIns = DEFAULT_BUILT_INS.map(b => ({
       ...b,
@@ -133,7 +133,7 @@ export const salaryCategoryService = {
       return local;
     }
 
-    const cat: SalaryCategory = {
+    const cat: PayrollCategory = {
       id: data.id,
       name: data.display_name,
       key: data.name,
@@ -221,7 +221,7 @@ export const salaryCategoryService = {
 
 // ===== Local storage helpers for offline fallback and sync =====
 
-function getLocalCustomCategories(): SalaryCategory[] {
+function getLocalCustomCategories(): PayrollCategory[] {
   try {
     const stored = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
     return stored ? JSON.parse(stored) : [];
@@ -230,17 +230,17 @@ function getLocalCustomCategories(): SalaryCategory[] {
   }
 }
 
-function addLocalCustomCategory(displayName: string): SalaryCategory {
+function addLocalCustomCategory(displayName: string): PayrollCategory {
   const key = displayName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
   const id = `local_${Date.now()}`;
-  const cat: SalaryCategory = { id, name: displayName, key, isBuiltIn: false, isDeleted: false };
+  const cat: PayrollCategory = { id, name: displayName, key, isBuiltIn: false, isDeleted: false };
   const all = getLocalCustomCategories();
   all.push(cat);
   localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(all));
   return cat;
 }
 
-function syncLocalCustom(cat: SalaryCategory) {
+function syncLocalCustom(cat: PayrollCategory) {
   const all = getLocalCustomCategories();
   const idx = all.findIndex(c => c.key === cat.key);
   if (idx !== -1) {

@@ -5,10 +5,10 @@ import Login from './components/Login';
 import ResetPassword from './components/ResetPassword';
 import Dashboard from './components/Dashboard';
 import AttendanceTracker from './components/AttendanceTracker';
-import SalaryHikeModal from './components/SalaryHikeModal';
+import PayrollHikeModal from './components/SalaryHikeModal';
 import PermissionsMatrix from './components/PermissionsMatrix';
 import { ShiftRoster } from './components/ShiftRoster';
-import { Staff, Attendance, OldStaffRecord, SalaryHike, NavigationTab, AdvanceDeduction, User } from './types';
+import { Staff, Attendance, OldStaffRecord, PayrollHike, NavigationTab, AdvanceDeduction, User } from './types';
 import { staffService } from './services/staffService';
 import { attendanceService } from './services/attendanceService';
 import { advanceService } from './services/advanceService';
@@ -36,7 +36,7 @@ import { CustomDialogProvider, customAlert } from './components/CustomDialog';
 import TenantStatusBanner from './components/TenantStatusBanner';
 
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
-const SalaryManagement = React.lazy(() => import('./components/SalaryManagement'));
+const PayrollManagement = React.lazy(() => import('./components/SalaryManagement'));
 const PartTimeStaff = React.lazy(() => import('./components/PartTimeStaff'));
 const OldStaffRecords = React.lazy(() => import('./components/OldStaffRecords'));
 const Settings = React.lazy(() => import('./components/Settings'));
@@ -196,8 +196,8 @@ function App() {
     isOpen: boolean;
     staffId: string;
     staffName: string;
-    currentSalary: number;
-    newSalary: number;
+    currentPayroll: number;
+    newPayroll: number;
     onConfirm: (isHike: boolean, reason?: string, hikeDate?: string) => void;
   } | null>(null);
 
@@ -295,8 +295,8 @@ function App() {
   useEffect(() => {
     if (!user) return;
     const saved = localStorage.getItem('activeTab') as NavigationTab | null;
-    const statutoryAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Salary Management', 'Leave Management', 'Settings'];
-    const supervisorAllowed: NavigationTab[] = ['Dashboard', 'Attendance', 'Break Management', 'Part-Time Staff', 'Leave Management'];
+    const statutoryAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Payroll Management', 'Leave Management', 'Settings'];
+    const supervisorAllowed: NavigationTab[] = ['Dashboard', 'Attendance', 'Break Management', 'Flex Staff', 'Leave Management'];
     const validForRole = (tab: NavigationTab | null): boolean => {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
@@ -487,7 +487,7 @@ function App() {
 
       return attendance.filter(record =>
         record.isPartTime
-          ? true // Allow all part-time staff for managers
+          ? true // Allow all flex staff for managers
           : locationStaffIds.includes(record.staffId)
       );
     } else if ((user?.role === 'supervisor' || user?.role === 'floor_supervisor') && user.location) {
@@ -534,13 +534,13 @@ function App() {
     if (user?.role === 'manager' || user?.role === 'supervisor' || user?.role === 'floor_supervisor') {
       const today = new Date().toISOString().split('T')[0];
       if (date !== today) {
-        const roleLabel = user?.role === 'floor_supervisor' ? 'Floor Supervisors' : (user?.role === 'supervisor' ? 'Supervisors' : 'Managers');
+        const roleLabel = user?.role === 'floor_supervisor' ? 'Zone Supervisors' : (user?.role === 'supervisor' ? 'Supervisors' : 'Managers');
         await customAlert(`${roleLabel} can only edit today's attendance`);
         return;
       }
     }
 
-    // Handle part-time staff deletion
+    // Handle flex staff deletion
     if (isPartTime && status === 'Absent' && salary === 0) {
       try {
         // Find and delete the attendance record
@@ -587,11 +587,11 @@ function App() {
 
     const staffMember = staff.find(s => s.id === staffId);
     const finalStaffName = staffName || staffMember?.name;
-    const finalLocation = location || staffMember?.location;
-    const finalFloor = floor || staffMember?.floor;
+    const finalBranch = location || staffMember?.location;
+    const finalZone = floor || staffMember?.floor;
 
     if (!finalLeavingTime && (status === 'Present' || status === 'Half Day')) {
-      const locToCheck = finalLocation || '';
+      const locToCheck = finalBranch || '';
       if (locToCheck.toLowerCase().includes('godown')) {
         finalLeavingTime = '21:00';
       } else {
@@ -619,7 +619,7 @@ function App() {
         const [desigs, locDesigConfigs, locCfgArr, kioskSettings] = await Promise.all([
           db.designations.toArray(),
           db.locationDesignationShiftConfig.toArray(),
-          db.locationShiftConfig.where('locationName').equals(finalLocation || staffMember.location || '').toArray(),
+          db.locationShiftConfig.where('locationName').equals(finalBranch || staffMember.location || '').toArray(),
           appSettingsService.getKioskGlobalSettings(),
         ]);
         const locCfg = locCfgArr.length > 0 ? locCfgArr[0] : null;
@@ -822,9 +822,9 @@ function App() {
 
     try {
       // Set initial salary for hike tracking
-      const staffWithInitialSalary = {
+      const staffWithInitialPayroll = {
         ...newStaff,
-        initialSalary: newStaff.totalSalary
+        initialPayroll: newStaff.totalSalary
       };
 
       const savedStaff = await staffService.create(staffWithInitialSalary);
@@ -860,7 +860,7 @@ function App() {
     if (!currentStaff) return;
 
     // Check if salary is being changed
-    const isSalaryChange = updatedStaff.totalSalary && updatedStaff.totalSalary !== currentStaff.totalSalary;
+    const isSalaryChange = updatedStaff.totalPayroll && updatedStaff.totalPayroll !== currentStaff.totalSalary;
 
     if (isSalaryChange) {
       // Show salary hike modal
@@ -868,8 +868,8 @@ function App() {
         isOpen: true,
         staffId: id,
         staffName: currentStaff.name,
-        currentSalary: currentStaff.totalSalary,
-        newSalary: updatedStaff.totalSalary!,
+        currentPayroll: currentStaff.totalSalary,
+        newPayroll: updatedStaff.totalSalary!,
         onConfirm: async (isHike: boolean, reason?: string, hikeDate?: string) => {
           try {
             // Update staff record
@@ -882,7 +882,7 @@ function App() {
             if (isHike) {
               // Build breakdown from the NEW values being set
               const breakdown: Record<string, number> = {
-                basic: updatedStaff.basicSalary ?? currentStaff.basicSalary,
+                basic: updatedStaff.basicPayroll ?? currentStaff.basicSalary,
                 incentive: updatedStaff.incentive ?? currentStaff.incentive,
                 hra: updatedStaff.hra ?? currentStaff.hra,
                 meal_allowance: updatedStaff.mealAllowance ?? currentStaff.mealAllowance ?? 0,
@@ -902,8 +902,8 @@ function App() {
 
               const salaryHike = {
                 staffId: id,
-                oldSalary: currentStaff.totalSalary,
-                newSalary: updatedStaff.totalSalary!,
+                oldPayroll: currentStaff.totalSalary,
+                newPayroll: updatedStaff.totalSalary!,
                 hikeDate: hikeDate || new Date().toISOString().split('T')[0],
                 reason,
                 breakdown: { ...breakdown, ...oldBreakdown }
@@ -918,15 +918,15 @@ function App() {
                 details: `Updated total salary from ₹${currentStaff.totalSalary} to ₹${updatedStaff.totalSalary}`,
                 performedBy: user?.email || 'admin',
                 before: {
-                  totalSalary: currentStaff.totalSalary,
-                  basicSalary: currentStaff.basicSalary,
+                  totalPayroll: currentStaff.totalSalary,
+                  basicPayroll: currentStaff.basicSalary,
                   hra: currentStaff.hra,
                   incentive: currentStaff.incentive,
                   mealAllowance: currentStaff.mealAllowance ?? 0,
                 },
                 after: {
-                  totalSalary: updatedStaff.totalSalary,
-                  basicSalary: updatedStaff.basicSalary ?? currentStaff.basicSalary,
+                  totalPayroll: updatedStaff.totalSalary,
+                  basicPayroll: updatedStaff.basicPayroll ?? currentStaff.basicSalary,
                   hra: updatedStaff.hra ?? currentStaff.hra,
                   incentive: updatedStaff.incentive ?? currentStaff.incentive,
                   mealAllowance: updatedStaff.mealAllowance ?? currentStaff.mealAllowance ?? 0,
@@ -1008,10 +1008,10 @@ function App() {
         location: staffMember.location,
         type: staffMember.type,
         experience: staffMember.experience,
-        basicSalary: staffMember.basicSalary,
+        basicPayroll: staffMember.basicSalary,
         incentive: staffMember.incentive,
         hra: staffMember.hra,
-        totalSalary: staffMember.totalSalary,
+        totalPayroll: staffMember.totalSalary,
         joinedDate: staffMember.joinedDate,
         leftDate: new Date().toLocaleDateString('en-US'),
         reason,
@@ -1053,13 +1053,13 @@ function App() {
         location: record.location,
         type: record.type,
         experience: record.experience,
-        basicSalary: record.basicSalary,
+        basicPayroll: record.basicSalary,
         incentive: record.incentive,
         hra: record.hra,
-        totalSalary: record.totalSalary,
+        totalPayroll: record.totalSalary,
         joinedDate: new Date().toLocaleDateString('en-US'), // New join date
         isActive: true,
-        initialSalary: record.totalSalary
+        initialPayroll: record.totalSalary
       };
 
       const savedStaff = await staffService.create(restoredStaff);
@@ -1306,7 +1306,7 @@ function App() {
             <BreakManagement staff={filteredStaffData} user={user!} />
           </Suspense>
         );
-      case 'Salary Management':
+      case 'Payroll Management':
         if (user?.role !== 'admin' && user?.role !== 'statutory_admin') return null;
 
         return (
@@ -1320,7 +1320,7 @@ function App() {
             />
           </Suspense>
         );
-      case 'Part-Time Staff':
+      case 'Flex Staff':
         if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'supervisor' && user?.role !== 'floor_supervisor' && user?.role !== 'super_admin') return null;
         return (
           <Suspense fallback={<ComponentLoader />}>

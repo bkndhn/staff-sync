@@ -10,7 +10,7 @@ const PAGE_LABELS: Record<keyof StatutoryPortalConfig['visiblePages'], string> =
   dashboard: 'Dashboard',
   staff: 'Staff',
   attendance: 'Attendance',
-  salary: 'Salary',
+  salary: 'Payroll',
   reports: 'Reports',
   leave: 'Leave',
   profile: 'Profile',
@@ -20,14 +20,14 @@ const PAGE_LABELS: Record<keyof StatutoryPortalConfig['visiblePages'], string> =
 const WIDGET_LABELS: Record<keyof StatutoryPortalConfig['dashboardWidgets'], string> = {
   staffCount: 'Staff Count',
   attendance: 'Attendance Summary',
-  salary: 'Salary Summary',
+  salary: 'Payroll Summary',
   breaks: 'Breaks',
   charts: 'Charts',
   recentActivity: 'Recent Activity',
   quickActions: 'Quick Actions',
 };
 const DATA_LABELS: Record<keyof StatutoryPortalConfig['dataVisibility'], string> = {
-  salary: 'Salary',
+  salary: 'Payroll',
   attendance: 'Attendance',
   contact: 'Contact Details',
   employeeId: 'Employee IDs',

@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Staff, Attendance, SalaryDetail, OldStaffRecord, PartTimeSalaryDetail } from '../types';
+import { Staff, Attendance, PayrollDetail, OldStaffRecord, PartTimeSalaryDetail } from '../types';
 
 export const exportAttendancePDF = (
   staff: Staff[],
@@ -36,13 +36,13 @@ export const exportAttendancePDF = (
     ];
   });
 
-  // Add part-time staff
+  // Add flex staff
   const partTimeAttendance = attendance.filter(a => a.isPartTime && a.date === selectedDate);
   partTimeAttendance.forEach((record, index) => {
     tableData.push([
       staff.length + index + 1,
       record.staffName || 'Unknown',
-      'Part-Time',
+      'Flex',
       'part-time',
       record.status,
       record.shift || '-'
@@ -50,7 +50,7 @@ export const exportAttendancePDF = (
   });
 
   autoTable(doc, {
-    head: [['S.No', 'Name', 'Location', 'Type', 'Status', 'Shift']],
+    head: [['S.No', 'Name', 'Branch', 'Type', 'Status', 'Shift']],
     body: tableData,
     startY: 45,
     styles: { fontSize: 10 },
@@ -61,7 +61,7 @@ export const exportAttendancePDF = (
 };
 
 export const exportSalaryPDF = (
-  salaryDetails: SalaryDetail[],
+  salaryDetails: PayrollDetail[],
   partTimeSalaries: PartTimeSalaryDetail[],
   staff: Staff[],
   month: number,
@@ -71,7 +71,7 @@ export const exportSalaryPDF = (
   
   // Header
   doc.setFontSize(20);
-  doc.text('Salary Report', 20, 20);
+  doc.text('Payroll Report', 20, 20);
   doc.setFontSize(12);
   doc.text(`Month: ${new Date(0, month).toLocaleString('default', { month: 'long' })} ${year}`, 20, 35);
 
@@ -100,14 +100,14 @@ export const exportSalaryPDF = (
   });
 
   autoTable(doc, {
-    head: [['S.No', 'Name', 'Present', 'Half', 'Leave', 'Sun Abs', 'Old Adv', 'Cur Adv', 'Deduction', 'Basic', 'Incentive', 'HRA', 'Sun Penalty', 'ESI/PF/Stat', 'Gross', 'Net Salary', 'New Adv']],
+    head: [['S.No', 'Name', 'Present', 'Half', 'Leave', 'Sun Abs', 'Old Adv', 'Cur Adv', 'Deduction', 'Basic', 'Incentive', 'HRA', 'Sun Penalty', 'ESI/PF/Stat', 'Gross', 'Net Payroll', 'New Adv']],
     body: fullTimeData,
     startY: 45,
     styles: { fontSize: 8 },
     headStyles: { fillColor: [34, 197, 94] }
   });
 
-  // Part-time staff salary data
+  // flex staff salary data
   if (partTimeSalaries.length > 0) {
     const partTimeData = partTimeSalaries.map((detail, index) => [
       index + 1,
@@ -121,7 +121,7 @@ export const exportSalaryPDF = (
     ]);
 
     autoTable(doc, {
-      head: [['S.No', 'Name', 'Location', 'Days', 'Shifts', 'Rate/Day', 'Rate/Shift', 'Total Earnings']],
+      head: [['S.No', 'Name', 'Branch', 'Days', 'Shifts', 'Rate/Day', 'Rate/Shift', 'Total Earnings']],
       body: partTimeData,
       startY: (doc as any).lastAutoTable.finalY + 20,
       styles: { fontSize: 8 },
@@ -134,11 +134,11 @@ export const exportSalaryPDF = (
 
 export const OLD_STAFF_PDF_COLUMNS = [
   { key: 'name', label: 'Name' },
-  { key: 'location', label: 'Location' },
+  { key: 'location', label: 'Branch' },
   { key: 'type', label: 'Type' },
   { key: 'experience', label: 'Experience' },
   { key: 'tenure', label: 'Tenure' },
-  { key: 'salary', label: 'Last Salary' },
+  { key: 'salary', label: 'Last Payroll' },
   { key: 'advance', label: 'Outstanding Advance' },
   { key: 'reason', label: 'Reason' },
 ];

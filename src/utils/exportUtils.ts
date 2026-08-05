@@ -1,8 +1,8 @@
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Staff, Attendance, SalaryDetail, OldStaffRecord, PartTimeSalaryDetail } from '../types';
-import { salaryCategoryService, type SalaryCategory } from '../services/salaryCategoryService';
+import { Staff, Attendance, PayrollDetail, OldStaffRecord, PartTimeSalaryDetail } from '../types';
+import { salaryCategoryService, type PayrollCategory } from '../services/salaryCategoryService';
 
 // Remove currency symbol for exports
 const formatNumberForExport = (value: number): number => {
@@ -38,20 +38,20 @@ export const exportAttendanceToExcel = (
     return {
       'S.No': index + 1,
       'Name': member.name,
-      'Location': member.location,
+      'Branch': member.location,
       'Type': member.type,
       'Status': attendanceRecord?.status || 'Absent',
       'Shift': attendanceRecord?.shift || '-'
     };
   });
 
-  // Add part-time staff
+  // Add flex staff
   const partTimeAttendance = attendance.filter(a => a.isPartTime && a.date === selectedDate);
   partTimeAttendance.forEach((record, index) => {
     data.push({
       'S.No': staff.length + index + 1,
       'Name': record.staffName || 'Unknown',
-      'Location': record.location || 'Part-Time',
+      'Branch': record.location || 'Flex',
       'Type': 'part-time',
       'Status': record.status,
       'Shift': record.shift || '-'
@@ -65,7 +65,7 @@ export const exportAttendanceToExcel = (
 };
 
 export const exportSalaryToExcel = async (
-  salaryDetails: SalaryDetail[],
+  salaryDetails: PayrollDetail[],
   partTimeSalaries: PartTimeSalaryDetail[],
   staff: Staff[],
   month: number,
@@ -73,11 +73,11 @@ export const exportSalaryToExcel = async (
 ) => {
   // Load categories for dynamic columns
   const allCategories = await salaryCategoryService.getCategories();
-  const customCategories = allCategories.filter((c: SalaryCategory) => !['basic', 'incentive', 'hra', 'meal_allowance'].includes(c.id) && !c.isDeleted);
-  const basicName = allCategories.find((c: SalaryCategory) => c.id === 'basic')?.name || 'Basic';
-  const incentiveName = allCategories.find((c: SalaryCategory) => c.id === 'incentive')?.name || 'Incentive';
-  const hraName = allCategories.find((c: SalaryCategory) => c.id === 'hra')?.name || 'HRA';
-  const mealName = allCategories.find((c: SalaryCategory) => c.id === 'meal_allowance')?.name || 'Meal Allowance';
+  const customCategories = allCategories.filter((c: PayrollCategory) => !['basic', 'incentive', 'hra', 'meal_allowance'].includes(c.id) && !c.isDeleted);
+  const basicName = allCategories.find((c: PayrollCategory) => c.id === 'basic')?.name || 'Basic';
+  const incentiveName = allCategories.find((c: PayrollCategory) => c.id === 'incentive')?.name || 'Incentive';
+  const hraName = allCategories.find((c: PayrollCategory) => c.id === 'hra')?.name || 'HRA';
+  const mealName = allCategories.find((c: PayrollCategory) => c.id === 'meal_allowance')?.name || 'Meal Allowance';
 
   // Full-time staff data
   const fullTimeData = salaryDetails.map((detail, index) => {
@@ -98,7 +98,7 @@ export const exportSalaryToExcel = async (
       [`${mealName} Earned`]: formatNumberForExport(detail.mealAllowance),
     };
     // Add custom supplement columns
-    customCategories.forEach((cat: SalaryCategory) => {
+    customCategories.forEach((cat: PayrollCategory) => {
       const val = staffMember?.salarySupplements?.[cat.key] || staffMember?.salarySupplements?.[cat.id] || 0;
       row[cat.name] = formatNumberForExport(val);
     });
@@ -108,18 +108,18 @@ export const exportSalaryToExcel = async (
       row[`${b.label} (Deduction)`] = formatNumberForExport(b.amount);
     });
     row['Statutory Total'] = formatNumberForExport(detail.statutoryTotal || 0);
-    row['Gross Salary'] = formatNumberForExport(detail.grossSalary);
-    row['Net Salary'] = formatNumberForExport(detail.netSalary);
+    row['Gross Payroll'] = formatNumberForExport(detail.grossSalary);
+    row['Net Payroll'] = formatNumberForExport(detail.netSalary);
     row['New Advance'] = formatNumberForExport(detail.newAdv);
     return row;
   });
 
-  // Part-time staff data
+  // flex staff data
   const partTimeData = partTimeSalaries.map((detail, index) => ({
     'S.No': index + 1,
     'Name': detail.staffName,
-    'Location': detail.location,
-    'Floor': detail.floor || '-',
+    'Branch': detail.location,
+    'Zone': detail.floor || '-',
     'Total Days': detail.totalDays,
     'Total Earnings': formatNumberForExport(detail.totalEarnings)
   }));
@@ -128,12 +128,12 @@ export const exportSalaryToExcel = async (
 
   if (fullTimeData.length > 0) {
     const ws1 = XLSX.utils.json_to_sheet(fullTimeData);
-    XLSX.utils.book_append_sheet(wb, ws1, 'Full-Time Salary');
+    XLSX.utils.book_append_sheet(wb, ws1, 'Full-Time Payroll');
   }
 
   if (partTimeData.length > 0) {
     const ws2 = XLSX.utils.json_to_sheet(partTimeData);
-    XLSX.utils.book_append_sheet(wb, ws2, 'Part-Time Salary');
+    XLSX.utils.book_append_sheet(wb, ws2, 'Flex Payroll');
   }
 
   const monthName = new Date(0, month).toLocaleString('default', { month: 'long' });
@@ -141,7 +141,7 @@ export const exportSalaryToExcel = async (
 };
 
 export const exportStatutoryToExcel = (
-  salaryDetails: SalaryDetail[],
+  salaryDetails: PayrollDetail[],
   staff: Staff[],
   month: number,
   year: number,
@@ -219,13 +219,13 @@ export const exportAttendancePDF = (
     ];
   });
 
-  // Add part-time staff
+  // Add flex staff
   const partTimeAttendance = attendance.filter(a => a.isPartTime && a.date === selectedDate);
   partTimeAttendance.forEach((record, index) => {
     tableData.push([
       staff.length + index + 1,
       record.staffName || 'Unknown',
-      'Part-Time',
+      'Flex',
       'part-time',
       record.status,
       record.shift || '-'
@@ -233,7 +233,7 @@ export const exportAttendancePDF = (
   });
 
   autoTable(doc, {
-    head: [['S.No', 'Name', 'Location', 'Type', 'Status', 'Shift']],
+    head: [['S.No', 'Name', 'Branch', 'Type', 'Status', 'Shift']],
     body: tableData,
     startY: 45,
     styles: { fontSize: 10 },
@@ -244,7 +244,7 @@ export const exportAttendancePDF = (
 };
 
 export const exportSalaryPDF = async (
-  salaryDetails: SalaryDetail[],
+  salaryDetails: PayrollDetail[],
   partTimeSalaries: PartTimeSalaryDetail[],
   staff: Staff[],
   month: number,
@@ -254,15 +254,15 @@ export const exportSalaryPDF = async (
 
   // Load categories for dynamic columns
   const allCategories = await salaryCategoryService.getCategories();
-  const customCategories = allCategories.filter((c: SalaryCategory) => !['basic', 'incentive', 'hra', 'meal_allowance'].includes(c.id) && !c.isDeleted);
-  const basicName = allCategories.find((c: SalaryCategory) => c.id === 'basic')?.name || 'Basic';
-  const incentiveName = allCategories.find((c: SalaryCategory) => c.id === 'incentive')?.name || 'Incentive';
-  const hraName = allCategories.find((c: SalaryCategory) => c.id === 'hra')?.name || 'HRA';
-  const mealName = allCategories.find((c: SalaryCategory) => c.id === 'meal_allowance')?.name || 'Meal Allowance';
+  const customCategories = allCategories.filter((c: PayrollCategory) => !['basic', 'incentive', 'hra', 'meal_allowance'].includes(c.id) && !c.isDeleted);
+  const basicName = allCategories.find((c: PayrollCategory) => c.id === 'basic')?.name || 'Basic';
+  const incentiveName = allCategories.find((c: PayrollCategory) => c.id === 'incentive')?.name || 'Incentive';
+  const hraName = allCategories.find((c: PayrollCategory) => c.id === 'hra')?.name || 'HRA';
+  const mealName = allCategories.find((c: PayrollCategory) => c.id === 'meal_allowance')?.name || 'Meal Allowance';
 
   // Header
   doc.setFontSize(20);
-  doc.text('Salary Report', 20, 20);
+  doc.text('Payroll Report', 20, 20);
   doc.setFontSize(12);
   doc.text(`Month: ${new Date(0, month).toLocaleString('default', { month: 'long' })} ${year}`, 20, 35);
 
@@ -270,12 +270,12 @@ export const exportSalaryPDF = async (
 
   // Full-time staff salary data (only if there are full-time salaries)
   if (salaryDetails.length > 0) {
-    const customHeaders = customCategories.map((c: SalaryCategory) => c.name);
-    const headers = ['S.No', 'Name', 'Present', 'Half', 'Leave', 'Sun Abs', 'Old Adv', 'Cur Adv', 'Deduction', basicName, incentiveName, hraName, mealName, ...customHeaders, 'Sun Penalty', 'ESI/PF/Stat', 'Gross', 'Net Salary', 'New Adv'];
+    const customHeaders = customCategories.map((c: PayrollCategory) => c.name);
+    const headers = ['S.No', 'Name', 'Present', 'Half', 'Leave', 'Sun Abs', 'Old Adv', 'Cur Adv', 'Deduction', basicName, incentiveName, hraName, mealName, ...customHeaders, 'Sun Penalty', 'ESI/PF/Stat', 'Gross', 'Net Payroll', 'New Adv'];
 
     const fullTimeData = salaryDetails.map((detail, index) => {
       const staffMember = staff.find(s => s.id === detail.staffId);
-      const customVals = customCategories.map((cat: SalaryCategory) => {
+      const customVals = customCategories.map((cat: PayrollCategory) => {
         const val = staffMember?.salarySupplements?.[cat.key] || staffMember?.salarySupplements?.[cat.id] || 0;
         return formatCurrencyForExport(val);
       });
@@ -313,11 +313,11 @@ export const exportSalaryPDF = async (
     currentY = (doc as any).lastAutoTable.finalY + 20;
   }
 
-  // Part-time staff salary data
+  // flex staff salary data
   if (partTimeSalaries.length > 0) {
     // Add part-time section header
     doc.setFontSize(14);
-    doc.text('Part-Time Staff Salary Report', 20, currentY);
+    doc.text('flex staff Payroll Report', 20, currentY);
     currentY += 15;
 
     const partTimeData = partTimeSalaries.map((detail, index) => [
@@ -329,7 +329,7 @@ export const exportSalaryPDF = async (
     ]);
 
     autoTable(doc, {
-      head: [['S.No', 'Name', 'Location', 'Days', 'Total Earnings']],
+      head: [['S.No', 'Name', 'Branch', 'Days', 'Total Earnings']],
       body: partTimeData,
       startY: currentY,
       styles: { fontSize: 8 },
@@ -341,7 +341,7 @@ export const exportSalaryPDF = async (
     // Add total part-time earnings
     const totalPartTimeEarnings = partTimeSalaries.reduce((sum, salary) => sum + salary.totalEarnings, 0);
     doc.setFontSize(12);
-    doc.text(`Total Part-Time Earnings: ${totalPartTimeEarnings}`, 20, currentY);
+    doc.text(`Total Flex Earnings: ${totalPartTimeEarnings}`, 20, currentY);
     currentY += 15;
 
     // Calculate and display currency note breakdown
@@ -374,7 +374,7 @@ export const exportPartTimeSalaryPDF = (
 
   // Header
   doc.setFontSize(20);
-  doc.text('Part-Time Staff Salary Report', 20, 20);
+  doc.text('flex staff Payroll Report', 20, 20);
 
   // Date range header
   doc.setFontSize(12);
@@ -388,7 +388,7 @@ export const exportPartTimeSalaryPDF = (
 
   let currentY = 50;
 
-  // Part-time staff salary data
+  // flex staff salary data
   if (partTimeSalaries.length > 0) {
     const partTimeData = partTimeSalaries.map((detail, index) => [
       index + 1,
@@ -400,7 +400,7 @@ export const exportPartTimeSalaryPDF = (
     ]);
 
     autoTable(doc, {
-      head: [['S.No', 'Name', 'Location', 'Floor', 'Days', 'Total Earnings']],
+      head: [['S.No', 'Name', 'Branch', 'Zone', 'Days', 'Total Earnings']],
       body: partTimeData,
       startY: currentY,
       styles: { fontSize: 10 },
@@ -412,7 +412,7 @@ export const exportPartTimeSalaryPDF = (
     // Add total part-time earnings
     const totalPartTimeEarnings = partTimeSalaries.reduce((sum, salary) => sum + salary.totalEarnings, 0);
     doc.setFontSize(12);
-    doc.text(`Total Part-Time Earnings: ${totalPartTimeEarnings}`, 20, currentY);
+    doc.text(`Total Flex Earnings: ${totalPartTimeEarnings}`, 20, currentY);
     currentY += 15;
 
     // Calculate currency note breakdown by summing individual staff breakdowns
@@ -476,7 +476,7 @@ export const exportOldStaffPDF = (oldStaffRecords: OldStaffRecord[]) => {
   });
 
   autoTable(doc, {
-    head: [['S.No', 'Name', 'Location', 'Type', 'Experience', 'Tenure', 'Last Salary', 'Outstanding Advance', 'Reason']],
+    head: [['S.No', 'Name', 'Branch', 'Type', 'Experience', 'Tenure', 'Last Payroll', 'Outstanding Advance', 'Reason']],
     body: tableData,
     startY: 45,
     styles: { fontSize: 9 },
@@ -488,7 +488,7 @@ export const exportOldStaffPDF = (oldStaffRecords: OldStaffRecord[]) => {
 
 // Generate individual salary slip PDF - Compact Design
 export const generateSalarySlipPDF = (
-  salaryDetail: SalaryDetail,
+  salaryDetail: PayrollDetail,
   staffMember: Staff,
   month: number,
   year: number
@@ -503,7 +503,7 @@ export const generateSalarySlipPDF = (
 
 // Generate bulk salary slips PDF - Compact Design (2-3 per page)
 export const exportBulkSalarySlipsPDF = (
-  salaryDetails: SalaryDetail[],
+  salaryDetails: PayrollDetail[],
   staff: Staff[],
   month: number,
   year: number
@@ -545,7 +545,7 @@ export const exportBulkSalarySlipsPDF = (
 // Helper function to render a compact salary slip
 const renderCompactSalarySlip = (
   doc: jsPDF,
-  salaryDetail: SalaryDetail,
+  salaryDetail: PayrollDetail,
   staffMember: Staff,
   monthName: string,
   year: number,

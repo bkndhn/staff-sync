@@ -27,16 +27,16 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
     const sample = [
       {
         Name: 'John Doe',
-        Location: 'Big Shop',
-        Floor: 'Ground',
+        Branch: 'Big Shop',
+        Zone: 'Ground',
         Designation: 'Salesman',
         Type: 'full-time',
         Experience: '2 years',
-        BasicSalary: 15000,
+        BasicPayroll: 15000,
         Incentive: 10000,
         HRA: 0,
         MealAllowance: 0,
-        TotalSalary: 25000,
+        TotalPayroll: 25000,
         JoinedDate: '2024-01-15',
         ContactNumber: '9876543210',
         Address: '123 Main St',
@@ -46,21 +46,21 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
         PaymentMode: 'cash',
         StaffAccommodation: 'day_scholar',
         SundayPenalty: true,
-        SalaryCalculationDays: 30,
+        PayrollCalculationDays: 30,
         DeviceID: '101',
       },
       {
         Name: 'Jane Smith (Part Time)',
-        Location: 'Small Shop',
-        Floor: '',
+        Branch: 'Small Shop',
+        Zone: '',
         Designation: 'Helper',
         Type: 'part-time',
         Experience: '1 year',
-        BasicSalary: 0,
+        BasicPayroll: 0,
         Incentive: 0,
         HRA: 0,
         MealAllowance: 0,
-        TotalSalary: 0,
+        TotalPayroll: 0,
         JoinedDate: '2024-06-01',
         ContactNumber: '9123456780',
         Address: '',
@@ -70,7 +70,7 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
         PaymentMode: 'cash',
         StaffAccommodation: '',
         SundayPenalty: false,
-        SalaryCalculationDays: 30,
+        PayrollCalculationDays: 30,
         DeviceID: '102',
       }
     ];
@@ -81,8 +81,8 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
     // Add an instructions sheet
     const instructions = [
       { Field: 'Name', Required: 'Yes', Example: 'John Doe', Notes: 'Full name of staff' },
-      { Field: 'Location', Required: 'Yes', Example: 'Big Shop', Notes: 'Must match existing location name' },
-      { Field: 'Floor', Required: 'No', Example: 'Ground', Notes: 'Optional floor name' },
+      { Field: 'Branch', Required: 'Yes', Example: 'Big Shop', Notes: 'Must match existing location name' },
+      { Field: 'Zone', Required: 'No', Example: 'Ground', Notes: 'Optional floor name' },
       { Field: 'Designation', Required: 'No', Example: 'Salesman', Notes: 'Optional job title' },
       { Field: 'Type', Required: 'Yes', Example: 'full-time', Notes: 'full-time or part-time' },
       { Field: 'Experience', Required: 'No', Example: '2 years', Notes: 'Free text' },
@@ -136,19 +136,19 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
       if (!joinedDate) return { rowNum: idx + 2, data: {} as any, error: 'Invalid JoinedDate' };
 
       const type = String(r.Type || r.type || 'full-time').toLowerCase().includes('part') ? 'part-time' : 'full-time';
-      const basicSalary = Number(r.BasicSalary || r.basicSalary || 0);
+      const basicPayroll = Number(r.BasicPayroll || r.basicPayroll || 0);
       const incentive = Number(r.Incentive || r.incentive || 0);
       const hra = Number(r.HRA || r.hra || 0);
       const mealAllowance = Number(r.MealAllowance || r.mealAllowance || 0);
-      const totalSalary = Number(r.TotalSalary || r.totalSalary || (basicSalary + incentive + hra + mealAllowance));
+      const totalPayroll = Number(r.TotalPayroll || r.totalPayroll || (basicPayroll + incentive + hra + mealAllowance));
 
       const acc = String(r.StaffAccommodation || '').toLowerCase();
       const staffAccommodation = (acc === 'accommodation' ? 'accommodation' : acc === 'day_scholar' ? 'day_scholar' : '') as 'day_scholar' | 'accommodation' | '';
 
       const data: Omit<Staff, 'id'> = {
         name,
-        location: String(r.Location || r.location || '').trim(),
-        floor: String(r.Floor || r.floor || '').trim() || undefined,
+        location: String(r.Branch || r.location || '').trim(),
+        floor: String(r.Zone || r.floor || '').trim() || undefined,
         designation: String(r.Designation || r.designation || '').trim() || undefined,
         type: type as 'full-time' | 'part-time',
         experience: String(r.Experience || r.experience || '').trim(),
@@ -173,9 +173,9 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
 
       const duplicate = existingNames.has(name.toLowerCase());
       let error: string | undefined;
-      if (!data.location) error = 'Missing Location';
+      if (!data.location) error = 'Missing Branch';
       else if (!data.deviceId) error = 'Missing DeviceID (biometric enroll number)';
-      else if (type === 'full-time' && totalSalary <= 0) error = 'Total salary required for full-time';
+      else if (type === 'full-time' && totalPayroll <= 0) error = 'Total salary required for full-time';
 
       return { rowNum: idx + 2, data, error, duplicate };
     });
@@ -255,7 +255,7 @@ const BulkStaffUpload: React.FC<BulkStaffUploadProps> = ({ existingStaff, onImpo
                       <th className="px-2 py-2 text-left">Row</th>
                       <th className="px-2 py-2 text-left">Status</th>
                       <th className="px-2 py-2 text-left">Name</th>
-                      <th className="px-2 py-2 text-left">Location</th>
+                      <th className="px-2 py-2 text-left">Branch</th>
                       <th className="px-2 py-2 text-left">Type</th>
                       <th className="px-2 py-2 text-right">Total</th>
                       <th className="px-2 py-2 text-left">Joined</th>

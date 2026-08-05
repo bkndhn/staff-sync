@@ -10,10 +10,10 @@ export interface Staff {
   ratePerDay?: number;
   ratePerShift?: number;
   experience: string;
-  basicSalary: number;
+  basicPayroll: number;
   incentive: number;
   hra: number;
-  totalSalary: number;
+  totalPayroll: number;
   joinedDate: string;
   isActive: boolean;
   sundayPenalty?: boolean;
@@ -91,7 +91,7 @@ export interface Attendance {
   appliedRuleDetails?: any;
 }
 
-export interface SalaryDetail {
+export interface PayrollDetail {
   staffId: string;
   month: number;
   year: number;
@@ -110,9 +110,9 @@ export interface SalaryDetail {
   mealAllowance: number;
   lateComingDeduction?: number;
   earlyLeaveDeduction?: number;
-  grossSalary: number;
+  grossPayroll: number;
   newAdv: number;
-  netSalary: number;
+  netPayroll: number;
   isProcessed: boolean;
   statutoryTotal?: number;
   statutoryBreakdown?: Array<{ key: string; label: string; amount: number }>;
@@ -134,7 +134,7 @@ export interface PayrollSnapshot {
   runId: string;
   staffId: string;
   staffSnapshot: Staff;
-  salaryDetail: SalaryDetail;
+  salaryDetail: PayrollDetail;
 }
 
 export interface PartTimeSalaryDetail {
@@ -151,13 +151,13 @@ export interface PartTimeSalaryDetail {
   weeklyBreakdown: WeeklySalary[];
 }
 
-export interface WeeklySalary {
+export interface WeeklyPayroll {
   week: number;
   days: DailySalary[];
   weekTotal: number;
 }
 
-export interface DailySalary {
+export interface DailyPayroll {
   date: string;
   dayOfWeek: string;
   isPresent: boolean;
@@ -173,14 +173,14 @@ export interface OldStaffRecord {
   location: string;
   type: 'full-time' | 'part-time';
   experience: string;
-  basicSalary: number;
+  basicPayroll: number;
   incentive: number;
   hra: number;
-  totalSalary: number;
+  totalPayroll: number;
   joinedDate: string;
   leftDate: string;
   reason: string;
-  salaryHistory: SalaryDetail[];
+  salaryHistory: PayrollDetail[];
   totalAdvanceOutstanding: number;
   lastAdvanceData?: AdvanceDeduction;
   contactNumber?: string;
@@ -203,11 +203,11 @@ export interface AdvanceDeduction {
   updatedAt: string;
 }
 
-export interface SalaryHike {
+export interface PayrollHike {
   id: string;
   staffId: string;
-  oldSalary: number;
-  newSalary: number;
+  oldPayroll: number;
+  newPayroll: number;
   hikeDate: string;
   reason?: string;
   breakdown?: Record<string, number>;
@@ -232,13 +232,13 @@ export interface User {
 }
 
 
-export interface SalaryCategory {
+export interface PayrollCategory {
   id: string;
   name: string;
   key: string;
 }
 
-export interface SalaryOverride {
+export interface PayrollOverride {
   id?: string;
   staffId: string;
   month: number;
@@ -253,7 +253,7 @@ export interface SalaryOverride {
   salarySupplementsOverride?: Record<string, number>;
 }
 
-export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Salary Management' | 'Part-Time Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Audit Log' | 'Workforce Insights' | 'Break Management' | 'Security' | 'AI Insights' | 'Profile' | 'Permissions Matrix' | 'Shift Roster' | 'Action Center';
+export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Payroll Management' | 'Flex Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Audit Log' | 'Workforce Insights' | 'Break Management' | 'Security' | 'AI Insights' | 'Profile' | 'Permissions Matrix' | 'Shift Roster' | 'Action Center';
 
 export interface BreakType {
   id: string;
@@ -322,7 +322,7 @@ export interface PartTimeAdvanceRecord {
   advanceGiven: number;
   earnings: number;
   adjustment: number;
-  pendingSalary: number;
+  pendingPayroll: number;
   closingBalance: number;
   notes?: string;
   createdAt: string;
@@ -383,7 +383,7 @@ export interface Designation {
   earlyDeductionRate?: number;
 }
 
-export interface LocationDesignationShiftConfig {
+export interface BranchDesignationShiftConfig {
   id?: string;
   locationName: string;
   designationId: string;

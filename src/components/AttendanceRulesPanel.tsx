@@ -3,12 +3,12 @@ import {
   Clock, Save, RotateCcw, Check, Shield, ScanFace, Sun, AlertTriangle, MapPin,
   ChevronDown, ChevronUp, Loader2, Briefcase, Plus
 } from 'lucide-react';
-import { locationShiftService, LocationShiftConfig, DEFAULT_LOCATION_CONFIG } from '../services/locationShiftService';
+import { locationShiftService, BranchShiftConfig, DEFAULT_LOCATION_CONFIG } from '../services/locationShiftService';
 import { locationService } from '../services/locationService';
 import { appSettingsService } from '../services/appSettingsService';
 import { designationService, type Designation } from '../services/designationService';
 import { locationDesignationShiftService } from '../services/locationDesignationShiftService';
-import { type LocationDesignationShiftConfig } from '../types';
+import { type BranchDesignationShiftConfig } from '../types';
 import { customConfirm } from './CustomDialog';
 
 // ─── Global Settings Panel ────────────────────────────────────────────────────
@@ -324,12 +324,12 @@ const DesignationConfigRow: React.FC<DesignationRowProps> = ({ designation, onSa
   );
 };
 
-// ─── Designation Override Card (Per-Location Tab) ─────────────────────────────
+// ─── Designation Override Card (Per-Branch Tab) ─────────────────────────────
 
 interface OverrideRowProps {
-  override: LocationDesignationShiftConfig;
+  override: BranchDesignationShiftConfig;
   designations: Designation[];
-  onSave: (override: LocationDesignationShiftConfig) => Promise<void>;
+  onSave: (override: BranchDesignationShiftConfig) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
@@ -351,7 +351,7 @@ const DesignationOverrideRow: React.FC<OverrideRowProps> = ({ override, designat
     setTimeout(() => setSavedAt(null), 2500);
   };
 
-  const update = (key: keyof LocationDesignationShiftConfig, value: any) => {
+  const update = (key: keyof BranchDesignationShiftConfig, value: any) => {
     setRules(p => ({ ...p, [key]: value }));
   };
 
@@ -382,8 +382,8 @@ const DesignationOverrideRow: React.FC<OverrideRowProps> = ({ override, designat
                 <label className="block text-[9px] font-medium text-white/50 mb-0.5">{label}</label>
                 <input
                   type={type}
-                  value={(rules[key as keyof LocationDesignationShiftConfig] as string) || ''}
-                  onChange={e => update(key as keyof LocationDesignationShiftConfig, e.target.value)}
+                  value={(rules[key as keyof BranchDesignationShiftConfig] as string) || ''}
+                  onChange={e => update(key as keyof BranchDesignationShiftConfig, e.target.value)}
                   className="input-premium px-2 py-1 text-xs w-full"
                 />
               </div>
@@ -406,8 +406,8 @@ const DesignationOverrideRow: React.FC<OverrideRowProps> = ({ override, designat
                   min={min}
                   max={max}
                   step={step || 1}
-                  value={rules[key as keyof LocationDesignationShiftConfig] !== undefined ? (rules[key as keyof LocationDesignationShiftConfig] as number) : ''}
-                  onChange={e => update(key as keyof LocationDesignationShiftConfig, parseFloat(e.target.value))}
+                  value={rules[key as keyof BranchDesignationShiftConfig] !== undefined ? (rules[key as keyof BranchDesignationShiftConfig] as number) : ''}
+                  onChange={e => update(key as keyof BranchDesignationShiftConfig, parseFloat(e.target.value))}
                   className="input-premium px-2 py-1 text-xs w-full text-center"
                 />
               </div>
@@ -445,20 +445,20 @@ const DesignationOverrideRow: React.FC<OverrideRowProps> = ({ override, designat
   );
 };
 
-// ─── Per-Location Config Row ──────────────────────────────────────────────────
+// ─── Per-Branch Config Row ──────────────────────────────────────────────────
 
-interface LocationRowProps {
+interface BranchRowProps {
   locationName: string;
-  config: LocationShiftConfig;
+  config: BranchShiftConfig;
   designations: Designation[];
-  locationDesignationConfigs: LocationDesignationShiftConfig[];
-  onChange: (config: LocationShiftConfig) => void;
-  onSave: (config: LocationShiftConfig) => Promise<void>;
+  locationDesignationConfigs: BranchDesignationShiftConfig[];
+  onChange: (config: BranchShiftConfig) => void;
+  onSave: (config: BranchShiftConfig) => Promise<void>;
   onReset: (locationName: string) => Promise<void>;
   onRefreshOverrides: () => Promise<void>;
 }
 
-const LocationConfigRow: React.FC<LocationRowProps> = ({
+const BranchConfigRow: React.FC<LocationRowProps> = ({
   locationName, config, designations, locationDesignationConfigs,
   onChange, onSave, onReset, onRefreshOverrides
 }) => {
@@ -481,7 +481,7 @@ const LocationConfigRow: React.FC<LocationRowProps> = ({
     setTimeout(() => setSavedAt(null), 2500);
   };
 
-  const update = (key: keyof LocationShiftConfig, value: string | number | boolean) => {
+  const update = (key: keyof BranchShiftConfig, value: string | number | boolean) => {
     onChange({ ...config, [key]: value });
   };
 
@@ -491,7 +491,7 @@ const LocationConfigRow: React.FC<LocationRowProps> = ({
     if (!selectedDesig) return;
 
     setAddingOverride(true);
-    const newOverride: LocationDesignationShiftConfig = {
+    const newOverride: BranchDesignationShiftConfig = {
       locationName,
       designationId: selectedDesignationId,
       shiftStart: selectedDesig.shiftStart || config.shiftStart,
@@ -516,7 +516,7 @@ const LocationConfigRow: React.FC<LocationRowProps> = ({
     }
   };
 
-  const handleSaveOverride = async (override: LocationDesignationShiftConfig) => {
+  const handleSaveOverride = async (override: BranchDesignationShiftConfig) => {
     await locationDesignationShiftService.upsert(override);
     await onRefreshOverrides();
   };
@@ -549,7 +549,7 @@ const LocationConfigRow: React.FC<LocationRowProps> = ({
         <div className="border-t border-white/10 p-4 space-y-5">
           {/* General settings */}
           <div className="space-y-4">
-            <h5 className="text-xs font-semibold text-[var(--text-primary)]">General Location Settings</h5>
+            <h5 className="text-xs font-semibold text-[var(--text-primary)]">General Branch Settings</h5>
             
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {[
@@ -563,8 +563,8 @@ const LocationConfigRow: React.FC<LocationRowProps> = ({
                   <label className="block text-[10px] font-medium text-white/50 mb-1">{label}</label>
                   <input
                     type={type}
-                    value={config[key as keyof LocationShiftConfig] as string}
-                    onChange={e => update(key as keyof LocationShiftConfig, e.target.value)}
+                    value={config[key as keyof BranchShiftConfig] as string}
+                    onChange={e => update(key as keyof BranchShiftConfig, e.target.value)}
                     className="input-premium px-2 py-1.5 text-xs w-full"
                   />
                 </div>
@@ -586,8 +586,8 @@ const LocationConfigRow: React.FC<LocationRowProps> = ({
                     min={min}
                     max={max}
                     step={step || 1}
-                    value={config[key as keyof LocationShiftConfig] as number}
-                    onChange={e => update(key as keyof LocationShiftConfig, parseFloat(e.target.value))}
+                    value={config[key as keyof BranchShiftConfig] as number}
+                    onChange={e => update(key as keyof BranchShiftConfig, parseFloat(e.target.value))}
                     className="input-premium px-2 py-1.5 text-xs w-full text-center"
                   />
                 </div>
@@ -629,7 +629,7 @@ const LocationConfigRow: React.FC<LocationRowProps> = ({
                 disabled={saving}
                 className="btn-premium px-4 py-1.5 text-xs flex items-center gap-1.5"
               >
-                {savedAt ? <><Check size={12} /> Saved</> : saving ? <><Loader2 size={12} className="animate-spin" /> Saving…</> : <><Save size={12} /> Save Location</>}
+                {savedAt ? <><Check size={12} /> Saved</> : saving ? <><Loader2 size={12} className="animate-spin" /> Saving…</> : <><Save size={12} /> Save Branch</>}
               </button>
             </div>
           </div>
@@ -695,7 +695,7 @@ type PanelTab = 'global' | 'locations' | 'designations';
 const AttendanceRulesPanel: React.FC = () => {
   const [tab, setTab] = useState<PanelTab>('global');
   const [locationNames, setLocationNames] = useState<string[]>([]);
-  const [configs, setConfigs] = useState<Map<string, LocationShiftConfig>>(new Map());
+  const [configs, setConfigs] = useState<Map<string, BranchShiftConfig>>(new Map());
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [locationDesignationConfigs, setLocationDesignationConfigs] = useState<LocationDesignationShiftConfig[]>([]);
   const [loading, setLoading] = useState(false);
@@ -715,7 +715,7 @@ const AttendanceRulesPanel: React.FC = () => {
     const names = locations.map(l => l.name);
     setLocationNames(names);
 
-    const configMap = new Map<string, LocationShiftConfig>();
+    const configMap = new Map<string, BranchShiftConfig>();
     existingConfigs.forEach(c => configMap.set(c.locationName, c));
 
     // For locations with no config, create a default in-memory one
@@ -732,7 +732,7 @@ const AttendanceRulesPanel: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  const handleConfigChange = (config: LocationShiftConfig) => {
+  const handleConfigChange = (config: BranchShiftConfig) => {
     setConfigs(prev => {
       const next = new Map(prev);
       next.set(config.locationName, config);
@@ -740,7 +740,7 @@ const AttendanceRulesPanel: React.FC = () => {
     });
   };
 
-  const handleSave = async (config: LocationShiftConfig) => {
+  const handleSave = async (config: BranchShiftConfig) => {
     await locationShiftService.upsert(config);
     // Reload to ensure fresh sync
     const fresh = await locationShiftService.listAll();
@@ -831,7 +831,7 @@ const AttendanceRulesPanel: React.FC = () => {
             <AlertTriangle size={14} className="text-blue-400 mt-0.5 flex-shrink-0" />
             <p className="text-[11px] text-blue-300">
               Per-location configs override general designation rules. You can also configure specific designation overrides 
-              for each location (e.g. Manager in Location A having different timing than Manager in Location B).
+              for each location (e.g. Manager in Branch A having different timing than Manager in Branch B).
               Click a location to expand and configure.
             </p>
           </div>
@@ -841,7 +841,7 @@ const AttendanceRulesPanel: React.FC = () => {
               <Loader2 size={16} className="animate-spin inline mr-2" /> Loading locations…
             </div>
           ) : locationNames.length === 0 ? (
-            <p className="text-center py-8 text-white/40 text-sm">No locations found. Add locations in the Locations section first.</p>
+            <p className="text-center py-8 text-white/40 text-sm">No locations found. Add locations in the Branchs section first.</p>
           ) : (
             locationNames.map(name => (
               <LocationConfigRow

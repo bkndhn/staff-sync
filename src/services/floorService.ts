@@ -1,7 +1,7 @@
 import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
 
-export interface Floor {
+export interface Zone {
     id: string;
     locationName: string;
     name: string;
@@ -55,7 +55,7 @@ export const floorService = {
         }));
     },
 
-    async addFloor(locationName: string, name: string): Promise<Floor | null> {
+    async addFloor(locationName: string, name: string): Promise<Zone | null> {
         const { data, error } = await dataApi
             .from('floors')
             .insert([{ location_name: locationName, name, is_active: true }])
@@ -76,9 +76,9 @@ export const floorService = {
         };
     },
 
-    async updateFloor(id: string, name: string, locationName?: string): Promise<Floor | null> {
+    async updateFloor(id: string, name: string, locationName?: string): Promise<Zone | null> {
         // Fetch old floor to get its old name
-        const { data: oldFloor } = await dataApi.from('floors').select('name').eq('id', id).single();
+        const { data: oldZone } = await dataApi.from('floors').select('name').eq('id', id).single();
         const oldName = oldFloor?.name;
 
         const updateData: any = { name, updated_at: new Date().toISOString() };

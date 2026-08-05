@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode, ChevronDown, Cpu } from 'lucide-react';
 import { userService, AppUser, CreateUserInput, UpdateUserInput } from '../services/userService';
-import { locationService, Location } from '../services/locationService';
+import { locationService, Branch } from '../services/locationService';
 import { staffService } from '../services/staffService';
 import { floorService } from '../services/floorService';
 import { appSettingsService } from '../services/appSettingsService';
@@ -9,7 +9,7 @@ import { getQRRefreshSeconds, setQRRefreshSeconds } from '../utils/qrCrypto';
 import ShiftWindowsPanel from './ShiftWindowsPanel';
 import AttendanceRulesPanel from './AttendanceRulesPanel';
 import DeviceIntegration from './DeviceIntegration';
-import SalaryOverridesPanel from './SalaryOverridesPanel';
+import PayrollOverridesPanel from './SalaryOverridesPanel';
 import StatutoryPortalSettingsPanel from './StatutoryPortalSettingsPanel';
 import StatutoryCredentialsPanel from './StatutoryCredentialsPanel';
 import FaceTuningPanel from './face/FaceTuningPanel';
@@ -520,14 +520,14 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                 </div>
             </div>
 
-            {/* Default Salary Hike Interval */}
+            {/* Default Payroll Hike Interval */}
             <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
                         <TrendingUp size={20} className="text-amber-400" />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-[var(--text-primary)] text-sm">Default Salary Hike Interval (All Staff)</h3>
+                        <h3 className="font-semibold text-[var(--text-primary)] text-sm">Default Payroll Hike Interval (All Staff)</h3>
                         <p className="text-xs text-[var(--text-muted)]">How often staff are eligible for a salary hike (can be overridden per staff)</p>
                     </div>
                 </div>
@@ -665,16 +665,16 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
             </div>
             </SettingsSection>
 
-            <SettingsSection title="Salary" subtitle="Override configuration" icon={TrendingUp}>
-            {/* Salary Overrides Config */}
+            <SettingsSection title='Payroll' subtitle="Override configuration" icon={TrendingUp}>
+            {/* Payroll Overrides Config */}
             <div className="glass-card-static p-4 rounded-xl space-y-3 mt-6">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
                   <Edit2 size={20} className="text-blue-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-[var(--text-primary)] text-sm">Salary Overrides configuration</h3>
-                  <p className="text-xs text-[var(--text-muted)]">Select which salary components can be manually overridden in the Salary Management page.</p>
+                  <h3 className="font-semibold text-[var(--text-primary)] text-sm">Payroll Overrides configuration</h3>
+                  <p className="text-xs text-[var(--text-muted)]">Select which salary components can be manually overridden in the Payroll Management page.</p>
                 </div>
               </div>
               <SalaryOverridesPanel />
@@ -755,7 +755,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Role</th>
-                                <th>Location</th>
+                                <th>Branch</th>
                                 <th>Last Login</th>
                                 <th>Actions</th>
                             </tr>
@@ -774,7 +774,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                         <td className="text-white/70 font-mono text-sm">{user.email}</td>
                                         <td>
                                             <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
-                                                {user.role === 'admin' ? 'Admin' : user.role === 'floor_supervisor' ? 'Floor Sup' : 'Manager'}
+                                                {user.role === 'admin' ? 'Admin' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
                                             </span>
                                         </td>
                                         <td>
@@ -784,7 +784,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                                     {user.location}
                                                 </span>
                                             ) : (
-                                                <span className="text-white/40">All Locations</span>
+                                                <span className="text-white/40">All Branchs</span>
                                             )}
                                         </td>
                                         <td>
@@ -877,14 +877,14 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                             </div>
                             {(formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor') && (
                                 <div>
-                                    <label className="block text-sm font-medium text-white/70 mb-1">Location *</label>
+                                    <label className="block text-sm font-medium text-white/70 mb-1">Branch *</label>
                                     <select
                                         value={formData.location}
                                         onChange={(e) => setFormData({ ...formData, location: e.target.value, floor: '' })}
                                         className="input-premium w-full"
                                         required
                                     >
-                                        <option value="">Select Location</option>
+                                        <option value="">Select Branch</option>
                                         {locations.map(loc => (
                                             <option key={loc.id} value={loc.name}>{loc.name}</option>
                                         ))}
@@ -909,20 +909,20 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                                     <option value="admin">Admin</option>
                                     <option value="manager">Manager</option>
                                     <option value="supervisor">Supervisor</option>
-                                    <option value="floor_supervisor">Floor Supervisor</option>
+                                    <option value="floor_supervisor">Zone Supervisor</option>
                                     <option value="statutory_admin">Statutory Admin</option>
                                 </select>
                             </div>
                             {(formData.role === 'supervisor' || formData.role === 'floor_supervisor') && (
                                 <div>
-                                    <label className="block text-sm font-medium text-white/70 mb-1">Floor *</label>
+                                    <label className="block text-sm font-medium text-white/70 mb-1">Zone *</label>
                                     <select
                                         value={formData.floor}
                                         onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
                                         className="input-premium w-full"
                                         required
                                     >
-                                        <option value="">Select Floor</option>
+                                        <option value="">Select Zone</option>
                                         {floorOptions
                                             .filter(f => !formData.location || f.locationName === formData.location)
                                             .map(f => (

@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity, Zap, QrCode, UserPlus, RefreshCw, WifiOff } from 'lucide-react';
-import { Staff, Attendance, Designation, LocationDesignationShiftConfig } from '../types';
+import { Staff, Attendance, Designation, BranchDesignationShiftConfig } from '../types';
 import { useFaceEngine } from '../hooks/useFaceEngine';
 import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
 import { attendanceService } from '../services/attendanceService';
 import { punchEventService } from '../services/punchEventService';
 import { isSunday } from '../utils/salaryCalculations';
 import { shiftService, formatTime12h, ShiftWindows, minutesBetween } from '../services/shiftService';
-import { locationShiftService, LocationShiftConfig, DEFAULT_LOCATION_CONFIG } from '../services/locationShiftService';
+import { locationShiftService, BranchShiftConfig, DEFAULT_LOCATION_CONFIG } from '../services/locationShiftService';
 import { appSettingsService } from '../services/appSettingsService';
 import { locationService } from '../services/locationService';
 import { calculateAttendanceStatus, resolveAttendanceRules, resolveActiveRule } from '../utils/attendanceRules';
@@ -55,7 +55,7 @@ const formatNow = () => {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 };
 
-const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole, userLocation }) => {
+const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole, userBranch }) => {
   const { ready, loading, error, detect } = useFaceEngine(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -106,12 +106,12 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
   const availableLocations = useMemo(() => Array.from(new Set(staff.map(s => s.location).filter(Boolean))), [staff]);
   const [selectedLocation, setSelectedLocation] = useState<string>(
-    userRole === 'manager' ? (userLocation || staff[0]?.location || '') : (availableLocations.length > 0 ? availableLocations[0] : 'Main Branch')
+    userRole === 'manager' ? (userBranch || staff[0]?.location || '') : (availableLocations.length > 0 ? availableLocations[0] : 'Main Branch')
   );
 
   useEffect(() => {
     // If a manager's location wasn't ready on first mount, force sync it once available
-    if (userRole === 'manager' && userLocation && selectedLocation !== userLocation) {
+    if (userRole === 'manager' && userBranch && selectedBranch !== userLocation) {
       setSelectedLocation(userLocation);
     }
   }, [userRole, userLocation, selectedLocation]);
@@ -125,7 +125,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       .sort((a, b) => (a.arrivalTime || '').localeCompare(b.arrivalTime || ''));
   }, [attendance, today, staff]);
 
-  // ---- Location scoping -----------------------------------------------------
+  // ---- Branch scoping -----------------------------------------------------
   // staff[] is already location-scoped by App.tsx for managers. Build a quick
   // lookup of allowed staff IDs and a SEPARATE map of all enrolled embeddings
   // so we can detect "wrong location" attempts and surface a clear error.

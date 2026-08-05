@@ -3,7 +3,7 @@ import { Save, FileEdit } from 'lucide-react';
 import { appSettingsService } from '../services/appSettingsService';
 import { customAlert } from './CustomDialog';
 
-export interface SalaryOverrideConfig {
+export interface PayrollOverrideConfig {
   oldAdvance: boolean;
   currentAdvance: boolean;
   deduction: boolean;
@@ -14,7 +14,7 @@ export interface SalaryOverrideConfig {
   sundayPenalty: boolean;
 }
 
-const DEFAULT_CONFIG: SalaryOverrideConfig = {
+const DEFAULT_CONFIG: PayrollOverrideConfig = {
   oldAdvance: true,
   currentAdvance: true,
   deduction: true,
@@ -25,7 +25,7 @@ const DEFAULT_CONFIG: SalaryOverrideConfig = {
   sundayPenalty: false
 };
 
-const SalaryOverridesPanel: React.FC = () => {
+const PayrollOverridesPanel: React.FC = () => {
   const [config, setConfig] = useState<SalaryOverrideConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -47,7 +47,7 @@ const SalaryOverridesPanel: React.FC = () => {
     }
   };
 
-  const handleToggle = (key: keyof SalaryOverrideConfig) => {
+  const handleToggle = (key: keyof PayrollOverrideConfig) => {
     setConfig(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
@@ -55,7 +55,7 @@ const SalaryOverridesPanel: React.FC = () => {
     setSaving(true);
     try {
       await appSettingsService.setSetting('salary_override_config', JSON.stringify(config));
-      await customAlert('Salary override configuration saved successfully!');
+      await customAlert('Payroll override configuration saved successfully!');
     } catch (error) {
       console.error('Error saving salary override config:', error);
       await customAlert('Failed to save configuration.');
@@ -74,7 +74,7 @@ const SalaryOverridesPanel: React.FC = () => {
           const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
           return (
             <label key={key} className="flex items-center gap-3 p-3 bg-white/5 border border-[var(--border-color)] rounded-xl cursor-pointer hover:bg-white/10 transition-colors">
-              <input type="checkbox" className="sr-only" checked={value} onChange={() => handleToggle(key as keyof SalaryOverrideConfig)} />
+              <input type="checkbox" className="sr-only" checked={value} onChange={() => handleToggle(key as keyof PayrollOverrideConfig)} />
               <div className={`w-10 h-6 rounded-full p-1 transition-colors ${value ? 'bg-indigo-500' : 'bg-gray-700'}`}>
                 <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${value ? 'translate-x-4' : 'translate-x-0'}`} />
               </div>
@@ -98,4 +98,4 @@ const SalaryOverridesPanel: React.FC = () => {
   );
 };
 
-export default SalaryOverridesPanel;
+export default PayrollOverridesPanel;

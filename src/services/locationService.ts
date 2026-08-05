@@ -1,6 +1,6 @@
 import { dataApi } from '../lib/dataApi';
 
-export interface Location {
+export interface Branch {
     id: string;
     name: string;
     is_active?: boolean;
@@ -44,7 +44,7 @@ export const locationService = {
         }));
     },
 
-    async addLocation(name: string): Promise<{ location: Location | null; credentials?: { email: string; password: string } }> {
+    async addLocation(name: string): Promise<{ location: Branch | null; credentials?: { email: string; password: string } }> {
         const { data, error } = await api
             .from('locations')
             .insert([{ name: name.toLowerCase().replace(/\s+/g, '_'), display_name: name, is_active: true }])
@@ -56,7 +56,7 @@ export const locationService = {
             return { location: null };
         }
 
-        const location: Location = {
+        const location: Branch = {
             id: data.id,
             name: data.display_name,
             is_active: data.is_active ?? undefined,
@@ -78,7 +78,7 @@ export const locationService = {
         }
     },
 
-    async updateLocation(id: string, name: string): Promise<Location | null> {
+    async updateLocation(id: string, name: string): Promise<Branch | null> {
         const { data: oldData, error: fetchError } = await api
             .from('locations')
             .select('display_name')

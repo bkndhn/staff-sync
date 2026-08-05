@@ -35,7 +35,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   selectedDate,
   onDateChange,
   userRole = 'manager',
-  userLocation = '',
+  userBranch = '',
   isDarkTheme,
   toggleTheme,
   statutoryMode = false,
@@ -153,7 +153,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [dragIndex, setDragIndex] = React.useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = React.useState<number | null>(null);
 
-  const moveLocation = (index: number, direction: 'up' | 'down') => {
+  const moveBranch = (index: number, direction: 'up' | 'down') => {
     const names = locations.map(l => l.name);
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= names.length) return;
@@ -278,7 +278,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     text += `👥 Active Staff: ${activeStaff.length}\n`;
     text += `✅ Present: ${presentToday} | 🕒 Half Day: ${halfDayToday} | ❌ Absent: ${absentToday}\n`;
     if (uninformedCount > 0) text += `⚠️ Uninformed Leaves: ${uninformedCount}\n`;
-    if (partTimeTotal > 0) text += `👥 Part-Time: ${partTimeTotal} (B:${partTimeBoth} M:${partTimeMorning} E:${partTimeEvening})\n`;
+    if (partTimeTotal > 0) text += `👥 Flex: ${partTimeTotal} (B:${partTimeBoth} M:${partTimeMorning} E:${partTimeEvening})\n`;
     text += '\n';
     locations.forEach(loc => {
       const locAtt = fullTimeAttendance.filter(r => {
@@ -339,11 +339,11 @@ const Dashboard: React.FC<DashboardProps> = ({
     let text = `📍 *${locName} — ${dateStr}*\n\n`;
     text += `👥 Staff: ${locStaff.length}\n`;
     text += `✅ Present: ${p}\n🕒 Half Day: ${h}\n❌ Absent: ${a}\n`;
-    if (pt > 0) text += `👥 Part-Time Present: ${pt}\n`;
+    if (pt > 0) text += `👥 Flex Present: ${pt}\n`;
     return text;
   };
 
-  const handleShareLocation = (locName: string) => {
+  const handleShareBranch = (locName: string) => {
     const text = generateLocationShareText(locName);
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
@@ -405,8 +405,8 @@ const Dashboard: React.FC<DashboardProps> = ({
               onChange={(e) => setGroupBy(e.target.value as any)}
               className="input-premium py-2 px-3 text-sm w-full"
             >
-              <option value="none">Location</option>
-              <option value="floor">Floor</option>
+              <option value="none">Branch</option>
+              <option value="floor">Zone</option>
               <option value="designation">Designation</option>
             </select>
           </div>
@@ -489,7 +489,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               <div className="stat-card stat-card-purple card-animate">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-[var(--text-secondary)] mb-1">Part-Time Today</p>
+                    <p className="text-sm text-[var(--text-secondary)] mb-1">Flex Today</p>
                     <div className="flex items-end gap-3">
                       <p className="text-3xl font-bold text-purple-400">{partTimeTotal}</p>
                       <p className="text-sm text-white/50 mb-1">
@@ -506,13 +506,13 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
-      {/* Location-based Attendance */}
+      {/* Branch-based Attendance */}
       <div className="section-card">
         <div className="section-header">
           <MapPin size={20} className="text-white" />
           <h2 className="text-lg font-semibold flex-1 text-white">
             {userRole === 'admin'
-              ? "Today's Attendance by Location"
+              ? "Today's Attendance by Branch"
               : `${userLocation} - Today's Attendance`
             }
           </h2>
@@ -526,7 +526,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           )}
         </div>
         <div className="section-body space-y-6">
-          {/* Location Order Editor */}
+          {/* Branch Order Editor */}
           {showOrderEditor && (
             <div className="glass-card-static p-4 rounded-xl mb-4">
               <p className="text-sm text-[var(--text-secondary)] mb-3">Drag or use arrows to reorder locations:</p>
@@ -580,16 +580,16 @@ const Dashboard: React.FC<DashboardProps> = ({
             const assignedPresentIds = fullTimeAttendance.filter(record => {
               const staffMember = activeStaff.find(s => s.id === record.staffId);
               if (!staffMember || staffMember.location !== location.name) return false;
-              const attendanceLocation = record.location || staffMember.location;
-              return record.status === 'Present' && attendanceLocation === location.name;
+              const attendanceBranch = record.location || staffMember.location;
+              return record.status === 'Present' && attendanceBranch === location.name;
             }).map(record => record.staffId);
             const assignedPresent = sortStaffIdsByOrder(assignedPresentIds).map(id => formatStaffName(id, false));
 
             const assignedHalfDayIds = fullTimeAttendance.filter(record => {
               const staffMember = activeStaff.find(s => s.id === record.staffId);
               if (!staffMember || staffMember.location !== location.name) return false;
-              const attendanceLocation = record.location || staffMember.location;
-              return record.status === 'Half Day' && attendanceLocation === location.name;
+              const attendanceBranch = record.location || staffMember.location;
+              return record.status === 'Half Day' && attendanceBranch === location.name;
             }).map(record => record.staffId);
             const assignedHalfDay = sortStaffIdsByOrder(assignedHalfDayIds).map(id => formatStaffName(id, false));
 
@@ -604,8 +604,8 @@ const Dashboard: React.FC<DashboardProps> = ({
               const staffMember = allActiveStaff.find(s => s.id === record.staffId);
               if (!staffMember) return false;
               if (staffMember.location === location.name) return false;
-              const attendanceLocation = record.location || staffMember.location;
-              return attendanceLocation === location.name && record.status !== 'Absent';
+              const attendanceBranch = record.location || staffMember.location;
+              return attendanceBranch === location.name && record.status !== 'Absent';
             });
             const tempGuests = sortStaffIdsByOrder(tempGuestRecords.map(r => r.staffId))
               .map(id => {
@@ -617,8 +617,8 @@ const Dashboard: React.FC<DashboardProps> = ({
               const staffMember = allActiveStaff.find(s => s.id === record.staffId);
               if (!staffMember) return false;
               if (staffMember.location !== location.name) return false;
-              const attendanceLocation = record.location || staffMember.location;
-              return attendanceLocation !== location.name && record.status !== 'Absent';
+              const attendanceBranch = record.location || staffMember.location;
+              return attendanceBranch !== location.name && record.status !== 'Absent';
             });
             const workingElsewhere = sortStaffIdsByOrder(workingElsewhereRecords.map(r => r.staffId))
               .map(record => {
@@ -675,7 +675,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <span className="text-sm text-cyan-400 ml-2">+{tempGuests.length} Temp</span>
                     )}
                     {locationPartTimeData.length > 0 && (
-                      <span className="text-sm text-[var(--text-secondary)] ml-2">{' + Part-Time: '}{locationPartTimeData.length}</span>
+                      <span className="text-sm text-[var(--text-secondary)] ml-2">{' + Flex: '}{locationPartTimeData.length}</span>
                     )}
                   </h3>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -723,7 +723,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     <p className="text-sm text-[var(--text-secondary)]">{workingElsewhere.length > 0 ? workingElsewhere.join(', ') : 'None'}</p>
                   </div>
                   <div className="glass-card-static p-4 border-l-4 border-purple-500">
-                    <p className="text-base font-bold text-purple-400 mb-2">👥 Part-Time: {locationPartTimeData.length}</p>
+                    <p className="text-base font-bold text-purple-400 mb-2">👥 Flex: {locationPartTimeData.length}</p>
                     <p className="text-sm text-[var(--text-secondary)]">{partTimeNames.length > 0 ? partTimeNames.join(', ') : 'None'}</p>
                     {renderPartTimePunchList(locationPartTimeData)}
                   </div>
@@ -765,10 +765,10 @@ const Dashboard: React.FC<DashboardProps> = ({
               return (
                 <div>
                   <h3 className="text-base md:text-lg font-semibold text-gradient mb-4 text-center">
-                    All Locations - Total Present: {overallFullTimePresent.length + overallFullTimeHalfDay.length}
+                    All Branchs - Total Present: {overallFullTimePresent.length + overallFullTimeHalfDay.length}
                     {partTimeAttendance.length > 0 && (
                       <span className="text-sm text-[var(--text-secondary)]">
-                        {' + Part-Time: '}{partTimeAttendance.length}
+                        {' + Flex: '}{partTimeAttendance.length}
                         {' ('}Both: {overallPartTimeBoth.length}, Morning: {overallPartTimeMorning.length}, Evening: {overallPartTimeEvening.length}{')'}
                       </span>
                     )}
@@ -788,7 +788,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <p className="text-sm text-[var(--text-secondary)]">{overallFullTimeAbsent.length > 0 ? overallFullTimeAbsent.join(', ') : 'None'}</p>
                     </div>
                     <div className="glass-card-static p-4 border-l-4 border-purple-500">
-                      <p className="text-base font-bold text-purple-400 mb-2">👥 Part-Time: {partTimeAttendance.length}</p>
+                      <p className="text-base font-bold text-purple-400 mb-2">👥 Flex: {partTimeAttendance.length}</p>
                       <p className="text-xs text-white/40 mb-1">(B: {overallPartTimeBoth.length}, M: {overallPartTimeMorning.length}, E: {overallPartTimeEvening.length})</p>
                       <p className="text-sm text-[var(--text-secondary)]">{overallPartTimeNames.length > 0 ? overallPartTimeNames.join(', ') : 'None'}</p>
                       {renderPartTimePunchList(partTimeAttendance)}
@@ -848,8 +848,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                   }}
                 >
                   <option value="name">Name</option>
-                  <option value="location">Location</option>
-                  <option value="floor">Floor</option>
+                  <option value="location">Branch</option>
+                  <option value="floor">Zone</option>
                   <option value="designation">Designation</option>
                   <option value="status">Status</option>
                 </select>

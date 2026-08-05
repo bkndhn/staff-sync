@@ -197,7 +197,7 @@ const BulkAttendanceUpload: React.FC<BulkAttendanceUploadProps> = ({ staff, onIm
   const downloadTemplate = () => {
     const wb = XLSX.utils.book_new();
     const templateData = [
-      ['Staff Name', 'Date', 'Status', 'Shift', 'Location'],
+      ['Staff Name', 'Date', 'Status', 'Shift', 'Branch'],
       ['John Doe', '2026-04-01', 'Present', 'Morning', 'Big Shop'],
       ['Jane Smith', '2026-04-01', 'Half Day', 'Evening', 'Small Shop'],
       ['Bob Wilson', '2026-04-01', 'Absent', '', ''],
@@ -252,7 +252,7 @@ const BulkAttendanceUpload: React.FC<BulkAttendanceUploadProps> = ({ staff, onIm
                 <Info size={16} className="text-accent-info mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-white/60 space-y-1">
                   <p><strong>Required columns:</strong> Staff Name, Date, Status (P/A/H/Present/Absent/Half Day)</p>
-                  <p><strong>Optional columns:</strong> Shift (Morning/Evening/Both), Location</p>
+                  <p><strong>Optional columns:</strong> Shift (Morning/Evening/Both), Branch</p>
                   <p><strong>Date formats:</strong> YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY</p>
                 </div>
               </div>

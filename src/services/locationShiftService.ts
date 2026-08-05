@@ -4,7 +4,7 @@ import { appSettingsService } from './appSettingsService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface LocationShiftConfig {
+export interface BranchShiftConfig {
   id?: string;
   locationName: string;
   /** Shift start HH:MM 24h */
@@ -48,7 +48,7 @@ export const DEFAULT_LOCATION_CONFIG: Omit<LocationShiftConfig, 'locationName'> 
 // ─── Row mapper ───────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const toConfig = (row: any): LocationShiftConfig => ({
+const toConfig = (row: any): BranchShiftConfig => ({
   id: row.id,
   locationName: row.location_name,
   shiftStart: row.shift_start ?? '09:00',
@@ -137,7 +137,7 @@ export const locationShiftService = {
   },
 
   /** Upsert a location config. */
-  async upsert(config: LocationShiftConfig): Promise<LocationShiftConfig | null> {
+  async upsert(config: BranchShiftConfig): Promise<LocationShiftConfig | null> {
     const payload = {
       location_name: config.locationName,
       shift_start: config.shiftStart,
@@ -172,7 +172,7 @@ export const locationShiftService = {
       .delete()
       .eq('location_name', locationName);
     if (error) {
-      console.error('locationShiftService.deleteByLocation error:', error);
+      console.error('locationShiftService.deleteByBranch error:', error);
       return false;
     }
     return true;

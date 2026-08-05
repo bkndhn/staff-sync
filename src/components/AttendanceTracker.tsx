@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Staff, Attendance, AttendanceFilter, Designation, LocationDesignationShiftConfig } from '../types';
+import { Staff, Attendance, AttendanceFilter, Designation, BranchDesignationShiftConfig } from '../types';
 import { Calendar, Download, Check, X, Filter, MapPin, Clock, Upload, Share2, AlertTriangle } from 'lucide-react';
 import { isSunday } from '../utils/salaryCalculations';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, shiftService } from '../services/shiftService';
@@ -61,7 +61,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [accommodationFilter, setAccommodationFilter] = useState<string>('All');
   const [showFilters, setShowFilters] = useState(false);
   const [showHalfDayModal, setShowHalfDayModal] = useState<{ staffId: string, staffName: string } | null>(null);
-  const [showLocationModal, setShowLocationModal] = useState<{ staffId: string, staffName: string, currentLocation: string } | null>(null);
+  const [showLocationModal, setShowLocationModal] = useState<{ staffId: string, staffName: string, currentBranch: string } | null>(null);
   const [selectedShift, setSelectedShift] = useState<'Morning' | 'Evening'>('Morning');
   const [viewImageModal, setViewImageModal] = useState<{ name: string; photo: string } | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string>('Big Shop');
@@ -416,7 +416,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 onChange={(e) => setFilters({ ...filters, location: e.target.value })}
                 className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="All">All Locations</option>
+                <option value="All">All Branchs</option>
                 {availableLocations.map(loc => (
                   <option key={loc} value={loc}>{loc}</option>
                 ))}
@@ -723,7 +723,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 onChange={(e) => setFilters({ ...filters, location: e.target.value })}
                 className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
-                <option value="All">All Locations</option>
+                <option value="All">All Branchs</option>
                 {availableLocations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
               </select>
             )}
@@ -957,13 +957,13 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const filteredStaff = getFilteredStaff();
   const _filteredPartTimeAttendance = getFilteredPartTimeAttendance();
 
-  // Only show full-time staff in the attendance table (part-time details shown in Salary page)
+  // Only show full-time staff in the attendance table (part-time details shown in Payroll page)
   const combinedAttendanceData: any[] = [];
 
   // Add full-time staff only
   filteredStaff.forEach((member, index) => {
     const attendanceRecord = getAttendanceForDate(member.id, selectedDate);
-    const displayLocation = attendanceRecord?.location || member.location;
+    const displayBranch = attendanceRecord?.location || member.location;
     const displayName = attendanceRecord?.shift ? `${member.name} (${attendanceRecord.shift})` : member.name;
 
     combinedAttendanceData.push({
@@ -982,7 +982,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       isPartTime: false,
       isUninformed: attendanceRecord?.isUninformed || false,
       originalName: member.name,
-      originalLocation: member.location,
+      originalBranch: member.location,
       arrivalTime: attendanceRecord?.arrivalTime || '',
       leavingTime: attendanceRecord?.leavingTime || '',
       hasRecord: !!attendanceRecord,
@@ -1171,7 +1171,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             )}
             {!canEditDate && (
               <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
-                {actualRole === 'floor_supervisor' ? 'Floor Supervisors' : (actualRole === 'supervisor' ? 'Supervisors' : 'Managers')}: today only
+                {actualRole === 'floor_supervisor' ? 'Zone Supervisors' : (actualRole === 'supervisor' ? 'Supervisors' : 'Managers')}: today only
               </span>
             )}
           </div>
@@ -1239,7 +1239,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       onChange={(e) => setFilters({ ...filters, location: e.target.value })}
                       className="filter-chip"
                     >
-                      <option value="All">All Locations</option>
+                      <option value="All">All Branchs</option>
                       {availableLocations.map(loc => (
                         <option key={loc} value={loc}>{loc}</option>
                       ))}
@@ -1252,7 +1252,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     onChange={(e) => setFloorFilter(e.target.value)}
                     className="filter-chip"
                   >
-                    <option value="All">All Floors</option>
+                    <option value="All">All Zones</option>
                     {Array.from(new Set(activeStaff.filter(s => s.floor).map(s => s.floor!))).map(flr => (
                       <option key={flr} value={flr}>{flr}</option>
                     ))}
@@ -1418,7 +1418,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       onClick={() => setShowLocationModal({
                         staffId: data.id,
                         staffName: data.originalName || data.name,
-                        currentLocation: data.originalLocation || data.location
+                        currentBranch: data.originalBranch || data.location
                       })}
                       disabled={!canEditDate}
                       className="h-10 rounded-lg bg-blue-100 text-blue-800 active:bg-blue-200 flex items-center justify-center shadow-sm"
@@ -1447,7 +1447,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Loc</th>
-                <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Floor</th>
+                <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Zone</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Desg</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Shift</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Late By</th>
@@ -1583,7 +1583,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                           onClick={() => setShowLocationModal({
                             staffId: data.id,
                             staffName: data.originalName || data.name,
-                            currentLocation: data.originalLocation || data.location
+                            currentBranch: data.originalBranch || data.location
                           })}
                           className="w-7 h-7 md:w-auto md:px-2 md:py-1 text-xs font-bold rounded bg-blue-100 text-blue-900 hover:bg-blue-200 border border-blue-200 transition-colors flex items-center justify-center shadow-sm"
                           title="Change location"
@@ -1610,18 +1610,18 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       )}
                     </div>
                   </td>
-                  {/* Location Column */}
+                  {/* Branch Column */}
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getLocationColor(data.location)}`}>
                         {data.location}
                       </span>
-                      {!data.isPartTime && data.location !== data.originalLocation && (
+                      {!data.isPartTime && data.location !== data.originalBranch && (
                         <span className="text-xs text-orange-600">(temp)</span>
                       )}
                     </div>
                   </td>
-                  {/* Floor Column */}
+                  {/* Zone Column */}
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap text-xs text-gray-600">
                     {data.floor || '-'}
                   </td>
@@ -1799,13 +1799,13 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         </div>
       )}
 
-      {/* Location Change Modal */}
+      {/* Branch Change Modal */}
       {showLocationModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 md:p-4" onClick={() => setShowLocationModal(null)}>
           <div className="bg-white rounded-2xl p-4 md:p-6 w-full max-w-xs md:max-w-md mx-2 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
               <MapPin className="text-blue-600" size={18} />
-              <span className="truncate">Change Location - {showLocationModal.staffName}</span>
+              <span className="truncate">Change Branch - {showLocationModal.staffName}</span>
             </h3>
             <p className="text-sm md:text-base text-gray-600 mb-3 md:mb-4">
               Current: <span className="font-medium">{showLocationModal.currentLocation}</span><br />
@@ -1814,24 +1814,24 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <div className="space-y-2 md:space-y-3 mb-4 md:mb-6">
               {availableLocations.map(loc => (
                 <label key={loc} className={`flex items-center p-3 border-2 rounded-xl cursor-pointer transition-all ${
-                  selectedLocation === loc ? 'border-blue-500 bg-blue-50/60 shadow-sm' : 'border-gray-200 hover:border-gray-300'
+                  selectedBranch === loc ? 'border-blue-500 bg-blue-50/60 shadow-sm' : 'border-gray-200 hover:border-gray-300'
                 }`}>
                   <input
                     type="radio"
                     name="locationOption"
                     value={loc}
-                    checked={selectedLocation === loc}
+                    checked={selectedBranch === loc}
                     onChange={(e) => setSelectedLocation(e.target.value)}
                     className="sr-only"
                   />
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 shrink-0 transition-colors ${
-                    selectedLocation === loc ? 'border-blue-500 bg-white' : 'border-gray-300 bg-white'
+                    selectedBranch === loc ? 'border-blue-500 bg-white' : 'border-gray-300 bg-white'
                   }`}>
-                    {selectedLocation === loc && (
+                    {selectedBranch === loc && (
                       <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
                     )}
                   </div>
-                  <span className={`text-sm md:text-base font-semibold ${selectedLocation === loc ? 'text-blue-800' : 'text-gray-700'}`}>{loc}</span>
+                  <span className={`text-sm md:text-base font-semibold ${selectedBranch === loc ? 'text-blue-800' : 'text-gray-700'}`}>{loc}</span>
                 </label>
               ))}
             </div>

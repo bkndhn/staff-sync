@@ -1,4 +1,4 @@
-import { Staff, Attendance, AdvanceDeduction, PartTimeSalaryDetail, WeeklySalary, DailySalary } from '../types';
+import { Staff, Attendance, AdvanceDeduction, PartTimeSalaryDetail, WeeklySalary, DailyPayroll } from '../types';
 import { AdvanceEntry } from '../services/advanceEntryService';
 import { settingsService } from '../services/settingsService';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, minutesBetween } from '../services/shiftService';
@@ -36,7 +36,7 @@ export const calculateExperience = (joinedDate: string): string => {
 };
 
 // Get part-time salary based on day and override
-export const getPartTimeDailySalary = (date: string, isOverride: boolean = false, overrideAmount?: number): number => {
+export const getPartTimeDailyPayroll = (date: string, isOverride: boolean = false, overrideAmount?: number): number => {
   if (isOverride && overrideAmount !== undefined) {
     return overrideAmount;
   }
@@ -76,7 +76,7 @@ export const calculateAttendanceMetrics = (
     const endDate = leave.leaveEndDate ? new Date(leave.leaveEndDate) : startDate;
     
     // Iterate through the date range
-    let current = new Date(startDate);
+    const current = new Date(startDate);
     while (current <= endDate) {
       if (current.getMonth() === month && current.getFullYear() === year) {
         // Only count if they weren't already marked present
@@ -116,7 +116,7 @@ export const calculateAttendanceMetrics = (
 };
 
 // Calculate part-time salary with weekly breakdown
-export const calculatePartTimeSalary = (
+export const calculatePartTimePayroll = (
   staffName: string,
   location: string,
   floor: string,
@@ -148,7 +148,7 @@ export const calculatePartTimeSalary = (
     const weekAttendance = weeks[weekNum];
 
     const dailySalaries: DailySalary[] = weekAttendance.map(record => {
-      const salary = record.salary || getPartTimeDailySalary(record.date, record.salaryOverride, record.salary);
+      const salary = record.salary || getPartTimeDailyPayroll(record.date, record.salaryOverride, record.salary);
       totalEarnings += salary;
       totalDays++;
 
@@ -268,7 +268,7 @@ export const computeScheduledDeductions = (
 // Scenario 1: salaryCalculationDays = 26
 // Scenario 2: salaryCalculationDays = 30
 // Scenario 3: salaryCalculationDays = 0 (fixed salary)
-export const calculateSalary = (
+export const calculatePayroll = (
   staff: Staff,
   attendanceMetrics: ReturnType<typeof calculateAttendanceMetrics>,
   advances: AdvanceDeduction | null,
@@ -341,7 +341,7 @@ export const calculateSalary = (
   let earlyCount = 0;
   let recordLateDeduction = 0;
   let recordEarlyDeduction = 0;
-  const dailyRate = staff.basicSalary / calculationDays;
+  const dailyRate = staff.basicPayroll / calculationDays;
 
   monthlyAttendance.forEach(record => {
     if (record.status === 'Absent') return;
@@ -429,11 +429,11 @@ export const calculateSalary = (
   }
   // SCENARIO 1: 26 calculation days
   else if (calculationDays === 26) {
-    // Basic calculation: (basicSalary / 26) * presentDays, rounded to nearest 10
+    // Basic calculation: (basicPayroll / 26) * presentDays, rounded to nearest 10
     if (totalPresentDays >= 26) {
       basicEarned = staff.basicSalary;
     } else {
-      basicEarned = roundToNearest10((staff.basicSalary / 26) * totalPresentDays);
+      basicEarned = roundToNearest10((staff.basicPayroll / 26) * totalPresentDays);
     }
 
     // Incentive and HRA logic
@@ -460,11 +460,11 @@ export const calculateSalary = (
   }
   // SCENARIO 2: 30 calculation days
   else if (calculationDays === 30) {
-    // Basic calculation: (basicSalary / 30) * presentDays, rounded to nearest 10
+    // Basic calculation: (basicPayroll / 30) * presentDays, rounded to nearest 10
     if (totalPresentDays >= 30) {
       basicEarned = staff.basicSalary;
     } else {
-      basicEarned = roundToNearest10((staff.basicSalary / 30) * totalPresentDays);
+      basicEarned = roundToNearest10((staff.basicPayroll / 30) * totalPresentDays);
     }
 
     // Incentive and HRA logic for 30-day calculation
@@ -484,7 +484,7 @@ export const calculateSalary = (
     if (totalPresentDays >= calculationDays) {
       basicEarned = staff.basicSalary;
     } else {
-      basicEarned = roundToNearest10((staff.basicSalary / calculationDays) * totalPresentDays);
+      basicEarned = roundToNearest10((staff.basicPayroll / calculationDays) * totalPresentDays);
     }
 
     if (totalPresentDays >= 25) {
@@ -561,7 +561,7 @@ export const calculateSalary = (
   if (overrideConfig?.sundayPenalty && overrides.sundayPenalty !== undefined) sundayPenalty = overrides.sundayPenalty;
 
   // Gross salary calculation
-  const grossSalary = roundToNearest10(basicEarned + incentiveEarned + hraEarned + supplementsTotal + mealAllowance);
+  const grossPayroll = roundToNearest10(basicEarned + incentiveEarned + hraEarned + supplementsTotal + mealAllowance);
 
   // Advance and deduction handling with carry-forward
   const oldAdv = advances?.oldAdvance || getPreviousMonthAdvance(staff.id, allAdvances, currentMonth, currentYear);
@@ -584,7 +584,7 @@ export const calculateSalary = (
   const newAdv = roundToNearest10(oldAdv + curAdv - deduction);
 
   // Calculate net salary (deduct Sunday penalty and late/early deductions from net salary)
-  const netSalary = Math.max(0, roundToNearest10(grossSalary - curAdv - deduction - sundayPenalty - lateComingDeduction - earlyLeaveDeduction));
+  const netPayroll = Math.max(0, roundToNearest10(grossPayroll - curAdv - deduction - sundayPenalty - lateComingDeduction - earlyLeaveDeduction));
 
   return {
     staffId: staff.id,
@@ -613,7 +613,7 @@ export const calculateSalary = (
   };
 };
 
-// Calculate dashboard attendance with half-day support and part-time staff
+// Calculate dashboard attendance with half-day support and flex staff
 export const calculateLocationAttendance = (
   staff: Staff[],
   attendance: Attendance[],
@@ -623,7 +623,7 @@ export const calculateLocationAttendance = (
   const locationStaff = staff.filter(member => member.location === location && member.isActive);
   const locationAttendance = (Array.isArray(attendance) ? attendance : []).filter(record => {
     if (record.isPartTime) {
-      // For part-time staff, check by location in attendance record
+      // For flex staff, check by location in attendance record
       return record.date === date && record.location === location;
     } else {
       // For full-time staff, check by staff member location

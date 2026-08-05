@@ -24,8 +24,8 @@ export type ReportColumnKey =
 
 export const REPORT_COLUMNS: { key: ReportColumnKey; label: string }[] = [
   { key: 'name', label: 'Name' },
-  { key: 'location', label: 'Location' },
-  { key: 'floor', label: 'Floor' },
+  { key: 'location', label: 'Branch' },
+  { key: 'floor', label: 'Zone' },
   { key: 'designation', label: 'Designation' },
   { key: 'status', label: 'Status' },
   { key: 'in', label: 'In' },
@@ -236,7 +236,7 @@ const renderReportSection = (
       return [loc.name, s.total, s.present, s.halfDay, s.absent, locPt];
     });
     autoTable(doc, {
-      head: [['Location', 'Staff', 'Present', 'Half Day', 'Absent', 'Temp Guest']],
+      head: [['Branch', 'Staff', 'Present', 'Half Day', 'Absent', 'Temp Guest']],
       body: rows,
       startY: y,
       theme: 'grid',
@@ -300,7 +300,7 @@ const renderReportSection = (
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(...THEME.purple);
-    doc.text('Temp Guest / Part-Time — Working Time', 14, y);
+    doc.text('Temp Guest / Flex — Working Time', 14, y);
     doc.setTextColor(...THEME.text);
     y += 4;
     autoTable(doc, {

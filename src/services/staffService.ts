@@ -74,10 +74,10 @@ export const staffService = {
     if (updates.designation !== undefined) (dbUpdates as any).designation = updates.designation;
     if (updates.type !== undefined) (dbUpdates as any).type = updates.type;
     if (updates.experience !== undefined) (dbUpdates as any).experience = updates.experience;
-    if (updates.basicSalary !== undefined) (dbUpdates as any).basic_salary = updates.basicSalary;
+    if (updates.basicPayroll !== undefined) (dbUpdates as any).basic_salary = updates.basicSalary;
     if (updates.incentive !== undefined) (dbUpdates as any).incentive = updates.incentive;
     if (updates.hra !== undefined) (dbUpdates as any).hra = updates.hra;
-    if (updates.totalSalary !== undefined) (dbUpdates as any).total_salary = updates.totalSalary;
+    if (updates.totalPayroll !== undefined) (dbUpdates as any).total_salary = updates.totalSalary;
     if (updates.joinedDate !== undefined) (dbUpdates as any).joined_date = updates.joinedDate;
     if (updates.isActive !== undefined) (dbUpdates as any).is_active = updates.isActive;
     if (updates.sundayPenalty !== undefined) (dbUpdates as any).sunday_penalty = updates.sundayPenalty;
@@ -191,10 +191,10 @@ export const staffService = {
       designation: dbStaff.designation || undefined,
       type: dbStaff.type as Staff['type'],
       experience: dbStaff.experience,
-      basicSalary: dbStaff.basic_salary,
+      basicPayroll: dbStaff.basic_salary,
       incentive: dbStaff.incentive,
       hra: dbStaff.hra,
-      totalSalary: dbStaff.total_salary,
+      totalPayroll: dbStaff.total_salary,
       joinedDate: dbStaff.joined_date,
       isActive: dbStaff.is_active,
       sundayPenalty: dbStaff.sunday_penalty ?? true,

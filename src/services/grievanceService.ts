@@ -35,7 +35,7 @@ export const grievanceService = {
   },
 
   async getAllActive(location?: string): Promise<StaffGrievance[]> {
-    let query = dataApi
+    const query = dataApi
       .from('staff_grievances')
       .select('*, staff:staff_id(name, location)')
       .in('status', ['pending', 'escalated'])

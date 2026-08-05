@@ -14,10 +14,10 @@ interface RolePermission {
 const features: Feature[] = [
   'Dashboard Analytics',
   'Manage Staff Profiles',
-  'View Salary Details',
+  'View Payroll Details',
   'Manage Attendance',
   'Approve Leaves',
-  'Manage Locations & Floors',
+  'Manage Branchs & Zones',
   'Run Payroll',
   'View Audit Logs',
   'Manage Admin Credentials',
@@ -32,10 +32,10 @@ const permissionsData: RolePermission[] = [
     permissions: {
       'Dashboard Analytics': false,
       'Manage Staff Profiles': false,
-      'View Salary Details': false,
+      'View Payroll Details': false,
       'Manage Attendance': false,
       'Approve Leaves': false,
-      'Manage Locations & Floors': false,
+      'Manage Branchs & Zones': false,
       'Run Payroll': false,
       'View Audit Logs': false,
       'Manage Admin Credentials': true,
@@ -49,10 +49,10 @@ const permissionsData: RolePermission[] = [
     permissions: {
       'Dashboard Analytics': true,
       'Manage Staff Profiles': true,
-      'View Salary Details': true,
+      'View Payroll Details': true,
       'Manage Attendance': true,
       'Approve Leaves': true,
-      'Manage Locations & Floors': true,
+      'Manage Branchs & Zones': true,
       'Run Payroll': true,
       'View Audit Logs': true,
       'Manage Admin Credentials': true,
@@ -66,10 +66,10 @@ const permissionsData: RolePermission[] = [
     permissions: {
       'Dashboard Analytics': true,
       'Manage Staff Profiles': true,
-      'View Salary Details': true,
+      'View Payroll Details': true,
       'Manage Attendance': true,
       'Approve Leaves': true,
-      'Manage Locations & Floors': false,
+      'Manage Branchs & Zones': false,
       'Run Payroll': true,
       'View Audit Logs': false,
       'Manage Admin Credentials': false,
@@ -78,15 +78,15 @@ const permissionsData: RolePermission[] = [
   },
   {
     role: 'manager',
-    label: 'Location Manager',
+    label: 'Branch Manager',
     description: 'Manages a specific location.',
     permissions: {
       'Dashboard Analytics': true,
       'Manage Staff Profiles': false,
-      'View Salary Details': false,
+      'View Payroll Details': false,
       'Manage Attendance': true,
       'Approve Leaves': true,
-      'Manage Locations & Floors': false,
+      'Manage Branchs & Zones': false,
       'Run Payroll': false,
       'View Audit Logs': false,
       'Manage Admin Credentials': false,
@@ -95,15 +95,15 @@ const permissionsData: RolePermission[] = [
   },
   {
     role: 'floor_supervisor',
-    label: 'Floor Supervisor',
+    label: 'Zone Supervisor',
     description: 'Manages attendance on a specific floor.',
     permissions: {
       'Dashboard Analytics': true,
       'Manage Staff Profiles': false,
-      'View Salary Details': false,
+      'View Payroll Details': false,
       'Manage Attendance': true,
       'Approve Leaves': false,
-      'Manage Locations & Floors': false,
+      'Manage Branchs & Zones': false,
       'Run Payroll': false,
       'View Audit Logs': false,
       'Manage Admin Credentials': false,
@@ -117,10 +117,10 @@ const permissionsData: RolePermission[] = [
     permissions: {
       'Dashboard Analytics': false,
       'Manage Staff Profiles': false,
-      'View Salary Details': true,
+      'View Payroll Details': true,
       'Manage Attendance': true,
       'Approve Leaves': false,
-      'Manage Locations & Floors': false,
+      'Manage Branchs & Zones': false,
       'Run Payroll': false,
       'View Audit Logs': false,
       'Manage Admin Credentials': false,
@@ -195,7 +195,7 @@ const PermissionsMatrix: React.FC = () => {
             <li><strong>Super Admins</strong> only manage tenant lifecycles, global settings, and client creation. They cannot see client employee data.</li>
             <li><strong>Client Admins</strong> have full read/write access to their tenant's workforce data but cannot change subscription limits.</li>
             <li><strong>Statutory Admins</strong> can only view and manage employees flagged as "Statutory".</li>
-            <li><strong>Location Managers & Supervisors</strong> only see data scoped to their assigned location/floor.</li>
+            <li><strong>Branch Managers & Supervisors</strong> only see data scoped to their assigned location/floor.</li>
           </ul>
         </div>
       </div>

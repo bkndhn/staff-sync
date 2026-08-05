@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { TrendingUp, X } from 'lucide-react';
 
-interface SalaryHikeModalProps {
+interface PayrollHikeModalProps {
   isOpen: boolean;
   onClose: () => void;
   staffName: string;
-  currentSalary: number;
-  newSalary: number;
+  currentPayroll: number;
+  newPayroll: number;
   onConfirm: (isHike: boolean, reason?: string, hikeDate?: string) => void;
 }
 
-const SalaryHikeModal: React.FC<SalaryHikeModalProps> = ({
+const PayrollHikeModal: React.FC<SalaryHikeModalProps> = ({
   isOpen,
   onClose,
   staffName,
@@ -24,7 +24,7 @@ const SalaryHikeModal: React.FC<SalaryHikeModalProps> = ({
 
   if (!isOpen) return null;
 
-  const difference = newSalary - currentSalary;
+  const difference = newPayroll - currentSalary;
   const isIncrease = difference > 0;
 
   const handleConfirm = () => {
@@ -40,7 +40,7 @@ const SalaryHikeModal: React.FC<SalaryHikeModalProps> = ({
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <TrendingUp className="text-green-600" size={24} />
-            Salary Change Confirmation
+            Payroll Change Confirmation
           </h3>
           <button
             onClick={onClose}
@@ -55,11 +55,11 @@ const SalaryHikeModal: React.FC<SalaryHikeModalProps> = ({
             <h4 className="font-semibold text-gray-800 mb-2">{staffName}</h4>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-600">Current Salary:</span>
+                <span className="text-gray-600">Current Payroll:</span>
                 <div className="font-semibold text-gray-800">₹{currentSalary.toLocaleString()}</div>
               </div>
               <div>
-                <span className="text-gray-600">New Salary:</span>
+                <span className="text-gray-600">New Payroll:</span>
                 <div className="font-semibold text-green-600">₹{newSalary.toLocaleString()}</div>
               </div>
             </div>
@@ -84,7 +84,7 @@ const SalaryHikeModal: React.FC<SalaryHikeModalProps> = ({
                   onChange={() => setIsHike(true)}
                   className="mr-2"
                 />
-                <span className="text-sm">Salary Hike (will be tracked in hike history)</span>
+                <span className="text-sm">Payroll Hike (will be tracked in hike history)</span>
               </label>
               <label className="flex items-center">
                 <input
@@ -94,7 +94,7 @@ const SalaryHikeModal: React.FC<SalaryHikeModalProps> = ({
                   onChange={() => setIsHike(false)}
                   className="mr-2"
                 />
-                <span className="text-sm">Salary Correction (no hike tracking)</span>
+                <span className="text-sm">Payroll Correction (no hike tracking)</span>
               </label>
             </div>
           </div>
@@ -148,4 +148,4 @@ const SalaryHikeModal: React.FC<SalaryHikeModalProps> = ({
   );
 };
 
-export default SalaryHikeModal;
+export default PayrollHikeModal;

@@ -50,7 +50,7 @@ const BreakManagement: React.FC<Props> = ({ staff, user }) => {
     setLoading(false);
   };
 
-  useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [startDate, endDate, staffFilter, locationFilter]);
+  useEffect(() => { refresh();   }, [startDate, endDate, staffFilter, locationFilter]);
 
   const filteredStaff = useMemo(
     () => staff.filter(s => {
@@ -83,7 +83,7 @@ const BreakManagement: React.FC<Props> = ({ staff, user }) => {
     const rows = filteredEvents.map(e => ({
       Date: e.date,
       Staff: e.staffName,
-      Location: e.location,
+      Branch: e.location,
       Type: e.breakTypeCode,
       Start: e.startTime,
       End: e.endTime || '',
@@ -213,16 +213,16 @@ const BreakManagement: React.FC<Props> = ({ staff, user }) => {
                 </select>
               </Field>
               {user.role === 'admin' && (
-                <Field label="Location">
+                <Field label='Branch'>
                   <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)} className="input-premium">
-                    <option value="all">All Locations</option>
+                    <option value="all">All Branchs</option>
                     {locations.map(l => <option key={l} value={l}>{l}</option>)}
                   </select>
                 </Field>
               )}
-              <Field label="Floor">
+              <Field label='Zone'>
                 <select value={floorFilter} onChange={e => setFloorFilter(e.target.value)} className="input-premium">
-                  <option value="all">All Floors</option>
+                  <option value="all">All Zones</option>
                   {floors.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
               </Field>
@@ -298,7 +298,7 @@ const BreakManagement: React.FC<Props> = ({ staff, user }) => {
           <div className="overflow-x-auto rounded-2xl border border-[var(--glass-border)]">
             <table className="w-full text-sm">
               <thead className="bg-white/5 text-left text-xs uppercase text-[var(--text-muted)]">
-                <tr><th className="p-3">Location</th><th className="p-3">Type</th><th className="p-3">Max/day</th><th className="p-3">Max min/break</th><th className="p-3">Max total/day</th><th className="p-3">Deduct</th><th className="p-3"></th></tr>
+                <tr><th className="p-3">Branch</th><th className="p-3">Type</th><th className="p-3">Max/day</th><th className="p-3">Max min/break</th><th className="p-3">Max total/day</th><th className="p-3">Deduct</th><th className="p-3"></th></tr>
               </thead>
               <tbody>
                 {policies.map(p => {
@@ -375,7 +375,7 @@ const BreakManagement: React.FC<Props> = ({ staff, user }) => {
       {policyForm && (
         <Modal title={policyForm.id ? 'Edit Policy' : 'New Policy'} onClose={() => setPolicyForm(null)}>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Location (blank = all)">
+            <Field label="Branch (blank = all)">
               <select value={policyForm.location || ''} onChange={e => setPolicyForm({ ...policyForm, location: e.target.value || undefined })} className="input-premium">
                 <option value="">All</option>
                 {locations.map(l => <option key={l} value={l}>{l}</option>)}

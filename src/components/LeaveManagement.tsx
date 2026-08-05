@@ -25,7 +25,7 @@ const statusColors: Record<string, string> = {
   postponed: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
 };
 
-const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocation, userName, userFloor }) => {
+const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocation, userName, userZone }) => {
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'postponed'>('all');
@@ -46,7 +46,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
     try {
       const data = userRole === 'admin'
         ? await leaveService.getAll()
-        : await leaveService.getByLocation(userLocation || '');
+        : await leaveService.getByLocation(userBranch || '');
       setLeaves(data);
     } catch (err) {
       console.error('Error loading leaves:', err);
@@ -65,8 +65,8 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
     }).catch(() => {});
   }, []);
 
-  const leaveLocation = (l: LeaveRequest) => staffMeta[l.staffId]?.location || l.location;
-  const leaveFloor = (l: LeaveRequest) => staffMeta[l.staffId]?.floor || '';
+  const leaveBranch = (l: LeaveRequest) => staffMeta[l.staffId]?.location || l.location;
+  const leaveZone = (l: LeaveRequest) => staffMeta[l.staffId]?.floor || '';
 
   const locationOptions = Array.from(new Set(leaves.map(leaveLocation).filter(Boolean))).sort();
   const floorOptions = Array.from(new Set(
@@ -99,9 +99,9 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
   const scopedLeaves = React.useMemo(() => {
     if ((userRole === 'supervisor' || userRole === 'floor_supervisor') && userFloor) {
       return leaves.filter(l => {
-        const staffFloor = staffMeta[l.staffId]?.floor;
+        const staffZone = staffMeta[l.staffId]?.floor;
         // Only show leaves from staff on the supervisor's floor
-        return staffFloor === userFloor;
+        return staffZone === userFloor;
       });
     }
     return leaves;
@@ -117,7 +117,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
       if (!l.staffName.toLowerCase().includes(q) && !l.location.toLowerCase().includes(q)) return false;
     }
     
-    // Location / floor filters (UI dropdowns — on top of auto-scope)
+    // Branch / floor filters (UI dropdowns — on top of auto-scope)
     if (locationFilter !== 'all' && leaveLocation(l) !== locationFilter) return false;
     if (floorFilter !== 'all' && leaveFloor(l) !== floorFilter) return false;
 
@@ -242,24 +242,24 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
             )}
           </div>
 
-          {/* Location & Floor filters */}
+          {/* Branch & Zone filters */}
           <div className="flex items-center gap-2 flex-wrap">
-            <label className="text-xs text-[var(--text-muted)] whitespace-nowrap">Location:</label>
+            <label className="text-xs text-[var(--text-muted)] whitespace-nowrap">Branch:</label>
             <select
               value={locationFilter}
               onChange={e => { setLocationFilter(e.target.value); setFloorFilter('all'); }}
               className="px-2 py-1.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--text-primary)] text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
             >
-              <option value="all">All Locations</option>
+              <option value="all">All Branchs</option>
               {locationOptions.map(loc => <option key={loc} value={loc}>{loc}</option>)}
             </select>
-            <label className="text-xs text-[var(--text-muted)] whitespace-nowrap">Floor:</label>
+            <label className="text-xs text-[var(--text-muted)] whitespace-nowrap">Zone:</label>
             <select
               value={floorFilter}
               onChange={e => setFloorFilter(e.target.value)}
               className="px-2 py-1.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--text-primary)] text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
             >
-              <option value="all">All Floors</option>
+              <option value="all">All Zones</option>
               {floorOptions.map(f => <option key={f} value={f}>{f}</option>)}
             </select>
             {(locationFilter !== 'all' || floorFilter !== 'all') && (

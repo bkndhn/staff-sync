@@ -15,7 +15,7 @@
  *
  * All configurable thresholds are passed as `rules` from either:
  *   - Per-staff shiftWindow override (highest priority)
- *   - Per-location LocationShiftConfig
+ *   - Per-location BranchShiftConfig
  *   - Global app_settings defaults
  */
 
@@ -128,7 +128,7 @@ export const calculateAttendanceStatus = (
       status = 'Half Day';
       reasons.push(`Arrived after morning cutoff (${rules.morningCutoff}) — counted as Half Day`);
     } else {
-      // Location doesn't require morning entry for Full Day; fall through to hours check
+      // Branch doesn't require morning entry for Full Day; fall through to hours check
       // For now, if they don't have an OUT punch, treat as Pending Full Day if before evening
       if (leavMins === null) {
         const now = new Date();
@@ -162,7 +162,7 @@ export const calculateAttendanceStatus = (
   return { status, attendanceValue, reasons };
 };
 
-import { type Staff, type Designation, type LocationDesignationShiftConfig } from '../types';
+import { type Staff, type Designation, type BranchDesignationShiftConfig } from '../types';
 
 export interface RuleResolutionResult {
   rules: AttendanceRules;
@@ -173,7 +173,7 @@ export const resolveActiveRule = (
   staff: Staff,
   locationConfig?: any | null,
   designations: Designation[] = [],
-  locationDesignationConfigs: LocationDesignationShiftConfig[] = [],
+  locationDesignationConfigs: BranchDesignationShiftConfig[] = [],
   globalKioskSettings?: {
     morningCutoff?: string;
     earlyExitTime?: string;
@@ -237,7 +237,7 @@ export const resolveActiveRule = (
   // Find designation matching staff
   const staffDesignation = designations.find(d => d.displayName === staff.designation || d.name === staff.designation);
 
-  // 2) Location-Designation Override
+  // 2) Branch-Designation Override
   if (staff.location && staffDesignation) {
     const locDesig = locationDesignationConfigs.find(
       c => c.locationName === staff.location && c.designationId === staffDesignation.id
@@ -261,7 +261,7 @@ export const resolveActiveRule = (
     }
   }
 
-  // 3) Location General Rule
+  // 3) Branch General Rule
   if (locationConfig && (locationConfig.shiftStart || locationConfig.shiftEnd)) {
     const rules: AttendanceRules = {
       shiftStart: locationConfig.shiftStart || defaultRules.shiftStart,
@@ -309,7 +309,7 @@ export const resolveActiveRule = (
 };
 
 /**
- * Convert a LocationShiftConfig (or per-staff shiftWindow override) to AttendanceRules.
+ * Convert a BranchShiftConfig (or per-staff shiftWindow override) to AttendanceRules.
  * Priority: staffWindow override > locationConfig > hardcoded fallback.
  */
 export const resolveAttendanceRules = (

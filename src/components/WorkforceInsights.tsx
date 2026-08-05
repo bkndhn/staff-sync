@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Staff, Attendance, AdvanceDeduction, SalaryOverride } from '../types';
+import { Staff, Attendance, AdvanceDeduction, PayrollOverride } from '../types';
 import {
   TrendingUp,
   Clock,
@@ -109,7 +109,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
 
   const [globalShiftWindows, setGlobalShiftWindows] = useState<any>(DEFAULT_SHIFT_WINDOWS);
   const [salaryCategories, setSalaryCategories] = useState<any[]>([]);
-  const [monthlyOverrides, setMonthlyOverrides] = useState<Record<string, SalaryOverride[]>>({});
+  const [monthlyOverrides, setMonthlyOverrides] = useState<Record<string, PayrollOverride[]>>({});
 
   useEffect(() => {
     shiftService.loadGlobal().then(setGlobalShiftWindows);
@@ -130,7 +130,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
         curr.setMonth(curr.getMonth() + 1);
       }
       
-      const overridesMap: Record<string, SalaryOverride[]> = {};
+      const overridesMap: Record<string, PayrollOverride[]> = {};
       await Promise.all(
         yearMonths.map(async ({ month, year }) => {
           try {
@@ -394,7 +394,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
       visibleStaff.forEach(s => {
         const metrics = calculateAttendanceMetrics(s.id, attendance, year, month);
         const adv = advances.find(a => a.staffId === s.id && a.month === month && a.year === year) || null;
-        const baseDetail = calculateSalary(s, metrics, adv, advances, attendance, month, year);
+        const baseDetail = calculatePayroll(s, metrics, adv, advances, attendance, month, year);
         
         const monthKey = `${year}-${month + 1}`;
         const overridesList = monthlyOverrides[monthKey] || [];
@@ -409,7 +409,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
           const sundayPenalty = o.sundayPenaltyOverride ?? baseDetail.sundayPenalty;
           const lateComingDeduction = o.lateComingDeductionOverride ?? (baseDetail.lateComingDeduction ?? 0);
           const earlyLeaveDeduction = o.earlyLeaveDeductionOverride ?? (baseDetail.earlyLeaveDeduction ?? 0);
-          const supplementsTotal = baseDetail.grossSalary - (baseDetail.basicEarned + baseDetail.incentiveEarned + baseDetail.hraEarned + baseDetail.mealAllowance);
+          const supplementsTotal = baseDetail.grossPayroll - (baseDetail.basicEarned + baseDetail.incentiveEarned + baseDetail.hraEarned + baseDetail.mealAllowance);
           
           const gross = roundToNearest10(basic + incentive + hra + meal + supplementsTotal);
           const net = roundToNearest10(gross - baseDetail.curAdv - baseDetail.deduction - sundayPenalty - lateComingDeduction - earlyLeaveDeduction);
@@ -423,8 +423,8 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
             sundayPenalty,
             lateComingDeduction,
             earlyLeaveDeduction,
-            grossSalary: gross,
-            netSalary: Math.max(0, net)
+            grossPayroll: gross,
+            netPayroll: Math.max(0, net)
           };
         }
         
@@ -435,7 +435,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
           gross: finalDetail.grossSalary
         });
         const statutoryTotal = breakdown.reduce((sum, b) => sum + b.amount, 0);
-        const finalNetSalary = Math.max(0, roundToNearest10(finalDetail.netSalary - statutoryTotal));
+        const finalNetPayroll = Math.max(0, roundToNearest10(finalDetail.netPayroll - statutoryTotal));
         
         grossTotal += finalDetail.grossSalary;
         netTotal += finalNetSalary;
@@ -472,7 +472,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
     const list = visibleStaff.map(s => {
       const metrics = calculateAttendanceMetrics(s.id, attendance, year, month);
       const adv = advances.find(a => a.staffId === s.id && a.month === month && a.year === year) || null;
-      const baseDetail = calculateSalary(s, metrics, adv, advances, attendance, month, year);
+      const baseDetail = calculatePayroll(s, metrics, adv, advances, attendance, month, year);
       
       const monthKey = `${year}-${month + 1}`;
       const overridesList = monthlyOverrides[monthKey] || [];
@@ -487,7 +487,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
         const sundayPenalty = o.sundayPenaltyOverride ?? baseDetail.sundayPenalty;
         const lateComingDeduction = o.lateComingDeductionOverride ?? (baseDetail.lateComingDeduction ?? 0);
         const earlyLeaveDeduction = o.earlyLeaveDeductionOverride ?? (baseDetail.earlyLeaveDeduction ?? 0);
-        const supplementsTotal = baseDetail.grossSalary - (baseDetail.basicEarned + baseDetail.incentiveEarned + baseDetail.hraEarned + baseDetail.mealAllowance);
+        const supplementsTotal = baseDetail.grossPayroll - (baseDetail.basicEarned + baseDetail.incentiveEarned + baseDetail.hraEarned + baseDetail.mealAllowance);
         
         const gross = roundToNearest10(basic + incentive + hra + meal + supplementsTotal);
         const net = roundToNearest10(gross - baseDetail.curAdv - baseDetail.deduction - sundayPenalty - lateComingDeduction - earlyLeaveDeduction);
@@ -501,8 +501,8 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
           sundayPenalty,
           lateComingDeduction,
           earlyLeaveDeduction,
-          grossSalary: gross,
-          netSalary: Math.max(0, net)
+          grossPayroll: gross,
+          netPayroll: Math.max(0, net)
         };
       }
       
@@ -513,20 +513,20 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
         gross: finalDetail.grossSalary
       });
       const statutoryTotal = breakdown.reduce((sum, b) => sum + b.amount, 0);
-      const finalNet = Math.max(0, roundToNearest10(finalDetail.netSalary - statutoryTotal));
+      const finalNet = Math.max(0, roundToNearest10(finalDetail.netPayroll - statutoryTotal));
       
       return {
         staffId: s.id,
         name: s.name,
         designation: s.designation || 'Staff',
         location: s.location,
-        basicSalary: s.basicSalary,
-        grossSalary: finalDetail.grossSalary,
-        netSalary: finalNet
+        basicPayroll: s.basicSalary,
+        grossPayroll: finalDetail.grossSalary,
+        netPayroll: finalNet
       };
     });
     
-    return list.sort((a, b) => b.netSalary - a.netSalary).slice(0, 5);
+    return list.sort((a, b) => b.netPayroll - a.netSalary).slice(0, 5);
   }, [visibleStaff, attendance, advances, monthlyOverrides, representedMonths]);
 
   // Toggle expanded details
@@ -695,18 +695,18 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
 
           {/* Payroll Summaries Panel */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Salary Summary Card */}
+            {/* Payroll Summary Card */}
             <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-6 rounded-3xl shadow-[var(--shadow-soft)] flex flex-col justify-between">
               <div>
                 <h3 className="text-base font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-                  <IndianRupee size={18} className="text-indigo-400" /> Salary Summary
+                  <IndianRupee size={18} className="text-indigo-400" /> Payroll Summary
                 </h3>
                 <div className="space-y-3">
-                  <SummaryRow label="Gross Salary Total" value={`₹${payrollSummary.grossTotal.toLocaleString('en-IN')}`} />
+                  <SummaryRow label="Gross Payroll Total" value={`₹${payrollSummary.grossTotal.toLocaleString('en-IN')}`} />
                   <SummaryRow label="Sunday Penalties" value={`- ₹${payrollSummary.sundayPenaltyTotal.toLocaleString('en-IN')}`} isDeduction />
                   <SummaryRow label="Late/Early Deductions" value={`- ₹${(payrollSummary.lateDeductionTotal + payrollSummary.earlyDeductionTotal).toLocaleString('en-IN')}`} isDeduction />
                   <div className="border-t border-[var(--glass-border)] my-2" />
-                  <SummaryRow label="Net Salary Distributed" value={`₹${payrollSummary.netTotal.toLocaleString('en-IN')}`} isBold />
+                  <SummaryRow label="Net Payroll Distributed" value={`₹${payrollSummary.netTotal.toLocaleString('en-IN')}`} isBold />
                 </div>
               </div>
               <div className="mt-4 p-3 bg-indigo-500/5 rounded-xl border border-indigo-500/10 text-[10px] text-[var(--text-muted)] flex items-start gap-2">
@@ -810,12 +810,12 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
             )}
           </div>
 
-          {/* Highest Salary Employees & Detailed Breakdowns */}
+          {/* Highest Payroll Employees & Detailed Breakdowns */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Top 5 Salaries Table */}
             <div className="lg:col-span-1 bg-[var(--bg-card)] border border-[var(--glass-border)] p-5 rounded-3xl shadow-[var(--shadow-soft)] space-y-4">
               <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
-                <Users size={18} className="text-emerald-400" /> Highest Salary Employees (Top 5)
+                <Users size={18} className="text-emerald-400" /> Highest Payroll Employees (Top 5)
               </h3>
               <div className="divide-y divide-[var(--glass-border)]">
                 {highestSalaryEmployees.map((emp, i) => (
@@ -829,7 +829,7 @@ export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-emerald-500">₹{emp.netSalary.toLocaleString('en-IN')}</p>
-                      <p className="text-[9px] text-[var(--text-muted)]">Net Salary</p>
+                      <p className="text-[9px] text-[var(--text-muted)]">Net Payroll</p>
                     </div>
                   </div>
                 ))}

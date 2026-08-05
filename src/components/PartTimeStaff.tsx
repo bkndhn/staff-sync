@@ -7,7 +7,7 @@ import { exportSalaryToExcel, exportPartTimeSalaryPDF } from '../utils/exportUti
 import { settingsService } from '../services/settingsService';
 import { partTimeAdvanceService } from '../services/partTimeAdvanceService';
 import { partTimeSettlementService } from '../services/partTimeSettlementService';
-import { floorService, Floor } from '../services/floorService';
+import { floorService, Zone } from '../services/floorService';
 import { PartTimeAdvanceRecord } from '../types';
 import { customAlert } from './CustomDialog';
 
@@ -42,8 +42,8 @@ const TimeInput: React.FC<{
             return { h: defaultAmPm === 'pm' ? '09' : '10', m: defaultAmPm === 'pm' ? '30' : '00', p: defaultAmPm || 'am' };
         }
         const [hStr, mStr] = time24.split(":");
-        let hInt = parseInt(hStr || "0");
-        let p = hInt >= 12 ? "pm" : (defaultAmPm === 'pm' && hInt > 0 && hInt < 12 ? 'pm' : 'am');
+        const hInt = parseInt(hStr || "0");
+        const p = hInt >= 12 ? "pm" : (defaultAmPm === 'pm' && hInt > 0 && hInt < 12 ? 'pm' : 'am');
         const h = hInt % 12 || 12;
         return { h: h.toString().padStart(2, "0"), m: mStr || "00", p };
     };
@@ -186,11 +186,11 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     });
     const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
     const [locationFilter, setLocationFilter] = useState<string>(
-        userLocation ? userLocation as any : 'All'
+        userBranch ? userBranch as any : 'All'
     );
-    // Salary Report Filter: Defaults to ['All'] for admins, otherwise defaults to user's location in array
+    // Payroll Report Filter: Defaults to ['All'] for admins, otherwise defaults to user's location in array
     const [reportLocationFilter, setReportLocationFilter] = useState<string[]>(
-        (!userRole || userRole === 'admin' || userRole === 'super_admin') ? ['All'] : (userLocation ? [userLocation] : ['All'])
+        (!userRole || userRole === 'admin' || userRole === 'super_admin') ? ['All'] : (userBranch ? [userLocation] : ['All'])
     );
     const [showLocationDropdown, setShowLocationDropdown] = useState(false);
     const [showReportFilters, setShowReportFilters] = useState(false);
@@ -205,8 +205,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         catch { return ['location', 'floor', 'days', 'shifts', 'earned', 'advance']; }
     });
     const PT_COLUMNS = [
-        { key: 'location', label: 'Location' },
-        { key: 'floor', label: 'Floor' },
+        { key: 'location', label: 'Branch' },
+        { key: 'floor', label: 'Zone' },
         { key: 'days', label: 'Days' },
         { key: 'shifts', label: 'Shifts' },
         { key: 'earned', label: 'Earned' },
@@ -214,7 +214,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     ];
     const PT_SORTS = [
         { key: 'name', label: 'Name' },
-        { key: 'location', label: 'Location' },
+        { key: 'location', label: 'Branch' },
         { key: 'earnings', label: 'Earnings' },
         { key: 'shifts', label: 'Shifts' },
     ];
@@ -232,9 +232,9 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const period = new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
         const has = (k: string) => partTimeColumns.includes(k);
         const lines = [
-            `*${salary.staffName}* — Part-Time Salary`,
+            `*${salary.staffName}* — Flex Payroll`,
             `Period: ${period}`,
-            has('location') ? `Location: ${salary.location}${salary.floor && has('floor') ? ` (${salary.floor})` : ''}` : '',
+            has('location') ? `Branch: ${salary.location}${salary.floor && has('floor') ? ` (${salary.floor})` : ''}` : '',
             has('days') || has('shifts') ? `Days: ${salary.totalDays} | Shifts: ${salary.totalShifts}` : '',
             has('earned') ? `Earned: ₹${salary.totalEarnings}` : '',
             has('advance') ? `Advance: ₹${advance}` : '',
@@ -282,7 +282,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     const [showSettings, setShowSettings] = useState(false);
     const [partTimeRates, setPartTimeRates] = useState(settingsService.getPartTimeRates());
 
-    // Locations state - fetched from Supabase
+    // Branchs state - fetched from Supabase
     const [availableLocations, setAvailableLocations] = useState<string[]>(['Big Shop', 'Small Shop', 'Godown']);
 
     // Load settlements from database on mount
@@ -624,7 +624,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         floor: ''
     }]);
 
-    const [bulkLocation, setBulkLocation] = useState(userLocation || 'Big Shop');
+    const [bulkLocation, setBulkLocation] = useState(userBranch || 'Big Shop');
     const [bulkFloor, setBulkFloor] = useState('');
 
     const [newStaffData, setNewStaffData] = useState<{
@@ -637,7 +637,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         floor: string;
     }>(() => {
         const config = getDefaultShiftConfig();
-        const location = (userLocation || 'Big Shop') as string;
+        const location = (userBranch || 'Big Shop') as string;
         const initialLeavingTime = (location === 'Godown') ? '21:00' : config.leavingTime;
 
         return {
@@ -651,9 +651,9 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         };
     });
 
-    // Update bulkLocation when availableLocations loads
+    // Update bulkBranch when availableLocations loads
     useEffect(() => {
-        if (!userLocation && availableLocations.length > 0) {
+        if (!userBranch && availableLocations.length > 0) {
             setBulkLocation(availableLocations[0]);
         }
     }, [availableLocations, userLocation]);
@@ -662,7 +662,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         floorService.getFloors().then(setFloors);
     }, []);
 
-    // Update bulkFloor when bulkLocation changes or userFloor is set
+    // Update bulkZone when bulkBranch changes or userZone is set
     useEffect(() => {
         if (userFloor) {
             setBulkFloor(userFloor);
@@ -816,7 +816,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         monthlyAttendance.forEach(record => {
             if (record.staffName) {
                 const key = record.staffName.toLowerCase();
-                const validFloor = record.floor && record.floor !== '-' ? record.floor : null;
+                const validZone = record.floor && record.floor !== '-' ? record.floor : null;
                 
                 if (!uniqueStaff.has(key)) {
                     const floorSet = new Set<string>();
@@ -838,7 +838,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
         return Array.from(uniqueStaff.values()).map(staff => {
             const floorsArray = Array.from(staff.floors);
-            return calculatePartTimeSalary(
+            return calculatePartTimePayroll(
                 staff.name,
                 Array.from(staff.locations).join(', '),
                 floorsArray.length > 0 ? floorsArray.join(', ') : '-',
@@ -865,7 +865,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             member.isActive
         );
 
-        // Check for duplicate name across all part-time staff for today (any location/shift)
+        // Check for duplicate name across all flex staff for today (any location/shift)
         const partTimeNameDuplicate = filteredTodayAttendance.some(record =>
             record.id !== excludeId &&
             record.staffName?.toLowerCase() === name.toLowerCase()
@@ -881,7 +881,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         // 10:00 for Morning/Both
         const defaultArrival = '10:00';
         // 21:00 for Godown, 21:30 for others
-        const defaultLeaving = bulkLocation === 'Godown' ? '21:00' : '21:30';
+        const defaultLeaving = bulkBranch === 'Godown' ? '21:00' : '21:30';
 
         setBulkStaffList([...bulkStaffList, {
             name: '',
@@ -934,7 +934,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 newList[index].leavingTime = '15:00';
             } else {
                 // Evening or Both
-                newList[index].leavingTime = bulkLocation === 'Godown' ? '21:00' : '21:30';
+                newList[index].leavingTime = bulkBranch === 'Godown' ? '21:00' : '21:30';
             }
         }
 
@@ -945,8 +945,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const curDate = new Date(selectedDate);
         let foundDateStr = '';
         let foundRecords: Attendance[] = [];
-        const targetLoc = userLocation || bulkLocation;
-        const targetFlr = userFloor || bulkFloor;
+        const targetLoc = userBranch || bulkLocation;
+        const targetFlr = userZone || bulkFloor;
 
         for (let i = 1; i <= 7; i++) {
             const checkD = new Date(curDate);
@@ -975,24 +975,24 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const newRows = foundRecords.map(r => ({
             name: r.staffName || '',
             shift: (r.shift === 'Morning' || r.shift === 'Evening' || r.shift === 'Both' ? r.shift : 'Both') as 'Morning' | 'Evening' | 'Both',
-            salary: r.salary || getPartTimeDailySalary(selectedDate),
+            salary: r.salary || getPartTimeDailyPayroll(selectedDate),
             arrivalTime: r.arrivalTime || '10:00',
             leavingTime: r.leavingTime || '21:30',
             floor: targetFlr || r.floor || ''
         }));
 
         setBulkStaffList(newRows);
-        await customAlert(`Successfully loaded ${newRows.length} part-time staff from ${foundDateStr}!`);
+        await customAlert(`Successfully loaded ${newRows.length} flex staff from ${foundDateStr}!`);
     };
 
     const handleCopySundayCrew = async () => {
         const curDate = new Date(selectedDate);
-        let checkD = new Date(curDate);
+        const checkD = new Date(curDate);
         const daysBack = curDate.getDay() === 0 ? 7 : (curDate.getDay() || 7);
         checkD.setDate(checkD.getDate() - daysBack);
         const sunDateStr = checkD.toISOString().split('T')[0];
-        const targetLoc = userLocation || bulkLocation;
-        const targetFlr = userFloor || bulkFloor;
+        const targetLoc = userBranch || bulkLocation;
+        const targetFlr = userZone || bulkFloor;
 
         const recs = attendance.filter(r =>
             r.isPartTime &&
@@ -1009,7 +1009,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const newRows = recs.map(r => ({
             name: r.staffName || '',
             shift: (r.shift === 'Morning' || r.shift === 'Evening' || r.shift === 'Both' ? r.shift : 'Both') as 'Morning' | 'Evening' | 'Both',
-            salary: getPartTimeDailySalary(selectedDate),
+            salary: getPartTimeDailyPayroll(selectedDate),
             arrivalTime: r.arrivalTime || '10:00',
             leavingTime: r.leavingTime || '21:30',
             floor: targetFlr || r.floor || ''
@@ -1024,8 +1024,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
         const errors: string[] = [];
         const validEntries: typeof bulkStaffList = [];
-        const targetLoc = userLocation || bulkLocation;
-        const targetFlr = userFloor || bulkFloor;
+        const targetLoc = userBranch || bulkLocation;
+        const targetFlr = userZone || bulkFloor;
 
         bulkStaffList.forEach((staffData, index) => {
             if (!staffData.name.trim()) {
@@ -1061,12 +1061,12 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         // Submit all valid entries
         validEntries.forEach((staffData, index) => {
             const staffId = `pt_${Date.now()}_${index}`;
-            let defaultSalary = getPartTimeDailySalary(selectedDate);
+            let defaultPayroll = getPartTimeDailyPayroll(selectedDate);
             if (staffData.shift === 'Morning' || staffData.shift === 'Evening') {
-                defaultSalary = Math.round(defaultSalary / 2);
+                defaultPayroll = Math.round(defaultPayroll / 2);
             }
 
-            const finalSalary = staffData.salary > 0 ? staffData.salary : defaultSalary;
+            const finalPayroll = staffData.salary > 0 ? staffData.salary : defaultSalary;
             const isSalaryEdited = staffData.salary > 0 && staffData.salary !== defaultSalary;
             const arrivalTime = staffData.arrivalTime || new Date().toTimeString().slice(0, 5);
             let leavingTime = staffData.leavingTime;
@@ -1077,13 +1077,13 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             onUpdateAttendance(
                 staffId, selectedDate, 'Present', true,
                 staffData.name.trim(), staffData.shift, targetLoc,
-                finalSalary, isSalaryEdited, arrivalTime, leavingTime, userFloor || staffData.floor || bulkFloor
+                finalSalary, isSalaryEdited, arrivalTime, leavingTime, userZone || staffData.floor || bulkFloor
             );
         });
 
         // Reset form
         const config = getDefaultShiftConfig();
-        const initialLeavingTime = (bulkLocation === 'Godown') ? '21:00' : config.leavingTime;
+        const initialLeavingTime = (bulkBranch === 'Godown') ? '21:00' : config.leavingTime;
 
         setBulkStaffList([{
             name: '',
@@ -1113,9 +1113,9 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     };
 
     const getLocationButtonText = () => {
-        if (reportLocationFilter.includes('All')) return 'All Locations';
+        if (reportLocationFilter.includes('All')) return 'All Branchs';
         const count = reportLocationFilter.length;
-        return count === 1 ? reportLocationFilter[0] : `${count} Locations`;
+        return count === 1 ? reportLocationFilter[0] : `${count} Branchs`;
     };
 
     const partTimeSalaries = calculatePartTimeSalaries().filter(salary => {
@@ -1199,7 +1199,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             if (isFullTimeStaff) {
                 await customAlert(`${newStaffData.name} is already a full-time staff member. Cannot add as part-time.`);
             } else {
-                await customAlert(`${newStaffData.name} is already added as part-time staff today.`);
+                await customAlert(`${newStaffData.name} is already added as flex staff today.`);
             }
             return;
         }
@@ -1207,13 +1207,13 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const staffId = `pt_${Date.now()}`;
 
         // Calculate salary based on shift and day
-        let defaultSalary = getPartTimeDailySalary(selectedDate);
+        let defaultPayroll = getPartTimeDailyPayroll(selectedDate);
         if (newStaffData.shift === 'Morning' || newStaffData.shift === 'Evening') {
-            defaultSalary = Math.round(defaultSalary / 2); // Half day rate
+            defaultPayroll = Math.round(defaultPayroll / 2); // Half day rate
         }
 
         // Use manual salary if provided, otherwise use calculated default
-        const finalSalary = newStaffData.salary > 0 ? newStaffData.salary : defaultSalary;
+        const finalPayroll = newStaffData.salary > 0 ? newStaffData.salary : defaultSalary;
         const isSalaryEdited = newStaffData.salary > 0 && newStaffData.salary !== defaultSalary;
 
         // Set default arrival time to current time if not provided to current time if not provided
@@ -1245,7 +1245,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         );
         setNewStaffData({
             name: '',
-            location: (userLocation || 'Big Shop') as any,
+            location: (userBranch || 'Big Shop') as any,
             shift: (new Date().getDay() === 0 ? 'Both' : 'Morning') as 'Morning' | 'Evening' | 'Both',
             salary: 0,
             arrivalTime: '',
@@ -1263,7 +1263,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             floor: record.floor || '',
             shift: record.shift || 'Morning',
             status: record.status,
-            salary: record.salary || getPartTimeDailySalary(record.date),
+            salary: record.salary || getPartTimeDailyPayroll(record.date),
             arrivalTime: record.arrivalTime || '',
             leavingTime: record.leavingTime || ''
         });
@@ -1282,15 +1282,15 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             if (isFullTimeStaff) {
                 await customAlert(`${editData.name} is already a full-time staff member. Cannot use as part-time.`);
             } else {
-                await customAlert(`${editData.name} is already added as part-time staff today.`);
+                await customAlert(`${editData.name} is already added as flex staff today.`);
             }
             return;
         }
 
         // Smart edited label logic: calculate default salary to check if it was actually edited
-        const defaultSalary = getPartTimeDailySalary(attendanceRecord.date);
-        const calculatedSalary = (editData.shift === 'Morning' || editData.shift === 'Evening')
-            ? Math.round(defaultSalary / 2)
+        const defaultPayroll = getPartTimeDailyPayroll(attendanceRecord.date);
+        const calculatedPayroll = (editData.shift === 'Morning' || editData.shift === 'Evening')
+            ? Math.round(defaultPayroll / 2)
             : defaultSalary;
 
         // Only mark as edited if salary actually changed from calculated default
@@ -1369,7 +1369,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
     // Group salaries by location for display
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const salariesByLocation = partTimeSalaries.reduce((acc, salary) => {
+    const salariesByBranch = partTimeSalaries.reduce((acc, salary) => {
         if (!acc[salary.location]) {
             acc[salary.location] = [];
         }
@@ -1391,8 +1391,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <Clock size={32} />
-                        <h1 className="text-xl md:text-3xl font-bold">Part-Time Staff Management</h1>
-                        {userLocation && (
+                        <h1 className="text-xl md:text-3xl font-bold">flex staff Management</h1>
+                        {userBranch && (
                             <span className="px-3 py-1 bg-white/20 rounded-full text-sm">
                                 {userLocation}
                             </span>
@@ -1419,11 +1419,11 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             <button
                                 onClick={() => setShowSettings(true)}
                                 className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm"
-                                title="Part-Time Salary Settings"
+                                title="Flex Payroll Settings"
                             >
                                 <Settings size={16} />
-                                <span className="hidden sm:inline">Salary Settings</span>
-                                <span className="sm:hidden">Salary</span>
+                                <span className="hidden sm:inline">Payroll Settings</span>
+                                <span className="sm:hidden">Payroll</span>
                             </button>
                         )}
                         <button
@@ -1431,18 +1431,18 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm"
                         >
                             <Plus size={16} />
-                            <span className="hidden sm:inline">Add Part-Time Staff</span>
+                            <span className="hidden sm:inline">Add flex staff</span>
                             <span className="sm:hidden">Add Staff</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Add Part-Time Staff Form (Bulk) */}
+            {/* Add flex staff Form (Bulk) */}
             {showAddForm && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6">
                     <div className="flex justify-between items-center mb-3">
-                        <h2 className="text-lg md:text-xl font-bold text-gray-800">Add Part-Time Staff for Today</h2>
+                        <h2 className="text-lg md:text-xl font-bold text-gray-800">Add flex staff for Today</h2>
                         <button onClick={() => setShowAddForm(false)} className="bg-gray-100 text-gray-500 hover:text-white hover:bg-red-600 p-1.5 rounded-full transition-all shadow-sm">
                             <X size={20} />
                         </button>
@@ -1477,10 +1477,10 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                     </div>
 
                     <form onSubmit={handleBulkSubmit}>
-                        {/* Common Location & Floor */}
+                        {/* Common Branch & Zone */}
                         <div className="mb-6 flex flex-col md:flex-row gap-4">
                             <div className="flex-1 md:w-1/3">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Location (Applies to all)</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Branch (Applies to all)</label>
                                 <select
                                     value={bulkLocation}
                                     onChange={(e) => handleBulkLocationChange(e.target.value)}
@@ -1491,19 +1491,19 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                 </select>
                             </div>
                             <div className="flex-1 md:w-1/3">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Floor (Applies to all)</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Zone (Applies to all)</label>
                                 <select
-                                    value={bulkFloor || userFloor || ''}
+                                    value={bulkZone || userZone || ''}
                                     onChange={(e) => setBulkFloor(e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                     disabled={!!userFloor}
                                 >
-                                    {userFloor ? (
+                                    {userZone ? (
                                         <option value={userFloor}>{userFloor}</option>
                                     ) : (
                                         <>
                                             <option value="">None</option>
-                                            {floors.filter(f => !bulkLocation || f.locationName === bulkLocation).map(floor => (
+                                            {floors.filter(f => !bulkBranch || f.locationName === bulkLocation).map(floor => (
                                                 <option key={floor.id} value={floor.name}>{floor.name}</option>
                                             ))}
                                         </>
@@ -1559,7 +1559,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">Salary (Opt)</label>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">Payroll (Opt)</label>
                                             <div className="relative">
                                                 <span className="absolute inset-y-0 left-0 pl-2 flex items-center text-gray-500 text-xs">₹</span>
                                                 <input
@@ -1568,9 +1568,9 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                     onChange={(e) => handleBulkRowChange(index, 'salary', Number(e.target.value))}
                                                     className="w-full pl-6 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                                     placeholder={(() => {
-                                                        let defaultSalary = getPartTimeDailySalary(selectedDate);
+                                                        let defaultPayroll = getPartTimeDailyPayroll(selectedDate);
                                                         if (staffEntry.shift === 'Morning' || staffEntry.shift === 'Evening') {
-                                                            defaultSalary = Math.round(defaultSalary / 2);
+                                                            defaultPayroll = Math.round(defaultPayroll / 2);
                                                         }
                                                         return `${defaultSalary}`;
                                                     })()}
@@ -1628,7 +1628,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 </div>
             )}
 
-            {/* Date & Location Selection */}
+            {/* Date & Branch Selection */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                 <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                     <div className="flex items-center gap-2">
@@ -1645,9 +1645,9 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             Sunday - ₹400 rate
                         </span>
                     )}
-                    {!userLocation && (
+                    {!userBranch && (
                         <div className="flex items-center gap-2">
-                            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Filter by Location</label>
+                            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Filter by Branch</label>
                             <select
                                 value={locationFilter}
                                 onChange={(e) => setLocationFilter(e.target.value as any)}
@@ -1662,15 +1662,15 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 </div>
             </div>
 
-            {/* Today's Part-Time Attendance */}
+            {/* Today's Flex Attendance */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-4 border-b border-gray-200">
                     <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                         <Calendar className="text-purple-600" size={20} />
-                        Part-Time Staff Attendance - {new Date(selectedDate).toLocaleDateString()}
+                        flex staff Attendance - {new Date(selectedDate).toLocaleDateString()}
                         {(locationFilter !== 'All' || userLocation) && (
                             <span className="text-sm text-gray-500">
-                                ({userLocation || locationFilter})
+                                ({userBranch || locationFilter})
                             </span>
                         )}
                     </h2>
@@ -1679,8 +1679,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 {filteredTodayAttendance.length === 0 ? (
                     <div className="p-8 text-center">
                         <Clock className="mx-auto text-gray-400 mb-4" size={48} />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No part-time staff for today</h3>
-                        <p className="text-gray-500">Add part-time staff using the button above.</p>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No flex staff for today</h3>
+                        <p className="text-gray-500">Add flex staff using the button above.</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -1690,11 +1690,11 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
 
                                     <th className="sticky left-0 z-10 bg-gray-50 px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Name</th>
-                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Floor</th>
+                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
+                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zone</th>
                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shift</th>
                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salary</th>
+                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payroll</th>
                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
@@ -1755,12 +1755,12 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                             {availableLocations.map(loc => (<option key={loc} value={loc}>{loc}</option>))}
                                                         </select>
                                                         <select
-                                                            value={editData.floor || userFloor || ''}
+                                                            value={editData.floor || userZone || ''}
                                                             onChange={(e) => setEditData({ ...editData, floor: e.target.value })}
                                                             className="px-2 py-1 text-xs border rounded"
                                                             disabled={!!userFloor}
                                                         >
-                                                            {userFloor ? (
+                                                            {userZone ? (
                                                                 <option value={userFloor}>{userFloor}</option>
                                                             ) : (
                                                                 <>
@@ -1833,7 +1833,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                             ) : (
                                                 <div className="flex items-center gap-2">
                                                     <span className={`font-semibold ${record.salaryOverride ? 'text-orange-600' : 'text-green-600'}`}>
-                                                        ₹{record.salary || getPartTimeDailySalary(record.date)}
+                                                        ₹{record.salary || getPartTimeDailyPayroll(record.date)}
                                                     </span>
                                                     {record.salaryOverride && (
                                                         <span className="text-xs text-orange-600">(edited)</span>
@@ -1869,13 +1869,13 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 )}
             </div>
 
-            {/* Monthly Salary Report */}
+            {/* Monthly Payroll Report */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6">
                 <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-4">
                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                         <DollarSign className="text-green-600" size={20} />
-                        Part-Time Staff Salary Report
-                        {userLocation && (
+                        flex staff Payroll Report
+                        {userBranch && (
                             <span className="text-sm text-gray-500">- {userLocation}</span>
                         )}
                     </h2>
@@ -1897,7 +1897,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 </div>
 
                 <div className={`${showReportFilters ? 'flex' : 'hidden lg:flex'} flex-wrap items-center gap-2 md:gap-4 mb-6 p-3 lg:p-0 bg-slate-50 lg:bg-transparent rounded-xl border lg:border-0 border-slate-200 dark:border-slate-700`}>
-                        {/* Multi-Location Filter Dropdown */}
+                        {/* Multi-Branch Filter Dropdown */}
                         <div className="relative" ref={dropdownRef}>
                             <button
                                 onClick={() => setShowLocationDropdown(!showLocationDropdown)}
@@ -1916,7 +1916,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                 onChange={() => handleLocationToggle('All')}
                                                 className="w-4 h-4 text-purple-600 rounded"
                                             />
-                                            <span className="text-sm">All Locations</span>
+                                            <span className="text-sm">All Branchs</span>
                                         </label>
                                         <hr className="my-1" />
                                         {['Big Shop', 'Small Shop', 'Godown'].map(location => (
@@ -2215,8 +2215,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                 <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
 
                                 <th className="sticky left-0 z-10 bg-gray-50 px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Name</th>
-                                <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                                <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Floor</th>
+                                <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
+                                <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zone</th>
                                 {reportType === 'weekly' && getWeeksInMonth(selectedYear, selectedMonth)[selectedWeek] && (() => {
                                     const weekData = getWeeksInMonth(selectedYear, selectedMonth)[selectedWeek];
                                     const headers = [];
@@ -2265,7 +2265,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     const advanceKey = `${salary.staffName}-${salary.location}-${selectedYear}-${selectedMonth}-${selectedWeek}`;
                                     const advanceRecord = advanceRecords[advanceKey];
                                     const advanceAmount = advanceRecord?.advanceGiven || 0;
-                                    const pendingAmount = advanceRecord?.pendingSalary || 0;
+                                    const pendingAmount = advanceRecord?.pendingPayroll || 0;
                                     const closingBalance = advanceRecord?.closingBalance || 0;
 
                                     // Determine row background color
@@ -2402,7 +2402,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                                     adjustment: 0,
                                                                     advanceGiven: amount,
                                                                     closingBalance: 0,
-                                                                    pendingSalary: 0
+                                                                    pendingPayroll: 0
                                                                 });
 
                                                                 loadAdvanceData();
@@ -2499,11 +2499,11 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 </div>
             </div>
 
-            {/* Past Salary & Advance Report */}
+            {/* Past Payroll & Advance Report */}
             <div className="bg-white rounded-lg shadow p-6 mt-8 mb-8">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Calendar size={20} className="text-purple-600" />
-                    Past Salary & Advance Report
+                    Past Payroll & Advance Report
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -2570,7 +2570,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Staff / Location</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Staff / Branch</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {reportViewType === 'Detailed' ? 'Period' : 'Summary Period'}
                                 </th>
@@ -2605,7 +2605,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                             {record.closingBalance > 0 ? `₹${record.closingBalance}` : '-'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-green-600">
-                                            {record.pendingSalary > 0 ? `₹${record.pendingSalary}` : '-'}
+                                            {record.pendingPayroll > 0 ? `₹${record.pendingSalary}` : '-'}
                                         </td>
                                     </tr>
                                 ))
@@ -2621,7 +2621,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                             advanceGiven: 0,
                                             adjustment: 0,
                                             closingBalance: 0,
-                                            pendingSalary: 0,
+                                            pendingPayroll: 0,
                                             count: 0
                                         };
                                     }
@@ -2634,7 +2634,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     // But since reduce order isn't guaranteed if not sorted, we should rely on dates.
                                     // Luckily API returns sorted by date.
                                     group.closingBalance = curr.closingBalance;
-                                    group.pendingSalary = curr.pendingSalary;
+                                    group.pendingPayroll = curr.pendingSalary;
                                     group.count += 1;
                                     return acc;
                                 }, {} as Record<string, any>)).map((group: any, idx) => (
@@ -2654,7 +2654,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                             {group.closingBalance > 0 ? `₹${group.closingBalance}` : '-'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-green-600 font-bold">
-                                            {group.pendingSalary > 0 ? `₹${group.pendingSalary}` : '-'}
+                                            {group.pendingPayroll > 0 ? `₹${group.pendingSalary}` : '-'}
                                         </td>
                                     </tr>
                                 ))
@@ -2675,7 +2675,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                     <td className="px-6 py-4 text-right">₹{pastReportData.reduce((s, r) => s + r.advanceGiven, 0)}</td>
                                     <td className="px-6 py-4 text-right">₹{pastReportData.reduce((s, r) => s + r.adjustment, 0)}</td>
                                     <td className="px-6 py-4 text-right">₹{pastReportData.reduce((s, r) => s + (reportViewType === 'Detailed' ? r.closingBalance : 0), 0)}</td>
-                                    <td className="px-6 py-4 text-right">₹{pastReportData.reduce((s, r) => s + (reportViewType === 'Detailed' ? r.pendingSalary : 0), 0)}</td>
+                                    <td className="px-6 py-4 text-right">₹{pastReportData.reduce((s, r) => s + (reportViewType === 'Detailed' ? r.pendingPayroll : 0), 0)}</td>
                                 </tr>
                             </tfoot>
                         )}
@@ -2738,7 +2738,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg p-6 max-w-md w-full">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-bold text-gray-900">Part-Time Salary Rates</h3>
+                            <h3 className="text-lg font-bold text-gray-900">Flex Payroll Rates</h3>
                             <button
                                 onClick={() => {
                                     setShowSettings(false);

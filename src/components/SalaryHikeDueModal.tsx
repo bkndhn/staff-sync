@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Staff, SalaryHike } from '../types';
+import { Staff, PayrollHike } from '../types';
 import { TrendingUp, X, Download } from 'lucide-react';
 import { appSettingsService } from '../services/appSettingsService';
 
-interface SalaryHikeDueModalProps {
+interface PayrollHikeDueModalProps {
     staff: Staff[];
-    salaryHikes: SalaryHike[];
+    salaryHikes: PayrollHike[];
     onClose: () => void;
 }
 
-const SalaryHikeDueModal: React.FC<SalaryHikeDueModalProps> = ({
+const PayrollHikeDueModal: React.FC<SalaryHikeDueModalProps> = ({
     staff,
     salaryHikes,
     onClose
@@ -20,7 +20,7 @@ const SalaryHikeDueModal: React.FC<SalaryHikeDueModalProps> = ({
         appSettingsService.getDefaultHikeInterval().then(setDefaultInterval);
     }, []);
 
-    const getStaffSalaryHikes = (staffId: string): SalaryHike[] => {
+    const getStaffSalaryHikes = (staffId: string): PayrollHike[] => {
         return salaryHikes
             .filter(h => h.staffId === staffId)
             .sort((a, b) => new Date(b.hikeDate).getTime() - new Date(a.hikeDate).getTime());
@@ -81,10 +81,10 @@ const SalaryHikeDueModal: React.FC<SalaryHikeDueModalProps> = ({
             return {
                 'S.No': index + 1,
                 'Name': member.name,
-                'Location': member.location,
-                'Past Salary': lastHike ? lastHike.oldSalary : (member.initialSalary || 0),
-                'Current Salary': member.basicSalary + member.incentive + member.hra,
-                'Hiked Salary': lastHike ? (lastHike.newSalary - lastHike.oldSalary) : 0,
+                'Branch': member.location,
+                'Past Payroll': lastHike ? lastHike.oldPayroll : (member.initialPayroll || 0),
+                'Current Payroll': member.basicPayroll + member.incentive + member.hra,
+                'Hiked Payroll': lastHike ? (lastHike.newPayroll - lastHike.oldSalary) : 0,
                 'Last Hike Date': lastHike ? new Date(lastHike.hikeDate).toLocaleDateString() : 'Never',
                 'Months Since Hike': getMonthsSinceHike(member.id),
                 'Hike Interval': `${getHikeIntervalForStaff(member)} months`,
@@ -93,7 +93,7 @@ const SalaryHikeDueModal: React.FC<SalaryHikeDueModalProps> = ({
         });
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Salary Hike Due');
+        XLSX.utils.book_append_sheet(wb, ws, 'Payroll Hike Due');
         XLSX.writeFile(wb, `Salary_Hike_Due_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
@@ -103,7 +103,7 @@ const SalaryHikeDueModal: React.FC<SalaryHikeDueModalProps> = ({
                 <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 flex items-center justify-between">
                     <h3 className="text-lg font-bold flex items-center gap-2">
                         <TrendingUp size={20} />
-                        Staff Eligible for Salary Hike ({staffDueForHike.length})
+                        Staff Eligible for Payroll Hike ({staffDueForHike.length})
                     </h3>
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-white/80">Default: {defaultInterval} months</span>
@@ -128,8 +128,8 @@ const SalaryHikeDueModal: React.FC<SalaryHikeDueModalProps> = ({
                             <tr>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">S.No</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Name</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Location</th>
-                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Current Salary</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Branch</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Current Payroll</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Last Hike</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Since Hike</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Interval</th>
@@ -140,7 +140,7 @@ const SalaryHikeDueModal: React.FC<SalaryHikeDueModalProps> = ({
                             {staffDueForHike.map((member, index) => {
                                 const hikes = getStaffSalaryHikes(member.id);
                                 const lastHike = hikes[0];
-                                const currentSalary = member.basicSalary + member.incentive + member.hra;
+                                const currentPayroll = member.basicPayroll + member.incentive + member.hra;
                                 const interval = getHikeIntervalForStaff(member);
                                 return (
                                     <tr key={member.id} className="hover:bg-gray-50">
@@ -180,4 +180,4 @@ const SalaryHikeDueModal: React.FC<SalaryHikeDueModalProps> = ({
     );
 };
 
-export default SalaryHikeDueModal;
+export default PayrollHikeDueModal;

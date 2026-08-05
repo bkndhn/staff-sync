@@ -5,13 +5,13 @@ import {
   ArrowUpRight, ArrowDownRight, FileText, CreditCard, Send, MessageSquare, AlertTriangle,
   CalendarDays, Trash2, Plus, Camera, QrCode
 } from 'lucide-react';
-import { Staff, Attendance, SalaryHike, AdvanceDeduction, SalaryOverride } from '../types';
+import { Staff, Attendance, PayrollHike, AdvanceDeduction, PayrollOverride } from '../types';
 import { calculateAttendanceMetrics, calculateSalary, getDaysInMonth, isSunday, roundToNearest10, getPreviousMonthAdvance } from '../utils/salaryCalculations';
 import { salaryOverrideService } from '../services/salaryOverrideService';
-import { salaryCategoryService, type SalaryCategory } from '../services/salaryCategoryService';
+import { salaryCategoryService, type PayrollCategory } from '../services/salaryCategoryService';
 import { leaveService, LeaveRequest } from '../services/leaveService';
 import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryService';
-import { salaryDisbursementService, SalaryDisbursement } from '../services/salaryDisbursementService';
+import { salaryDisbursementService, PayrollDisbursement } from '../services/salaryDisbursementService';
 import { grievanceService, StaffGrievance } from '../services/grievanceService';
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
 import FaceRegistration from './FaceRegistration';
@@ -35,7 +35,7 @@ import TenantStatusBanner from './TenantStatusBanner';
 interface StaffPortalProps {
   staff: Staff;
   attendance: Attendance[];
-  salaryHikes: SalaryHike[];
+  salaryHikes: PayrollHike[];
   advances: AdvanceDeduction[];
   allStaff: Staff[];
 }
@@ -410,10 +410,10 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       .filter(item => item.amount > 0); // Only show allowances that exist for this staff
   }, [activeCustomCategories, overrides?.salarySupplementsOverride, staff.salarySupplements]);
 
-  // Salary for selected month - with overrides applied
+  // Payroll for selected month - with overrides applied
   const salaryDetail = useMemo(() => {
     const adv = advances.find(a => a.staffId === staff.id && a.month === selectedMonth && a.year === selectedYear) || null;
-    const baseDetail = calculateSalary(staff, metrics, adv, advances, attendance, selectedMonth, selectedYear, currentMonthAdvanceEntries);
+    const baseDetail = calculatePayroll(staff, metrics, adv, advances, attendance, selectedMonth, selectedYear, currentMonthAdvanceEntries);
 
     // Apply overrides if they exist
     let result = baseDetail as typeof baseDetail & { statutoryTotal?: number; statutoryBreakdown?: Array<{ key: string; label: string; amount: number }> };
@@ -439,8 +439,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         sundayPenalty,
         lateComingDeduction,
         earlyLeaveDeduction,
-        grossSalary: gross,
-        netSalary: Math.max(0, net)
+        grossPayroll: gross,
+        netPayroll: Math.max(0, net)
       };
     }
 
@@ -457,7 +457,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         ...result,
         statutoryTotal,
         statutoryBreakdown: breakdown.map((b) => ({ key: b.key, label: b.label, amount: b.amount })),
-        netSalary: Math.max(0, roundToNearest10(result.netSalary - statutoryTotal)),
+        netPayroll: Math.max(0, roundToNearest10(result.netPayroll - statutoryTotal)),
       };
     }
     return result;
@@ -502,8 +502,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
     doc.text(`Employee: ${staff.name}`, 20, 52);
-    doc.text(`Location: ${staff.location}`, 20, 59);
-    doc.text(`Type: ${staff.type === 'full-time' ? 'Full-Time' : 'Part-Time'}`, 120, 52);
+    doc.text(`Branch: ${staff.location}`, 20, 59);
+    doc.text(`Type: ${staff.type === 'full-time' ? 'Full-Time' : 'Flex'}`, 120, 52);
     doc.text(`Joined: ${staff.joinedDate}`, 120, 59);
 
     doc.setDrawColor(200, 200, 200);
@@ -541,7 +541,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       earningsRows.push([item.name, `${rs} ${item.amount.toLocaleString('en-IN')}`]);
     });
     earningsRows.push(
-      ['Gross Salary', `${rs} ${salaryDetail.grossSalary.toLocaleString('en-IN')}`],
+      ['Gross Payroll', `${rs} ${salaryDetail.grossSalary.toLocaleString('en-IN')}`],
     );
 
     const deductionRows = [
@@ -597,11 +597,11 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     { id: 'overview' as const, label: 'Overview', icon: User },
     { id: 'attendance' as const, label: 'Monthly', icon: Calendar },
     { id: 'yearly' as const, label: 'Yearly', icon: CalendarDays },
-    { id: 'salary' as const, label: 'Salary', icon: IndianRupee },
+    { id: 'salary' as const, label: 'Payroll', icon: IndianRupee },
     { id: 'hikes' as const, label: 'Hikes', icon: TrendingUp },
     { id: 'leave', label: 'Leave', icon: FileText },
     { id: 'grievances', label: 'Issues', icon: AlertTriangle },
-    { id: 'disbursements', label: 'Salary Inbox', icon: CreditCard },
+    { id: 'disbursements', label: 'Payroll Inbox', icon: CreditCard },
     { id: 'face', label: 'Face Registration', icon: Camera }
   ];
 
@@ -670,7 +670,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                   {staff.employeeCode && (
                     <span className="font-mono text-indigo-400 mr-2">#{staff.employeeCode}</span>
                   )}
-                  {staff.type === 'full-time' ? 'Full-Time' : 'Part-Time'} Staff
+                  {staff.type === 'full-time' ? 'Full-Time' : 'Flex'} Staff
                 </p>
               </div>
               {!isLeftStaff && (
@@ -725,8 +725,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <InfoRow icon={MapPin} label="Location" value={staff.location} />
-              {staff.floor && <InfoRow icon={MapPin} label="Floor" value={staff.floor} />}
+              <InfoRow icon={MapPin} label='Branch' value={staff.location} />
+              {staff.floor && <InfoRow icon={MapPin} label='Zone' value={staff.floor} />}
               {staff.designation && <InfoRow icon={Briefcase} label="Designation" value={staff.designation} />}
               <InfoRow icon={Briefcase} label="Experience" value={staff.experience} />
               <InfoRow icon={Calendar} label="Joined Date" value={staff.joinedDate} />
@@ -737,10 +737,10 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
             </div>
           </div>
 
-          {/* Current Salary Structure */}
+          {/* Current Payroll Structure */}
           <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-6 rounded-2xl shadow-[var(--shadow-soft)]">
             <h3 className="text-lg font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-              <IndianRupee size={20} className="text-indigo-500" /> Current Salary Structure
+              <IndianRupee size={20} className="text-indigo-500" /> Current Payroll Structure
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <SalaryCard label={categoryLabels.basic} amount={staff.basicSalary} />
@@ -752,7 +752,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               ))}
             </div>
             <div className="mt-3">
-              <SalaryCard label="Total Salary" amount={staff.totalSalary} highlight />
+              <SalaryCard label="Total Payroll" amount={staff.totalSalary} highlight />
             </div>
           </div>
 
@@ -1105,7 +1105,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         <div className="space-y-4">
           {/* Download button */}
           <button onClick={downloadSalarySlip} className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all active:scale-[0.98]">
-            <Download size={18} /> Download Salary Slip
+            <Download size={18} /> Download Payroll Slip
           </button>
 
           {/* Earnings */}
@@ -1135,7 +1135,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               <SalaryRow label="HRA Earned" value={`Rs. ${salaryDetail.hraEarned.toLocaleString('en-IN')}`} />
               {salaryDetail.mealAllowance > 0 && <SalaryRow label="Meal Allowance" value={`Rs. ${salaryDetail.mealAllowance.toLocaleString('en-IN')}`} />}
               <div className="border-t border-[var(--glass-border)] my-1" />
-              <SalaryRow label="Gross Salary" value={`Rs. ${salaryDetail.grossSalary.toLocaleString('en-IN')}`} bold />
+              <SalaryRow label="Gross Payroll" value={`Rs. ${salaryDetail.grossSalary.toLocaleString('en-IN')}`} bold />
             </div>
           </div>
 
@@ -1288,11 +1288,11 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
             </div>
           </div>
 
-          {/* Net Salary */}
+          {/* Net Payroll */}
           <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-5 shadow-lg shadow-indigo-500/25">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white/70 text-sm font-medium">Net Salary</p>
+                <p className="text-white/70 text-sm font-medium">Net Payroll</p>
                 <p className="text-3xl font-bold text-white">Rs. {salaryDetail.netSalary.toLocaleString('en-IN')}</p>
               </div>
               <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
@@ -1308,7 +1308,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         <div className="space-y-4">
           <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-6 rounded-2xl shadow-[var(--shadow-soft)]">
             <h3 className="text-lg font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-              <TrendingUp size={20} className="text-emerald-500" /> Salary Hike History
+              <TrendingUp size={20} className="text-emerald-500" /> Payroll Hike History
             </h3>
             {staffHikes.length === 0 ? (
               <div className="text-center py-12">
@@ -1325,7 +1325,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-[var(--text-muted)] font-medium">{new Date(hike.hikeDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                       <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                        +Rs. {(hike.newSalary - hike.oldSalary).toLocaleString('en-IN')}
+                        +Rs. {(hike.newPayroll - hike.oldSalary).toLocaleString('en-IN')}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-[var(--text-primary)]">
@@ -1512,7 +1512,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         <div className="space-y-4">
           <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-6 rounded-2xl shadow-[var(--shadow-soft)]">
             <h3 className="text-lg font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-              <CreditCard size={20} className="text-emerald-500" /> Salary Inbox
+              <CreditCard size={20} className="text-emerald-500" /> Payroll Inbox
             </h3>
             {disbursements.length === 0 ? (
               <p className="text-sm text-[var(--text-muted)] italic text-center py-4">No salary disbursements recorded yet.</p>
@@ -1521,7 +1521,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                 {disbursements.map((d) => (
                   <div key={d.id} className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-center justify-between">
                     <div>
-                      <div className="font-semibold text-[var(--text-primary)]">Salary Credited ({d.monthYear})</div>
+                      <div className="font-semibold text-[var(--text-primary)]">Payroll Credited ({d.monthYear})</div>
                       <div className="text-xs text-[var(--text-muted)] mt-1 flex items-center gap-2">
                         <span>{new Date(d.disbursedAt).toLocaleString()}</span>
                         <span>•</span>
@@ -1590,7 +1590,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                       className="input-premium"
                     >
                       <option value="attendance">Attendance Issue</option>
-                      <option value="salary">Salary / Deduction Issue</option>
+                      <option value="salary">Payroll / Deduction Issue</option>
                       <option value="other">Other</option>
                     </select>
                   </div>
@@ -1684,7 +1684,7 @@ const InfoRow: React.FC<{ icon: React.ElementType; label: string; value: string 
   </div>
 );
 
-const SalaryCard: React.FC<{ label: string; amount?: number; highlight?: boolean }> = ({ label, amount, highlight }) => (
+const PayrollCard: React.FC<{ label: string; amount?: number; highlight?: boolean }> = ({ label, amount, highlight }) => (
   <div className={`p-4 rounded-xl text-center border ${
     highlight 
       ? 'salary-highlight-card bg-gradient-to-r from-indigo-500 to-purple-600 border-indigo-500/30 shadow-lg shadow-indigo-500/20' 
@@ -1713,7 +1713,7 @@ const QuickStat: React.FC<{ label: string; value: string; icon: React.ElementTyp
   </div>
 );
 
-const SalaryRow: React.FC<{ label: string; value: string; bold?: boolean; highlight?: boolean; danger?: boolean }> = ({ label, value, bold, highlight, danger }) => (
+const PayrollRow: React.FC<{ label: string; value: string; bold?: boolean; highlight?: boolean; danger?: boolean }> = ({ label, value, bold, highlight, danger }) => (
   <div className="flex items-center justify-between py-1">
     <span className={`text-sm ${bold ? 'font-bold text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>{label}</span>
     <span className={`text-sm font-mono ${

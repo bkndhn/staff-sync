@@ -1,15 +1,15 @@
 import Dexie, { type Table } from 'dexie';
 import type { Staff } from '../types';
 import type { ShiftWindows } from '../services/shiftService';
-import type { LocationShiftConfig } from '../services/locationShiftService';
+import type { BranchShiftConfig } from '../services/locationShiftService';
 import type { FaceEmbedding } from '../services/faceEmbeddingService';
 import { type QueuedPunch } from '../services/offlineSyncService';
-import { type SalaryCategory } from '../services/salaryCategoryService';
-import { type Floor } from '../services/floorService';
+import { type PayrollCategory } from '../services/salaryCategoryService';
+import { type Zone } from '../services/floorService';
 import { type Designation } from '../services/designationService';
 import { type PunchEvent } from '../services/punchEventService';
 
-import { type LocationDesignationShiftConfig } from '../types';
+import { type BranchDesignationShiftConfig } from '../types';
 
 export class StaffSyncDB extends Dexie {
   staff!: Table<Staff, string>;

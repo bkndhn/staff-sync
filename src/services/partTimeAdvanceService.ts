@@ -79,16 +79,16 @@ export const partTimeAdvanceService = {
         const balanceAfterWork = totalDebt - earnings;
 
         let closingBalance = 0;
-        let pendingSalary = 0;
+        let pendingPayroll = 0;
         let adjustment = 0;
 
         if (balanceAfterWork > 0) {
             closingBalance = balanceAfterWork;
-            pendingSalary = 0;
+            pendingPayroll = 0;
             adjustment = earnings;
         } else {
             closingBalance = 0;
-            pendingSalary = Math.abs(balanceAfterWork);
+            pendingPayroll = Math.abs(balanceAfterWork);
             adjustment = totalDebt;
         }
 
@@ -161,7 +161,7 @@ export const partTimeAdvanceService = {
             advanceGiven: dbRecord.advance_given,
             earnings: dbRecord.earnings,
             adjustment: dbRecord.adjustment,
-            pendingSalary: dbRecord.pending_salary,
+            pendingPayroll: dbRecord.pending_salary,
             closingBalance: dbRecord.closing_balance,
             notes: dbRecord.notes,
             createdAt: dbRecord.created_at,

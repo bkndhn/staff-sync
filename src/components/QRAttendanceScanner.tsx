@@ -10,7 +10,7 @@ export interface ScanConfirmation {
 }
 
 interface Props {
-  staffLocation: string;
+  staffBranch: string;
   onScanSuccess: (payload: any) => Promise<ScanConfirmation> | ScanConfirmation;
   onClose: () => void;
 }

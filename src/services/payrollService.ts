@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { PayrollRun, PayrollSnapshot, Staff, SalaryDetail } from '../types';
+import { PayrollRun, PayrollSnapshot, Staff, PayrollDetail } from '../types';
 
 export const payrollService = {
   // Get a payroll run by month and year
@@ -44,7 +44,7 @@ export const payrollService = {
       runId: row.run_id,
       staffId: row.staff_id,
       staffSnapshot: row.staff_snapshot as Staff,
-      salaryDetail: row.salary_detail as SalaryDetail
+      salaryDetail: row.salary_detail as PayrollDetail
     }));
   },
 
@@ -53,7 +53,7 @@ export const payrollService = {
     month: number, 
     year: number, 
     staff: Staff[], 
-    salaryDetails: SalaryDetail[],
+    salaryDetails: PayrollDetail[],
     userEmail?: string
   ): Promise<PayrollRun> {
     // 1. Create the run
@@ -119,7 +119,7 @@ export const payrollService = {
     month: number, 
     year: number, 
     staff: Staff[], 
-    salaryDetails: SalaryDetail[],
+    salaryDetails: PayrollDetail[],
     userEmail?: string
   ): Promise<PayrollRun> {
     const existingRun = await this.getPayrollRun(month, year);

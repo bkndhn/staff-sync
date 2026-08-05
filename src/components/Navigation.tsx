@@ -59,7 +59,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Dashboard', label: 'Dashboard', icon: BarChart3, key: 'dashboard' },
         { id: 'Staff Management', label: 'Staff', icon: Users, key: 'staff' },
         { id: 'Attendance', label: 'Attendance', icon: Calendar, key: 'attendance' },
-        { id: 'Salary Management', label: 'Salary', icon: DollarSign, key: 'salary' },
+        { id: 'Payroll Management', label: 'Payroll', icon: DollarSign, key: 'salary' },
         { id: 'Leave Management', label: 'Leave', icon: FileText, key: 'leave' },
         { id: 'Action Center', label: 'Action Center', icon: AlertTriangle, key: 'action_center' },
         { id: 'Settings', label: 'Settings', icon: SettingsIcon, key: 'settings' },
@@ -75,8 +75,8 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Shift Roster' as NavigationTab, label: 'Roster', icon: Calendar },
         { id: 'Attendance' as NavigationTab, label: 'Attendance', icon: Calendar },
         { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
-        { id: 'Salary Management' as NavigationTab, label: 'Salary', icon: DollarSign },
-        { id: 'Part-Time Staff' as NavigationTab, label: 'Part-Time', icon: Clock },
+        { id: 'Payroll Management' as NavigationTab, label: 'Payroll', icon: DollarSign },
+        { id: 'Flex Staff' as NavigationTab, label: 'Flex', icon: Clock },
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
         { id: 'Old Staff Records' as NavigationTab, label: 'Archive', icon: Archive },
         { id: 'Audit Log' as NavigationTab, label: 'Audit Log', icon: ShieldAlert },
@@ -86,12 +86,12 @@ const Navigation: React.FC<NavigationProps> = ({
       ];
     }
     if (user.role === 'floor_supervisor') {
-      // Floor supervisor: own-floor attendance only — no staff management or roster.
+      // Zone supervisor: own-floor attendance only — no staff management or roster.
       return [
         { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
         { id: 'Attendance' as NavigationTab, label: 'Attendance', icon: Calendar },
         { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
-        { id: 'Part-Time Staff' as NavigationTab, label: 'Part-Time', icon: Clock },
+        { id: 'Flex Staff' as NavigationTab, label: 'Flex', icon: Clock },
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
         { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
       ];
@@ -101,7 +101,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
         { id: 'Attendance' as NavigationTab, label: 'Attendance', icon: Calendar },
         { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
-        { id: 'Part-Time Staff' as NavigationTab, label: 'Part-Time', icon: Clock },
+        { id: 'Flex Staff' as NavigationTab, label: 'Flex', icon: Clock },
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
         { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
       ];
@@ -111,7 +111,7 @@ const Navigation: React.FC<NavigationProps> = ({
       { id: 'Workforce Insights' as NavigationTab, label: 'Insights', icon: TrendingUp },
       { id: 'Attendance' as NavigationTab, label: 'Attendance', icon: Calendar },
       { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
-      { id: 'Part-Time Staff' as NavigationTab, label: 'Part-Time', icon: Clock },
+      { id: 'Flex Staff' as NavigationTab, label: 'Flex', icon: Clock },
       { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
       { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
     ];

@@ -1,17 +1,17 @@
 import React, { useState, useRef } from 'react';
-import { Staff, SalaryHike } from '../types';
+import { Staff, PayrollHike } from '../types';
 import { Users, Plus, Edit2, Trash2, Archive, Calendar, TrendingUp, MapPin, DollarSign, Check, X, GripVertical, Filter, Copy, AlertCircle, RotateCcw, Layers, Briefcase, Upload, Shield, Camera, ShieldOff, Settings2, ChevronDown } from 'lucide-react';
 import { calculateExperience } from '../utils/salaryCalculations';
 import { STATUTORY_DEFINITIONS, defaultConfigFor } from '../utils/statutoryDeductions';
 import type { StatutoryDeduction, DeductionBase } from '../types';
-import SalaryHikeHistory from './SalaryHikeHistory';
-import SalaryHikeDueModal from './SalaryHikeDueModal';
+import PayrollHikeHistory from './SalaryHikeHistory';
+import PayrollHikeDueModal from './SalaryHikeDueModal';
 import BulkStaffUpload from './BulkStaffUpload';
 import FaceRegistration from './FaceRegistration';
 import { settingsService } from '../services/settingsService';
-import { locationService, type Location } from '../services/locationService';
-import { salaryCategoryService, type SalaryCategory } from '../services/salaryCategoryService';
-import { floorService, type Floor } from '../services/floorService';
+import { locationService, type Branch } from '../services/locationService';
+import { salaryCategoryService, type PayrollCategory } from '../services/salaryCategoryService';
+import { floorService, type Zone } from '../services/floorService';
 import { designationService, type Designation } from '../services/designationService';
 import { customAlert, customConfirm } from './CustomDialog';
 import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/roleVisibility';
@@ -19,7 +19,7 @@ import { userService } from '../services/userService';
 
 interface StaffManagementProps {
   staff: Staff[];
-  salaryHikes: SalaryHike[];
+  salaryHikes: PayrollHike[];
   onAddStaff: (staff: Omit<Staff, 'id'>) => void;
   onUpdateStaff: (id: string, staff: Partial<Staff>) => void;
   onDeleteStaff: (id: string, reason: string) => void;
@@ -78,10 +78,10 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
 
   const columnLabels: Record<string, string> = {
     employeeCode: 'Emp Code',
-    location: 'Location', floor: 'Floor', designation: 'Designation', experience: 'Experience',
+    location: 'Branch', floor: 'Zone', designation: 'Designation', experience: 'Experience',
     basic: 'Basic', incentive: 'Incentive', hra: 'HRA', meal: 'Meal Allowance', total: 'Total',
     staffType: 'Staff Type', payment: 'Payment', bankName: 'Bank Name', accountNo: 'Account No',
-    ifsc: 'IFSC', nextHike: 'Next Hike', hikeInterval: 'Hike Interval', salaryHistory: 'Salary History',
+    ifsc: 'IFSC', nextHike: 'Next Hike', hikeInterval: 'Hike Interval', salaryHistory: 'Payroll History',
     contact: 'Contact', address: 'Address', image: 'Image'
   };
   const [draggedItem, setDraggedItem] = useState<Staff | null>(null);
@@ -101,12 +101,12 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const [newCategory, setNewCategory] = useState('');
   const [newFloor, setNewFloor] = useState('');
   const [newFloorLocation, setNewFloorLocation] = useState('');
-  const [editingFloor, setEditingFloor] = useState<Floor | null>(null);
+  const [editingFloor, setEditingFloor] = useState<Zone | null>(null);
   const [editFloorValue, setEditFloorValue] = useState('');
   const [applyToAllLocations, setApplyToAllLocations] = useState(false);
   const [applyDeleteToAllLocations, setApplyDeleteToAllLocations] = useState(false);
   const [newDesignation, setNewDesignation] = useState('');
-  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [editingLocation, setEditingLocation] = useState<Branch | null>(null);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editingDesignation, setEditingDesignation] = useState<Designation | null>(null);
   const [editLocationValue, setEditLocationValue] = useState('');
@@ -157,7 +157,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     location: '',
     floor: '',
     designation: '',
-    basicSalary: 15000,
+    basicPayroll: 15000,
     incentive: 10000,
     hra: 0,
     mealAllowance: 0,
@@ -253,8 +253,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       member.experience, member.type, member.staffAccommodation,
       member.contactNumber, member.address, member.bankName, member.bankAccountNumber,
       member.ifscCode, member.pfNumber, member.esiNumber, member.paymentMode,
-      String(member.basicSalary ?? ''), String(member.incentive ?? ''),
-      String(member.hra ?? ''), String(member.mealAllowance ?? ''), String(member.totalSalary ?? ''),
+      String(member.basicPayroll ?? ''), String(member.incentive ?? ''),
+      String(member.hra ?? ''), String(member.mealAllowance ?? ''), String(member.totalPayroll ?? ''),
       member.joinedDate
     ].filter(Boolean).join(' ').toLowerCase();
     return haystack.includes(query);
@@ -275,7 +275,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     return experienceSort === 'asc' ? bJoined - aJoined : aJoined - bJoined;
   });
 
-  const handleCreateLocation = async () => {
+  const handleCreateBranch = async () => {
     if (newLocation.trim()) {
       const { locationService } = await import('../services/locationService');
       const result = await locationService.addLocation(newLocation.trim());
@@ -304,7 +304,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     }
   };
 
-  const handleUpdateLocation = async (id: string) => {
+  const handleUpdateBranch = async (id: string) => {
     if (!editLocationValue.trim()) return;
     const loc = editingLocation;
     if (!loc) return;
@@ -343,7 +343,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     setEditLocationValue('');
   };
 
-  const handleDeleteLocation = async (id: string) => {
+  const handleDeleteBranch = async (id: string) => {
     const loc = locations.find(l => l.id === id);
     if (!loc) return;
     setConfirmDialog({ type: 'location', id, name: loc.name, action: 'delete' });
@@ -375,7 +375,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     setEditingCategory(null);
   };
 
-  const handleDeleteCategory = (cat: SalaryCategory) => {
+  const handleDeleteCategory = (cat: PayrollCategory) => {
     setConfirmDialog({
       type: 'category',
       id: cat.id,
@@ -401,13 +401,13 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     setConfirmDialog(null);
   };
 
-  // Floor handlers
-  const handleAddFloor = async () => {
+  // Zone handlers
+  const handleAddZone = async () => {
     if (!newFloor.trim() || !newFloorLocation) return;
     
-    if (newFloorLocation === 'ALL') {
+    if (newFloorBranch === 'ALL') {
       const { floorService } = await import('../services/floorService');
-      const addedFloors: Floor[] = [];
+      const addedFloors: Zone[] = [];
       for (const loc of locations) {
         // Only add if it doesn't already exist for this location
         if (!floors.find(f => f.locationName === loc.name && f.name.toLowerCase() === newFloor.trim().toLowerCase())) {
@@ -429,7 +429,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     }
   };
 
-  const handleUpdateFloor = async (id: string) => {
+  const handleUpdateZone = async (id: string) => {
     if (!editFloorValue.trim()) return;
     const floor = editingFloor;
     if (!floor) return;
@@ -439,7 +439,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       if (applyToAllLocations) {
         // Find all floors with the old name across all locations
         const floorsToUpdate = floors.filter(f => f.name === floor.name);
-        const updatedFloors: Floor[] = [];
+        const updatedFloors: Zone[] = [];
         for (const f of floorsToUpdate) {
           const updated = await floorService.updateFloor(f.id, editFloorValue.trim());
           if (updated) updatedFloors.push(updated);
@@ -468,7 +468,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     setApplyToAllLocations(false);
   };
 
-  const handleDeleteFloor = (floor: Floor) => {
+  const handleDeleteZone = (floor: Zone) => {
     setApplyDeleteToAllLocations(false);
     setConfirmDialog({ type: 'floor', id: floor.id, name: floor.name, action: 'delete' });
   };
@@ -553,8 +553,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     setDragOverIndex(index);
   };
 
-  const calculateMemberTotalSalary = (member: Staff) => {
-    let total = member.basicSalary + member.incentive + member.hra + (member.mealAllowance || 0);
+  const calculateMemberTotalPayroll = (member: Staff) => {
+    let total = member.basicPayroll + member.incentive + member.hra + (member.mealAllowance || 0);
     const customCategories = salaryCategories.filter(c => !['basic', 'incentive', 'hra', 'meal_allowance'].includes(c.id) && !c.isDeleted);
     total += customCategories.reduce((sum, cat) => sum + (member.salarySupplements?.[cat.id] || member.salarySupplements?.[cat.key] || 0), 0);
     return total;
@@ -603,7 +603,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       location: locations[0]?.name || 'Big Shop',
       floor: '',
       designation: '',
-      basicSalary: 15000,
+      basicPayroll: 15000,
       incentive: 10000,
       hra: 0,
       mealAllowance: 0,
@@ -655,8 +655,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       return;
     }
 
-    let totalSalary = (formData.basicSalary || 0) + (formData.incentive || 0) + (formData.hra || 0) + (formData.mealAllowance || 0);
-    totalSalary += activeCustomCategories.reduce((sum, cat) => sum + (formData.salarySupplements[cat.id] || formData.salarySupplements[cat.key] || 0), 0);
+    let totalPayroll = (formData.basicPayroll || 0) + (formData.incentive || 0) + (formData.hra || 0) + (formData.mealAllowance || 0);
+    totalPayroll += activeCustomCategories.reduce((sum, cat) => sum + (formData.salarySupplements[cat.id] || formData.salarySupplements[cat.key] || 0), 0);
 
     const experience = calculateExperience(formData.joinedDate);
 
@@ -709,7 +709,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       location: member.location,
       floor: member.floor || '',
       designation: member.designation || '',
-      basicSalary: member.basicSalary,
+      basicPayroll: member.basicSalary,
       incentive: member.incentive,
       hra: member.hra,
       mealAllowance: member.mealAllowance || 0,
@@ -836,16 +836,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <div className="hidden lg:flex gap-2">
-              <button onClick={() => setShowLocationManager(true)} className="btn-premium flex items-center gap-2 px-3 py-2 text-sm" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)' }} title="Manage Locations">
-                <MapPin size={16} /><span className="hidden xl:inline">Locations</span>
+              <button onClick={() => setShowLocationManager(true)} className="btn-premium flex items-center gap-2 px-3 py-2 text-sm" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)' }} title="Manage Branchs">
+                <MapPin size={16} /><span className="hidden xl:inline">Branches</span>
               </button>
-              <button onClick={() => setShowFloorManager(true)} className="btn-premium flex items-center gap-2 px-3 py-2 text-sm" style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)' }} title="Manage Floors">
-                <Layers size={16} /><span className="hidden xl:inline">Floors</span>
+              <button onClick={() => setShowFloorManager(true)} className="btn-premium flex items-center gap-2 px-3 py-2 text-sm" style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)' }} title="Manage Zones">
+                <Layers size={16} /><span className="hidden xl:inline">Zones</span>
               </button>
               <button onClick={() => setShowDesignationManager(true)} className="btn-premium flex items-center gap-2 px-3 py-2 text-sm" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)' }} title="Manage Designations">
                 <Briefcase size={16} /><span className="hidden xl:inline">Designations</span>
               </button>
-              <button onClick={() => setShowCategoryManager(true)} className="btn-premium btn-premium-success flex items-center gap-2 px-3 py-2 text-sm" title="Manage Salary Categories">
+              <button onClick={() => setShowCategoryManager(true)} className="btn-premium btn-premium-success flex items-center gap-2 px-3 py-2 text-sm" title="Manage Payroll Categories">
                 <DollarSign size={16} /><span className="hidden xl:inline">Categories</span>
               </button>
             </div>
@@ -861,8 +861,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 <Settings2 size={16} /> <span>Manage</span> <ChevronDown size={14} />
               </button>
               <div id="mobile-more-actions" className="hidden absolute top-full left-0 mt-2 w-48 bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-xl shadow-2xl z-50 overflow-hidden">
-                <button onClick={() => { setShowLocationManager(true); document.getElementById('mobile-more-actions')?.classList.add('hidden'); }} className="w-full text-left px-4 py-3 hover:bg-[var(--glass-bg-strong)] text-[var(--text-primary)] text-sm flex items-center gap-3 border-b border-[var(--glass-border)]"><MapPin size={16} className="text-purple-400"/> Locations</button>
-                <button onClick={() => { setShowFloorManager(true); document.getElementById('mobile-more-actions')?.classList.add('hidden'); }} className="w-full text-left px-4 py-3 hover:bg-[var(--glass-bg-strong)] text-[var(--text-primary)] text-sm flex items-center gap-3 border-b border-[var(--glass-border)]"><Layers size={16} className="text-blue-400"/> Floors</button>
+                <button onClick={() => { setShowLocationManager(true); document.getElementById('mobile-more-actions')?.classList.add('hidden'); }} className="w-full text-left px-4 py-3 hover:bg-[var(--glass-bg-strong)] text-[var(--text-primary)] text-sm flex items-center gap-3 border-b border-[var(--glass-border)]"><MapPin size={16} className="text-purple-400"/>Branches</button>
+                <button onClick={() => { setShowFloorManager(true); document.getElementById('mobile-more-actions')?.classList.add('hidden'); }} className="w-full text-left px-4 py-3 hover:bg-[var(--glass-bg-strong)] text-[var(--text-primary)] text-sm flex items-center gap-3 border-b border-[var(--glass-border)]"><Layers size={16} className="text-blue-400"/>Zones</button>
                 <button onClick={() => { setShowDesignationManager(true); document.getElementById('mobile-more-actions')?.classList.add('hidden'); }} className="w-full text-left px-4 py-3 hover:bg-[var(--glass-bg-strong)] text-[var(--text-primary)] text-sm flex items-center gap-3 border-b border-[var(--glass-border)]"><Briefcase size={16} className="text-amber-400"/> Designations</button>
                 <button onClick={() => { setShowCategoryManager(true); document.getElementById('mobile-more-actions')?.classList.add('hidden'); }} className="w-full text-left px-4 py-3 hover:bg-[var(--glass-bg-strong)] text-[var(--text-primary)] text-sm flex items-center gap-3"><DollarSign size={16} className="text-emerald-400"/> Categories</button>
               </div>
@@ -878,7 +878,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         </div>
       </div>
 
-      {/* Salary Hike Due Banner */}
+      {/* Payroll Hike Due Banner */}
       {(() => {
         const staffDueForHike = activeStaff.filter(member => {
           const joinedDate = new Date(member.joinedDate);
@@ -898,7 +898,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 <TrendingUp className="text-amber-600 dark:text-amber-400" size={20} />
               </div>
               <div>
-                <h3 className="font-semibold text-amber-700 dark:text-amber-400">Salary Hike Due</h3>
+                <h3 className="font-semibold text-amber-700 dark:text-amber-400">Payroll Hike Due</h3>
                 <p className="text-sm text-[var(--text-muted)]">
                   {staffDueForHike.length} staff member{staffDueForHike.length !== 1 ? 's are' : ' is'} eligible for a salary hike
                 </p>
@@ -936,7 +936,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
           <div className="p-4 space-y-4 border-t border-white/5">
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2 text-white/60 w-32">
-                <span className="font-medium text-sm">Location:</span>
+                <span className="font-medium text-sm">Branch:</span>
               </div>
           <div className="flex gap-2 flex-wrap">
             <button
@@ -984,7 +984,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             ))}
           </div>
           <div className="flex items-center gap-2 text-white/60 w-32">
-            <span className="font-medium text-sm">Floor:</span>
+            <span className="font-medium text-sm">Zone:</span>
           </div>
           <div className="flex gap-2 flex-wrap">
             <button
@@ -1070,15 +1070,15 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white/70 mb-1">Location</label>
+              <label className="block text-sm font-medium text-white/70 mb-1">Branch</label>
               <select value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} className="input-premium">
                 {locations.map(loc => (<option key={loc.id} value={loc.name}>{loc.name}</option>))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-white/70 mb-1">Floor</label>
+              <label className="block text-sm font-medium text-white/70 mb-1">Zone</label>
               <select value={formData.floor} onChange={(e) => setFormData({ ...formData, floor: e.target.value })} className="input-premium">
-                <option value="">No Floor</option>
+                <option value="">No Zone</option>
                 {Array.from(new Set([
                   ...floors.filter(f => f.locationName === formData.location).map(f => f.name),
                   ...staff.filter(s => s.location === formData.location && s.floor).map(s => s.floor!)
@@ -1140,9 +1140,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1">
-                {salaryCategories.find(c => c.id === 'basic')?.name || 'Basic Salary'}
+                {salaryCategories.find(c => c.id === 'basic')?.name || 'Basic Payroll'}
               </label>
-              <input type="number" value={formData.basicSalary} onChange={(e) => setFormData({ ...formData, basicSalary: Number(e.target.value) })} className="input-premium" required />
+              <input type="number" value={formData.basicSalary} onChange={(e) => setFormData({ ...formData, basicPayroll: Number(e.target.value) })} className="input-premium" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1">
@@ -1205,7 +1205,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-white/70 mb-1">Salary Calculation Days</label>
+              <label className="block text-sm font-medium text-white/70 mb-1">Payroll Calculation Days</label>
               <input type="number" value={formData.salaryCalculationDays} onChange={(e) => setFormData({ ...formData, salaryCalculationDays: Number(e.target.value) })} className="input-premium" min="0" max="31" />
               <p className="text-xs text-white/40 mt-0.5">0 = Fixed salary</p>
             </div>
@@ -1321,7 +1321,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
 
             {/* Hike Scheduling */}
             <div className="md:col-span-2 lg:col-span-3">
-              <h3 className="text-sm font-semibold text-white/60 mb-3 border-b border-white/10 pb-2">📅 Salary Hike Schedule (Override)</h3>
+              <h3 className="text-sm font-semibold text-white/60 mb-3 border-b border-white/10 pb-2">📅 Payroll Hike Schedule (Override)</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-1">Next Hike Date</label>
@@ -1559,14 +1559,14 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         </div>
       )}
 
-      {/* Salary History Modal */}
+      {/* Payroll History Modal */}
       {showSalaryHistory && (
         <div className="modal-overlay">
           <div className="modal-content max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <TrendingUp className="text-emerald-400" size={24} />
-                Salary Hike History
+                Payroll Hike History
               </h3>
               <button onClick={() => setShowSalaryHistory(null)} className="text-white/50 hover:text-white">✕</button>
             </div>
@@ -1662,7 +1662,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-sm font-bold text-emerald-400">₹{calculateMemberTotalSalary(member).toLocaleString()}</div>
+                      <div className="text-sm font-bold text-emerald-400">₹{calculateMemberTotalPayroll(member).toLocaleString()}</div>
                       <div className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wide">{member.paymentMode === 'bank' ? 'Bank' : 'Cash'}</div>
                     </div>
                   </div>
@@ -1707,8 +1707,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 <th className="text-center">S.No</th>
                 {showEmpCode && <th className="text-center">Emp Code</th>}
                 <th className="sticky left-0">Name</th>
-                {visibleColumns.location !== false && <th className="text-center">Location</th>}
-                {visibleColumns.floor !== false && <th className="text-center">Floor</th>}
+                {visibleColumns.location !== false && <th className="text-center">Branch</th>}
+                {visibleColumns.floor !== false && <th className="text-center">Zone</th>}
                 {visibleColumns.designation !== false && <th className="text-center">Designation</th>}
                 {visibleColumns.experience !== false && <th className="text-center">Experience</th>}
                 {visibleColumns.basic !== false && <th className="text-center">{salaryCategories.find(c => c.id === 'basic')?.name || 'Basic'}</th>}
@@ -1726,7 +1726,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 {visibleColumns.ifsc !== false && <th className="text-center">IFSC</th>}
                 {visibleColumns.nextHike !== false && <th className="text-center">Next Hike</th>}
                 {visibleColumns.hikeInterval !== false && <th className="text-center">Hike Interval</th>}
-                {visibleColumns.salaryHistory !== false && <th className="text-center">Salary History</th>}
+                {visibleColumns.salaryHistory !== false && <th className="text-center">Payroll History</th>}
                 {visibleColumns.contact !== false && <th className="text-center">Contact</th>}
                 {visibleColumns.address !== false && <th className="text-center">Address</th>}
                 {visibleColumns.image !== false && <th className="text-center">Image</th>}
@@ -1803,7 +1803,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                         ₹{(member.salarySupplements?.[category.id] || member.salarySupplements?.[category.key] || 0).toLocaleString()}
                       </td>
                     ))}
-                    {visibleColumns.total !== false && <td className="px-3 py-4 text-sm font-semibold text-green-600 text-center">₹{calculateMemberTotalSalary(member).toLocaleString()}</td>}
+                    {visibleColumns.total !== false && <td className="px-3 py-4 text-sm font-semibold text-green-600 text-center">₹{calculateMemberTotalPayroll(member).toLocaleString()}</td>}
                     {visibleColumns.staffType !== false && <td className="px-3 py-4 text-sm text-center">
                       {member.staffAccommodation ? (
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${member.staffAccommodation === 'day_scholar' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
@@ -1890,14 +1890,14 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         </div>
       </div>
 
-      {/* Location Manager Modal */}
+      {/* Branch Manager Modal */}
       {showLocationManager && (
         <div className="modal-overlay" onClick={() => setShowLocationManager(false)}>
           <div className="modal-content max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base md:text-lg font-bold flex items-center gap-2">
                 <MapPin className="text-purple-400" size={18} />
-                Manage Locations
+                Manage Branchs
               </h3>
               <button onClick={() => setShowLocationManager(false)} className="text-white/50 hover:text-white p-1">
                 <X size={20} />
@@ -1909,7 +1909,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 type="text"
                 value={newLocation}
                 onChange={(e) => setNewLocation(e.target.value)}
-                placeholder="New Location Name"
+                placeholder="New Branch Name"
                 className="input-premium flex-1 text-sm"
                 onKeyDown={(e) => { if (e.key === 'Enter' && newLocation.trim()) handleCreateLocation(); }}
               />
@@ -1933,7 +1933,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                           type="text"
                           value={editLocationValue}
                           onChange={(e) => setEditLocationValue(e.target.value)}
-                          placeholder="Location Name"
+                          placeholder="Branch Name"
                           className="input-premium flex-1 text-sm py-1.5"
                           autoFocus
                           onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateLocation(loc.id); if (e.key === 'Escape') setEditingLocation(null); }}
@@ -2055,14 +2055,14 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         </div>
       )}
 
-      {/* Salary Category Manager Modal */}
+      {/* Payroll Category Manager Modal */}
       {showCategoryManager && (
         <div className="modal-overlay" onClick={() => setShowCategoryManager(false)}>
           <div className="modal-content max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base md:text-lg font-bold flex items-center gap-2">
                 <DollarSign className="text-emerald-400" size={18} />
-                Manage Salary Categories
+                Manage Payroll Categories
               </h3>
               <button onClick={() => setShowCategoryManager(false)} className="text-white/50 hover:text-white p-1">
                 <X size={20} />
@@ -2150,14 +2150,14 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         </div>
       )}
 
-      {/* Floor Manager Modal */}
+      {/* Zone Manager Modal */}
       {showFloorManager && (
         <div className="modal-overlay" onClick={() => setShowFloorManager(false)}>
           <div className="modal-content max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base md:text-lg font-bold flex items-center gap-2">
                 <Layers className="text-cyan-400" size={18} />
-                Manage Floors
+                Manage Zones
               </h3>
               <button onClick={() => setShowFloorManager(false)} className="text-white/50 hover:text-white p-1"><X size={20} /></button>
             </div>
@@ -2167,15 +2167,15 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 onChange={(e) => setNewFloorLocation(e.target.value)}
                 className="input-premium flex-1 min-w-0 text-sm sm:min-w-[140px]"
               >
-                <option value="">Select Location</option>
-                <option value="ALL">All Locations</option>
+                <option value="">Select Branch</option>
+                <option value="ALL">All Branchs</option>
                 {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
               </select>
               <input
                 type="text"
                 value={newFloor}
                 onChange={(e) => setNewFloor(e.target.value)}
-                placeholder="Floor Name"
+                placeholder="Zone Name"
                 className="input-premium flex-1 min-w-0 text-sm sm:min-w-[120px]"
                 onKeyDown={(e) => { if (e.key === 'Enter' && newFloor.trim() && newFloorLocation) handleAddFloor(); }}
               />
@@ -2305,7 +2305,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 )}
               </div>
               <h3 className="text-lg font-bold text-white">
-                {confirmDialog.action === 'restore' ? 'Restore' : 'Delete'} {confirmDialog.type === 'location' ? 'Location' : confirmDialog.type === 'floor' ? 'Floor' : confirmDialog.type === 'designation' ? 'Designation' : 'Category'}?
+                {confirmDialog.action === 'restore' ? 'Restore' : 'Delete'} {confirmDialog.type === 'location' ? 'Branch' : confirmDialog.type === 'floor' ? 'Zone' : confirmDialog.type === 'designation' ? 'Designation' : 'Category'}?
               </h3>
             </div>
             <p className="text-white/60 text-sm text-center mb-6">

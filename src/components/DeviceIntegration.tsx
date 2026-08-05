@@ -5,7 +5,7 @@ import {
   ExternalLink, Copy, Check, RefreshCw, Fingerprint, Server, Globe, MapPin
 } from 'lucide-react';
 import { customAlert } from './CustomDialog';
-import { locationService, type Location } from '../services/locationService';
+import { locationService, type Branch } from '../services/locationService';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface PunchRecord {
@@ -390,7 +390,7 @@ LOCATION_NAME=${apiConfig.locationCode || ''}`;
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Location / Branch <span className="text-white/30">(optional)</span></label>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Branch / Branch <span className="text-white/30">(optional)</span></label>
               {locations.length > 0 ? (
                 <select
                   value={apiConfig.locationCode}
@@ -519,7 +519,7 @@ LOCATION_NAME=${apiConfig.locationCode || ''}`;
                 }}
                 className="w-full py-3 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-400 font-semibold flex items-center justify-center gap-2 transition-all text-sm"
               >
-                <MapPin size={16} /> Manage Device Locations
+                <MapPin size={16} /> Manage Device Branchs
               </button>
 
               <a

@@ -493,7 +493,7 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
                         {field('Staff Seat Limit', <input type="number" min={1} value={form.staff_limit} onChange={e => setForm({ ...form, staff_limit: Number(e.target.value) })} className={inputCls} />)}
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                        {field('Max Locations', (
+                        {field('Max Branchs', (
                           <div>
                             <input type="number" min={1} max={100} value={(form as any).location_limit} onChange={e => setForm({ ...form, location_limit: Number(e.target.value) } as any)} className={inputCls} />
                             <p className="mt-1 text-[11px] text-slate-400">Branches/outlets this client can create</p>

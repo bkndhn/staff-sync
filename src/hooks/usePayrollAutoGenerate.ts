@@ -91,7 +91,7 @@ export const usePayrollAutoGenerate = (user: any) => {
           const metrics = calculateAttendanceMetrics(member.id, attendance, targetYear, targetMonth);
           const memberAdvances = advances.find((adv: any) => adv.staffId === member.id && adv.month === targetMonth && adv.year === targetYear);
           const memberEntries = advanceEntries[member.id] || [];
-          return calculateSalary(
+          return calculatePayroll(
             member, 
             metrics, 
             memberAdvances ?? null, 

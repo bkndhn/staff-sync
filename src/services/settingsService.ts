@@ -1,6 +1,6 @@
 
 
-export interface SalaryCategory {
+export interface PayrollCategory {
     id: string;
     name: string;
     key: string; // unique identifier for the field
@@ -25,8 +25,8 @@ const STORAGE_KEYS = {
 
 const DEFAULT_LOCATIONS = ['Big Shop', 'Small Shop', 'Godown'];
 
-const DEFAULT_SALARY_CATEGORIES: SalaryCategory[] = [
-    { id: 'basic', name: 'Basic Salary', key: 'basicSalary' },
+const DEFAULT_SALARY_CATEGORIES: PayrollCategory[] = [
+    { id: 'basic', name: 'Basic Payroll', key: 'basicSalary' },
     { id: 'incentive', name: 'Incentive', key: 'incentive' },
     { id: 'hra', name: 'HRA', key: 'hra' }
 ];
@@ -37,7 +37,7 @@ const DEFAULT_PART_TIME_RATES: PartTimeRates = {
 };
 
 export const settingsService = {
-    // Locations - Now async/fetched from DB via locationService
+    // Branchs - Now async/fetched from DB via locationService
     // We keep these for type compatibility but they should be replaced in components
     getLocations(): string[] {
         // Fallback for sync calls, but components should use locationService
@@ -47,7 +47,7 @@ export const settingsService = {
 
     // Legacy method - components should use locationService directly
     addLocation(location: string): string[] {
-        console.warn('Use locationService.addLocation instead');
+        console.warn('Use locationService.addBranch instead');
         const locations = this.getLocations();
         if (!locations.includes(location)) {
             const newLocations = [...locations, location];
@@ -58,8 +58,8 @@ export const settingsService = {
     },
 
     // Legacy method - components should use locationService directly
-    updateLocation(oldLocation: string, newLocation: string): string[] {
-        console.warn('Use locationService.updateLocation instead');
+    updateLocation(oldBranch: string, newBranch: string): string[] {
+        console.warn('Use locationService.updateBranch instead');
         const locations = this.getLocations();
         const index = locations.indexOf(oldLocation);
         if (index !== -1) {
@@ -78,13 +78,13 @@ export const settingsService = {
         return newLocations;
     },
 
-    // Salary Categories
-    getSalaryCategories(): SalaryCategory[] {
+    // Payroll Categories
+    getSalaryCategories(): PayrollCategory[] {
         const stored = localStorage.getItem(STORAGE_KEYS.SALARY_CATEGORIES);
         return stored ? JSON.parse(stored) : DEFAULT_SALARY_CATEGORIES;
     },
 
-    addSalaryCategory(name: string): SalaryCategory[] {
+    addSalaryCategory(name: string): PayrollCategory[] {
         const categories = this.getSalaryCategories();
         const key = name.toLowerCase().replace(/\s+/g, '_');
 
@@ -97,7 +97,7 @@ export const settingsService = {
         return categories;
     },
 
-    updateSalaryCategory(id: string, name: string): SalaryCategory[] {
+    updateSalaryCategory(id: string, name: string): PayrollCategory[] {
         const categories = this.getSalaryCategories();
         const index = categories.findIndex(c => c.id === id);
         if (index !== -1) {
@@ -109,7 +109,7 @@ export const settingsService = {
         return categories;
     },
 
-    deleteSalaryCategory(id: string): SalaryCategory[] {
+    deleteSalaryCategory(id: string): PayrollCategory[] {
         // Don't allow deleting default categories
         if (['basic', 'incentive', 'hra'].includes(id)) {
             return this.getSalaryCategories();
@@ -121,7 +121,7 @@ export const settingsService = {
         return newCategories;
     },
 
-    // Staff Salary Supplements
+    // Staff Payroll Supplements
     getStaffSupplements(): StaffSalarySupplement[] {
         const stored = localStorage.getItem(STORAGE_KEYS.SALARY_SUPPLEMENTS);
         return stored ? JSON.parse(stored) : [];
@@ -149,7 +149,7 @@ export const settingsService = {
         return staffData ? staffData.supplements : {};
     },
 
-    // Part-Time Salary Rates
+    // Flex Payroll Rates
     getPartTimeRates(): PartTimeRates {
         const stored = localStorage.getItem(STORAGE_KEYS.PART_TIME_RATES);
         return stored ? JSON.parse(stored) : DEFAULT_PART_TIME_RATES;

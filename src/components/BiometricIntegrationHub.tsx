@@ -212,7 +212,7 @@ while ($true) {
 
                     <div className="space-y-1.5 text-xs text-gray-600 border-t border-gray-100 pt-3">
                       <div className="flex justify-between">
-                        <span>Location:</span>
+                        <span>Branch:</span>
                         <span className="font-semibold text-gray-900">{dev.location}</span>
                       </div>
                       <div className="flex justify-between">
@@ -335,8 +335,8 @@ while ($true) {
               <thead className="bg-gray-50 text-gray-600 uppercase text-xs font-semibold">
                 <tr>
                   <th className="p-3">Staff Name</th>
-                  <th className="p-3">Location</th>
-                  <th className="p-3">Floor</th>
+                  <th className="p-3">Branch</th>
+                  <th className="p-3">Zone</th>
                   <th className="p-3">Biometric Enroll ID</th>
                   <th className="p-3 text-right">Status</th>
                 </tr>

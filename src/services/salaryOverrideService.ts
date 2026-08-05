@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { SalaryOverride } from '../types';
+import type { PayrollOverride } from '../types';
 
 export const salaryOverrideService = {
     async getOverrides(month: number, year: number) {
@@ -27,7 +27,7 @@ export const salaryOverrideService = {
             lateComingDeductionOverride: override.late_coming_deduction_override,
             earlyLeaveDeductionOverride: override.early_leave_deduction_override,
             salarySupplementsOverride: override.salary_supplements_override || {}
-        })) as SalaryOverride[];
+        })) as PayrollOverride[];
     },
 
     async upsertOverride(override: Partial<SalaryOverride> & { staffId: string; month: number; year: number }) {

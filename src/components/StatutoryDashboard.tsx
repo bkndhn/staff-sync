@@ -48,7 +48,7 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
   const totals = useMemo(() => {
     const pfCount = rows.filter(s => !!s.pfNumber).length;
     const esiCount = rows.filter(s => !!s.esiNumber).length;
-    const totalGross = rows.reduce((sum, s) => sum + (s.totalSalary || 0), 0);
+    const totalGross = rows.reduce((sum, s) => sum + (s.totalPayroll || 0), 0);
     return { total: rows.length, pfCount, esiCount, totalGross };
   }, [rows]);
 
@@ -57,17 +57,17 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
     if (!cfg?.enabled) return 0;
     if (cfg.base === 'fixed') return cfg.fixedAmount || 0;
     const base =
-      cfg.base === 'basic' ? s.basicSalary :
-      cfg.base === 'basic_hra' ? s.basicSalary + s.hra :
-      cfg.base === 'gross' ? s.totalSalary :
+      cfg.base === 'basic' ? s.basicPayroll :
+      cfg.base === 'basic_hra' ? s.basicPayroll + s.hra :
+      cfg.base === 'gross' ? s.totalPayroll :
       s.basicSalary;
     return Math.round((base * (cfg.percentage || 0)) / 100);
   };
 
   const exportCSV = () => {
     const headers = [
-      'Name', 'Designation', 'Location', 'Joined Date',
-      'PF Number', 'ESI Number', 'Basic', 'HRA', 'Incentive', 'Gross Salary',
+      'Name', 'Designation', 'Branch', 'Joined Date',
+      'PF Number', 'ESI Number', 'Basic', 'HRA', 'Incentive', 'Gross Payroll',
       'PF Contribution', 'ESI Contribution',
     ];
     const lines = [headers.join(',')];
@@ -118,7 +118,7 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
       <h1>Statutory Compliance Report</h1>
       <div class="sub">Generated ${new Date().toLocaleString('en-IN')} · Full-time employees only · ${rows.length} records</div>
       <table><thead><tr>
-        <th>Name</th><th>Designation</th><th>Location</th><th>Joined</th>
+        <th>Name</th><th>Designation</th><th>Branch</th><th>Joined</th>
         <th>PF No</th><th>ESI No</th><th>Basic</th><th>HRA</th><th>Gross</th>
         <th>PF Cont.</th><th>ESI Cont.</th>
       </tr></thead><tbody>${rowsHtml}</tbody></table>
@@ -190,7 +190,7 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
             onChange={e => setLocationFilter(e.target.value)}
             className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm"
           >
-            <option value="all">All Locations</option>
+            <option value="all">All Branchs</option>
             {locations.map(l => <option key={l} value={l}>{l}</option>)}
           </select>
           <button onClick={exportCSV} className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-300 text-sm font-medium">
@@ -209,7 +209,7 @@ const StatutoryDashboard: React.FC<StatutoryDashboardProps> = ({
                 <tr>
                   <th className="text-left p-3">Name</th>
                   <th className="text-left p-3">Designation</th>
-                  <th className="text-left p-3">Location</th>
+                  <th className="text-left p-3">Branch</th>
                   <th className="text-left p-3">Joined</th>
                   <th className="text-left p-3">PF No.</th>
                   <th className="text-left p-3">ESI No.</th>

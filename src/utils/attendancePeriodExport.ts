@@ -23,7 +23,7 @@ const buildDoc = (title: string, rows: PeriodAttendanceRow[]) => {
 
   autoTable(doc, {
     startY: 30,
-    head: [['#', 'Emp Code', 'Name', 'Location', 'P', 'H', 'A', 'UI', 'Total', 'Working Time']],
+    head: [['#', 'Emp Code', 'Name', 'Branch', 'P', 'H', 'A', 'UI', 'Total', 'Working Time']],
     body: rows.map((r, i) => [
       i + 1,
       r.employeeCode || '-',
@@ -53,7 +53,7 @@ export const exportPeriodAttendanceExcel = (title: string, rows: PeriodAttendanc
     'S.No': i + 1,
     'Emp Code': r.employeeCode || '-',
     'Name': r.name,
-    'Location': r.location || '-',
+    'Branch': r.location || '-',
     'Present (P)': r.present,
     'Half Day (H)': r.halfDay,
     'Absent (A)': r.absent,

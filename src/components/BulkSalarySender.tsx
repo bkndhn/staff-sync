@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { X, MessageCircle, Check, SkipForward, Send } from 'lucide-react';
-import { Staff, SalaryDetail } from '../types';
+import { Staff, PayrollDetail } from '../types';
 
 interface BulkSalarySenderProps {
-    salaryDetails: SalaryDetail[];
+    salaryDetails: PayrollDetail[];
     staff: Staff[];
     onClose: () => void;
-    onSend: (detail: SalaryDetail) => void;
+    onSend: (detail: PayrollDetail) => void;
     year: number;
     month: number;
 }
@@ -116,7 +116,7 @@ const BulkSalarySender: React.FC<BulkSalarySenderProps> = ({
                                     <p className="text-sm text-gray-500">{currentStaff.location}</p>
                                 </div>
                                 <div className="ml-auto text-right">
-                                    <p className="text-sm text-gray-500">Net Salary</p>
+                                    <p className="text-sm text-gray-500">Net Payroll</p>
                                     <p className="text-lg font-bold text-green-600">₹{currentDetail?.netSalary.toLocaleString()}</p>
                                 </div>
                             </div>

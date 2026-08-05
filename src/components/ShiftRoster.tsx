@@ -6,7 +6,7 @@ import { customAlert } from './CustomDialog';
 
 interface ShiftRosterProps {
   staff: Staff[];
-  userLocation: string;
+  userBranch: string;
   userRole: string;
 }
 

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { dataApi } from '../lib/dataApi';
-import { Staff, Attendance, SalaryDetail, AdvanceDeduction, PartTimeSalaryDetail, SalaryOverride, PayrollRun, PayrollSnapshot } from '../types';
+import { Staff, Attendance, PayrollDetail, AdvanceDeduction, PartTimeSalaryDetail, PayrollOverride, PayrollRun, PayrollSnapshot } from '../types';
 import { DollarSign, Download, Users, Calendar, TrendingUp, Edit2, Save, X, FileSpreadsheet, FileText, MessageCircle, Filter, Plus, Trash2, Check, RefreshCw, HandCoins } from 'lucide-react';
 import { staffService } from '../services/staffService';
 import { salaryDisbursementService } from '../services/salaryDisbursementService';
 import { calculateAttendanceMetrics, calculateSalary, calculatePartTimeSalary, roundToNearest10, computeScheduledDeductions } from '../utils/salaryCalculations';
 import type { DeductionBreakdown } from '../utils/salaryCalculations';
 import { exportSalaryToExcel, exportSalaryPDF, generateSalarySlipPDF, exportBulkSalarySlipsPDF, exportStatutoryToExcel } from '../utils/exportUtils';
-import { salaryCategoryService, type SalaryCategory } from '../services/salaryCategoryService';
+import { salaryCategoryService, type PayrollCategory } from '../services/salaryCategoryService';
 import { salaryOverrideService } from '../services/salaryOverrideService';
 import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryService';
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
@@ -18,7 +18,7 @@ import BulkSalarySender from './BulkSalarySender';
 import { customAlert, customConfirm } from './CustomDialog';
 import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/roleVisibility';
 
-interface SalaryManagementProps {
+interface PayrollManagementProps {
   staff: Staff[];
   attendance: Attendance[];
   advances: AdvanceDeduction[];
@@ -43,7 +43,7 @@ interface TempSalaryData {
   netSalary?: number;
 }
 
-const SalaryManagement: React.FC<SalaryManagementProps> = ({
+const PayrollManagement: React.FC<SalaryManagementProps> = ({
   staff,
   attendance,
   advances,
@@ -185,10 +185,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     });
   };
   const salaryColLabels: Record<string, string> = {
-    location: 'Location', type: 'Type', payment: 'Payment', floor: 'Floor', designation: 'Designation',
+    location: 'Branch', type: 'Type', payment: 'Payment', floor: 'Zone', designation: 'Designation',
     present: 'Present', leave: 'Leave', sunAbs: 'Sun Abs', oldAdv: 'Old Adv', curAdv: 'Cur Adv',
     deduction: 'Deduction', basic: 'Basic', incentive: 'Incentive', hra: 'HRA', meal: 'Meal',
-    sunPenalty: 'Sun Penalty', lateComingDeduction: 'Late Coming Ded.', earlyLeaveDeduction: 'Early Leave Ded.', statutory: hideStatutoryExtras(userRole) ? 'Deductions' : 'ESI/PF/Statutory', esi: 'ESI', pf: 'PF', gross: 'Gross', net: 'Net Salary', newAdv: 'New Adv'
+    sunPenalty: 'Sun Penalty', lateComingDeduction: 'Late Coming Ded.', earlyLeaveDeduction: 'Early Leave Ded.', statutory: hideStatutoryExtras(userRole) ? 'Deductions' : 'ESI/PF/Statutory', esi: 'ESI', pf: 'PF', gross: 'Gross', net: 'Net Payroll', newAdv: 'New Adv'
   };
   const [salaryCategories, setSalaryCategories] = useState<SalaryCategory[]>(() => salaryCategoryService.getCategoriesSync());
   const [showBulkSender, setShowBulkSender] = useState(false);
@@ -244,7 +244,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     salaryCategoryService.getCategories().then(setSalaryCategories);
   }, []);
 
-  const customCategories = salaryCategories.filter((c: SalaryCategory) => !['basic', 'incentive', 'hra', 'meal_allowance'].includes(c.id) && !c.isDeleted);
+  const customCategories = salaryCategories.filter((c: PayrollCategory) => !['basic', 'incentive', 'hra', 'meal_allowance'].includes(c.id) && !c.isDeleted);
 
   // Load monthly overrides
   React.useEffect(() => {
@@ -325,8 +325,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       member.experience, member.type, member.staffAccommodation,
       member.contactNumber, member.bankName, member.bankAccountNumber,
       member.ifscCode, member.pfNumber, member.esiNumber, member.paymentMode,
-      String(member.basicSalary ?? ''), String(member.incentive ?? ''),
-      String(member.hra ?? ''), String(member.mealAllowance ?? ''), String(member.totalSalary ?? '')
+      String(member.basicPayroll ?? ''), String(member.incentive ?? ''),
+      String(member.hra ?? ''), String(member.mealAllowance ?? ''), String(member.totalPayroll ?? '')
     ].filter(Boolean).join(' ').toLowerCase();
     return haystack.includes(query);
   });
@@ -364,13 +364,13 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   });
 
   // State for monthly overrides
-  const [overrides, setOverrides] = useState<{ [key: string]: SalaryOverride }>({});
+  const [overrides, setOverrides] = useState<{ [key: string]: PayrollOverride }>({});
 
   // Load monthly overrides
   React.useEffect(() => {
     const loadOverrides = async () => {
       const dbOverrides = await salaryOverrideService.getOverrides(selectedMonth + 1, selectedYear);
-      const overridesMap: { [key: string]: SalaryOverride } = {};
+      const overridesMap: { [key: string]: PayrollOverride } = {};
 
       const newTempAdvances: { [key: string]: TempSalaryData } = {};
 
@@ -401,7 +401,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   }, [selectedMonth, selectedYear]);
 
 
-  const calculateSalaryDetails = (): SalaryDetail[] => {
+  const calculateSalaryDetails = (): PayrollDetail[] => {
     if (payrollRun && snapshots.length > 0) {
       return snapshots
         .filter(s => filteredStaff.some(fs => fs.id === s.staffId))
@@ -417,7 +417,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       );
 
       const memberAdvanceEntries = advanceEntries[member.id] || [];
-      const baseDetail = calculateSalary(
+      const baseDetail = calculatePayroll(
         member,
         attendanceMetrics,
         memberAdvances ?? null,
@@ -430,11 +430,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         scheduledDeductions[member.id]?.total || 0
       );
 
-      let mergedDetail = baseDetail;
+      const mergedDetail = baseDetail;
 
       // Merge with overrides if present
       const override = overrides[member.id];
-      let resultDetail: SalaryDetail = mergedDetail;
+      let resultDetail: PayrollDetail = mergedDetail;
       if (override) {
         const basic = override.basicOverride ?? mergedDetail.basicEarned;
         const incentive = override.incentiveOverride ?? mergedDetail.incentiveEarned;
@@ -456,8 +456,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           sundayPenalty: sundayPenalty,
           lateComingDeduction,
           earlyLeaveDeduction,
-          grossSalary: gross,
-          netSalary: net
+          grossPayroll: gross,
+          netPayroll: net
         };
       }
 
@@ -475,10 +475,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           statutoryTotal,
           statutoryBreakdown: breakdown.map(b => ({ key: b.key, label: b.label, amount: b.amount })),
           nonStatutoryNet: resultDetail.netSalary,
-          netSalary: Math.max(0, roundToNearest10(resultDetail.netSalary - statutoryTotal)),
+          netPayroll: Math.max(0, roundToNearest10(resultDetail.netPayroll - statutoryTotal)),
         };
       } else {
-        resultDetail = { ...resultDetail, statutoryTotal: 0, statutoryBreakdown: [], nonStatutoryNet: resultDetail.netSalary };
+        resultDetail = { ...resultDetail, statutoryTotal: 0, statutoryBreakdown: [], nonStatutoryNet: resultDetail.netPayroll };
       }
       return resultDetail;
     });
@@ -505,7 +505,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     });
 
     return Array.from(uniqueStaff.values()).map(staff =>
-      calculatePartTimeSalary(
+      calculatePartTimePayroll(
         staff.name,
         staff.location,
         staff.floor,
@@ -587,8 +587,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       const lateComingDeductionVal = staffOverride?.lateComingDeductionOverride ?? detail?.lateComingDeduction ?? 0;
       const earlyLeaveDeductionVal = staffOverride?.earlyLeaveDeductionOverride ?? detail?.earlyLeaveDeduction ?? 0;
 
-      const grossSalary = roundToNearest10(basicVal + incentiveVal + hraVal + mealAllowanceVal);
-      const netSalary = roundToNearest10(grossSalary - deduction - sundayPenaltyVal - lateComingDeductionVal - earlyLeaveDeductionVal);
+      const grossPayroll = roundToNearest10(basicVal + incentiveVal + hraVal + mealAllowanceVal);
+      const netPayroll = roundToNearest10(grossPayroll - deduction - sundayPenaltyVal - lateComingDeductionVal - earlyLeaveDeductionVal);
       const newAdvance = roundToNearest10(oldAdv + curAdv - deduction);
 
       initialTempAdvances[member.id] = {
@@ -603,8 +603,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         sundayPenaltyOverride: sundayPenaltyVal,
         lateComingDeductionOverride: lateComingDeductionVal,
         earlyLeaveDeductionOverride: earlyLeaveDeductionVal,
-        grossSalary: grossSalary,
-        netSalary: netSalary,
+        grossPayroll: grossSalary,
+        netPayroll: netSalary,
         newAdvance: newAdvance
       };
     });
@@ -754,7 +754,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
         const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
         const memberAdvanceEntries = advanceEntries[member.id] || [];
-        return calculateSalary(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides, scheduledDeductions[member.id]?.total || 0);
+        return calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides, scheduledDeductions[member.id]?.total || 0);
       });
 
       const run = await payrollService.generatePayroll(selectedMonth, selectedYear, activeStaff, fullDetails, 'System');
@@ -777,7 +777,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
         const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
         const memberAdvanceEntries = advanceEntries[member.id] || [];
-        return calculateSalary(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides, scheduledDeductions[member.id]?.total || 0);
+        return calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides, scheduledDeductions[member.id]?.total || 0);
       });
 
       const run = await payrollService.regeneratePayroll(selectedMonth, selectedYear, activeStaff, fullDetails, 'System');
@@ -792,7 +792,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     }
   };
 
-  const handleDownloadSingleSlip = (detail: SalaryDetail) => {
+  const handleDownloadSingleSlip = (detail: PayrollDetail) => {
     const staffMember = getStaffForDisplay(detail.staffId);
     if (staffMember) {
       generateSalarySlipPDF(detail, staffMember, selectedMonth, selectedYear);
@@ -800,7 +800,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   };
 
   // WhatsApp share salary slip
-  const handleWhatsAppShare = async (detail: SalaryDetail) => {
+  const handleWhatsAppShare = async (detail: PayrollDetail) => {
     const staffMember = getStaffForDisplay(detail.staffId);
     if (!staffMember) return;
 
@@ -818,15 +818,15 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     const leaveDays = (detail.leaveDays - detail.halfDays * 0.5).toFixed(1);
 
     // Get salary category names
-    const basicName = salaryCategories.find((c: SalaryCategory) => c.id === 'basic')?.name || 'Basic';
-    const incentiveName = salaryCategories.find((c: SalaryCategory) => c.id === 'incentive')?.name || 'Incentive';
-    const hraName = salaryCategories.find((c: SalaryCategory) => c.id === 'hra')?.name || 'HRA';
-    const mealName = salaryCategories.find((c: SalaryCategory) => c.id === 'meal_allowance')?.name || 'Meal Allowance';
+    const basicName = salaryCategories.find((c: PayrollCategory) => c.id === 'basic')?.name || 'Basic';
+    const incentiveName = salaryCategories.find((c: PayrollCategory) => c.id === 'incentive')?.name || 'Incentive';
+    const hraName = salaryCategories.find((c: PayrollCategory) => c.id === 'hra')?.name || 'HRA';
+    const mealName = salaryCategories.find((c: PayrollCategory) => c.id === 'meal_allowance')?.name || 'Meal Allowance';
 
     // Custom supplements for this staff member
     const staffMemberData = staff.find(s => s.id === detail.staffId);
     const customSupplLines = customCategories
-      .map((cat: SalaryCategory) => {
+      .map((cat: PayrollCategory) => {
         const val = staffMemberData?.salarySupplements?.[cat.key] || staffMemberData?.salarySupplements?.[cat.id] || 0;
         return val > 0 ? `• ${cat.name}: ₹${val.toLocaleString()}\n` : '';
       })
@@ -838,8 +838,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       `━━━━━━━━━━━━━━━━━━\n` +
       `👤 *Name:* ${staffMember.name}\n` +
       `📅 *Month:* ${monthName} ${selectedYear}\n` +
-      `📍 *Location:* ${staffMember.location}\n` +
-      (staffMember.floor ? `🏢 *Floor:* ${staffMember.floor}\n` : '') +
+      `📍 *Branch:* ${staffMember.location}\n` +
+      (staffMember.floor ? `🏢 *Zone:* ${staffMember.floor}\n` : '') +
       (staffMember.designation ? `💼 *Designation:* ${staffMember.designation}\n` : '') +
       (staffMember.staffAccommodation ? `🏠 *Type:* ${staffMember.staffAccommodation === 'day_scholar' ? 'Day Scholar' : 'Accommodation Provided'}\n` : '') +
       `━━━━━━━━━━━━━━━━━━\n\n` +
@@ -859,8 +859,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       `• Deduction: ₹${detail.deduction.toLocaleString()}\n` +
       `• Sunday Penalty: ₹${detail.sundayPenalty.toLocaleString()}\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
-      `💵 *Gross Salary:* ₹${detail.grossSalary.toLocaleString()}\n` +
-      `✅ *Net Salary:* ₹${detail.netSalary.toLocaleString()}\n` +
+      `💵 *Gross Payroll:* ₹${detail.grossSalary.toLocaleString()}\n` +
+      `✅ *Net Payroll:* ₹${detail.netSalary.toLocaleString()}\n` +
       `📌 *New Advance:* ₹${detail.newAdv.toLocaleString()}\n` +
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `_Generated on ${new Date().toLocaleDateString()}_`;
@@ -895,9 +895,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     const deduction = updated.deduction || 0;
 
     // Gross = Basic + Incentive + HRA + Meal Allowance
-    updated.grossSalary = roundToNearest10(basicVal + incentiveVal + hraVal + mealAllowanceVal);
+    updated.grossPayroll = roundToNearest10(basicVal + incentiveVal + hraVal + mealAllowanceVal);
     // Net = Gross - Deduction - Sunday Penalty - Late - Early
-    updated.netSalary = roundToNearest10(updated.grossSalary - deduction - sundayPenaltyVal - lateComingDeductionVal - earlyLeaveDeductionVal);
+    updated.netPayroll = roundToNearest10(updated.grossPayroll - deduction - sundayPenaltyVal - lateComingDeductionVal - earlyLeaveDeductionVal);
     // New Adv = Old Adv + Cur Adv - Deduction
     updated.newAdvance = roundToNearest10(oldAdv + curAdv - deduction);
 
@@ -950,8 +950,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       let totalPF = 0;
 
       Object.values(tempAdvances).forEach(temp => {
-        totalGross += temp.grossSalary || 0;
-        totalNet += temp.netSalary || 0;
+        totalGross += temp.grossPayroll || 0;
+        totalNet += temp.netPayroll || 0;
         totalNewAdv += temp.newAdvance || 0;
         totalDeduction += temp.deduction || 0;
         totalOldAdv += temp.oldAdvance || 0;
@@ -990,7 +990,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             <DollarSign size={24} />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white">Salary Management</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-white">Payroll Management</h1>
             <p className="text-white/50 text-sm">Track and manage salaries</p>
           </div>
         </div>
@@ -1180,13 +1180,13 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 </select>
               </div>
               <div className="flex items-center gap-1">
-                <label className="text-xs font-medium text-[var(--text-muted)] hidden sm:inline">Location:</label>
+                <label className="text-xs font-medium text-[var(--text-muted)] hidden sm:inline">Branch:</label>
                 <select
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
                   className="filter-chip"
                 >
-                  <option value="All">All Locations</option>
+                  <option value="All">All Branchs</option>
                   {locations.map(loc => (<option key={loc.id} value={loc.name}>{loc.name}</option>))}
                 </select>
               </div>
@@ -1208,7 +1208,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   onChange={(e) => setFloorFilter(e.target.value)}
                   className="filter-chip"
                 >
-                  <option value="All">All Floors</option>
+                  <option value="All">All Zones</option>
                   {Array.from(new Set(activeStaff.filter(s => s.floor).map(s => s.floor!))).map(flr => (
                     <option key={flr} value={flr}>{flr}</option>
                   ))}
@@ -1260,8 +1260,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         <div className="stat-card stat-card-success">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/60 mb-1">Full-Time Salary</p>
-              <p className="text-3xl font-bold text-emerald-400">₹{(editMode ? Object.values(tempAdvances).reduce((sum, t) => sum + (t.netSalary || 0), 0) : totalSalaryDisbursed).toLocaleString()}</p>
+              <p className="text-sm text-white/60 mb-1">Full-Time Payroll</p>
+              <p className="text-3xl font-bold text-emerald-400">₹{(editMode ? Object.values(tempAdvances).reduce((sum, t) => sum + (t.netPayroll || 0), 0) : totalSalaryDisbursed).toLocaleString()}</p>
               <p className="text-xs text-white/50">
                 For {new Date(0, selectedMonth).toLocaleString('default', { month: 'long' })} {selectedYear}
               </p>
@@ -1275,7 +1275,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         <div className="stat-card stat-card-purple">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/60 mb-1">Part-Time Earnings</p>
+              <p className="text-sm text-white/60 mb-1">Flex Earnings</p>
               <p className="text-3xl font-bold text-purple-400">₹{totalPartTimeEarnings.toLocaleString()}</p>
               <p className="text-xs text-white/50">{partTimeSalaries.length} staff</p>
             </div>
@@ -1302,7 +1302,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-white/60 mb-1">Total Disbursed</p>
-              <p className="text-3xl font-bold text-indigo-400">₹{((editMode ? Object.values(tempAdvances).reduce((sum, t) => sum + (t.netSalary || 0), 0) : totalSalaryDisbursed) + totalPartTimeEarnings).toLocaleString()}</p>
+              <p className="text-3xl font-bold text-indigo-400">₹{((editMode ? Object.values(tempAdvances).reduce((sum, t) => sum + (t.netPayroll || 0), 0) : totalSalaryDisbursed) + totalPartTimeEarnings).toLocaleString()}</p>
               <p className="text-xs text-white/50">Full + Part-time</p>
             </div>
             <div className="stat-icon stat-icon-primary">
@@ -1355,13 +1355,13 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         </div>
       )}
 
-      {/* Full-Time Salary Details Table */}
+      {/* Full-Time Payroll Details Table */}
       <div className="table-container">
         <div className="p-4 md:p-6 border-b border-white/10">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
               <h2 className="text-lg md:text-xl font-bold text-white">
-                Full-Time Salary Details - {new Date(0, selectedMonth).toLocaleString('default', { month: 'long' })} {selectedYear}
+                Full-Time Payroll Details - {new Date(0, selectedMonth).toLocaleString('default', { month: 'long' })} {selectedYear}
               </h2>
               <p className="text-xs md:text-sm text-white/50 mt-1">
                 All values rounded to nearest ₹10. Sunday absents incur ₹500 penalty.
@@ -1518,8 +1518,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 <th className="px-2 md:px-4 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
                 {showEmpCode && <th className="px-2 md:px-4 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emp Code</th>}
                 <th className="px-2 md:px-4 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 z-10 bg-gray-50">Name</th>
-                {salaryVisibleCols.location !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>}
-                {salaryVisibleCols.floor !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Floor</th>}
+                {salaryVisibleCols.location !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>}
+                {salaryVisibleCols.floor !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Zone</th>}
                 {salaryVisibleCols.designation !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>}
                 {salaryVisibleCols.type !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>}
                 {salaryVisibleCols.payment !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>}
@@ -1529,11 +1529,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 {salaryVisibleCols.oldAdv !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Old Adv</th>}
                 {salaryVisibleCols.curAdv !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Cur Adv</th>}
                 {salaryVisibleCols.deduction !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Deduction</th>}
-                {salaryVisibleCols.basic !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{salaryCategories.find((c: SalaryCategory) => c.id === 'basic')?.name || 'Basic'}</th>}
-                {salaryVisibleCols.incentive !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{salaryCategories.find((c: SalaryCategory) => c.id === 'incentive')?.name || 'Incentive'}</th>}
-                {salaryVisibleCols.hra !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{salaryCategories.find((c: SalaryCategory) => c.id === 'hra')?.name || 'HRA'}</th>}
-                {salaryVisibleCols.meal !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{salaryCategories.find((c: SalaryCategory) => c.id === 'meal_allowance')?.name || 'Meal Allowance'}</th>}
-                {customCategories.map((cat: SalaryCategory) => (<th key={cat.id} className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{cat.name}</th>))}
+                {salaryVisibleCols.basic !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{salaryCategories.find((c: PayrollCategory) => c.id === 'basic')?.name || 'Basic'}</th>}
+                {salaryVisibleCols.incentive !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{salaryCategories.find((c: PayrollCategory) => c.id === 'incentive')?.name || 'Incentive'}</th>}
+                {salaryVisibleCols.hra !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{salaryCategories.find((c: PayrollCategory) => c.id === 'hra')?.name || 'HRA'}</th>}
+                {salaryVisibleCols.meal !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{salaryCategories.find((c: PayrollCategory) => c.id === 'meal_allowance')?.name || 'Meal Allowance'}</th>}
+                {customCategories.map((cat: PayrollCategory) => (<th key={cat.id} className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{cat.name}</th>))}
                 {salaryVisibleCols.sunPenalty !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sun Penalty</th>}
                 {salaryVisibleCols.lateComingDeduction !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Late Coming Ded.</th>}
                 {salaryVisibleCols.earlyLeaveDeduction !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Early Leave Ded.</th>}
@@ -1541,7 +1541,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 {salaryVisibleCols.esi !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider text-red-500">ESI</th>}
                 {salaryVisibleCols.pf !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider text-red-500">PF</th>}
                 {salaryVisibleCols.gross !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Gross</th>}
-                {salaryVisibleCols.net !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Net Salary</th>}
+                {salaryVisibleCols.net !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Net Payroll</th>}
                 {salaryVisibleCols.newAdv !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">New Adv</th>}
                 <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -1717,7 +1717,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                         <span className="text-gray-900">₹{detail.mealAllowance}</span>
                       )}
                     </td>}
-                    {customCategories.map((cat: SalaryCategory) => {
+                    {customCategories.map((cat: PayrollCategory) => {
                       const val = staffMember?.salarySupplements?.[cat.id] || staffMember?.salarySupplements?.[cat.key] || 0;
                       return (
                         <td key={cat.id} className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
@@ -1768,10 +1768,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       {(detail.statutoryBreakdown?.find(b => b.key === 'pf')?.amount ?? 0) > 0 ? `₹${detail.statutoryBreakdown?.find(b => b.key === 'pf')?.amount}` : '-'}
                     </td>}
                     {salaryVisibleCols.gross !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center font-semibold text-green-600">
-                      ₹{editMode ? (tempData?.grossSalary || 0) : detail.grossSalary}
+                      ₹{editMode ? (tempData?.grossPayroll || 0) : detail.grossSalary}
                     </td>}
                     {salaryVisibleCols.net !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center font-bold text-green-700">
-                      ₹{editMode ? (tempData?.netSalary || 0) : detail.netSalary}
+                      ₹{editMode ? (tempData?.netPayroll || 0) : detail.netSalary}
                       {(detail.statutoryTotal || 0) > 0 && !editMode && (
                         <div className="text-[10px] text-gray-400 font-medium">Off-Books: ₹{Math.round(detail.nonStatutoryNet || 0).toLocaleString()}</div>
                       )}
@@ -1785,7 +1785,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                         <button
                           onClick={() => handleDownloadSingleSlip(detail)}
                           className="inline-flex items-center justify-center p-1.5 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
-                          title="Download Salary Slip"
+                          title="Download Payroll Slip"
                         >
                           <Download size={16} />
                         </button>
@@ -1805,7 +1805,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                               detail.netSalary,
                               staffMember?.paymentMode || 'bank'
                             );
-                            if (ok) customAlert('Salary marked as paid and staff notified!');
+                            if (ok) customAlert('Payroll marked as paid and staff notified!');
                           }}
                           className="inline-flex items-center justify-center p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                           title="Mark as Paid & Notify"
@@ -1867,13 +1867,13 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         </div>
       </div >
 
-      {/* Part-Time Salary Details */}
+      {/* Flex Payroll Details */}
       {
         partTimeSalaries.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 md:p-6 border-b border-gray-200">
               <h2 className="text-lg md:text-xl font-bold text-gray-800">
-                Part-Time Staff Earnings - {new Date(0, selectedMonth).toLocaleString('default', { month: 'long' })} {selectedYear}
+                flex staff Earnings - {new Date(0, selectedMonth).toLocaleString('default', { month: 'long' })} {selectedYear}
               </h2>
               <p className="text-xs md:text-sm text-gray-600 mt-1">
                 Rate: ₹350/day (Mon-Sat), ₹400/day (Sunday)
@@ -1886,7 +1886,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   <tr>
                     <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
                     <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 z-10 bg-gray-50">Name</th>
-                    <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                    <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
                     <th className="px-3 md:px-6 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total Days</th>
                     <th className="px-3 md:px-6 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Weekly Breakdown</th>
                     <th className="px-3 md:px-6 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total Earnings</th>
@@ -1925,7 +1925,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       </td>
                     </tr>
                   ))}
-                  {/* Part-Time Totals Row */}
+                  {/* Flex Totals Row */}
                   <tr className="bg-gray-100 font-bold text-sm">
                     <td className="px-3 md:px-6 py-3 whitespace-nowrap" colSpan={5}>
                       <span className="text-gray-800">TOTAL</span>
@@ -2165,4 +2165,4 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   );
 };
 
-export default SalaryManagement;
+export default PayrollManagement;

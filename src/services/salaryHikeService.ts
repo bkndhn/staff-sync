@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { SalaryHike } from '../types';
+import { PayrollHike } from '../types';
 
 export interface DatabaseSalaryHike {
   id: string;
@@ -42,7 +42,7 @@ export const salaryHikeService = {
     return data.map((d: any) => this.mapFromDatabase(d));
   },
 
-  async getPreviousSalary(staffId: string, cutoffDate: string = '2024-10-01'): Promise<{ previousSalary: number | null, changeDate: string | null }> {
+  async getPreviousPayroll(staffId: string, cutoffDate: string = '2024-10-01'): Promise<{ previousPayroll: number | null, changeDate: string | null }> {
     const { data, error } = await supabase
       .from('salary_hikes')
       .select('new_salary, hike_date')
@@ -53,17 +53,17 @@ export const salaryHikeService = {
 
     if (error) {
       console.error('Error fetching previous salary:', error);
-      return { previousSalary: null, changeDate: null };
+      return { previousPayroll: null, changeDate: null };
     }
 
     if (data && data.length > 0) {
       return {
-        previousSalary: data[0].new_salary,
+        previousPayroll: data[0].new_salary,
         changeDate: data[0].hike_date
       };
     }
 
-    return { previousSalary: null, changeDate: null };
+    return { previousPayroll: null, changeDate: null };
   },
 
   async create(hike: Omit<SalaryHike, 'id' | 'createdAt'>): Promise<SalaryHike> {
@@ -85,8 +85,8 @@ export const salaryHikeService = {
 
   async update(id: string, updates: Partial<SalaryHike>): Promise<SalaryHike> {
     const dbUpdates: Partial<DatabaseSalaryHike> = {};
-    if (updates.oldSalary !== undefined) dbUpdates.old_salary = updates.oldSalary;
-    if (updates.newSalary !== undefined) dbUpdates.new_salary = updates.newSalary;
+    if (updates.oldPayroll !== undefined) dbUpdates.old_salary = updates.oldSalary;
+    if (updates.newPayroll !== undefined) dbUpdates.new_salary = updates.newSalary;
     if (updates.hikeDate !== undefined) dbUpdates.hike_date = updates.hikeDate;
     if (updates.reason !== undefined) dbUpdates.reason = updates.reason;
     if (updates.breakdown !== undefined) dbUpdates.breakdown = updates.breakdown;
@@ -118,12 +118,12 @@ export const salaryHikeService = {
     }
   },
 
-  mapFromDatabase(dbHike: DatabaseSalaryHike): SalaryHike {
+  mapFromDatabase(dbHike: DatabaseSalaryHike): PayrollHike {
     return {
       id: dbHike.id,
       staffId: dbHike.staff_id,
-      oldSalary: dbHike.old_salary,
-      newSalary: dbHike.new_salary,
+      oldPayroll: dbHike.old_salary,
+      newPayroll: dbHike.new_salary,
       hikeDate: dbHike.hike_date,
       reason: dbHike.reason,
       breakdown: dbHike.breakdown,

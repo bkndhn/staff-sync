@@ -1,9 +1,9 @@
 import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
 import { db } from '../lib/db';
-import { type LocationDesignationShiftConfig } from '../types';
+import { type BranchDesignationShiftConfig } from '../types';
 
-const toConfig = (row: any): LocationDesignationShiftConfig => ({
+const toConfig = (row: any): BranchDesignationShiftConfig => ({
   id: row.id,
   locationName: row.location_name,
   designationId: row.designation_id,
@@ -77,7 +77,7 @@ export const locationDesignationShiftService = {
       .eq('location_name', locationName);
 
     if (error) {
-      console.error('locationDesignationShiftService.getForLocation error:', error);
+      console.error('locationDesignationShiftService.getForBranch error:', error);
       return [];
     }
 
@@ -85,7 +85,7 @@ export const locationDesignationShiftService = {
   },
 
   /** Upsert a config */
-  async upsert(config: LocationDesignationShiftConfig): Promise<LocationDesignationShiftConfig | null> {
+  async upsert(config: BranchDesignationShiftConfig): Promise<LocationDesignationShiftConfig | null> {
     const payload = {
       location_name: config.locationName,
       designation_id: config.designationId,

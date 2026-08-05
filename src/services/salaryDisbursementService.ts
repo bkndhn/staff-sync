@@ -1,7 +1,7 @@
 import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
 
-export interface SalaryDisbursement {
+export interface PayrollDisbursement {
   id: string;
   staffId: string;
   monthYear: string;
@@ -66,7 +66,7 @@ export const salaryDisbursementService = {
       await supabase.functions.invoke('send-notification', {
         body: {
           staffId,
-          title: 'Salary Credited! 💸',
+          title: 'Payroll Credited! 💸',
           body: `Your salary of ₹${amount} for ${monthYear} has been credited via ${paymentMode.toUpperCase()}.`
         }
       });

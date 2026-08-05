@@ -45,7 +45,7 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
     return [...list].sort((a, b) => {
       switch (sort.key) {
         case 'left': return (new Date(a.leftDate).getTime() - new Date(b.leftDate).getTime()) * dir;
-        case 'salary': return (a.totalSalary - b.totalSalary) * dir;
+        case 'salary': return (a.totalPayroll - b.totalSalary) * dir;
         case 'advance': return (a.totalAdvanceOutstanding - b.totalAdvanceOutstanding) * dir;
         default: return a.name.localeCompare(b.name) * dir;
       }
@@ -225,7 +225,7 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="rounded-xl bg-white border border-gray-100 p-2">
                         <div className="text-[11px] text-gray-500">Type</div>
-                        <div className="font-medium text-gray-900">{record.type === 'full-time' ? 'Full-Time' : 'Part-Time'}</div>
+                        <div className="font-medium text-gray-900">{record.type === 'full-time' ? 'Full-Time' : 'Flex'}</div>
                       </div>
                       <div className="rounded-xl bg-white border border-gray-100 p-2">
                         <div className="text-[11px] text-gray-500">Contact</div>
@@ -328,13 +328,13 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emp Code</th>
                   <th className="sticky left-0 z-10 bg-gray-50 px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Name</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Staff Type</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Experience</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Basic</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Incentive</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">HRA</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Salary</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Payroll</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Outstanding Advance</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
@@ -369,7 +369,7 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                          {record.type === 'full-time' ? 'Full-Time' : 'Part-Time'}
+                          {record.type === 'full-time' ? 'Full-Time' : 'Flex'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-medium">
@@ -486,8 +486,8 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
                 )}
                 <div className="space-y-2 text-sm">
                   <div><span className="font-medium">Name:</span> {selectedRecord.name}</div>
-                  <div><span className="font-medium">Location:</span> {selectedRecord.location}</div>
-                  <div><span className="font-medium">Staff Type:</span> {selectedRecord.type === 'full-time' ? 'Full-Time' : 'Part-Time'}</div>
+                  <div><span className="font-medium">Branch:</span> {selectedRecord.location}</div>
+                  <div><span className="font-medium">Staff Type:</span> {selectedRecord.type === 'full-time' ? 'Full-Time' : 'Flex'}</div>
                   <div><span className="font-medium">Contact:</span> {selectedRecord.contactNumber || 'N/A'}</div>
                   <div><span className="font-medium">Address:</span> {selectedRecord.address || 'N/A'}</div>
                   <div><span className="font-medium">Experience (Worked):</span> {calcExperience(selectedRecord.joinedDate, selectedRecord.leftDate)}</div>
@@ -498,12 +498,12 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
               </div>
 
               <div className="space-y-4">
-                <h4 className="font-semibold text-gray-800 border-b pb-2">Salary Information</h4>
+                <h4 className="font-semibold text-gray-800 border-b pb-2">Payroll Information</h4>
                 <div className="space-y-2 text-sm">
-                  <div><span className="font-medium">Basic Salary:</span> ₹{selectedRecord.basicSalary.toLocaleString()}</div>
+                  <div><span className="font-medium">Basic Payroll:</span> ₹{selectedRecord.basicSalary.toLocaleString()}</div>
                   <div><span className="font-medium">Incentive:</span> ₹{selectedRecord.incentive.toLocaleString()}</div>
                   <div><span className="font-medium">HRA:</span> ₹{selectedRecord.hra.toLocaleString()}</div>
-                  <div><span className="font-medium">Total Salary:</span> ₹{selectedRecord.totalSalary.toLocaleString()}</div>
+                  <div><span className="font-medium">Total Payroll:</span> ₹{selectedRecord.totalSalary.toLocaleString()}</div>
                   <div>
                     <span className="font-medium">Outstanding Advance:</span>
                     <span className={`ml-1 font-semibold ${selectedRecord.totalAdvanceOutstanding > 0 ? 'text-red-600' : 'text-green-600'}`}>

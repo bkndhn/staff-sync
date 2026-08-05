@@ -84,7 +84,7 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
   const getActionBadge = (action: AuditLog['action']) => {
     const map: Record<string, { bg: string; border: string; color: string; label: string }> = {
       attendance_override: { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)', color: C.amber,   label: 'Attendance Override' },
-      salary_edit:         { bg: 'rgba(96,165,250,0.12)', border: 'rgba(96,165,250,0.3)', color: C.blue,    label: 'Salary Edit' },
+      salary_edit:         { bg: 'rgba(96,165,250,0.12)', border: 'rgba(96,165,250,0.3)', color: C.blue,    label: 'Payroll Edit' },
       staff_update:        { bg: 'rgba(52,211,153,0.12)', border: 'rgba(52,211,153,0.3)', color: C.emerald, label: 'Staff Update' },
       staff_create:        { bg: 'rgba(45,212,191,0.12)', border: 'rgba(45,212,191,0.3)', color: C.teal,    label: 'Staff Created' },
       staff_delete:        { bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.3)', color: C.rose,  label: 'Staff Removed' },
@@ -206,7 +206,7 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
             >
               <option value="all" style={{ background: C.bgCard, color: C.text }}>All Event Types</option>
               <option value="attendance_override" style={{ background: C.bgCard, color: C.text }}>Attendance Override</option>
-              <option value="salary_edit" style={{ background: C.bgCard, color: C.text }}>Salary Edit</option>
+              <option value="salary_edit" style={{ background: C.bgCard, color: C.text }}>Payroll Edit</option>
               <option value="staff_update" style={{ background: C.bgCard, color: C.text }}>Staff Update</option>
               <option value="staff_create" style={{ background: C.bgCard, color: C.text }}>Staff Created</option>
               <option value="staff_delete" style={{ background: C.bgCard, color: C.text }}>Staff Removed</option>
