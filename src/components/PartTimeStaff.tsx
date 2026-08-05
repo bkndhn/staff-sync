@@ -1461,7 +1461,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6">
                     <div className="flex justify-between items-center mb-3">
                         <h2 className="text-lg md:text-xl font-bold text-gray-800">Add flex staff for Today</h2>
-                        <button onClick={() => setShowAddForm(false)} className="bg-gray-100 text-gray-500 hover:text-white hover:bg-red-600 p-1.5 rounded-full transition-all shadow-sm">
+                        <button onClick={() => setShowAddForm(false)} className="bg-gray-100 text-gray-500 hover:text-red-600 hover:bg-red-100 p-1.5 rounded-full transition-all shadow-sm">
                             <X size={20} />
                         </button>
                     </div>
@@ -1476,7 +1476,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             <button
                                 type="button"
                                 onClick={handleCopyYesterdayRoster}
-                                className="px-3 py-1.5 bg-white border border-purple-200 text-purple-700 hover:bg-purple-600 hover:text-white rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
+                                className="px-3 py-1.5 bg-purple-100 border border-purple-300 text-purple-900 hover:bg-purple-200 hover:text-purple-950 rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
                                 title="Pre-fill form with staff who worked yesterday"
                             >
                                 <Zap size={14} className="text-amber-500" />
