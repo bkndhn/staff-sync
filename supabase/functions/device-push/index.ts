@@ -1,21 +1,10 @@
 // Cloud-push endpoint for biometric devices (eSSL / ZKTeco cloud-enabled,
 // Suprema, generic webhook). Accepts punches in a small, well-defined JSON
-// shape and inserts them into the punch_events table.
+// shape and inserts them into punch_events, automatically auto-aggregating
+// into attendance table with real-time IN/OUT times.
 //
 // Auth: shared bearer token in `Authorization: Bearer <DEVICE_PUSH_TOKEN>`
-//       OR `?token=<DEVICE_PUSH_TOKEN>` query param (some devices cannot send
-//       custom headers). Configure the secret DEVICE_PUSH_TOKEN in Supabase.
-//
-// Request body (JSON) — either a single punch or `{ punches: [...] }`:
-//   {
-//     "device_id":   "101",          // REQUIRED — enroll number on device
-//     "timestamp":   "2026-06-07T09:14:32+05:30",  // REQUIRED ISO datetime
-//     "kind":        "in" | "out" | "unknown",     // optional, default "unknown"
-//     "device_name": "eSSL-MainGate", // optional, stored as device_label
-//     "location":    "Big Shop"       // optional override
-//   }
-//
-// Response: { ok: true, inserted, skipped, errors: [...] }
+//       OR `?token=<DEVICE_PUSH_TOKEN>` query param.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -117,25 +106,44 @@ Deno.serve(async (req) => {
       return json({ error: "No valid device_id in payload" }, 400);
     }
 
+    // --- Update Device Status Heartbeats ---
+    for (const devId of deviceIds) {
+      const samplePunch = list.find(p => pickDeviceId(p) === devId);
+      const devName = samplePunch?.device_name ?? samplePunch?.deviceName ?? `eSSL-Terminal-${devId}`;
+      const loc = samplePunch?.location ?? 'Main';
+      try {
+        await admin.from("device_status").upsert({
+          device_id: devId,
+          device_name: devName,
+          location: loc,
+          last_seen_at: new Date().toISOString(),
+          status: "online",
+        }, { onConflict: "device_id,tenant_id" });
+      } catch (e) {
+        console.warn("device_status heartbeat error:", e);
+      }
+    }
+
     const { data: staffRows, error: staffErr } = await admin
       .from("staff")
-      .select("id, name, location, device_id")
+      .select("id, name, location, floor, device_id")
       .in("device_id", deviceIds);
 
     if (staffErr) {
       return json({ error: "Staff lookup failed", details: staffErr.message }, 500);
     }
 
-    const staffMap = new Map<string, { id: string; name: string; location: string }>();
+    const staffMap = new Map<string, { id: string; name: string; location: string; floor?: string }>();
     for (const s of staffRows ?? []) {
       if (s.device_id) staffMap.set(String(s.device_id).trim(), {
-        id: s.id, name: s.name, location: s.location,
+        id: s.id, name: s.name, location: s.location, floor: s.floor,
       });
     }
 
-    // --- Build inserts ---
+    // --- Build inserts with deduplication ---
     const rows: any[] = [];
     const breakOps: Array<{ kind: "break_in" | "break_out"; staff: any; date: string; time: string; deviceLabel: string | null }> = [];
+    const affectedStaffDates = new Set<string>(); // staffId|date
     const errors: any[] = [];
     let skipped = 0;
 
@@ -158,6 +166,26 @@ Deno.serve(async (req) => {
       const time = `${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`;
       const deviceLabel = p.device_name ?? p.deviceName ?? null;
 
+      // 120-second rapid double-punch check
+      const { data: existing } = await admin.from("punch_events")
+        .select("event_time")
+        .eq("staff_id", s.id)
+        .eq("date", date)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existing && existing.event_time) {
+        const [eh, em, es] = existing.event_time.split(":").map(Number);
+        const prevSecs = eh * 3600 + em * 60 + (es || 0);
+        const currSecs = t.getHours() * 3600 + t.getMinutes() * 60 + t.getSeconds();
+        if (Math.abs(currSecs - prevSecs) < 120) {
+          skipped++;
+          errors.push({ staff: s.name, time, reason: "rapid double-tap within 120s (deduplicated)" });
+          continue;
+        }
+      }
+
       rows.push({
         staff_id: s.id,
         staff_name: s.name,
@@ -168,6 +196,8 @@ Deno.serve(async (req) => {
         source: "device-push",
         device_label: deviceLabel,
       });
+
+      affectedStaffDates.add(`${s.id}|${date}|${s.name}|${p.location || s.location}|${s.floor || ''}`);
 
       if (kind === "break_in" || kind === "break_out") {
         breakOps.push({ kind, staff: s, date, time, deviceLabel });
@@ -181,6 +211,41 @@ Deno.serve(async (req) => {
         return json({ error: "Insert failed", details: insErr.message, skipped, errors }, 500);
       }
       inserted = rows.length;
+    }
+
+    // --- Real-time Auto-Attendance Aggregation ---
+    let attendanceUpdated = 0;
+    for (const key of Array.from(affectedStaffDates)) {
+      const [staffId, date, staffName, location, floor] = key.split("|");
+      try {
+        const { data: allPunches } = await admin.from("punch_events")
+          .select("event_time")
+          .eq("staff_id", staffId)
+          .eq("date", date)
+          .order("event_time", { ascending: true });
+
+        if (allPunches && allPunches.length > 0) {
+          const arrTime = allPunches[0].event_time.slice(0, 5);
+          const leavTime = allPunches.length > 1 ? allPunches[allPunches.length - 1].event_time.slice(0, 5) : "21:30";
+
+          // Upsert into attendance table
+          await admin.from("attendance").upsert({
+            staff_id: staffId,
+            staff_name: staffName,
+            date,
+            status: "Present",
+            attendance_value: 1.0,
+            location,
+            floor: floor || null,
+            arrival_time: arrTime,
+            leaving_time: leavTime,
+            is_part_time: false,
+          }, { onConflict: "staff_id,date,is_part_time" });
+          attendanceUpdated++;
+        }
+      } catch (ae) {
+        console.error("Auto-attendance aggregation failed:", ae);
+      }
     }
 
     // Apply break events
@@ -218,7 +283,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ ok: true, inserted, skipped, errors, breaksOpened, breaksClosed });
+    return json({ ok: true, inserted, skipped, errors, attendanceUpdated, breaksOpened, breaksClosed });
   } catch (e: any) {
     console.error("device-push error:", e);
     return json({ error: e?.message ?? "Internal error" }, 500);

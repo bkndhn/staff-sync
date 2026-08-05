@@ -78,6 +78,7 @@ const ACL: Record<string, TableAcl> = {
   shift_rosters:                     { read: ["admin","manager","supervisor","floor_supervisor","super_admin"],                           write: ["admin","manager"] },
   workflow_configs:                  { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   staff_grievances:                  { read: ["admin","manager","super_admin"],                                        write: ["admin","manager","staff"] },
+  device_status:                     { read: ["admin","manager","supervisor","floor_supervisor","super_admin"], write: ["admin","super_admin"] },
   // ── Platform-level ──────────────────────────────────────────────────────────
   app_users:                         { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["super_admin","admin"] },
 };

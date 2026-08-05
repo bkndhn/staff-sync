@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode, ChevronDown } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode, ChevronDown, Cpu } from 'lucide-react';
 import { userService, AppUser, CreateUserInput, UpdateUserInput } from '../services/userService';
 import { locationService, Location } from '../services/locationService';
 import { staffService } from '../services/staffService';
@@ -14,6 +14,7 @@ import StatutoryPortalSettingsPanel from './StatutoryPortalSettingsPanel';
 import StatutoryCredentialsPanel from './StatutoryCredentialsPanel';
 import FaceTuningPanel from './face/FaceTuningPanel';
 import { WorkflowBuilder } from './WorkflowBuilder';
+import { BiometricIntegrationHub } from './BiometricIntegrationHub';
 
 interface SettingsProps {
     userRole: string;
@@ -467,11 +468,20 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                 </button>
             </div>
 
+            {/* Biometric & eSSL Integration Hub */}
+            <SettingsSection
+                title="Biometric & eSSL Integration Hub"
+                subtitle="Live hardware status, Webhook push API, enroll number mapping, and local Windows sync agent"
+                icon={Cpu}
+                defaultOpen={true}
+            >
+                <BiometricIntegrationHub />
+            </SettingsSection>
+
             {/* Hardware Device Integration */}
             <DeviceIntegration
                 onImportPunches={(records) => {
                     console.log('[DeviceIntegration] Imported', records.length, 'punch records');
-                    // TODO: wire up to attendanceService to process records
                 }}
             />
 
