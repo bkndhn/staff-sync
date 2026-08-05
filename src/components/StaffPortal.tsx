@@ -31,6 +31,7 @@ import { breakEventService } from '../services/breakService';
 import { BreakEvent } from '../types';
 import { Coffee, X } from 'lucide-react';
 import TenantStatusBanner from './TenantStatusBanner';
+import StaffLoanSection from './StaffLoanSection';
 
 interface StaffPortalProps {
   staff: Staff;
@@ -41,7 +42,7 @@ interface StaffPortalProps {
 }
 
 const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHikes, advances, allStaff }) => {
-  const [activeSection, setActiveSection] = useState<'overview' | 'attendance' | 'yearly' | 'salary' | 'hikes' | 'leave' | 'face' | 'grievances' | 'disbursements'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'attendance' | 'yearly' | 'salary' | 'hikes' | 'leave' | 'face' | 'grievances' | 'disbursements' | 'loans'>('overview');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [yearlyViewYear, setYearlyViewYear] = useState(new Date().getFullYear());
@@ -622,6 +623,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     { id: 'salary' as const, label: 'Payroll', icon: IndianRupee },
     { id: 'hikes' as const, label: 'Hikes', icon: TrendingUp },
     { id: 'leave', label: 'Leave', icon: FileText },
+    { id: 'loans', label: 'Loans', icon: CreditCard },
     { id: 'grievances', label: 'Issues', icon: AlertTriangle },
     { id: 'disbursements', label: 'Payroll Inbox', icon: CreditCard },
     { id: 'face', label: 'Face Registration', icon: Camera }
@@ -1530,6 +1532,15 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       )}
 
       {/* SALARY INBOX */}
+      {activeSection === 'loans' && (
+        <StaffLoanSection
+          staffId={staff.id}
+          staffName={staff.name}
+          location={staff.location}
+          floor={(staff as any).floor}
+        />
+      )}
+
       {activeSection === 'disbursements' && (
         <div className="space-y-4">
           <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-6 rounded-2xl shadow-[var(--shadow-soft)]">
