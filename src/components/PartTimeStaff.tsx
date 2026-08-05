@@ -945,6 +945,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const curDate = new Date(selectedDate);
         let foundDateStr = '';
         let foundRecords: Attendance[] = [];
+        const targetLoc = userLocation || bulkLocation;
+        const targetFlr = userFloor || bulkFloor;
 
         for (let i = 1; i <= 7; i++) {
             const checkD = new Date(curDate);
@@ -954,8 +956,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             const recs = attendance.filter(r =>
                 r.isPartTime &&
                 r.date === dStr &&
-                (!bulkLocation || r.location === bulkLocation) &&
-                (!userFloor || r.floor === userFloor)
+                (!targetLoc || r.location === targetLoc) &&
+                (!targetFlr || r.floor === targetFlr)
             );
 
             if (recs.length > 0) {
@@ -976,7 +978,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             salary: r.salary || getPartTimeDailySalary(selectedDate),
             arrivalTime: r.arrivalTime || '10:00',
             leavingTime: r.leavingTime || '21:30',
-            floor: r.floor || bulkFloor || userFloor || ''
+            floor: targetFlr || r.floor || ''
         }));
 
         setBulkStaffList(newRows);
@@ -989,12 +991,14 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const daysBack = curDate.getDay() === 0 ? 7 : (curDate.getDay() || 7);
         checkD.setDate(checkD.getDate() - daysBack);
         const sunDateStr = checkD.toISOString().split('T')[0];
+        const targetLoc = userLocation || bulkLocation;
+        const targetFlr = userFloor || bulkFloor;
 
         const recs = attendance.filter(r =>
             r.isPartTime &&
             r.date === sunDateStr &&
-            (!bulkLocation || r.location === bulkLocation) &&
-            (!userFloor || r.floor === userFloor)
+            (!targetLoc || r.location === targetLoc) &&
+            (!targetFlr || r.floor === targetFlr)
         );
 
         if (recs.length === 0) {
@@ -1008,7 +1012,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             salary: getPartTimeDailySalary(selectedDate),
             arrivalTime: r.arrivalTime || '10:00',
             leavingTime: r.leavingTime || '21:30',
-            floor: r.floor || bulkFloor || userFloor || ''
+            floor: targetFlr || r.floor || ''
         }));
 
         setBulkStaffList(newRows);
@@ -1020,6 +1024,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
         const errors: string[] = [];
         const validEntries: typeof bulkStaffList = [];
+        const targetLoc = userLocation || bulkLocation;
+        const targetFlr = userFloor || bulkFloor;
 
         bulkStaffList.forEach((staffData, index) => {
             if (!staffData.name.trim()) {
@@ -1039,7 +1045,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 return;
             }
 
-            if (checkDuplicate(staffData.name, bulkLocation, staffData.shift)) {
+            if (checkDuplicate(staffData.name, targetLoc, staffData.shift)) {
                 errors.push(`Row ${index + 1}: ${staffData.name} already exists for today`);
                 return;
             }
@@ -1065,13 +1071,13 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             const arrivalTime = staffData.arrivalTime || new Date().toTimeString().slice(0, 5);
             let leavingTime = staffData.leavingTime;
             if (!leavingTime) {
-                leavingTime = staffData.shift === 'Morning' ? '15:00' : (bulkLocation === 'Godown' ? '21:00' : '21:30');
+                leavingTime = staffData.shift === 'Morning' ? '15:00' : (targetLoc === 'Godown' ? '21:00' : '21:30');
             }
 
             onUpdateAttendance(
                 staffId, selectedDate, 'Present', true,
-                staffData.name.trim(), staffData.shift, bulkLocation,
-                finalSalary, isSalaryEdited, arrivalTime, leavingTime, staffData.floor || bulkFloor
+                staffData.name.trim(), staffData.shift, targetLoc,
+                finalSalary, isSalaryEdited, arrivalTime, leavingTime, userFloor || staffData.floor || bulkFloor
             );
         });
 
