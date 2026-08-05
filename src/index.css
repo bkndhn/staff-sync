@@ -1284,7 +1284,7 @@ option {
   /* Prevent horizontal page overflow from wide flex/grid rows */
   main, .glass-card, .glass-card-static, .section-body {
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
   .table-container { overflow-x: auto; }
 
@@ -2071,10 +2071,7 @@ option {
   color: var(--text-primary) !important;
 }
 
-/* Remove transparency issues */
-[style*="opacity: 0."] {
-  opacity: 1 !important;
-}
+/* Opacity transitions preserved — no global override */
 
 /* Force form elements to be visible */
 .form-control,
@@ -3305,9 +3302,9 @@ table {
     font-size: 0.75rem !important;
   }
   
-  /* Guarantee every table wraps in scrollable viewport on mobile */
-  table {
-    display: block !important;
+  /* Ensure tables scroll horizontally inside their containers on mobile */
+  .table-container,
+  .overflow-x-auto {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
     width: 100% !important;
