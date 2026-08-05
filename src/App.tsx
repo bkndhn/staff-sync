@@ -1393,7 +1393,7 @@ function App() {
           <Suspense fallback={<ComponentLoader />}>
             <LoanManagement
               userRole={user?.role || 'manager'}
-              userName={user?.full_name || user?.email || 'Approver'}
+              userName={user?.name || user?.email || 'Approver'}
               userLocation={user?.location}
             />
           </Suspense>
