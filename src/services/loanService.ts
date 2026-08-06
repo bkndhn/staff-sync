@@ -1,6 +1,9 @@
 import { dataApi } from '../lib/dataApi';
 import { advanceEntryService } from './advanceEntryService';
 import { appSettingsService } from './appSettingsService';
+import { auditLogService } from './auditLogService';
+import { currentActor } from '../lib/currentActor';
+
 
 export type LoanStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
