@@ -163,7 +163,7 @@ export const advanceEntryService = {
     const delta = newTotal - previous;
     if (delta !== 0) {
       await auditLogService.log({
-        action: 'EMI_DEDUCTION',
+        action: 'emi_deduction',
         staffId: (data as any)?.staff_id ?? '',
         details: `EMI/advance deduction of ₹${Math.abs(delta).toLocaleString('en-IN')} recorded (total deducted ₹${newTotal.toLocaleString('en-IN')} of ₹${Number((data as any)?.amount ?? 0).toLocaleString('en-IN')})`,
         performedBy: currentActor().name,
