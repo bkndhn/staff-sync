@@ -359,7 +359,7 @@ export interface AuditLogChange {
 
 export interface AuditLog {
   id: string;
-  action: 'attendance_override' | 'salary_edit' | 'staff_update' | 'bulk_update' | 'settings_update' | 'staff_create' | 'staff_delete';
+  action: 'attendance_override' | 'salary_edit' | 'staff_update' | 'bulk_update' | 'settings_update' | 'staff_create' | 'staff_delete' | 'loan_request' | 'loan_approval' | 'loan_rejection' | 'loan_emi_update' | 'emi_deduction';
   staffId?: string;
   staffName?: string;
   details: string;
