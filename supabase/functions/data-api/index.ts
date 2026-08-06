@@ -11,6 +11,13 @@
 // op ∈ 'select' | 'insert' | 'update' | 'upsert' | 'delete'
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  evaluateLoanDelete,
+  evaluateLoanUpdate,
+  parseThresholds,
+  sanitizeLoanInsert,
+} from "./loanPolicy.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
