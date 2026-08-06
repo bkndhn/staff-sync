@@ -196,8 +196,18 @@ export const loanService = {
       console.error('Error creating loan request:', error);
       throw new Error(error.message);
     }
-    return mapFromDb(data);
+    const created = mapFromDb(data);
+    await auditLogService.log({
+      action: 'loan_request',
+      staffId: created.staffId,
+      staffName: created.staffName,
+      details: `Loan request of ₹${created.amount.toLocaleString('en-IN')} over ${created.emiMonths} EMI month(s) submitted — reason: ${created.reason}`,
+      performedBy: currentActor().name,
+      after: { amount: created.amount, emi_months: created.emiMonths, status: created.status },
+    }).catch(() => undefined);
+    return created;
   },
+
 
   /**
    * Approve one level. When the final level is reached the loan is converted
