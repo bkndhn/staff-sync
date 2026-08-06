@@ -1,6 +1,9 @@
 import { dataApi } from '../lib/dataApi';
 import { advanceEntryService } from './advanceEntryService';
 import { appSettingsService } from './appSettingsService';
+import { auditLogService } from './auditLogService';
+import { currentActor } from '../lib/currentActor';
+
 
 export type LoanStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
@@ -193,8 +196,18 @@ export const loanService = {
       console.error('Error creating loan request:', error);
       throw new Error(error.message);
     }
-    return mapFromDb(data);
+    const created = mapFromDb(data);
+    await auditLogService.log({
+      action: 'loan_request',
+      staffId: created.staffId,
+      staffName: created.staffName,
+      details: `Loan request of ₹${created.amount.toLocaleString('en-IN')} over ${created.emiMonths} EMI month(s) submitted — reason: ${created.reason}`,
+      performedBy: currentActor().name,
+      after: { amount: created.amount, emi_months: created.emiMonths, status: created.status },
+    }).catch(() => undefined);
+    return created;
   },
+
 
   /**
    * Approve one level. When the final level is reached the loan is converted
@@ -246,7 +259,17 @@ export const loanService = {
       console.error('Error approving loan:', error);
       throw new Error(error.message);
     }
-    return mapFromDb(data);
+    const updated = mapFromDb(data);
+    await auditLogService.log({
+      action: 'loan_approval',
+      staffId: loan.staffId,
+      staffName: loan.staffName,
+      details: `Loan of ₹${loan.amount.toLocaleString('en-IN')} approved at level ${loan.currentApprovalLevel} of ${loan.requiredApprovalLevels} by ${approver.name} (${approver.role})${isFinal ? ' — final approval, EMI schedule created' : ''}${comment ? ` — note: ${comment}` : ''}`,
+      performedBy: approver.name,
+      before: { status: loan.status, current_approval_level: loan.currentApprovalLevel },
+      after: { status: updated.status, current_approval_level: updated.currentApprovalLevel, advance_entry_id: updated.advanceEntryId ?? null },
+    }).catch(() => undefined);
+    return updated;
   },
 
   async reject(loan: LoanRequest, approver: { name: string; role: string }, reason: string): Promise<LoanRequest | null> {
@@ -268,6 +291,15 @@ export const loanService = {
       console.error('Error rejecting loan:', error);
       throw new Error(error.message);
     }
+    await auditLogService.log({
+      action: 'loan_rejection',
+      staffId: loan.staffId,
+      staffName: loan.staffName,
+      details: `Loan of ₹${loan.amount.toLocaleString('en-IN')} rejected at level ${loan.currentApprovalLevel} by ${approver.name} (${approver.role}) — reason: ${reason}`,
+      performedBy: approver.name,
+      before: { status: loan.status },
+      after: { status: 'rejected', rejection_reason: reason },
+    }).catch(() => undefined);
     return mapFromDb(data);
   },
 
@@ -288,6 +320,16 @@ export const loanService = {
       console.error('Error updating EMI plan:', error);
       return false;
     }
+    await auditLogService.log({
+      action: 'loan_emi_update',
+      staffId: loan.staffId,
+      staffName: loan.staffName,
+      details: `EMI plan changed to ${emiMonths} month(s) starting ${startMonth + 1}/${startYear} for a loan of ₹${loan.amount.toLocaleString('en-IN')}`,
+      performedBy: currentActor().name,
+      before: { emi_months: loan.emiMonths, start_month: loan.startMonth, start_year: loan.startYear },
+      after: { emi_months: emiMonths, start_month: startMonth, start_year: startYear },
+    }).catch(() => undefined);
     return true;
   },
+
 };

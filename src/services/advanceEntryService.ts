@@ -1,5 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { dataApi } from '../lib/dataApi';
+import { auditLogService } from './auditLogService';
+import { currentActor } from '../lib/currentActor';
+
 
 export interface AdvanceEntry {
   id: string;
@@ -135,6 +138,12 @@ export const advanceEntryService = {
   },
 
   async updateTotalDeducted(id: string, newTotal: number): Promise<AdvanceEntry | null> {
+    const { data: beforeRow } = await dataApi
+      .from('advance_entries')
+      .select('*')
+      .eq('id', id)
+      .single();
+
     const { data, error } = await dataApi
       .from('advance_entries')
       .update({
@@ -149,8 +158,22 @@ export const advanceEntryService = {
       console.error('Error updating total_deducted:', error);
       return null;
     }
+
+    const previous = Number((beforeRow as any)?.total_deducted ?? 0);
+    const delta = newTotal - previous;
+    if (delta !== 0) {
+      await auditLogService.log({
+        action: 'emi_deduction',
+        staffId: (data as any)?.staff_id ?? '',
+        details: `EMI/advance deduction of ₹${Math.abs(delta).toLocaleString('en-IN')} recorded (total deducted ₹${newTotal.toLocaleString('en-IN')} of ₹${Number((data as any)?.amount ?? 0).toLocaleString('en-IN')})`,
+        performedBy: currentActor().name,
+        before: { total_deducted: previous },
+        after: { total_deducted: newTotal },
+      }).catch(() => undefined);
+    }
     return this.mapFromDatabase(data);
   },
+
 
   async getActiveForMonth(month: number, year: number): Promise<AdvanceEntry[]> {
     const { data, error } = await dataApi

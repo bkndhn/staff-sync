@@ -11,6 +11,13 @@
 // op ∈ 'select' | 'insert' | 'update' | 'upsert' | 'delete'
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  evaluateLoanDelete,
+  evaluateLoanUpdate,
+  parseThresholds,
+  sanitizeLoanInsert,
+} from "./loanPolicy.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -315,37 +322,51 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Loan requests: staff may only file their own request ──────────────────
+    // ── Loan requests: threshold-aware approval rules ─────────────────────────
     if (body.table === "loan_requests") {
-      if (role === "staff") {
-        if (body.op !== "insert") {
-          return new Response(JSON.stringify({ error: "Staff can only submit loan requests" }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { data: thrRow } = await admin.from("app_settings")
+        .select("value").eq("key", "loan_approval_thresholds")
+        .eq("tenant_id", tenantId).maybeSingle();
+      const thresholds = parseThresholds(thrRow?.value);
+
+      if (body.op === "insert" || body.op === "upsert") {
+        const rows = (Array.isArray(body.values) ? body.values : [body.values ?? {}]) as Array<Record<string, unknown>>;
+        const res = sanitizeLoanInsert(rows, { role, userId: String(user.id), thresholds });
+        if (!res.ok) {
+          return new Response(JSON.stringify({ error: res.error }),
+            { status: res.status ?? 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
-        const rows = Array.isArray(body.values) ? body.values : [body.values ?? {}];
-        for (const r of rows as Record<string, unknown>[]) {
-          r["status"] = "pending";
-          r["current_approval_level"] = 1;
-          r["approval_history"] = [];
-          r["advance_entry_id"] = null;
-          r["approved_at"] = null;
+        body.values = Array.isArray(body.values) ? res.rows : res.rows[0];
+      }
+
+      if (body.op === "delete") {
+        const res = evaluateLoanDelete(role);
+        if (!res.ok) {
+          return new Response(JSON.stringify({ error: res.error }),
+            { status: res.status ?? 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
       }
-      if (body.op === "delete" && role !== "admin") {
-        return new Response(JSON.stringify({ error: "Only an admin can delete loan requests" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      // Managers/supervisors may only act on the first approval level.
-      if (body.op === "update" && role !== "admin" && role !== "statutory_admin") {
+
+      if (body.op === "update") {
         const targetId = body.filters?.find((f) => f.col === "id" && f.op === "eq")?.val;
-        const { data: loanRow } = await admin.from("loan_requests")
-          .select("current_approval_level, status").eq("id", targetId as string).maybeSingle();
-        if (!loanRow || loanRow.status !== "pending" || (loanRow.current_approval_level ?? 1) !== 1) {
-          return new Response(JSON.stringify({ error: "This loan needs admin-level approval" }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        if (typeof targetId !== "string") {
+          return new Response(JSON.stringify({ error: "A single loan request must be selected" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        let loanQuery = admin.from("loan_requests")
+          .select("id, staff_id, amount, status, current_approval_level, required_approval_levels")
+          .eq("id", targetId);
+        if (tenantId) loanQuery = loanQuery.eq("tenant_id", tenantId);
+        const { data: loanRow } = await loanQuery.maybeSingle();
+        const values = (body.values && !Array.isArray(body.values) ? body.values : {}) as Record<string, unknown>;
+        const res = evaluateLoanUpdate({ role, loan: loanRow, values, thresholds });
+        if (!res.ok) {
+          return new Response(JSON.stringify({ error: res.error }),
+            { status: res.status ?? 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
       }
     }
+
 
 
     if (body.table === "app_users" && body.op === "update" && role === "admin") {
