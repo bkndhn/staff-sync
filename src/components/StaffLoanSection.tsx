@@ -171,6 +171,24 @@ const StaffLoanSection: React.FC<Props> = ({ staffId, staffName, location, floor
                   <p className="mt-2 text-xs text-red-600">Reason: {l.rejectionReason}</p>
                 )}
 
+                {l.status === 'pending' && l.currentApprovalLevel <= 1 && (
+                  <div className="mt-3 pt-3 border-t border-[var(--glass-border)] flex gap-2">
+                    <button
+                      onClick={() => openEdit(l)}
+                      className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold border border-[var(--glass-border)] text-[var(--text-secondary)] flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                    >
+                      <Pencil size={13} /> Edit
+                    </button>
+                    <button
+                      onClick={() => removeLoan(l)}
+                      className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold border border-red-500/30 text-red-600 flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                    >
+                      <Trash2 size={13} /> Withdraw
+                    </button>
+                  </div>
+                )}
+
+
                 {l.status === 'approved' && (
                   <div className="mt-3 pt-3 border-t border-[var(--glass-border)]">
                     <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-2">
