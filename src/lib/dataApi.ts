@@ -13,6 +13,25 @@ type Filter = { col: string; op: string; val: unknown };
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || "https://nsmppwnpdxomjmgrtqka.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zbXBwd25wZHhvbWptZ3J0cWthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1NDM3NjksImV4cCI6MjA2NzExOTc2OX0.gVzJ4uPAmFT5yngvdcFsHXHH1cUL-nIq0e71Gx8ALOk";
 const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/data-api`;
+const SESSION_INVALID_EVENT = "app-session-invalid";
+let sessionInvalidated = false;
+
+const invalidateSession = (message: string) => {
+  if (sessionInvalidated) return;
+  sessionInvalidated = true;
+  try {
+    localStorage.removeItem("staffManagementLogin");
+    localStorage.removeItem("sessionToken");
+    localStorage.removeItem("activeTab");
+    localStorage.removeItem("impersonateTenantId");
+    localStorage.removeItem("impersonateTenantName");
+    localStorage.setItem("authError", message);
+  } catch { /* ignore storage failures */ }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(SESSION_INVALID_EVENT, { detail: { message } }));
+  }
+};
 
 interface BuilderState {
   table: string;
@@ -100,15 +119,15 @@ class QueryBuilder<T = any> implements PromiseLike<{ data: T | null; error: Erro
       // clear the cached login and bounce to the login screen instead of
       // leaving every screen blank on a repeated 401/403.
       if (res.status === 401 || (res.status === 403 && /deactivated|profile not found/i.test(json?.error || ""))) {
-        try {
-          localStorage.removeItem("staffManagementLogin");
-          localStorage.removeItem("sessionToken");
-          localStorage.setItem("authError", json?.error || "Your session has ended. Please sign in again.");
-        } catch { /* ignore storage failures */ }
-        if (typeof window !== "undefined" && !/\/login/i.test(window.location.pathname)) {
-          window.location.reload();
-        }
+        const message = json?.error || "Your session has ended. Please sign in again.";
+        invalidateSession(message);
+        // Resolve in-flight reads harmlessly. The App event listener immediately
+        // removes the protected UI, so parallel startup queries cannot create an
+        // unhandled rejection or leave the authenticated shell blank.
+        const empty = { data: (this.state.single ? null : []) as unknown as T, error: null };
+        return onFulfilled ? onFulfilled(empty) : (empty as unknown as TR1);
       }
+      if (res.ok) sessionInvalidated = false;
       const result = res.ok
         ? { data: json.data as T, error: null }
         : { data: null, error: new Error(json.error || `HTTP ${res.status}`) };
