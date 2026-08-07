@@ -80,7 +80,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Loan Requests' as NavigationTab, label: 'Loans', icon: IndianRupee },
         { id: 'Old Staff Records' as NavigationTab, label: 'Archive', icon: Archive },
         { id: 'Audit Log' as NavigationTab, label: 'Audit Log', icon: ShieldAlert },
-        { id: 'Permissions Matrix' as NavigationTab, label: 'Permissions', icon: Key },
+        
         { id: 'Settings' as NavigationTab, label: 'Settings', icon: SettingsIcon },
         { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
       ];
