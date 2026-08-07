@@ -314,7 +314,7 @@ Deno.serve(async (req) => {
       try {
         let fetchBefore = admin.from(body.table).select("*");
         fetchBefore = applyFilters(fetchBefore, [...scopeFilters, ...(body.filters ?? [])]);
-        if (body.single) fetchBefore = fetchBefore.maybeSingle();
+        if (body.single) fetchBefore = fetchBefore.limit(1);
         const res = await fetchBefore;
         beforeData = res.data;
       } catch (e) {
