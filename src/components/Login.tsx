@@ -45,6 +45,19 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [staffPhoto, setStaffPhoto] = useState<string>('');
 
+  // Surface the reason a session was ended (expired token, deactivated account).
+  useEffect(() => {
+    try {
+      const msg = localStorage.getItem('authError');
+      if (msg) {
+        setError(msg);
+        localStorage.removeItem('authError');
+      }
+    } catch { /* ignore storage failures */ }
+  }, []);
+
+
+
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
