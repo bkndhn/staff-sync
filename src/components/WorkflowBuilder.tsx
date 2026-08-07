@@ -148,7 +148,7 @@ export const WorkflowBuilder: React.FC = () => {
                     >
                       <option value="manager">Manager</option>
                       <option value="admin">Admin</option>
-                      <option value="super_admin">Super Admin</option>
+                      
                     </select>
                     {config.levels.length > 1 && (
                       <button 
