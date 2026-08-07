@@ -4,7 +4,7 @@ import {
   BarChart3, Users, Calendar, DollarSign, Clock, Archive, LogOut,
   AlertTriangle, Settings as SettingsIcon, FileText, ScanFace,
   ShieldAlert, Shield, TrendingUp, Coffee, Sun, Moon,
-  PanelLeftClose, PanelLeftOpen, UserCircle, Key, RefreshCw, Zap, IndianRupee } from 'lucide-react';
+  PanelLeftClose, PanelLeftOpen, UserCircle, RefreshCw, Zap, IndianRupee } from 'lucide-react';
 import { SyncBadge } from './SyncBadge';
 import { statutoryPortalService, StatutoryPortalConfig, DEFAULT_STATUTORY_CONFIG } from '../services/statutoryPortalService';
 import { hardResetAppCache } from '../lib/cacheService';
@@ -71,7 +71,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
         { id: 'Workforce Insights' as NavigationTab, label: 'Insights', icon: TrendingUp },
         { id: 'Staff Management' as NavigationTab, label: 'Staff', icon: Users },
-        { id: 'Shift Roster' as NavigationTab, label: 'Roster', icon: Calendar },
+        
         { id: 'Attendance' as NavigationTab, label: 'Attendance', icon: Calendar },
         { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
         { id: 'Payroll Management' as NavigationTab, label: 'Payroll', icon: DollarSign },
@@ -80,7 +80,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Loan Requests' as NavigationTab, label: 'Loans', icon: IndianRupee },
         { id: 'Old Staff Records' as NavigationTab, label: 'Archive', icon: Archive },
         { id: 'Audit Log' as NavigationTab, label: 'Audit Log', icon: ShieldAlert },
-        { id: 'Permissions Matrix' as NavigationTab, label: 'Permissions', icon: Key },
+        
         { id: 'Settings' as NavigationTab, label: 'Settings', icon: SettingsIcon },
         { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
       ];

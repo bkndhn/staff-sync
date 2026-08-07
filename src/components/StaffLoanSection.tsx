@@ -4,6 +4,7 @@ import {
   loanService, LoanRequest, LoanThresholds, DEFAULT_LOAN_THRESHOLDS, buildSchedule, emiAmount,
 } from '../services/loanService';
 import { dataApi } from '../lib/dataApi';
+import { customAlert, customConfirm } from './CustomDialog';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
@@ -23,6 +24,7 @@ const StaffLoanSection: React.FC<Props> = ({ staffId, staffName, location, floor
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<LoanRequest | null>(null);
 
   const now = new Date();
   const nextMonth = (now.getMonth() + 1) % 12;
@@ -51,6 +53,35 @@ const StaffLoanSection: React.FC<Props> = ({ staffId, staffName, location, floor
   const amountNum = Number(form.amount) || 0;
   const levels = loanService.requiredLevels(amountNum, thresholds);
 
+  const openEdit = (l: LoanRequest) => {
+    setEditing(l);
+    setForm({
+      amount: String(l.amount),
+      reason: l.reason,
+      emiMonths: l.emiMonths,
+      startMonth: l.startMonth,
+      startYear: l.startYear,
+    });
+    setError(null);
+    setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditing(null);
+    setForm({ amount: '', reason: '', emiMonths: 3, startMonth: nextMonth, startYear: nextYear });
+  };
+
+  const removeLoan = async (l: LoanRequest) => {
+    if (!await customConfirm('Withdraw this loan request? This cannot be undone.')) return;
+    try {
+      await loanService.remove(l);
+      await load();
+    } catch (err: any) {
+      customAlert(err?.message || 'Could not withdraw request');
+    }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -58,16 +89,25 @@ const StaffLoanSection: React.FC<Props> = ({ staffId, staffName, location, floor
     if (!form.reason.trim()) { setError('Please give a reason'); return; }
     setSubmitting(true);
     try {
-      await loanService.create({
-        staffId, staffName, location, floor,
-        amount: amountNum,
-        reason: form.reason.trim(),
-        emiMonths: form.emiMonths,
-        startMonth: form.startMonth,
-        startYear: form.startYear,
-      });
-      setShowForm(false);
-      setForm({ amount: '', reason: '', emiMonths: 3, startMonth: nextMonth, startYear: nextYear });
+      if (editing) {
+        await loanService.updatePending(editing, {
+          amount: amountNum,
+          reason: form.reason.trim(),
+          emiMonths: form.emiMonths,
+          startMonth: form.startMonth,
+          startYear: form.startYear,
+        });
+      } else {
+        await loanService.create({
+          staffId, staffName, location, floor,
+          amount: amountNum,
+          reason: form.reason.trim(),
+          emiMonths: form.emiMonths,
+          startMonth: form.startMonth,
+          startYear: form.startYear,
+        });
+      }
+      closeForm();
       await load();
     } catch (err: any) {
       setError(err?.message || 'Could not submit request');
@@ -130,6 +170,24 @@ const StaffLoanSection: React.FC<Props> = ({ staffId, staffName, location, floor
                 {l.status === 'rejected' && l.rejectionReason && (
                   <p className="mt-2 text-xs text-red-600">Reason: {l.rejectionReason}</p>
                 )}
+
+                {l.status === 'pending' && l.currentApprovalLevel <= 1 && (
+                  <div className="mt-3 pt-3 border-t border-[var(--glass-border)] flex gap-2">
+                    <button
+                      onClick={() => openEdit(l)}
+                      className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold border border-[var(--glass-border)] text-[var(--text-secondary)] flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                    >
+                      <Pencil size={13} /> Edit
+                    </button>
+                    <button
+                      onClick={() => removeLoan(l)}
+                      className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold border border-red-500/30 text-red-600 flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                    >
+                      <Trash2 size={13} /> Withdraw
+                    </button>
+                  </div>
+                )}
+
 
                 {l.status === 'approved' && (
                   <div className="mt-3 pt-3 border-t border-[var(--glass-border)]">

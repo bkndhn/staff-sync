@@ -99,6 +99,16 @@ export function sanitizeLoanInsert(
   return { ...allow, rows };
 }
 
+/** Fields the owning staff member may still change while the loan is pending. */
+const STAFF_EDITABLE = [
+  "amount",
+  "reason",
+  "emi_months",
+  "start_month",
+  "start_year",
+  "required_approval_levels",
+];
+
 /**
  * Authorize an UPDATE (approve / reject / re-plan) against the persisted row.
  */
@@ -107,10 +117,41 @@ export function evaluateLoanUpdate(ctx: {
   loan: LoanRow | null;
   values: Record<string, unknown>;
   thresholds: LoanThresholds;
+  userId?: string;
 }): PolicyResult {
-  const { role, loan, values, thresholds } = ctx;
+  const { role, loan, values, thresholds, userId } = ctx;
 
-  if (role === "staff") return deny("Staff can only submit loan requests");
+  if (role === "staff") {
+    // Staff may amend their own request only while it is still awaiting approval.
+    if (!loan) return deny("Loan request not found", 404);
+    if (!userId || String(loan.staff_id) !== String(userId)) {
+      return deny("You can only edit your own loan request");
+    }
+    if (loan.status !== "pending" || (loan.current_approval_level ?? 1) > 1) {
+      return deny("This request is already under review and can no longer be edited");
+    }
+    for (const key of Object.keys(values)) {
+      if (!STAFF_EDITABLE.includes(key)) {
+        return deny("Only the amount, reason and EMI plan can be changed");
+      }
+    }
+    const nextAmount = values["amount"] !== undefined ? Number(values["amount"]) : Number(loan.amount ?? 0);
+    if (!Number.isFinite(nextAmount) || nextAmount <= 0) {
+      return deny("Loan amount must be greater than zero", 400);
+    }
+    if (nextAmount > thresholds.adminMaxAmount) {
+      return deny(`Loan amount exceeds the sanctioned ceiling of ${thresholds.adminMaxAmount}`, 400);
+    }
+    if (values["emi_months"] !== undefined) {
+      const months = Number(values["emi_months"]);
+      if (!Number.isInteger(months) || months < 1 || months > thresholds.maxEmiMonths) {
+        return deny(`EMI months must be between 1 and ${thresholds.maxEmiMonths}`, 400);
+      }
+    }
+    // Approval depth always follows the (possibly new) amount.
+    values["required_approval_levels"] = requiredLevels(nextAmount, thresholds);
+    return allow;
+  }
   if (!APPROVER_ROLES.includes(role) && role !== "super_admin") {
     return deny(`Role '${role}' cannot act on loan requests`);
   }
@@ -160,8 +201,21 @@ export function evaluateLoanUpdate(ctx: {
   return allow;
 }
 
-export function evaluateLoanDelete(role: LoanRole): PolicyResult {
-  return role === "admin" || role === "super_admin"
-    ? allow
-    : deny("Only an admin can delete loan requests");
+export function evaluateLoanDelete(
+  role: LoanRole,
+  ctx?: { loan?: LoanRow | null; userId?: string },
+): PolicyResult {
+  if (role === "admin" || role === "super_admin") return allow;
+  if (role === "staff") {
+    const loan = ctx?.loan;
+    if (!loan) return deny("Loan request not found", 404);
+    if (!ctx?.userId || String(loan.staff_id) !== String(ctx.userId)) {
+      return deny("You can only withdraw your own loan request");
+    }
+    if (loan.status !== "pending") {
+      return deny("This request has already been decided and cannot be withdrawn");
+    }
+    return allow;
+  }
+  return deny("Only an admin can delete loan requests");
 }

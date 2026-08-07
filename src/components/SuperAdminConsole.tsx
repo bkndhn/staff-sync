@@ -14,6 +14,7 @@ import { userService } from '../services/userService';
 import { AuditLogViewer } from './AuditLogViewer';
 import TenantStatusBanner from './TenantStatusBanner';
 import { PlatformHealth } from './PlatformHealth';
+import PermissionsMatrix from './PermissionsMatrix';
 
 interface Props {
   user: User;
@@ -48,7 +49,7 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
   const [editing, setEditing] = useState<Tenant | null>(null);
   const [form, setForm] = useState({ ...blankTenant });
   const [wizardStep, setWizardStep] = useState(1);
-  const [activeTab, setActiveTab] = useState<'Clients' | 'Audit Logs' | 'Platform Health'>('Clients');
+  const [activeTab, setActiveTab] = useState<'Clients' | 'Audit Logs' | 'Platform Health' | 'Permissions'>('Clients');
 
   const flash = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(''), 3500); };
 
@@ -246,7 +247,7 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
 
         {/* Tab bar */}
         <div className="flex border-t border-slate-100 bg-white">
-          {(['Clients', 'Audit Logs', 'Platform Health'] as const).map(tab => (
+          {(['Clients', 'Audit Logs', 'Platform Health', 'Permissions'] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`flex-1 py-2 text-xs font-semibold transition-colors ${activeTab === tab ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
               {tab}
@@ -431,6 +432,8 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
           </>
         ) : activeTab === 'Audit Logs' ? (
           <AuditLogViewer currentUserEmail={user.email} />
+        ) : activeTab === 'Permissions' ? (
+          <PermissionsMatrix />
         ) : (
           <PlatformHealth />
         )}
