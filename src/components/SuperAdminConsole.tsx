@@ -48,7 +48,7 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
   const [editing, setEditing] = useState<Tenant | null>(null);
   const [form, setForm] = useState({ ...blankTenant });
   const [wizardStep, setWizardStep] = useState(1);
-  const [activeTab, setActiveTab] = useState<'Clients' | 'Audit Logs' | 'Platform Health'>('Clients');
+  const [activeTab, setActiveTab] = useState<'Clients' | 'Audit Logs' | 'Platform Health' | 'Permissions'>('Clients');
 
   const flash = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(''), 3500); };
 
