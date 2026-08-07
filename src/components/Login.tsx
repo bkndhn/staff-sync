@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock, AlertCircle, Eye, EyeOff, Sparkles, Users, ShieldCheck, Camera, Upload, Check } from 'lucide-react';
 import {
   isRateLimited,
