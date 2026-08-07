@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock, AlertCircle, Eye, EyeOff, Sparkles, Users, ShieldCheck, Camera, Upload, Check } from 'lucide-react';
 import {
   isRateLimited,
@@ -44,6 +44,19 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [staffPhoto, setStaffPhoto] = useState<string>('');
+
+  // Surface the reason a session was ended (expired token, deactivated account).
+  useEffect(() => {
+    try {
+      const msg = localStorage.getItem('authError');
+      if (msg) {
+        setError(msg);
+        localStorage.removeItem('authError');
+      }
+    } catch { /* ignore storage failures */ }
+  }, []);
+
+
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

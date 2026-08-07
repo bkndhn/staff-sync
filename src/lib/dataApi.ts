@@ -96,6 +96,19 @@ class QueryBuilder<T = any> implements PromiseLike<{ data: T | null; error: Erro
         body: JSON.stringify(this.state),
       });
       const json = await res.json();
+      // Session no longer valid (expired, deleted or account deactivated):
+      // clear the cached login and bounce to the login screen instead of
+      // leaving every screen blank on a repeated 401/403.
+      if (res.status === 401 || (res.status === 403 && /deactivated|profile not found/i.test(json?.error || ""))) {
+        try {
+          localStorage.removeItem("staffManagementLogin");
+          localStorage.removeItem("sessionToken");
+          localStorage.setItem("authError", json?.error || "Your session has ended. Please sign in again.");
+        } catch { /* ignore storage failures */ }
+        if (typeof window !== "undefined" && !/\/login/i.test(window.location.pathname)) {
+          window.location.reload();
+        }
+      }
       const result = res.ok
         ? { data: json.data as T, error: null }
         : { data: null, error: new Error(json.error || `HTTP ${res.status}`) };
