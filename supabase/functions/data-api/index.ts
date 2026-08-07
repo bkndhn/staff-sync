@@ -340,7 +340,16 @@ Deno.serve(async (req) => {
       }
 
       if (body.op === "delete") {
-        const res = evaluateLoanDelete(role);
+        const targetId = body.filters?.find((f) => f.col === "id" && f.op === "eq")?.val;
+        let loanRow = null;
+        if (typeof targetId === "string") {
+          let q = admin.from("loan_requests")
+            .select("id, staff_id, amount, status, current_approval_level, required_approval_levels")
+            .eq("id", targetId);
+          if (tenantId) q = q.eq("tenant_id", tenantId);
+          loanRow = (await q.maybeSingle()).data;
+        }
+        const res = evaluateLoanDelete(role, { loan: loanRow, userId: String(user.id) });
         if (!res.ok) {
           return new Response(JSON.stringify({ error: res.error }),
             { status: res.status ?? 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -359,11 +368,12 @@ Deno.serve(async (req) => {
         if (tenantId) loanQuery = loanQuery.eq("tenant_id", tenantId);
         const { data: loanRow } = await loanQuery.maybeSingle();
         const values = (body.values && !Array.isArray(body.values) ? body.values : {}) as Record<string, unknown>;
-        const res = evaluateLoanUpdate({ role, loan: loanRow, values, thresholds });
+        const res = evaluateLoanUpdate({ role, loan: loanRow, values, thresholds, userId: String(user.id) });
         if (!res.ok) {
           return new Response(JSON.stringify({ error: res.error }),
             { status: res.status ?? 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
+        body.values = values;
       }
     }
 
