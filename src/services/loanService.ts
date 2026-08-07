@@ -332,4 +332,57 @@ export const loanService = {
     return true;
   },
 
+  /** Amend a still-pending request (owner staff or admin). */
+  async updatePending(loan: LoanRequest, patch: {
+    amount: number; reason: string; emiMonths: number; startMonth: number; startYear: number;
+  }): Promise<LoanRequest | null> {
+    const thresholds = await loanService.getThresholds();
+    if (patch.amount <= 0) throw new Error('Enter a valid amount');
+    if (patch.amount > thresholds.adminMaxAmount) {
+      throw new Error(`Maximum loan amount is ₹${thresholds.adminMaxAmount.toLocaleString('en-IN')}`);
+    }
+    if (patch.emiMonths > thresholds.maxEmiMonths) {
+      throw new Error(`Maximum ${thresholds.maxEmiMonths} EMI months allowed`);
+    }
+    const { data, error } = await dataApi
+      .from('loan_requests')
+      .update({
+        amount: patch.amount,
+        reason: patch.reason,
+        emi_months: patch.emiMonths,
+        start_month: patch.startMonth,
+        start_year: patch.startYear,
+        required_approval_levels: loanService.requiredLevels(patch.amount, thresholds),
+      })
+      .eq('id', loan.id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    await auditLogService.log({
+      action: 'loan_request_update',
+      staffId: loan.staffId,
+      staffName: loan.staffName,
+      details: `Pending loan request edited — ₹${patch.amount.toLocaleString('en-IN')} over ${patch.emiMonths} EMI month(s)`,
+      performedBy: currentActor().name,
+      before: { amount: loan.amount, emi_months: loan.emiMonths, reason: loan.reason },
+      after: { amount: patch.amount, emi_months: patch.emiMonths, reason: patch.reason },
+    }).catch(() => undefined);
+    return data ? mapFromDb(data) : null;
+  },
+
+  /** Withdraw / delete a request that has not been approved yet. */
+  async remove(loan: LoanRequest): Promise<boolean> {
+    const { error } = await dataApi.from('loan_requests').delete().eq('id', loan.id);
+    if (error) throw new Error(error.message);
+    await auditLogService.log({
+      action: 'loan_request_delete',
+      staffId: loan.staffId,
+      staffName: loan.staffName,
+      details: `Loan request of ₹${loan.amount.toLocaleString('en-IN')} withdrawn before approval`,
+      performedBy: currentActor().name,
+      before: { amount: loan.amount, status: loan.status },
+    }).catch(() => undefined);
+    return true;
+  },
+
 };
