@@ -23,6 +23,7 @@ const StaffLoanSection: React.FC<Props> = ({ staffId, staffName, location, floor
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<LoanRequest | null>(null);
 
   const now = new Date();
   const nextMonth = (now.getMonth() + 1) % 12;
