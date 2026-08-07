@@ -4,7 +4,7 @@ import {
   BarChart3, Users, Calendar, DollarSign, Clock, Archive, LogOut,
   AlertTriangle, Settings as SettingsIcon, FileText, ScanFace,
   ShieldAlert, Shield, TrendingUp, Coffee, Sun, Moon,
-  PanelLeftClose, PanelLeftOpen, UserCircle, Key, RefreshCw, Zap, IndianRupee } from 'lucide-react';
+  PanelLeftClose, PanelLeftOpen, UserCircle, RefreshCw, Zap, IndianRupee } from 'lucide-react';
 import { SyncBadge } from './SyncBadge';
 import { statutoryPortalService, StatutoryPortalConfig, DEFAULT_STATUTORY_CONFIG } from '../services/statutoryPortalService';
 import { hardResetAppCache } from '../lib/cacheService';
