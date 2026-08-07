@@ -537,7 +537,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ data }),
+    return new Response(JSON.stringify({ data: payloadData }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("data-api error:", err);
