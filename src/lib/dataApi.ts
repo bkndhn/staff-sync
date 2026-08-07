@@ -127,6 +127,7 @@ class QueryBuilder<T = any> implements PromiseLike<{ data: T | null; error: Erro
         const empty = { data: (this.state.single ? null : []) as unknown as T, error: null };
         return onFulfilled ? onFulfilled(empty) : (empty as unknown as TR1);
       }
+      if (res.ok) sessionInvalidated = false;
       const result = res.ok
         ? { data: json.data as T, error: null }
         : { data: null, error: new Error(json.error || `HTTP ${res.status}`) };
