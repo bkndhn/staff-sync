@@ -199,6 +199,26 @@ function App() {
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
+
+  // A rejected/disabled server-side session must remove the authenticated UI
+  // immediately. This avoids relying on a page reload while startup requests
+  // are still running and guarantees that Login is rendered instead of a blank
+  // protected route.
+  useEffect(() => {
+    const handleInvalidSession = () => {
+      cacheService.clearAll();
+      setStaff([]);
+      setAttendance([]);
+      setAdvances([]);
+      setOldStaffRecords([]);
+      setSalaryHikes([]);
+      setUser(null);
+      setActiveTabState('Dashboard');
+    };
+
+    window.addEventListener('app-session-invalid', handleInvalidSession);
+    return () => window.removeEventListener('app-session-invalid', handleInvalidSession);
+  }, []);
   const [salaryHikeModal, setSalaryHikeModal] = useState<{
     isOpen: boolean;
     staffId: string;
@@ -449,6 +469,7 @@ function App() {
     try { localStorage.removeItem('impersonateTenantName'); } catch {}
     
     localStorage.removeItem('staffManagementLogin');
+    localStorage.removeItem('sessionToken');
     localStorage.removeItem('activeTab');
     cacheService.clearAll();
     setStaff([]);
