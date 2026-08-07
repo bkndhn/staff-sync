@@ -252,15 +252,17 @@ const renderReportSection = (
     .filter(s => s.type === 'full-time')
     .map((m) => {
       const rec = ft.find(r => r.staffId === m.id);
+      // Staff on leave / absent have no shift timings — keep those cells blank.
+      const worked = !!rec && ['Present', 'Half Day'].includes(rec.status || '');
       return {
         name: m.name,
         location: m.location || '—',
         floor: (m as any).floor || '—',
         designation: (m as any).designation || '—',
         status: statusText(rec),
-        in: fmt12h(rec?.arrivalTime),
-        out: fmt12h(rec?.leavingTime),
-        hours: workingTime(rec?.arrivalTime, rec?.leavingTime, (rec as any)?.breakMinutes),
+        in: worked ? fmt12h(rec?.arrivalTime) : '—',
+        out: worked ? fmt12h(rec?.leavingTime) : '—',
+        hours: worked ? workingTime(rec?.arrivalTime, rec?.leavingTime, (rec as any)?.breakMinutes) : '—',
       };
     });
   if (ftRows.length > 0) {
