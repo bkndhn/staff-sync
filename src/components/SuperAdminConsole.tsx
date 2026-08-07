@@ -246,7 +246,7 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
 
         {/* Tab bar */}
         <div className="flex border-t border-slate-100 bg-white">
-          {(['Clients', 'Audit Logs', 'Platform Health'] as const).map(tab => (
+          {(['Clients', 'Audit Logs', 'Platform Health', 'Permissions'] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`flex-1 py-2 text-xs font-semibold transition-colors ${activeTab === tab ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
               {tab}
