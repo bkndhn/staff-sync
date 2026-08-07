@@ -14,6 +14,7 @@ import { userService } from '../services/userService';
 import { AuditLogViewer } from './AuditLogViewer';
 import TenantStatusBanner from './TenantStatusBanner';
 import { PlatformHealth } from './PlatformHealth';
+import PermissionsMatrix from './PermissionsMatrix';
 
 interface Props {
   user: User;
