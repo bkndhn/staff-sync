@@ -4,6 +4,7 @@ import {
   loanService, LoanRequest, LoanThresholds, DEFAULT_LOAN_THRESHOLDS, buildSchedule, emiAmount,
 } from '../services/loanService';
 import { dataApi } from '../lib/dataApi';
+import { customAlert, customConfirm } from './CustomDialog';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
