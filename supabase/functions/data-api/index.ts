@@ -314,7 +314,7 @@ Deno.serve(async (req) => {
       try {
         let fetchBefore = admin.from(body.table).select("*");
         fetchBefore = applyFilters(fetchBefore, [...scopeFilters, ...(body.filters ?? [])]);
-        if (body.single) fetchBefore = fetchBefore.maybeSingle();
+        if (body.single) fetchBefore = fetchBefore.limit(1);
         const res = await fetchBefore;
         beforeData = res.data;
       } catch (e) {
@@ -503,13 +503,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (body.single) query = query.maybeSingle();
+    // Tolerant "single": never throw when 0 or >1 rows match — return the
+    // first row (or null). PostgREST's single/maybeSingle 400s on duplicates,
+    // which blanked screens for tables with legacy duplicate rows.
+    const wantSingle = !!body.single;
+    if (wantSingle) query = query.limit(1);
 
     const { data, error } = await query;
     if (error) {
       return new Response(JSON.stringify({ error: error.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    const payloadData = wantSingle
+      ? (Array.isArray(data) ? (data[0] ?? null) : (data ?? null))
+      : data;
 
     if (body.op !== "select" && body.table !== "audit_logs") {
       try {
@@ -530,7 +537,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ data }),
+    return new Response(JSON.stringify({ data: payloadData }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("data-api error:", err);
