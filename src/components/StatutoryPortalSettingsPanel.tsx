@@ -97,7 +97,7 @@ const StatutoryPortalSettingsPanel: React.FC = () => {
           <div>
             <h3 className="font-semibold text-[var(--text-primary)] text-sm">Statutory Portal Configuration</h3>
             <p className="text-xs text-[var(--text-muted)]">
-              Controls what the <code>admin@staff.com</code> statutory login can see.
+              Controls what the statutory login can see.
             </p>
           </div>
         </div>
