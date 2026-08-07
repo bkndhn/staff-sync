@@ -22,26 +22,26 @@ const humanizeField = (key: string): string =>
     .trim()
     .replace(/^./, c => c.toUpperCase());
 
-// ── Dark colour tokens (always dark, immune to light-theme overrides) ──────────
+// ── Light colour tokens (always white, immune to dark-theme overrides) ─────────
 const C = {
-  bg:         '#0f172a',
-  bgCard:     '#1e293b',
-  bgCardHov:  '#263347',
-  bgHdr:      '#162032',
-  border:     '#334155',
-  borderSoft: '#1e3a5f',
-  text:       '#f1f5f9',
-  textSub:    '#cbd5e1',
+  bg:         '#ffffff',
+  bgCard:     '#ffffff',
+  bgCardHov:  '#f1f5f9',
+  bgHdr:      '#f8fafc',
+  border:     '#e2e8f0',
+  borderSoft: '#eef2f7',
+  text:       '#0f172a',
+  textSub:    '#334155',
   textMuted:  '#64748b',
-  textFaint:  '#475569',
-  purple:     '#c084fc',
-  purpleBg:   'rgba(168,85,247,0.12)',
-  purpleBdr:  'rgba(168,85,247,0.25)',
-  blue:       '#60a5fa',
-  amber:      '#fbbf24',
-  rose:       '#f87171',
-  teal:       '#2dd4bf',
-  emerald:    '#34d399',
+  textFaint:  '#94a3b8',
+  purple:     '#7c3aed',
+  purpleBg:   'rgba(124,58,237,0.10)',
+  purpleBdr:  'rgba(124,58,237,0.22)',
+  blue:       '#2563eb',
+  amber:      '#b45309',
+  rose:       '#dc2626',
+  teal:       '#0d9488',
+  emerald:    '#059669',
 };
 
 export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ currentUserEmail }) => {
