@@ -431,6 +431,8 @@ const SuperAdminConsole: React.FC<Props> = ({ user, onLogout, onUpdateUser }) =>
           </>
         ) : activeTab === 'Audit Logs' ? (
           <AuditLogViewer currentUserEmail={user.email} />
+        ) : activeTab === 'Permissions' ? (
+          <PermissionsMatrix />
         ) : (
           <PlatformHealth />
         )}
