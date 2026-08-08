@@ -1485,11 +1485,17 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
                     <div className="text-gray-500">Incentive</div><div className="text-right font-medium text-gray-800">₹{Math.round(detail.incentiveEarned).toLocaleString()}</div>
                     <div className="text-gray-500">HRA</div><div className="text-right font-medium text-gray-800">₹{Math.round(detail.hraEarned).toLocaleString()}</div>
                     <div className="text-gray-500">Meal</div><div className="text-right font-medium text-gray-800">₹{Math.round(detail.mealAllowance || 0).toLocaleString()}</div>
+                    {(detail.supplementsTotal || 0) > 0 && (<><div className="text-gray-500">Other Allowances</div><div className="text-right font-medium text-gray-800">₹{Math.round(detail.supplementsTotal || 0).toLocaleString()}</div></>)}
+                    <div className="col-span-2 border-t border-gray-200 pt-1 flex justify-between font-semibold text-gray-700"><span>Gross</span><span>₹{Math.round(detail.grossPayroll ?? detail.grossSalary ?? 0).toLocaleString()}</span></div>
                     <div className="text-gray-500">Sun Penalty</div><div className="text-right font-medium text-red-600">₹{Math.round(detail.sundayPenalty || 0).toLocaleString()}</div>
-                    <div className="text-gray-500">Deduction</div><div className="text-right font-medium text-red-600">₹{Math.round(detail.deduction || 0).toLocaleString()}</div>
+                    <div className="text-gray-500">Late Coming Ded.</div><div className="text-right font-medium text-red-600">₹{Math.round(detail.lateComingDeduction || 0).toLocaleString()}</div>
+                    <div className="text-gray-500">Early Leave Ded.</div><div className="text-right font-medium text-red-600">₹{Math.round(detail.earlyLeaveDeduction || 0).toLocaleString()}</div>
+                    <div className="text-gray-500">Adv Deduction</div><div className="text-right font-medium text-red-600">₹{Math.round(detail.deduction || 0).toLocaleString()}</div>
+                    {(detail.statutoryTotal || 0) > 0 && (<><div className="text-gray-500">Deductions (Stat.)</div><div className="text-right font-medium text-red-600">₹{Math.round(detail.statutoryTotal || 0).toLocaleString()}</div></>)}
+                    <div className="col-span-2 border-t border-gray-200 pt-1 flex justify-between font-semibold text-green-700"><span>Net</span><span>₹{Math.round(detail.netPayroll ?? detail.netSalary ?? 0).toLocaleString()}</span></div>
                     <div className="text-gray-500">Old Adv</div><div className="text-right font-medium text-blue-600">₹{Math.round(detail.oldAdv || 0).toLocaleString()}</div>
                     <div className="text-gray-500">Cur Adv</div><div className="text-right font-medium text-blue-600">₹{Math.round(detail.curAdv || 0).toLocaleString()}</div>
-                    {(detail.statutoryTotal || 0) > 0 && (<><div className="text-gray-500">Deductions (Stat.)</div><div className="text-right font-medium text-red-600">₹{Math.round(detail.statutoryTotal || 0).toLocaleString()}</div></>)}
+                    <div className="text-gray-500">New Adv (pending)</div><div className="text-right font-medium text-blue-700">₹{Math.round(detail.newAdv || 0).toLocaleString()}</div>
                   </div>
                 )}
 
