@@ -299,6 +299,12 @@ const renderReportSection = (
       hours: workingTime(r.arrivalTime, r.leavingTime, (r as any)?.breakMinutes),
     }));
     const { head, body } = buildCells(ptRows, cols, sortBy);
+    // Keep the section title with its table — start a fresh page if there's no room.
+    const pageH = doc.internal.pageSize.getHeight();
+    if (y > pageH - 50) {
+      doc.addPage();
+      y = 20;
+    }
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(...THEME.purple);
