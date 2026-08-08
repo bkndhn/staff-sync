@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IndianRupee, Plus, X, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { IndianRupee, Plus, X, CheckCircle, Clock, XCircle, Pencil, Trash2 } from 'lucide-react';
 import {
   loanService, LoanRequest, LoanThresholds, DEFAULT_LOAN_THRESHOLDS, buildSchedule, emiAmount,
 } from '../services/loanService';
