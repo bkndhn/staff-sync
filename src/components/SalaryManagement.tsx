@@ -1485,7 +1485,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
                     <div className="text-gray-500">Incentive</div><div className="text-right font-medium text-gray-800">₹{Math.round(detail.incentiveEarned).toLocaleString()}</div>
                     <div className="text-gray-500">HRA</div><div className="text-right font-medium text-gray-800">₹{Math.round(detail.hraEarned).toLocaleString()}</div>
                     <div className="text-gray-500">Meal</div><div className="text-right font-medium text-gray-800">₹{Math.round(detail.mealAllowance || 0).toLocaleString()}</div>
-                    {(detail.supplementsTotal || 0) > 0 && (<><div className="text-gray-500">Other Allowances</div><div className="text-right font-medium text-gray-800">₹{Math.round(detail.supplementsTotal || 0).toLocaleString()}</div></>)}
+                    {(((detail as any).supplementsTotal as number) || 0) > 0 && (<><div className="text-gray-500">Other Allowances</div><div className="text-right font-medium text-gray-800">₹{Math.round(((detail as any).supplementsTotal as number) || 0).toLocaleString()}</div></>)}
                     <div className="col-span-2 border-t border-gray-200 pt-1 flex justify-between font-semibold text-gray-700"><span>Gross</span><span>₹{Math.round(detail.grossPayroll ?? detail.grossSalary ?? 0).toLocaleString()}</span></div>
                     <div className="text-gray-500">Sun Penalty</div><div className="text-right font-medium text-red-600">₹{Math.round(detail.sundayPenalty || 0).toLocaleString()}</div>
                     <div className="text-gray-500">Late Coming Ded.</div><div className="text-right font-medium text-red-600">₹{Math.round(detail.lateComingDeduction || 0).toLocaleString()}</div>
