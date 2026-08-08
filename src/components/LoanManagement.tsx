@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   IndianRupee, CheckCircle, XCircle, Clock, Settings2, Search, RefreshCw, CalendarDays, User,
+  Pencil, Trash2,
 } from 'lucide-react';
 import {
   loanService, LoanRequest, LoanThresholds, DEFAULT_LOAN_THRESHOLDS, buildSchedule, emiAmount,
@@ -27,6 +28,10 @@ const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation }) =
   const [showConfig, setShowConfig] = useState(false);
   const [thresholds, setThresholds] = useState<LoanThresholds>(DEFAULT_LOAN_THRESHOLDS);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [dateFilter, setDateFilter] = useState<string>(todayStr);
+  const [editing, setEditing] = useState<LoanRequest | null>(null);
+  const [editForm, setEditForm] = useState({ amount: 0, reason: '', emiMonths: 1, startMonth: 0, startYear: 2026 });
 
   const isAdmin = userRole === 'admin' || userRole === 'statutory_admin';
 
@@ -60,9 +65,10 @@ const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation }) =
       if (tab === 'approved' && l.status !== 'approved') return false;
       if (tab === 'rejected' && !['rejected', 'cancelled'].includes(l.status)) return false;
       if (q && !(`${l.staffName || ''} ${l.reason}`.toLowerCase().includes(q))) return false;
+      if (dateFilter && (l.createdAt || '').slice(0, 10) !== dateFilter) return false;
       return true;
     });
-  }, [loans, tab, search]);
+  }, [loans, tab, search, dateFilter]);
 
   const canAct = (l: LoanRequest) => l.status === 'pending' && (isAdmin || l.currentApprovalLevel === 1);
 
@@ -89,6 +95,40 @@ const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation }) =
   const saveConfig = async () => {
     await loanService.saveThresholds(thresholds);
     setShowConfig(false);
+  };
+
+  const openEdit = (l: LoanRequest) => {
+    setEditing(l);
+    setEditForm({ amount: l.amount, reason: l.reason, emiMonths: l.emiMonths, startMonth: l.startMonth, startYear: l.startYear });
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setBusyId(editing.id);
+    setError(null);
+    try {
+      await loanService.updatePending(editing, editForm);
+      setEditing(null);
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Could not update the request');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const removeLoan = async (l: LoanRequest) => {
+    if (!window.confirm(`Delete the ₹${l.amount.toLocaleString('en-IN')} loan request from ${l.staffName || 'this staff member'}?`)) return;
+    setBusyId(l.id);
+    setError(null);
+    try {
+      await loanService.remove(l);
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Could not delete the request');
+    } finally {
+      setBusyId(null);
+    }
   };
 
   const statusChip = (l: LoanRequest) => {
@@ -124,6 +164,21 @@ const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation }) =
             placeholder="Search staff or reason"
             className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--glass-border)] text-sm text-[var(--text-primary)]"
           />
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={e => setDateFilter(e.target.value)}
+            className="px-3 py-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--glass-border)] text-sm text-[var(--text-primary)]"
+            aria-label="Filter by request date"
+          />
+          <button
+            onClick={() => setDateFilter(dateFilter ? '' : todayStr)}
+            className="px-3 py-2.5 rounded-xl border border-[var(--glass-border)] text-sm text-[var(--text-secondary)] whitespace-nowrap"
+          >
+            {dateFilter ? 'All dates' : 'Today'}
+          </button>
         </div>
         <div className="flex rounded-xl border border-[var(--glass-border)] overflow-hidden">
           {(['pending', 'approved', 'rejected'] as const).map(t => (
@@ -198,6 +253,24 @@ const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation }) =
                       </button>
                     </>
                   )}
+                  {l.status === 'pending' && (isAdmin || canAct(l)) && (
+                    <>
+                      <button
+                        disabled={busyId === l.id}
+                        onClick={() => openEdit(l)}
+                        className="px-3 py-2 rounded-xl border border-[var(--glass-border)] text-sm text-[var(--text-secondary)] flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        <Pencil size={15} /> Edit
+                      </button>
+                      <button
+                        disabled={busyId === l.id}
+                        onClick={() => removeLoan(l)}
+                        className="px-3 py-2 rounded-xl bg-red-500/10 text-red-600 text-sm font-medium flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        <Trash2 size={15} /> Delete
+                      </button>
+                    </>
+                  )}
                   {l.status === 'pending' && !canAct(l) && (
                     <span className="text-xs text-[var(--text-muted)] self-center">Waiting for admin approval</span>
                   )}
@@ -240,6 +313,54 @@ const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation }) =
               </div>
             );
           })}
+        </div>
+      )}
+
+      {editing && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setEditing(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] p-5" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-[var(--text-primary)] mb-3">Edit loan request</h3>
+            <div className="space-y-3">
+              <label className="block">
+                <span className="text-xs text-[var(--text-secondary)]">Amount (₹)</span>
+                <input type="number" value={editForm.amount}
+                  onChange={e => setEditForm({ ...editForm, amount: Number(e.target.value) })}
+                  className="mt-1 w-full px-3 py-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--glass-border)] text-[var(--text-primary)]" />
+              </label>
+              <label className="block">
+                <span className="text-xs text-[var(--text-secondary)]">Reason</span>
+                <input value={editForm.reason}
+                  onChange={e => setEditForm({ ...editForm, reason: e.target.value })}
+                  className="mt-1 w-full px-3 py-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--glass-border)] text-[var(--text-primary)]" />
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <label className="block">
+                  <span className="text-xs text-[var(--text-secondary)]">EMI months</span>
+                  <input type="number" min={1} value={editForm.emiMonths}
+                    onChange={e => setEditForm({ ...editForm, emiMonths: Number(e.target.value) })}
+                    className="mt-1 w-full px-3 py-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--glass-border)] text-[var(--text-primary)]" />
+                </label>
+                <label className="block">
+                  <span className="text-xs text-[var(--text-secondary)]">Start month</span>
+                  <select value={editForm.startMonth}
+                    onChange={e => setEditForm({ ...editForm, startMonth: Number(e.target.value) })}
+                    className="mt-1 w-full px-2 py-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--glass-border)] text-[var(--text-primary)]">
+                    {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-xs text-[var(--text-secondary)]">Year</span>
+                  <input type="number" value={editForm.startYear}
+                    onChange={e => setEditForm({ ...editForm, startYear: Number(e.target.value) })}
+                    className="mt-1 w-full px-3 py-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--glass-border)] text-[var(--text-primary)]" />
+                </label>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setEditing(null)} className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--glass-border)] text-[var(--text-secondary)]">Cancel</button>
+              <button onClick={saveEdit} disabled={busyId === editing.id} className="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 text-white font-medium disabled:opacity-50">Save</button>
+            </div>
+          </div>
         </div>
       )}
 
