@@ -73,6 +73,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [bulkInTime, setBulkInTime] = useState<string>('10:00');
   const [bulkOutTime, setBulkOutTime] = useState<string>('21:30');
   const [individualTimes, setIndividualTimes] = useState<Record<string, { inTime: string, outTime: string }>>({});
+  const [expandedTimeInputs, setExpandedTimeInputs] = useState<Set<string>>(new Set());
+  const [showAllTimeInputs, setShowAllTimeInputs] = useState(false);
   const [managerCanOverride, setManagerCanOverride] = useState(true);
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [locationDesignationConfigs, setLocationDesignationConfigs] = useState<LocationDesignationShiftConfig[]>([]);
@@ -1028,55 +1030,51 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   };
 
   return (
-    <div className="p-1 md:p-6 space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-3 md:p-6 text-white">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Calendar size={20} className="md:w-8 md:h-8" />
-            <h1 className="text-lg md:text-3xl font-bold">Attendance Tracker</h1>
+    <div className="p-1 md:p-6 space-y-2 md:space-y-4">
+      {/* Combined Compact Header & Controls */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2 md:p-4">
+        
+        {/* Top Header Row */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
+          <div className="flex items-center justify-between w-full md:w-auto">
+            <div className="flex items-center gap-2 text-blue-700">
+              <Calendar className="w-5 h-5 md:w-6 md:h-6" />
+              <h1 className="text-base md:text-xl font-bold tracking-tight">Attendance Tracker</h1>
+            </div>
+            {/* Mobile Export Actions */}
+            <div className="flex md:hidden gap-1">
+              <button onClick={handleExportPDF} className="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded"><Download size={14} /></button>
+              <button onClick={handleShareAttendance} className="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded"><Share2 size={14} /></button>
+              <button onClick={handleCopyAttendance} className="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded text-xs leading-none">📋</button>
+            </div>
           </div>
-          <div className="flex gap-2">
+
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setView('monthly')}
-              className="flex-1 sm:flex-none px-2 md:px-4 py-1.5 md:py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-xs md:text-sm whitespace-nowrap"
+              className="flex-1 md:flex-none px-3 py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap"
             >
               Monthly View
             </button>
             <button
               onClick={() => setView('yearly')}
-              className="flex-1 sm:flex-none px-2 md:px-4 py-1.5 md:py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-xs md:text-sm whitespace-nowrap"
+              className="flex-1 md:flex-none px-3 py-1.5 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap"
             >
               Yearly View
             </button>
-            <button
-              onClick={handleExportPDF}
-              className="flex items-center justify-center gap-1 px-2 md:px-4 py-1.5 md:py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-xs md:text-sm"
-            >
-              <Download size={14} />
-            </button>
-            <button
-              onClick={handleShareAttendance}
-              className="flex items-center justify-center gap-1 px-2 md:px-4 py-1.5 md:py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-xs md:text-sm"
-              title="Share via WhatsApp"
-            >
-              <Share2 size={14} />
-            </button>
-            <button
-              onClick={handleCopyAttendance}
-              className="flex items-center justify-center gap-1 px-2 md:px-4 py-1.5 md:py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-xs md:text-sm"
-              title="Copy as text"
-            >
-              📋
-            </button>
+            {/* Desktop Export Actions */}
+            <div className="hidden md:flex gap-1 border-l border-gray-200 pl-2">
+              <button onClick={handleExportPDF} className="p-1.5 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"><Download size={14} /></button>
+              <button onClick={handleShareAttendance} className="p-1.5 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors" title="Share via WhatsApp"><Share2 size={14} /></button>
+              <button onClick={handleCopyAttendance} className="p-1.5 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors text-xs leading-none" title="Copy as text">📋</button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Controls */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-6">
+        <div className="h-px bg-gray-100 w-full mb-3" />
+
         {/* Date and Bulk Actions Row */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <label className="text-xs font-medium text-gray-700">Date:</label>
              <input
@@ -1445,7 +1443,18 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Emp Code</th>
                 <th className="px-3 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider sticky left-0 z-30 bg-gray-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Name</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
-                <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-2 md:px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  <div className="flex items-center justify-center gap-2">
+                    Actions
+                    <button
+                      onClick={() => setShowAllTimeInputs(!showAllTimeInputs)}
+                      className={`hidden md:flex p-1 rounded-md transition-colors ${showAllTimeInputs ? 'bg-gray-300 text-gray-800' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                      title={showAllTimeInputs ? "Hide All Time Inputs" : "Show All Time Inputs"}
+                    >
+                      <Clock size={12} />
+                    </button>
+                  </div>
+                </th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Loc</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Zone</th>
@@ -1485,113 +1494,103 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   {/* Actions Column */}
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {!data.isPartTime && (
-                      <div className="attendance-actions flex flex-wrap gap-1 md:gap-2 items-center">
-                        <div className="flex flex-col gap-1 mr-2">
-                          <div className="flex items-center gap-1 border border-gray-200 rounded px-1">
-                            <span className="text-[9px] text-gray-500 font-bold">IN</span>
-                            <input 
-                              type="time" 
-                              value={individualTimes[data.id]?.inTime !== undefined ? individualTimes[data.id].inTime : (data.arrivalTime || '')}
-                              onChange={(e) => handleIndividualTimeChange(data.id, 'inTime', e.target.value)}
-                              onBlur={() => {
-                                if (data.hasRecord) {
-                                  confirmIndividualUpdate(data.id, data.status, data);
-                                }
-                              }}
-                              className="text-[10px] md:text-xs border-none p-0 outline-none focus:ring-0 w-[60px]"
-                            />
+                      <div className="attendance-actions flex flex-col 2xl:flex-row gap-2">
+                        {/* Time Inputs (Toggleable) */}
+                        {(showAllTimeInputs || expandedTimeInputs.has(data.id)) && (
+                          <div className="flex flex-row items-center gap-1">
+                            <div className="flex items-center gap-1 border border-gray-200 rounded px-1 bg-white shrink-0 animate-in fade-in slide-in-from-left-2 duration-200">
+                              <span className="text-[9px] text-gray-500 font-bold">IN</span>
+                              <input 
+                                type="time" 
+                                value={individualTimes[data.id]?.inTime !== undefined ? individualTimes[data.id].inTime : (data.arrivalTime || '')}
+                                onChange={(e) => handleIndividualTimeChange(data.id, 'inTime', e.target.value)}
+                                onBlur={() => {
+                                  if (data.hasRecord) confirmIndividualUpdate(data.id, data.status, data);
+                                }}
+                                className="text-[10px] md:text-xs border-none p-0 outline-none focus:ring-0 w-[55px]"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1 border border-gray-200 rounded px-1 bg-white shrink-0 animate-in fade-in slide-in-from-left-2 duration-200">
+                              <span className="text-[9px] text-gray-500 font-bold">OUT</span>
+                              <input 
+                                type="time" 
+                                value={individualTimes[data.id]?.outTime !== undefined ? individualTimes[data.id].outTime : (data.leavingTime || '')}
+                                onChange={(e) => handleIndividualTimeChange(data.id, 'outTime', e.target.value)}
+                                onBlur={() => {
+                                  if (data.hasRecord) confirmIndividualUpdate(data.id, data.status, data);
+                                }}
+                                className="text-[10px] md:text-xs border-none p-0 outline-none focus:ring-0 w-[55px]"
+                              />
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1 border border-gray-200 rounded px-1">
-                            <span className="text-[9px] text-gray-500 font-bold">OUT</span>
-                            <input 
-                              type="time" 
-                              value={individualTimes[data.id]?.outTime !== undefined ? individualTimes[data.id].outTime : (data.leavingTime || '')}
-                              onChange={(e) => handleIndividualTimeChange(data.id, 'outTime', e.target.value)}
-                              onBlur={() => {
-                                if (data.hasRecord) {
-                                  confirmIndividualUpdate(data.id, data.status, data);
-                                }
-                              }}
-                              className="text-[10px] md:text-xs border-none p-0 outline-none focus:ring-0 w-[60px]"
-                            />
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-row items-center gap-1">
+                          <button
+                            onClick={() => confirmIndividualUpdate(data.id, 'Present', data)}
+                            className={`w-7 h-7 md:w-8 md:h-8 text-xs font-bold rounded shadow-sm flex items-center justify-center shrink-0 ${data.status === 'Present'
+                              ? 'bg-green-600 text-white ring-2 ring-green-600 ring-offset-1'
+                              : 'bg-green-100 text-green-700 hover:bg-green-200 border border-green-200'
+                              } transition-all duration-200`}
+                            disabled={!canEditDate}
+                          >
+                            P
+                          </button>
+                          <button
+                            onClick={() => setShowHalfDayModal({ staffId: data.id, staffName: data.originalName || data.name })}
+                            className={`w-7 h-7 md:w-8 md:h-8 text-xs font-bold rounded shadow-sm flex items-center justify-center shrink-0 ${data.status === 'Half Day'
+                              ? 'bg-yellow-500 text-white ring-2 ring-yellow-500 ring-offset-1'
+                              : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border border-yellow-200'
+                              } transition-all duration-200`}
+                            disabled={!canEditDate}
+                          >
+                            H
+                          </button>
+                          <button
+                            onClick={() => confirmIndividualUpdate(data.id, 'Absent', data)}
+                            className={`w-7 h-7 md:w-8 md:h-8 text-xs font-bold rounded shadow-sm flex items-center justify-center shrink-0 ${data.status === 'Absent'
+                              ? 'bg-red-600 text-white ring-2 ring-red-600 ring-offset-1'
+                              : 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200'
+                              } transition-all duration-200`}
+                            disabled={!canEditDate}
+                          >
+                            A
+                          </button>
+                          <button
+                            onClick={async () => {
+                              const record = getAttendanceForDate(data.id, selectedDate);
+                              const newVal = !record?.isUninformed;
+                              onUpdateAttendance(
+                                data.id, selectedDate, 'Absent', false, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, newVal
+                              );
+                            }}
+                            className={`w-7 h-7 md:w-8 md:h-8 text-[10px] md:text-xs font-bold rounded shadow-sm flex items-center justify-center shrink-0 ${
+                              (data.status === 'Absent' && data.isUninformed)
+                                ? 'bg-orange-600 text-white ring-2 ring-orange-600 ring-offset-1'
+                                : 'bg-orange-100 text-orange-700 hover:bg-orange-200 border border-orange-200'
+                            } transition-all duration-200`}
+                            title={data.isUninformed ? 'Unmarked as uninformed leave' : 'Mark as uninformed leave'}
+                            disabled={!canEditDate}
+                          >
+                            UL
+                          </button>
+                          
+                          <div className="flex gap-1 ml-1">
+                            <button
+                              onClick={() => setShowLocationModal({
+                                staffId: data.id,
+                                staffName: data.originalName || data.name,
+                                currentBranch: data.originalBranch || data.location
+                              })}
+                              className="w-7 h-7 md:w-8 md:h-8 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors flex items-center justify-center shadow-sm shrink-0"
+                              title="Change location"
+                              disabled={!canEditDate}
+                            >
+                              <MapPin size={14} />
+                            </button>
                           </div>
                         </div>
-                        <button
-                          onClick={() => confirmIndividualUpdate(data.id, 'Present', data)}
-                          className={`w-7 h-7 md:w-auto md:px-3 md:py-1 text-xs font-bold rounded shadow-sm flex items-center justify-center ${data.status === 'Present'
-                            ? 'bg-green-600 text-white ring-2 ring-green-600 ring-offset-1'
-                            : 'bg-green-200 text-green-900 hover:bg-green-300 border border-green-300'
-                            } transition-all duration-200`}
-                          disabled={!canEditDate}
-                        >
-                          P
-                        </button>
-                        <button
-                          onClick={() => setShowHalfDayModal({ staffId: data.id, staffName: data.originalName || data.name })}
-                          className={`w-7 h-7 md:w-auto md:px-3 md:py-1 text-xs font-bold rounded shadow-sm flex items-center justify-center ${data.status === 'Half Day'
-                            ? 'bg-yellow-500 text-white ring-2 ring-yellow-500 ring-offset-1'
-                            : 'bg-yellow-200 text-yellow-900 hover:bg-yellow-300 border border-yellow-300'
-                            } transition-all duration-200`}
-                          disabled={!canEditDate}
-                        >
-                          H
-                        </button>
-                        <button
-                          onClick={() => confirmIndividualUpdate(data.id, 'Absent', data)}
-                          className={`w-7 h-7 md:w-auto md:px-3 md:py-1 text-xs font-bold rounded shadow-sm flex items-center justify-center ${data.status === 'Absent'
-                            ? 'bg-red-600 text-white ring-2 ring-red-600 ring-offset-1'
-                            : 'bg-red-200 text-red-900 hover:bg-red-300 border border-red-300'
-                            } transition-all duration-200`}
-                          disabled={!canEditDate}
-                        >
-                          A
-                        </button>
-                        <button
-                          onClick={async () => {
-                            const record = getAttendanceForDate(data.id, selectedDate);
-                            const newVal = !record?.isUninformed;
-                            
-                            // Call App's onUpdateAttendance to update DB and local state simultaneously
-                            onUpdateAttendance(
-                              data.id,
-                              selectedDate,
-                              'Absent',
-                              false,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              newVal
-                            );
-                          }}
-                          className={`w-7 h-7 md:w-auto md:px-2 md:py-1 text-xs font-bold rounded shadow-sm flex items-center justify-center ${
-                            (data.status === 'Absent' && data.isUninformed)
-                              ? 'bg-orange-600 text-white ring-2 ring-orange-600 ring-offset-1'
-                              : 'bg-orange-200 text-orange-900 hover:bg-orange-300 border border-orange-300'
-                          } transition-all duration-200`}
-                          title={data.isUninformed ? 'Unmarked as uninformed leave' : 'Mark as uninformed leave'}
-                          disabled={!canEditDate}
-                        >
-                          UL
-                        </button>
-                        <button
-                          onClick={() => setShowLocationModal({
-                            staffId: data.id,
-                            staffName: data.originalName || data.name,
-                            currentBranch: data.originalBranch || data.location
-                          })}
-                          className="w-7 h-7 md:w-auto md:px-2 md:py-1 text-xs font-bold rounded bg-blue-100 text-blue-900 hover:bg-blue-200 border border-blue-200 transition-colors flex items-center justify-center shadow-sm"
-                          title="Change location"
-                          disabled={!canEditDate}
-                        >
-                          <MapPin size={14} />
-                        </button>
                       </div>
                     )}
                   </td>

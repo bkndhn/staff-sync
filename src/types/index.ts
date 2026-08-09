@@ -55,8 +55,34 @@ export interface Staff {
   /** Bound physical device ID for anti-buddy punching */
   deviceId?: string | null;
   exemptFromLateDeduction?: boolean;
-  /** Marks employee as covered under statutory compliance (PF/ESI). */
-  isStatutory?: boolean;
+  /** Dynamic JSONB custom field values */
+  customFields?: Record<string, any>;
+  /** Work/Personal Email Address */
+  email?: string;
+  /** Emergency contact name */
+  emergencyContactName?: string;
+  /** Emergency contact phone number */
+  emergencyContactPhone?: string;
+  /** Date of birth (YYYY-MM-DD) */
+  dob?: string;
+  /** Gender */
+  gender?: 'male' | 'female' | 'other' | '';
+  /** UPI ID / VPA for digital payouts */
+  upiId?: string;
+  /** Government Identity: Aadhaar Number */
+  aadhaarNumber?: string;
+  /** Government Identity: PAN Number */
+  panNumber?: string;
+}
+
+export interface CustomFieldDefinition {
+  id: string;
+  key: string;
+  label: string;
+  type: 'text' | 'number' | 'date' | 'select';
+  options?: string[];
+  required?: boolean;
+  showInTable?: boolean;
 }
 
 export type DeductionBase = 'basic' | 'basic_hra' | 'gross' | 'fixed';

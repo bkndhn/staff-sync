@@ -17,6 +17,7 @@ import FaceTuningPanel from './face/FaceTuningPanel';
 import { WorkflowBuilder } from './WorkflowBuilder';
 import { BiometricIntegrationHub } from './BiometricIntegrationHub';
 import { GeofenceSettingsPanel } from './GeofenceSettingsPanel';
+import { FeatureTogglesPanel } from './FeatureTogglesPanel';
 
 interface SettingsProps {
     userRole: string;
@@ -451,7 +452,16 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                     <p className="text-white/50 text-sm">Manage user accounts and access</p>
                 </div>
             </div>
-
+            {userRole === 'super_admin' && (
+                <SettingsSection
+                    title="Feature Toggles"
+                    subtitle="Enable or disable heavy modules globally across the tenant."
+                    icon={Layers}
+                    defaultOpen={true}
+                >
+                    <FeatureTogglesPanel />
+                </SettingsSection>
+            )}
             <SettingsSection title="General" subtitle="Login, QR and hike defaults" icon={SettingsIcon}>
             {/* Staff Self-Service Toggle */}
             <div className="glass-card-static p-4 rounded-xl flex items-center justify-between gap-4 border border-gray-100 dark:border-white/10 shadow-sm hover:shadow transition-all">

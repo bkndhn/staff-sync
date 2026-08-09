@@ -471,6 +471,18 @@ function App() {
     localStorage.removeItem('staffManagementLogin');
     localStorage.removeItem('sessionToken');
     localStorage.removeItem('activeTab');
+    
+    try {
+      const keys = Object.keys(localStorage);
+      keys.forEach(k => {
+        if (k.startsWith('staff_sync_custom_fields_definitions') || k.startsWith('staff_management_')) {
+          localStorage.removeItem(k);
+        }
+      });
+    } catch (e) {
+      console.warn('Logout storage cleanup warning:', e);
+    }
+
     cacheService.clearAll();
     setStaff([]);
     setAttendance([]);

@@ -16,6 +16,12 @@ import { designationService, type Designation } from '../services/designationSer
 import { customAlert, customConfirm } from './CustomDialog';
 import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/roleVisibility';
 import { userService } from '../services/userService';
+import { customFieldsService } from '../services/customFieldsService';
+import { CustomFieldDefinition } from '../types';
+import { StaffProfileDrawer } from './StaffProfileDrawer';
+import { StaffBulkActionBar } from './StaffBulkActionBar';
+import { CustomFieldsManagerModal } from './CustomFieldsManagerModal';
+import { Sliders } from 'lucide-react';
 
 interface StaffManagementProps {
   staff: Staff[];
@@ -93,6 +99,67 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showFloorManager, setShowFloorManager] = useState(false);
   const [showDesignationManager, setShowDesignationManager] = useState(false);
+  const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>(() => customFieldsService.getCustomFieldsSync());
+  const [showCustomFieldsModal, setShowCustomFieldsModal] = useState(false);
+  const [drawerStaff, setDrawerStaff] = useState<Staff | null>(null);
+  const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
+  const [showWebcamModal, setShowWebcamModal] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+
+  const startWebcam = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 } } });
+      setMediaStream(stream);
+      setShowWebcamModal(true);
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      }, 100);
+    } catch (err) {
+      console.error('Camera access error:', err);
+      await customAlert('Unable to access webcam. Please ensure your camera is connected and browser permissions are granted.');
+    }
+  };
+
+  const stopWebcam = () => {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => track.stop());
+      setMediaStream(null);
+    }
+    setShowWebcamModal(false);
+  };
+
+  const snapWebcamPhoto = () => {
+    if (videoRef.current) {
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      const maxDim = 300;
+      let width = video.videoWidth || 640;
+      let height = video.videoHeight || 480;
+      if (width > height) {
+        if (width > maxDim) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        }
+      } else {
+        if (height > maxDim) {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setFormData(prev => ({ ...prev, photo: dataUrl }));
+      }
+    }
+    stopWebcam();
+  };
   const [locations, setLocations] = useState<Branch[]>([]);
   const [salaryCategories, setSalaryCategories] = useState<PayrollCategory[]>(() => salaryCategoryService.getCategoriesSync());
   const [floors, setFloors] = useState<Zone[]>([]);
@@ -135,20 +202,22 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const [credentialsModal, setCredentialsModal] = useState<{ credentials: { email: string; password: string }; locationName: string } | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  // Fetch locations and categories on mount
+  // Fetch locations, categories, and custom fields on mount
   React.useEffect(() => {
     const fetchData = async () => {
       const { locationService } = await import('../services/locationService');
-      const [locs, cats, flrs, desigs] = await Promise.all([
+      const [locs, cats, flrs, desigs, cFields] = await Promise.all([
         locationService.getLocations(),
         salaryCategoryService.getCategories(),
         floorService.getFloors(),
         designationService.getDesignations(),
+        customFieldsService.getCustomFields(),
       ]);
       setLocations(locs);
       setSalaryCategories(cats);
       setFloors(flrs);
       setDesignations(desigs);
+      setCustomFields(cFields);
     };
     fetchData();
   }, []);
@@ -184,7 +253,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     pfNumber: '',
     esiNumber: '',
     deviceId: '',
-    isStatutory: false
+    isStatutory: false,
+    email: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    dob: '',
+    gender: '' as 'male' | 'female' | 'other' | '',
+    upiId: '',
+    aadhaarNumber: '',
+    panNumber: '',
+    customFields: {} as Record<string, any>
   });
 
   // Set default location when locations load
@@ -637,7 +715,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       pfNumber: '',
       esiNumber: '',
       deviceId: nextCode,
-      isStatutory: false
+      isStatutory: false,
+      email: '',
+      emergencyContactName: '',
+      emergencyContactPhone: '',
+      dob: '',
+      gender: '',
+      upiId: '',
+      aadhaarNumber: '',
+      panNumber: '',
+      customFields: {}
     });
   };
 
@@ -745,7 +832,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       pfNumber: member.pfNumber || '',
       esiNumber: member.esiNumber || '',
       deviceId: existingCode,
-      isStatutory: !!member.isStatutory
+      isStatutory: !!member.isStatutory,
+      email: member.email || '',
+      emergencyContactName: member.emergencyContactName || '',
+      emergencyContactPhone: member.emergencyContactPhone || '',
+      dob: member.dob || '',
+      gender: member.gender || '',
+      upiId: member.upiId || '',
+      aadhaarNumber: member.aadhaarNumber || '',
+      panNumber: member.panNumber || '',
+      customFields: member.customFields || {}
     });
     setEditingStaff(member);
     setShowAddForm(true);
@@ -821,6 +917,54 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     }
   };
 
+  const toggleSelectStaff = (id: string) => {
+    setSelectedStaffIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedStaffIds.length === activeStaff.length && activeStaff.length > 0) {
+      setSelectedStaffIds([]);
+    } else {
+      setSelectedStaffIds(activeStaff.map(s => s.id));
+    }
+  };
+
+  const handleBatchUpdateBranch = async (branchName: string) => {
+    const count = selectedStaffIds.length;
+    for (const id of selectedStaffIds) {
+      await onUpdateStaff(id, { location: branchName });
+    }
+    await onRefreshStaff?.();
+    setSelectedStaffIds([]);
+    await customAlert(`Successfully updated branch to "${branchName}" for ${count} staff member(s).`);
+  };
+
+  const handleBatchUpdateDesignation = async (desigName: string) => {
+    const count = selectedStaffIds.length;
+    for (const id of selectedStaffIds) {
+      await onUpdateStaff(id, { designation: desigName });
+    }
+    await onRefreshStaff?.();
+    setSelectedStaffIds([]);
+    await customAlert(`Successfully updated designation to "${desigName}" for ${count} staff member(s).`);
+  };
+
+  const handleBatchDelete = async (reason: string) => {
+    const count = selectedStaffIds.length;
+    for (const id of selectedStaffIds) {
+      await onDeleteStaff(id, reason);
+    }
+    await onRefreshStaff?.();
+    setSelectedStaffIds([]);
+    await customAlert(`Successfully archived ${count} staff member(s).`);
+  };
+
+  const handleExportSelected = () => {
+    const selectedList = activeStaff.filter(s => selectedStaffIds.includes(s.id));
+    exportStaffCSV(selectedList);
+  };
 
   return (
     <div className="p-1 md:p-6 space-y-6">
@@ -858,6 +1002,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               </button>
               <button onClick={() => setShowCategoryManager(true)} className="btn-premium btn-premium-success flex items-center gap-2 px-3 py-2 text-sm" title="Manage Payroll Categories">
                 <DollarSign size={16} /><span className="hidden xl:inline">Categories</span>
+              </button>
+              <button onClick={() => setShowCustomFieldsModal(true)} className="btn-premium flex items-center gap-2 px-3 py-2 text-sm" style={{ background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)' }} title="Manage Custom Fields">
+                <Sliders size={16} /><span className="hidden xl:inline">Custom Fields</span>
               </button>
             </div>
 
@@ -1129,21 +1276,53 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               <p className="text-xs text-white/50 mt-1">Required for WhatsApp salary slip</p>
             </div>
             <div>
+              <label className="block text-sm font-medium text-white/70 mb-1">Email Address</label>
+              <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="input-premium" placeholder="e.g. staff@company.com" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-1">Date of Birth</label>
+              <input type="date" value={formData.dob} onChange={(e) => setFormData({ ...formData, dob: e.target.value })} className="input-premium" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-1">Gender</label>
+              <select value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })} className="input-premium">
+                <option value="">Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-1">Emergency Contact Person</label>
+              <input type="text" value={formData.emergencyContactName} onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })} className="input-premium" placeholder="Spouse / Parent Name" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-1">Emergency Phone</label>
+              <input type="tel" value={formData.emergencyContactPhone} onChange={(e) => setFormData({ ...formData, emergencyContactPhone: e.target.value })} className="input-premium" placeholder="Emergency contact number" />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-white/70 mb-1">Address</label>
               <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="input-premium" placeholder="Full address" />
             </div>
             <div className="md:col-span-1">
-              <label className="block text-sm font-medium text-white/70 mb-1">Image</label>
-              <div className="flex items-center gap-3">
+              <label className="block text-sm font-medium text-white/70 mb-1">Profile Photo</label>
+              <div className="flex items-center gap-2 flex-wrap">
                 {formData.photo ? (
                   <img src={formData.photo} alt="Preview" className="w-12 h-12 rounded-full object-cover border-2 border-white/30" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/40"><Users size={20} /></div>
                 )}
-                <label className="cursor-pointer bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm transition-colors">
+                <label className="cursor-pointer bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
                   Upload
                   <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
                 </label>
+                <button
+                  type="button"
+                  onClick={startWebcam}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
+                >
+                  <Camera size={14} /> Take Photo
+                </button>
                 {formData.photo && (
                   <button type="button" onClick={() => setFormData(prev => ({ ...prev, photo: '' }))} className="text-red-400 hover:text-red-300 px-2 py-1 text-xs rounded border border-red-400/50 hover:border-red-300">Remove</button>
                 )}
@@ -1291,8 +1470,21 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-1">IFSC Code</label>
                   <input type="text" value={formData.ifscCode} onChange={(e) => setFormData({ ...formData, ifscCode: e.target.value.toUpperCase() })} className="input-premium" placeholder="e.g. SBIN0001234" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1">UPI ID / VPA</label>
+                  <input type="text" value={formData.upiId} onChange={(e) => setFormData({ ...formData, upiId: e.target.value })} className="input-premium" placeholder="e.g. name@okaxis" />
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1">Aadhaar Number <span className="text-white/30 text-xs">(Identity)</span></label>
+                  <input type="text" value={formData.aadhaarNumber} onChange={(e) => setFormData({ ...formData, aadhaarNumber: e.target.value.replace(/[^0-9]/g, '').slice(0, 12) })} className="input-premium" placeholder="12-digit Aadhaar" maxLength={12} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1">PAN Card Number <span className="text-white/30 text-xs">(Identity)</span></label>
+                  <input type="text" value={formData.panNumber} onChange={(e) => setFormData({ ...formData, panNumber: e.target.value.toUpperCase().slice(0, 10) })} className="input-premium" placeholder="10-digit PAN" maxLength={10} />
+                </div>
                 {!hideStatutoryExtras(userRole) && formData.isStatutory && (
                   <>
                     <div>
@@ -1326,8 +1518,6 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                   </p>
                 </div>
               </div>
-
-            </div>
             </div>
 
             {/* Hike Scheduling */}
@@ -1538,6 +1728,46 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
             )}
 
+            {/* Dynamic Custom Fields Section */}
+            {customFields.length > 0 && (
+              <div className="md:col-span-2 lg:col-span-3">
+                <h3 className="text-sm font-semibold text-purple-300 mb-3 border-b border-white/10 pb-2">✨ Custom Attributes</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {customFields.map(field => (
+                    <div key={field.id}>
+                      <label className="block text-sm font-medium text-white/70 mb-1">{field.label}</label>
+                      {field.type === 'select' ? (
+                        <select
+                          value={formData.customFields?.[field.key] || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            customFields: { ...formData.customFields, [field.key]: e.target.value }
+                          })}
+                          className="input-premium"
+                        >
+                          <option value="">Select {field.label}</option>
+                          {field.options?.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                          value={formData.customFields?.[field.key] || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            customFields: { ...formData.customFields, [field.key]: e.target.value }
+                          })}
+                          className="input-premium"
+                          placeholder={`Enter ${field.label}`}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="md:col-span-2 lg:col-span-3 flex gap-3">
               <button type="submit" className="btn-premium px-6 py-2">{editingStaff ? 'Update Staff' : 'Add Staff'}</button>
               <button type="button" onClick={() => { resetForm(); setEditingStaff(null); setShowAddForm(false); }} className="btn-ghost px-6 py-2">Cancel</button>
@@ -1715,6 +1945,15 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
           <table className="table-premium">
             <thead>
               <tr>
+                <th className="px-3 py-3 text-center w-10">
+                  <input
+                    type="checkbox"
+                    checked={selectedStaffIds.length === activeStaff.length && activeStaff.length > 0}
+                    onChange={toggleSelectAll}
+                    className="checkbox-premium"
+                    title="Select All"
+                  />
+                </th>
                 <th className="w-10"></th>
                 <th className="text-center">S.No</th>
                 {showEmpCode && <th className="text-center">Emp Code</th>}
@@ -1729,6 +1968,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 {visibleColumns.meal !== false && <th className="text-center">{salaryCategories.find(c => c.id === 'meal_allowance')?.name || 'Meal Allowance'}</th>}
                 {activeCustomCategories.map(category => (
                   <th key={category.id} className="text-center">{category.name}</th>
+                ))}
+                {customFields.filter(f => f.showInTable).map(cf => (
+                  <th key={cf.id} className="text-center text-purple-300">{cf.label}</th>
                 ))}
                 {visibleColumns.total !== false && <th className="text-center">Total</th>}
                 {visibleColumns.staffType !== false && <th className="text-center">Staff Type</th>}
@@ -1763,12 +2005,20 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, index)}
                     onClick={(e) => {
-                      // Don't trigger edit if clicking on a button, link or interactive element
+                      // Don't trigger drawer if clicking on a button, link or interactive element
                       const target = e.target as HTMLElement;
                       if (target.closest('button') || target.closest('a') || target.closest('input') || target.closest('.cursor-grab')) return;
-                      handleEdit(member);
+                      setDrawerStaff(member);
                     }}
                   >
+                    <td className="px-3 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedStaffIds.includes(member.id)}
+                        onChange={() => toggleSelectStaff(member.id)}
+                        className="checkbox-premium"
+                      />
+                    </td>
                     <td className="px-2 py-4 text-center">
                       {onUpdateStaffOrder && (
                         <div className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
@@ -1780,7 +2030,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                     {showEmpCode && <td className="px-3 py-4 text-sm text-center">{member.employeeCode || (member.deviceId?.startsWith('dev_') ? null : member.deviceId) || '-'}</td>}
                     <td className="px-3 py-4 sticky left-0 bg-white">
                       <div>
-                        <div className="text-sm font-medium">{member.name}</div>
+                        <div className="text-sm font-semibold text-indigo-600 hover:underline">{member.name}</div>
                         <div className="text-sm text-gray-500 flex items-center gap-1">
                           <Calendar size={12} />
                           Joined: {new Date(member.joinedDate).toLocaleDateString()}
@@ -1813,6 +2063,11 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                     {activeCustomCategories.map(category => (
                       <td key={category.id} className="px-3 py-4 text-sm text-center">
                         ₹{(member.salarySupplements?.[category.id] || member.salarySupplements?.[category.key] || 0).toLocaleString()}
+                      </td>
+                    ))}
+                    {customFields.filter(f => f.showInTable).map(cf => (
+                      <td key={cf.id} className="px-3 py-4 text-sm text-center text-purple-300 font-medium">
+                        {member.customFields?.[cf.key] || '-'}
                       </td>
                     ))}
                     {visibleColumns.total !== false && <td className="px-3 py-4 text-sm font-semibold text-green-600 text-center">₹{calculateMemberTotalPayroll(member).toLocaleString()}</td>}
@@ -2466,6 +2721,69 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
           </div>
         </div>
       )}
+      {/* Live Webcam Photo Capture Modal */}
+      {showWebcamModal && (
+        <div className="modal-overlay" onClick={stopWebcam}>
+          <div className="modal-content max-w-lg text-center" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Camera size={18} className="text-purple-400" />
+                Capture Profile Photo
+              </h3>
+              <button onClick={stopWebcam} className="p-1 rounded-lg hover:bg-white/10 text-white/60 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="relative rounded-2xl overflow-hidden bg-black aspect-video border border-white/10 mb-4 flex items-center justify-center">
+              <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <button type="button" onClick={stopWebcam} className="btn-ghost px-4 py-2 text-xs">
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={snapWebcamPhoto}
+                className="btn-premium px-6 py-2 text-xs bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+              >
+                <Camera size={16} /> Snap Photo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dynamic Custom Fields Definition Manager Modal */}
+      <CustomFieldsManagerModal
+        isOpen={showCustomFieldsModal}
+        onClose={() => setShowCustomFieldsModal(false)}
+        fields={customFields}
+        onFieldsChange={setCustomFields}
+      />
+
+      {/* 360 Degree Employee Profile Drawer */}
+      <StaffProfileDrawer
+        staff={drawerStaff}
+        isOpen={!!drawerStaff}
+        onClose={() => setDrawerStaff(null)}
+        onEdit={handleEdit}
+        salaryHikes={salaryHikes}
+        customFields={customFields}
+        getLocationColor={getLocationColor}
+        calculateMemberTotalPayroll={calculateMemberTotalPayroll}
+      />
+
+      {/* Multi-Select Floating Bulk Actions Bar */}
+      <StaffBulkActionBar
+        selectedStaff={staff.filter(s => selectedStaffIds.includes(s.id))}
+        locations={locations}
+        designations={designations}
+        onClearSelection={() => setSelectedStaffIds([])}
+        onBatchUpdateBranch={handleBatchUpdateBranch}
+        onBatchUpdateDesignation={handleBatchUpdateDesignation}
+        onBatchDelete={handleBatchDelete}
+        onExportSelected={handleExportSelected}
+      />
     </div>
   );
 };

@@ -134,4 +134,24 @@ export const appSettingsService = {
       managerCanOverride: map.get('manager_can_override') !== 'false',
     };
   },
+  async getTenantFeatureFlag(flagKey: string, defaultValue: boolean = true): Promise<boolean> {
+    const val = await this.getSetting(flagKey);
+    return val !== null ? val === 'true' : defaultValue;
+  },
+
+  async setTenantFeatureFlag(flagKey: string, isEnabled: boolean): Promise<boolean> {
+    return this.setSetting(flagKey, String(isEnabled));
+  },
+
+  async getEnablePayrollModule(): Promise<boolean> { return this.getTenantFeatureFlag('feature_payroll_module', true); },
+  async setEnablePayrollModule(enabled: boolean): Promise<boolean> { return this.setTenantFeatureFlag('feature_payroll_module', enabled); },
+
+  async getEnableBiometricsModule(): Promise<boolean> { return this.getTenantFeatureFlag('feature_biometrics_module', true); },
+  async setEnableBiometricsModule(enabled: boolean): Promise<boolean> { return this.setTenantFeatureFlag('feature_biometrics_module', enabled); },
+
+  async getEnableStatutoryCompliance(): Promise<boolean> { return this.getTenantFeatureFlag('feature_statutory_compliance', true); },
+  async setEnableStatutoryCompliance(enabled: boolean): Promise<boolean> { return this.setTenantFeatureFlag('feature_statutory_compliance', enabled); },
+
+  async getEnableAccommodationTracking(): Promise<boolean> { return this.getTenantFeatureFlag('feature_accommodation_tracking', true); },
+  async setEnableAccommodationTracking(enabled: boolean): Promise<boolean> { return this.setTenantFeatureFlag('feature_accommodation_tracking', enabled); },
 };

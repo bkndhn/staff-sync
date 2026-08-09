@@ -1011,18 +1011,12 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
 
   return (
     <div className="p-1 md:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="stat-icon stat-icon-success">
-            <DollarSign size={24} />
-          </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white">Payroll Management</h1>
-            <p className="text-white/50 text-sm">Track and manage salaries</p>
-          </div>
+      {/* Combined Compact Header */}
+      <div className="glass-card-static p-2 md:p-4 rounded-xl border border-[var(--glass-border)]">
+        <div className="flex items-center gap-2 text-[var(--text-primary)]">
+          <DollarSign className="w-5 h-5 md:w-6 md:h-6 text-green-500" />
+          <h1 className="text-base md:text-xl font-bold tracking-tight">Payroll Management</h1>
         </div>
-
       </div>
 
       {/* Payroll Status Banner */}

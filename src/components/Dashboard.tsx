@@ -354,80 +354,68 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="p-1 md:p-6 space-y-6">
-      {/* Header */}
-
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="stat-icon stat-icon-primary shrink-0">
-            <Calendar size={24} />
+      {/* Combined Compact Header & Controls */}
+      <div className="glass-card-static p-2 md:p-4 rounded-xl border border-[var(--glass-border)]">
+        {/* Top Header Row */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
+          <div className="flex items-center justify-between w-full md:w-auto">
+            <div className="flex items-center gap-2 text-[var(--text-primary)]">
+              <Calendar className="w-5 h-5 md:w-6 md:h-6 text-blue-500" />
+              <h1 className="text-base md:text-xl font-bold tracking-tight">Dashboard</h1>
+            </div>
+            {/* Mobile Actions could go here if needed */}
           </div>
-          <div>
-            <h1 className="text-xl md:text-3xl font-bold text-white leading-tight">Dashboard</h1>
-            <p className="text-white/50 text-xs md:text-sm">Overview & tracking</p>
+
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <button
+              onClick={() => handleSharePDF('overall')}
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white text-xs font-semibold transition-all shadow-sm"
+              title="Share report on WhatsApp"
+            >
+              <Share2 size={14} />
+              <span>Share</span>
+            </button>
+            <button
+              onClick={() => handleExportPDF('overall')}
+              className="p-1.5 px-3 bg-white/10 hover:bg-white/20 text-[var(--text-primary)] rounded-lg transition-colors border border-[var(--glass-border)]"
+              title="Download PDF"
+            >
+              <Download size={14} />
+            </button>
+            <button
+              onClick={() => setShowReportConfig(true)}
+              className="p-1.5 px-3 bg-white/10 hover:bg-white/20 text-[var(--text-primary)] rounded-lg transition-colors border border-[var(--glass-border)]"
+              title="Report Config"
+            >
+              <SlidersHorizontal size={14} />
+            </button>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-          <button
-            onClick={() => handleSharePDF('overall')}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium transition-all duration-300 shadow-lg active:scale-95 shrink-0"
-            title="Share report on WhatsApp"
-            style={{ color: 'white' }}
-          >
-            <Share2 size={16} />
-            <span className="text-xs md:text-sm">Share</span>
-          </button>
+        <div className="h-px bg-[var(--glass-border)] w-full mb-3" />
 
-          <button
-            onClick={() => handleExportPDF('overall')}
-            className="flex items-center justify-center h-10 w-10 rounded-xl active:scale-95 shrink-0 transition-colors"
-            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--glass-border-strong)', color: 'var(--text-primary)' }}
-            title="Download PDF instead"
-            aria-label="Download PDF"
-          >
-            <Download size={16} />
-          </button>
-
-          <button
-            onClick={() => setShowReportConfig(true)}
-            className="flex items-center justify-center h-10 w-10 rounded-xl active:scale-95 shrink-0 transition-colors"
-            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--glass-border-strong)', color: 'var(--text-primary)' }}
-            title="Report columns & order"
-            aria-label="Report settings"
-          >
-            <SlidersHorizontal size={16} />
-          </button>
-
-
-          <div className="flex-1 min-w-[120px] max-w-[160px] md:flex-none">
-            <label className="block text-[10px] uppercase tracking-wider font-bold text-white/40 mb-1 ml-1">Group By</label>
-            <select
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value as any)}
-              className="input-premium py-2 px-3 text-sm w-full"
-            >
-              <option value="none">Branch</option>
-              <option value="floor">Zone</option>
-              <option value="designation">Designation</option>
-            </select>
-          </div>
-
-          <div className="flex-1 min-w-[140px] max-w-[190px] md:flex-none">
-            <label className="block text-[10px] uppercase tracking-wider font-bold text-white/40 mb-1 ml-1">Select Date</label>
+        {/* Filters Row */}
+        <div className="flex flex-col md:flex-row md:items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap flex-1">
+            <label className="text-xs font-medium text-[var(--text-muted)]">Date:</label>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => onDateChange(e.target.value)}
               max={new Date().toISOString().split('T')[0]}
-              className="input-premium py-2 px-3 text-sm w-full"
+              className="input-premium py-1 px-2 text-xs flex-1 min-w-[120px] md:flex-none"
             />
-          </div>
-
-          <div className="hidden sm:block text-right px-2 lg:px-3">
-            <span className="text-xs font-bold text-white/30 uppercase tracking-tighter block">Day</span>
-            <span className="text-sm font-semibold text-white/70">
-              {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' })}
-            </span>
+            
+            <label className="text-xs font-medium text-[var(--text-muted)] ml-2">Group:</label>
+            <select
+              value={groupBy}
+              onChange={(e) => setGroupBy(e.target.value as any)}
+              className="input-premium py-1 px-2 text-xs flex-1 min-w-[100px] md:flex-none"
+            >
+              <option value="none">Branch</option>
+              <option value="floor">Zone</option>
+              <option value="designation">Designation</option>
+            </select>
           </div>
         </div>
       </div>
