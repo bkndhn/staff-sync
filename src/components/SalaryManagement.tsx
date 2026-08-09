@@ -526,6 +526,22 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
 
   const salaryDetails = calculateSalaryDetails();
   const partTimeSalaries = calculatePartTimeSalaries();
+  const salaryValidation = validateSalaryBatch(
+    salaryDetails,
+    (id) => getStaffForDisplay(id)?.name
+  );
+  const [showValidationDetails, setShowValidationDetails] = useState(false);
+
+  const blockIfInvalid = (action: string): boolean => {
+    if (salaryValidation.errorCount > 0) {
+      customAlert(
+        `${salaryValidation.errorCount} salary record(s) do not reconcile. Fix them before ${action}. Open "Salary checks" for details.`
+      );
+      setShowValidationDetails(true);
+      return true;
+    }
+    return false;
+  };
   const totalSalaryDisbursed = salaryDetails.reduce((sum, detail) => sum + (detail.netPayroll ?? detail.netSalary ?? 0), 0);
   const totalPartTimeEarnings = partTimeSalaries.reduce((sum, salary) => sum + salary.totalEarnings, 0);
   const averageAttendance = salaryDetails.length > 0
