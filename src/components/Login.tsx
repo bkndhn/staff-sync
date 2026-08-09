@@ -94,18 +94,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         clearFailedAttempts(sanitizedEmail);
 
         const session = {
-          ...createSecureSession({
-            email: dbUser.email,
-            role: dbUser.role,
-            location: dbUser.location,
-            floor: (dbUser as any).floor,
-            floorId: (dbUser as any).floor_id,
-          }),
+          user: { ...dbUser, token: sessionToken },
+          expiresAt: Date.now() + (24 * 60 * 60 * 1000),
           sessionToken
         };
-
-        localStorage.setItem('staffManagementLogin', JSON.stringify(session));
-        if (sessionToken) localStorage.setItem('sessionToken', sessionToken);
 
         onLogin({
           id: dbUser.id,

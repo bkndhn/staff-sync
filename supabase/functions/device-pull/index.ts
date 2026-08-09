@@ -47,10 +47,6 @@ interface NormalizedPunch {
   deviceName?: string;
 }
 
-function pad(n: number) {
-  return n.toString().padStart(2, "0");
-}
-
 function normalizeKind(raw: any): NormalizedPunch["kind"] {
   const v = String(raw ?? "").toLowerCase().replace(/[\s-]/g, "");
   if (v === "in" || v === "checkin" || v === "0") return "in";

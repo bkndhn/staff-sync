@@ -47,7 +47,7 @@ export const userService = {
     async getUsers(): Promise<AppUser[]> {
         // The anon-key Supabase client is blocked by RLS on app_users.
         // Use data-api edge function (service role) with the stored session token.
-        const sessionToken = this.getSessionToken();
+        const sessionToken = await this.getSessionToken();
         const isJwt = sessionToken && sessionToken.startsWith('eyJ');
 
         try {
@@ -97,90 +97,47 @@ export const userService = {
 
     /**
      * Validate user login credentials via secure Edge Function (bcrypt server-side)
+     */    /**
+     * Validate user login credentials via secure Edge Function (bcrypt server-side)
      */
     async validateLogin(email: string, password: string): Promise<{ user: AppUser; sessionToken: string } | null> {
         try {
-            // --- Attempt 1: Supabase Auth Native ---
             console.log('[Auth] Attempting Supabase Auth for:', email);
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             });
 
-            if (!authError && authData?.session) {
-                console.log('[Auth] Supabase Auth SUCCESS. Fetching profile via edge function...');
-                const sessionToken = authData.session.access_token;
+            if (authError || !authData?.session) {
+                console.warn('[Auth] Supabase Auth failed:', authError?.message);
+                return null;
+            }
 
-                // Use data-api edge function to fetch profile (bypasses RLS)
-                try {
-                    const profileRes = await fetch(`${SUPABASE_URL}/functions/v1/data-api`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${sessionToken}`,
-                            'apikey': SUPABASE_ANON_KEY,
-                        },
-                        body: JSON.stringify({
-                            table: 'app_users',
-                            op: 'select',
-                            filters: [{ col: 'email', op: 'eq', val: email }],
-                            columns: 'id, email, full_name, role, location, location_id, floor, floor_id, is_active, last_login, created_at, updated_at, tenant_id',
-                            single: true
-                        })
-                    });
+            console.log('[Auth] Supabase Auth SUCCESS. Fetching profile via edge function...');
+            const sessionToken = authData.session.access_token;
 
-                    const profileJson = await profileRes.json();
-                    console.log('[Auth] Profile response status:', profileRes.status, profileJson);
+            // Use data-api edge function to fetch profile (bypasses RLS)
+            try {
+                const profileRes = await fetch(`${SUPABASE_URL}/functions/v1/data-api`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionToken}`,
+                        'apikey': SUPABASE_ANON_KEY,
+                    },
+                    body: JSON.stringify({
+                        table: 'app_users',
+                        op: 'select',
+                        filters: [{ col: 'email', op: 'eq', val: email }],
+                        columns: 'id, email, full_name, role, location, location_id, floor, floor_id, is_active, last_login, created_at, updated_at, tenant_id',
+                        single: true
+                    })
+                });
 
-                    // data-api may not expose app_users — if so, try direct REST API with JWT
-                    if (!profileRes.ok || profileJson.error) {
-                        console.warn('[Auth] data-api profile fetch failed, trying direct REST...');
-                        
-                        // Direct PostgREST query with the JWT (authenticated)
-                        const restRes = await fetch(
-                            `${SUPABASE_URL}/rest/v1/app_users?email=eq.${encodeURIComponent(email)}&is_active=eq.true&select=id,email,full_name,role,location,location_id,floor,floor_id,is_active,last_login,created_at,updated_at,tenant_id&limit=1`,
-                            {
-                                headers: {
-                                    'apikey': SUPABASE_ANON_KEY,
-                                    'Authorization': `Bearer ${sessionToken}`,
-                                }
-                            }
-                        );
-                        const restData = await restRes.json();
-                        console.log('[Auth] Direct REST response:', restRes.status, restData);
+                const profileJson = await profileRes.json();
+                console.log('[Auth] Profile response status:', profileRes.status, profileJson);
 
-                        if (Array.isArray(restData) && restData.length > 0) {
-                            const user = restData[0];
-                            return {
-                                user: {
-                                    ...user,
-                                    role: user.role as AppUser['role'],
-                                    is_active: user.is_active ?? true
-                                },
-                                sessionToken
-                            };
-                        }
-
-                        // Last resort: use user metadata from auth token itself
-                        console.warn('[Auth] REST also failed. Using auth metadata...');
-                        const authUser = authData.user;
-                        const meta = authUser.user_metadata || {};
-                        
-                        return {
-                            user: {
-                                id: authUser.id,
-                                email: authUser.email || email,
-                                full_name: meta.full_name || meta.name || email,
-                                role: (meta.role || 'admin') as AppUser['role'],
-                                location: meta.location || null,
-                                location_id: meta.location_id || null,
-                                is_active: true,
-                            },
-                            sessionToken
-                        };
-                    }
-
-                    // data-api returned successfully
+                if (profileRes.ok && !profileJson.error) {
                     const userData = Array.isArray(profileJson.data) ? profileJson.data[0] : profileJson.data;
                     if (userData) {
                         return {
@@ -192,70 +149,61 @@ export const userService = {
                             sessionToken
                         };
                     }
-                } catch (profileErr) {
-                    console.error('[Auth] Profile fetch error:', profileErr);
                 }
 
-                // If all profile fetches failed, use auth metadata as absolute fallback
-                console.warn('[Auth] All profile fetches failed. Using auth user metadata as fallback.');
-                const meta = authData.user.user_metadata || {};
-                return {
-                    user: {
-                        id: authData.user.id,
-                        email: authData.user.email || email,
-                        full_name: meta.full_name || meta.name || email,
-                        role: (meta.role || 'admin') as AppUser['role'],
-                        location: meta.location || null,
-                        location_id: meta.location_id || null,
-                        is_active: true,
-                    },
-                    sessionToken
-                };
+                console.warn('[Auth] data-api profile fetch failed, trying direct REST...');
+                
+                // Direct PostgREST query with the JWT (authenticated)
+                const restRes = await fetch(
+                    `${SUPABASE_URL}/rest/v1/app_users?email=eq.${encodeURIComponent(email)}&is_active=eq.true&select=id,email,full_name,role,location,location_id,floor,floor_id,is_active,last_login,created_at,updated_at,tenant_id&limit=1`,
+                    {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${sessionToken}`,
+                        }
+                    }
+                );
+                const restData = await restRes.json();
+                console.log('[Auth] Direct REST response:', restRes.status, restData);
+
+                if (Array.isArray(restData) && restData.length > 0) {
+                    const user = restData[0];
+                    return {
+                        user: {
+                            ...user,
+                            role: user.role as AppUser['role'],
+                            is_active: user.is_active ?? true
+                        },
+                        sessionToken
+                    };
+                }
+            } catch (err) {
+                console.warn('[Auth] Fetch profile error:', err);
             }
 
-            // --- Attempt 2: Legacy auth-login Edge Function ---
-            console.warn('[Auth] Supabase Auth FAILED:', authError?.message, '— trying legacy...');
+            // Last resort: use user metadata from auth token itself
+            console.warn('[Auth] REST also failed. Using auth metadata...');
+            const authUser = authData.user;
+            const meta = authUser.user_metadata || {};
             
-            try {
-                const { data: legacyData, error: legacyError } = await supabase.functions.invoke('auth-login', {
-                    body: { email, password }
-                });
-
-                console.log('[Auth] Legacy response:', legacyError ? 'ERROR' : 'OK', legacyData ? Object.keys(legacyData) : 'null');
-
-                if (legacyError) {
-                    console.error('[Auth] Legacy invoke error:', legacyError);
-                    return null;
-                }
-
-                if (!legacyData?.sessionToken || !legacyData?.user) {
-                    console.error('[Auth] Legacy returned no session/user:', legacyData);
-                    return null;
-                }
-
-                console.log('[Auth] Legacy login SUCCESS for role:', legacyData.user.role);
-
-                return {
-                    user: {
-                        id: legacyData.user.id,
-                        email: legacyData.user.email,
-                        full_name: legacyData.user.full_name,
-                        role: legacyData.user.role as AppUser['role'],
-                        location: legacyData.user.location,
-                        location_id: legacyData.user.location_id,
-                        floor: legacyData.user.floor,
-                        floor_id: legacyData.user.floor_id,
-                        is_active: legacyData.user.is_active ?? true,
-                        last_login: legacyData.user.last_login,
-                        created_at: legacyData.user.created_at,
-                        updated_at: legacyData.user.updated_at,
-                    },
-                    sessionToken: legacyData.sessionToken
-                };
-            } catch (legacyErr) {
-                console.error('[Auth] Legacy fallback crashed:', legacyErr);
-                return null;
-            }
+            return {
+                user: {
+                    id: authUser.id,
+                    email: authUser.email || email,
+                    full_name: meta.full_name || meta.name || email,
+                    role: (meta.role || 'admin') as AppUser['role'],
+                    location: meta.location || null,
+                    location_id: meta.location_id || null,
+                    floor: meta.floor || null,
+                    floor_id: meta.floor_id || null,
+                    is_active: true,
+                    last_login: meta.last_login,
+                    created_at: meta.created_at,
+                    updated_at: meta.updated_at,
+                    tenant_id: meta.tenant_id,
+                },
+                sessionToken
+            };
         } catch (err) {
             console.error('[Auth] Login error:', err);
             return null;
@@ -263,14 +211,12 @@ export const userService = {
     },
 
     /**
-     * Get the stored session token from localStorage
+     * Get the stored session token from Supabase Auth
      */
-    getSessionToken(): string | null {
+    async getSessionToken(): Promise<string | null> {
         try {
-            const saved = localStorage.getItem('staffManagementLogin');
-            if (!saved) return null;
-            const data = JSON.parse(saved);
-            return data?.sessionToken || null;
+            const { data: { session } } = await supabase.auth.getSession();
+            return session?.access_token || null;
         } catch {
             return null;
         }
@@ -280,7 +226,7 @@ export const userService = {
      * Create a new user via secure Edge Function (bcrypt server-side)
      */
     async createUser(input: CreateUserInput): Promise<AppUser | null> {
-        const sessionToken = this.getSessionToken();
+        const sessionToken = await this.getSessionToken();
         // Detect JWT vs legacy token for the right header
         const isJwt = sessionToken && sessionToken.startsWith('eyJ');
         try {
@@ -325,7 +271,7 @@ export const userService = {
      * Update an existing user
      */
     async updateUser(id: string, input: UpdateUserInput): Promise<AppUser | null> {
-        const sessionToken = this.getSessionToken();
+        const sessionToken = await this.getSessionToken();
         const isJwt = sessionToken && sessionToken.startsWith('eyJ');
         const authHeaders = {
             'Content-Type': 'application/json',
@@ -398,7 +344,7 @@ export const userService = {
      */
     async regeneratePassword(id: string): Promise<string | null> {
         const newPassword = this.generateRandomPassword();
-        const sessionToken = this.getSessionToken();
+        const sessionToken = await this.getSessionToken();
 
         try {
             const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-update-password`, {
@@ -439,7 +385,7 @@ export const userService = {
      * Soft delete a user
      */
     async deleteUser(id: string): Promise<boolean> {
-        const sessionToken = this.getSessionToken();
+        const sessionToken = await this.getSessionToken();
         const isJwt = sessionToken && sessionToken.startsWith('eyJ');
         try {
             const response = await fetch(`${SUPABASE_URL}/functions/v1/data-api`, {
@@ -474,7 +420,7 @@ export const userService = {
      * Deactivate manager for a location
      */
     async deactivateManagerByLocation(locationId: string): Promise<boolean> {
-        const sessionToken = this.getSessionToken();
+        const sessionToken = await this.getSessionToken();
         const isJwt = sessionToken && sessionToken.startsWith('eyJ');
         const headers = {
             'Content-Type': 'application/json',
@@ -505,7 +451,7 @@ export const userService = {
      * Deactivate manager by location name
      */
     async deactivateManagerByLocationName(locationName: string): Promise<boolean> {
-        const sessionToken = this.getSessionToken();
+        const sessionToken = await this.getSessionToken();
         const isJwt = sessionToken && sessionToken.startsWith('eyJ');
         const headers = {
             'Content-Type': 'application/json',

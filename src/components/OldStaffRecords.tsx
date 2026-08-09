@@ -4,6 +4,7 @@ import { Archive, Download, Eye, UserPlus, Trash2, Search, ChevronDown, ChevronU
 import { exportOldStaffPDF, OLD_STAFF_PDF_COLUMNS } from '../utils/pdfExport';
 import { customConfirm } from './CustomDialog';
 import ListFilterBar from './ui/ListFilterBar';
+import { useUserPreference } from '../hooks/useUserPreference';
 
 interface OldStaffRecordsProps {
   oldStaffRecords: OldStaffRecord[];
@@ -26,14 +27,14 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
   const [selectedRecord, setSelectedRecord] = useState<OldStaffRecord | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
-  const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' }>(() => {
-    try { return JSON.parse(localStorage.getItem('archiveSort') || '') || { key: 'name', dir: 'asc' }; }
-    catch { return { key: 'name', dir: 'asc' }; }
-  });
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem('archiveColumns') || '') || OLD_STAFF_PDF_COLUMNS.map(c => c.key); }
-    catch { return OLD_STAFF_PDF_COLUMNS.map(c => c.key); }
-  });
+  const [sort, setSort] = useUserPreference<{ key: string; dir: 'asc' | 'desc' }>(
+    'archiveSort',
+    { key: 'name', dir: 'asc' }
+  );
+  const [visibleColumns, setVisibleColumns] = useUserPreference<string[]>(
+    'archiveColumns',
+    OLD_STAFF_PDF_COLUMNS.map(c => c.key)
+  );
 
   const filteredRecords = useMemo(() => {
     const list = oldStaffRecords.filter(record =>
@@ -147,14 +148,12 @@ const OldStaffRecords: React.FC<OldStaffRecordsProps> = ({ oldStaffRecords, onRe
           sortDir={sort.dir}
           onSortChange={(key, dir) => {
             setSort({ key, dir });
-            localStorage.setItem('archiveSort', JSON.stringify({ key, dir }));
           }}
           sortOptions={ARCHIVE_SORTS}
           columns={OLD_STAFF_PDF_COLUMNS}
           visibleColumns={visibleColumns}
           onColumnsChange={(keys) => {
             setVisibleColumns(keys);
-            localStorage.setItem('archiveColumns', JSON.stringify(keys));
           }}
           resultCount={filteredRecords.length}
         />

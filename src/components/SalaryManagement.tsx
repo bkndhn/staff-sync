@@ -21,6 +21,7 @@ import { leaveService, type LeaveRequest } from '../services/leaveService';
 import BulkSalarySender from './BulkSalarySender';
 import { customAlert, customConfirm } from './CustomDialog';
 import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/roleVisibility';
+import { useUserPreference } from '../hooks/useUserPreference';
 
 interface PayrollManagementProps {
   staff: Staff[];
@@ -175,19 +176,17 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
   }, [advanceEntries, selectedMonth, selectedYear]);
   const [showSalaryColumnPicker, setShowSalaryColumnPicker] = useState(false);
   const [expandedSalaryCard, setExpandedSalaryCard] = useState<string | null>(null);
-  const [salaryVisibleCols, setSalaryVisibleCols] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem('salaryVisibleColumns');
-    if (saved) return JSON.parse(saved);
-    return {
+  const [salaryVisibleCols, setSalaryVisibleCols] = useUserPreference<Record<string, boolean>>(
+    'salaryVisibleColumns',
+    {
       location: true, type: true, payment: true, floor: true, designation: true,
       present: true, leave: true, sunAbs: true, oldAdv: true, curAdv: true,
       sunPenalty: true, lateComingDeduction: true, earlyLeaveDeduction: true, statutory: true, esi: true, pf: true, gross: true, net: true, newAdv: true
-    };
-  });
+    }
+  );
   const toggleSalaryCol = (col: string) => {
     setSalaryVisibleCols(prev => {
       const updated = { ...prev, [col]: !prev[col] };
-      localStorage.setItem('salaryVisibleColumns', JSON.stringify(updated));
       return updated;
     });
   };

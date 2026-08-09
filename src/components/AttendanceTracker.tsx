@@ -19,6 +19,8 @@ import { appSettingsService } from '../services/appSettingsService';
 import { db } from '../lib/db';
 import { resolveActiveRule } from '../utils/attendanceRules';
 import { customConfirm, customAlert } from './CustomDialog';
+import LateArrivalIntelligence from './attendance/LateArrivalIntelligence';
+import AttendanceProfileDrawer from './attendance/AttendanceProfileDrawer';
 
 interface AttendanceTrackerProps {
   staff: Staff[];
@@ -80,6 +82,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [locationDesignationConfigs, setLocationDesignationConfigs] = useState<LocationDesignationShiftConfig[]>([]);
   const [locationConfigs, setLocationConfigs] = useState<any[]>([]);
   const [globalKioskSettings, setGlobalKioskSettings] = useState<any | null>(null);
+  const [showProfileDrawer, setShowProfileDrawer] = useState<{ staff: Staff; attendanceData: Attendance[] } | null>(null);
 
   const normalizeOutTime = (time?: string) => {
     if (!time) return time;
@@ -991,7 +994,18 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       hasRecord: !!attendanceRecord,
       appliedRuleDetails: attendanceRecord?.appliedRuleDetails || null,
       appliedRuleType: attendanceRecord?.appliedRuleType || null,
+      totalHours: attendanceRecord?.totalHours || 0,
+      overtimeHours: attendanceRecord?.overtimeHours || 0,
     });
+  });
+
+  // Sort by designation to group rows
+  combinedAttendanceData.sort((a, b) => {
+    const dA = a.designation || 'Unassigned';
+    const dB = b.designation || 'Unassigned';
+    if (dA < dB) return -1;
+    if (dA > dB) return 1;
+    return a.name.localeCompare(b.name);
   });
 
   // Helper to generate share text for attendance
@@ -1189,6 +1203,12 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           </div>
         )}
 
+        {view === 'daily' && (
+          <div className="mb-4">
+            <LateArrivalIntelligence attendance={attendance} staff={staff} />
+          </div>
+        )}
+
         {/* Filters Row - Collapsible */}
         <div className="mt-3 border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden">
           <button 
@@ -1304,10 +1324,16 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               {/* Header row */}
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div 
+                    className="flex items-center gap-2 cursor-pointer"
+                    onClick={() => {
+                      const s = staff.find(st => st.id === data.id);
+                      if (s) setShowProfileDrawer({ staff: s, attendanceData: attendance.filter(a => a.staffId === s.id) });
+                    }}
+                  >
                     <span className="text-[10px] font-bold text-gray-400 w-5 shrink-0">{data.serialNo}</span>
                     {data.photo ? (
-                      <button type="button" onClick={() => setViewImageModal({ name: data.originalName || data.name, photo: data.photo })} className="shrink-0 cursor-pointer">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setViewImageModal({ name: data.originalName || data.name, photo: data.photo }) }} className="shrink-0 cursor-pointer">
                         <img src={data.photo} alt={data.name} className="w-8 h-8 rounded-full object-cover border border-gray-200 shadow-sm" />
                       </button>
                     ) : (
@@ -1462,6 +1488,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Shift</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Late By</th>
                 <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Early Leave By</th>
+                <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Hours Worked</th>
+                <th className="px-2 md:px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Overtime</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -1470,9 +1498,15 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{data.serialNo}</td>
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">{data.employeeCode || '-'}</td>
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap sticky left-0 z-10 bg-white group-hover:bg-gray-50 transition-colors shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                    <div className="flex items-center gap-2.5">
+                    <div 
+                      className="flex items-center gap-2.5 cursor-pointer"
+                      onClick={() => {
+                        const s = staff.find(st => st.id === data.id);
+                        if (s) setShowProfileDrawer({ staff: s, attendanceData: attendance.filter(a => a.staffId === s.id) });
+                      }}
+                    >
                       {data.photo ? (
-                        <button type="button" onClick={() => setViewImageModal({ name: data.originalName || data.name, photo: data.photo })} className="shrink-0 cursor-pointer">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setViewImageModal({ name: data.originalName || data.name, photo: data.photo }) }} className="shrink-0 cursor-pointer">
                           <img src={data.photo} alt={data.name} className="w-8 h-8 rounded-full object-cover border border-gray-200 shadow-sm hover:scale-105 transition-transform" />
                         </button>
                       ) : (
@@ -1689,6 +1723,18 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                           {earlyMins > 0 ? (
                             <span className={earlyMins > graceEarly ? 'text-red-500 font-bold' : 'text-gray-600 font-medium'}>
                               {earlyMins} min
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 md:px-6 py-4 whitespace-nowrap text-xs font-semibold text-gray-800">
+                          {data.totalHours > 0 ? `${data.totalHours}h` : <span className="text-gray-400">—</span>}
+                        </td>
+                        <td className="px-3 md:px-6 py-4 whitespace-nowrap text-xs">
+                          {data.overtimeHours > 0 ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold border border-amber-200 text-[10px]">
+                              +{data.overtimeHours}h OT
                             </span>
                           ) : (
                             <span className="text-gray-400">—</span>
@@ -1953,6 +1999,14 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             </div>
           </div>
         </div>
+      )}
+      {/* Profile Drawer */}
+      {showProfileDrawer && (
+        <AttendanceProfileDrawer 
+          staff={showProfileDrawer.staff} 
+          attendanceData={showProfileDrawer.attendanceData} 
+          onClose={() => setShowProfileDrawer(null)} 
+        />
       )}
     </div>
   );

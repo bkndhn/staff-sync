@@ -33,6 +33,12 @@ export default defineConfig(({ mode }) => ({
     // Capacitor needs smaller chunks for WebView loading performance
     chunkSizeWarningLimit: 2000,
     rollupOptions: {
+      onwarn(warning, warn) {
+        if (warning.code === 'EVAL' && warning.id?.includes('onnxruntime-web')) {
+          return;
+        }
+        warn(warning);
+      },
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],

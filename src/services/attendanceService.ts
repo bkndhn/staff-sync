@@ -174,7 +174,7 @@ export const attendanceService = {
   },
 
   mapFromDatabase(dbAttendance: any): Attendance {
-    return {
+    const attendance: Attendance = {
       id: dbAttendance.id,
       staffId: dbAttendance.staff_id,
       date: dbAttendance.date,
@@ -194,6 +194,43 @@ export const attendanceService = {
       appliedRuleType: dbAttendance.applied_rule_type ?? undefined,
       appliedRuleDetails: dbAttendance.applied_rule_details ?? undefined
     };
+
+    // Calculate dynamic hours
+    if (attendance.arrivalTime && attendance.leavingTime) {
+      const [arrH, arrM] = attendance.arrivalTime.split(':').map(Number);
+      const [leavH, leavM] = attendance.leavingTime.split(':').map(Number);
+      let arrTotal = arrH * 60 + arrM;
+      let leavTotal = leavH * 60 + leavM;
+      if (leavTotal < arrTotal) leavTotal += 24 * 60; // cross midnight
+
+      attendance.totalHours = Number(((leavTotal - arrTotal) / 60).toFixed(2));
+      
+      // Determine standard shift length (default to 8 if Both, otherwise 4 or 6)
+      let standardHours = 8;
+      if (attendance.shift === 'Morning') standardHours = 4;
+      if (attendance.shift === 'Evening') standardHours = 6;
+      
+      // If we have applied rules with shift start/end, we can be more accurate
+      if (attendance.appliedRuleDetails?.shiftStart && attendance.appliedRuleDetails?.shiftEnd) {
+        const [sH, sM] = attendance.appliedRuleDetails.shiftStart.split(':').map(Number);
+        const [eH, eM] = attendance.appliedRuleDetails.shiftEnd.split(':').map(Number);
+        let sTotal = sH * 60 + sM;
+        let eTotal = eH * 60 + eM;
+        if (eTotal < sTotal) eTotal += 24 * 60;
+        standardHours = (eTotal - sTotal) / 60;
+      }
+
+      if (attendance.totalHours > standardHours) {
+        attendance.overtimeHours = Number((attendance.totalHours - standardHours).toFixed(2));
+      } else {
+        attendance.overtimeHours = 0;
+      }
+    } else {
+      attendance.totalHours = 0;
+      attendance.overtimeHours = 0;
+    }
+
+    return attendance;
   },
 
   mapToDatabase(attendance: Partial<Attendance>): any {

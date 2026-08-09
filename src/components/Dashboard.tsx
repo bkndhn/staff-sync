@@ -22,6 +22,7 @@ import DailyPayrollOverviewWidget from './dashboard/DailyPayrollOverviewWidget';
 import AIWorkforceInsightsWidget from './dashboard/AIWorkforceInsightsWidget';
 import DashboardQuickActions from './dashboard/DashboardQuickActions';
 import DashboardWidgetConfigModal, { DashboardWidgetConfig, DEFAULT_WIDGET_CONFIG } from './dashboard/DashboardWidgetConfigModal';
+import { useUserPreference } from '../hooks/useUserPreference';
 
 interface DashboardProps {
   staff: Staff[];
@@ -51,38 +52,11 @@ const Dashboard: React.FC<DashboardProps> = ({
 }) => {
 
   const [showReportConfig, setShowReportConfig] = React.useState(false);
-  const [reportColumns, setReportColumns] = React.useState<ReportColumnKey[]>(() => {
-    try {
-      const raw = localStorage.getItem('dashboard_report_columns');
-      const parsed = raw ? JSON.parse(raw) : null;
-      if (Array.isArray(parsed) && parsed.length) return parsed as ReportColumnKey[];
-    } catch { /* ignore */ }
-    return DEFAULT_REPORT_COLUMNS;
-  });
-  const [reportSort, setReportSort] = React.useState<ReportSortKey>(() => {
-    return (localStorage.getItem('dashboard_report_sort') as ReportSortKey) || 'name';
-  });
+  const [reportColumns, setReportColumns] = useUserPreference<ReportColumnKey[]>('dashboard_report_columns', DEFAULT_REPORT_COLUMNS);
+  const [reportSort, setReportSort] = useUserPreference<ReportSortKey>('dashboard_report_sort', 'name');
+  
   const [showWidgetConfigModal, setShowWidgetConfigModal] = React.useState(false);
-  const [widgetConfig, setWidgetConfig] = React.useState<DashboardWidgetConfig>(() => {
-    try {
-      const stored = localStorage.getItem('dashboard_widget_config');
-      if (stored) return JSON.parse(stored);
-    } catch {}
-    return DEFAULT_WIDGET_CONFIG;
-  });
-
-  React.useEffect(() => {
-    try {
-      localStorage.setItem('dashboard_widget_config', JSON.stringify(widgetConfig));
-    } catch {}
-  }, [widgetConfig]);
-
-  React.useEffect(() => {
-    try { localStorage.setItem('dashboard_report_columns', JSON.stringify(reportColumns)); } catch { /* ignore */ }
-  }, [reportColumns]);
-  React.useEffect(() => {
-    try { localStorage.setItem('dashboard_report_sort', reportSort); } catch { /* ignore */ }
-  }, [reportSort]);
+  const [widgetConfig, setWidgetConfig] = useUserPreference<DashboardWidgetConfig>('dashboard_widget_config', DEFAULT_WIDGET_CONFIG);
 
   const toggleReportColumn = (key: ReportColumnKey) => {
     setReportColumns(prev => {
@@ -123,12 +97,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const partTimeTotal = partTimeBoth + partTimeMorning + partTimeEvening;
 
   const [locations, setLocations] = React.useState<{ name: string; color: string; stats: any }[]>([]);
-  const [locationOrder, setLocationOrder] = React.useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem(LOCATION_ORDER_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch { return []; }
-  });
+  const [locationOrder, setLocationOrder] = useUserPreference<string[]>(LOCATION_ORDER_KEY, []);
   const [showOrderEditor, setShowOrderEditor] = React.useState(false);
   const [groupBy, setGroupBy] = React.useState<'none' | 'floor' | 'designation'>('none');
 
@@ -156,58 +125,55 @@ const Dashboard: React.FC<DashboardProps> = ({
         stats: calculateLocationAttendance(activeStaff, todayAttendance, selectedDate, loc.name)
       }));
 
-      // Apply custom order if available
-      if (locationOrder.length > 0) {
-        formattedLocations.sort((a, b) => {
+      setLocations(formattedLocations);
+    };
+    loadLocations();
+  }, [activeStaff, todayAttendance, selectedDate, userRole, userLocation]);
+
+  // Sync locations state when locationOrder changes
+  React.useEffect(() => {
+    if (locationOrder.length > 0 && locations.length > 0) {
+      const currentNames = locations.map(l => l.name);
+      if (JSON.stringify(currentNames) !== JSON.stringify(locationOrder)) {
+        const sorted = [...locations].sort((a, b) => {
           const idxA = locationOrder.indexOf(a.name);
           const idxB = locationOrder.indexOf(b.name);
-          if (idxA === -1 && idxB === -1) return 0;
+          if (idxA === -1 && idxB === -1) return a.name.localeCompare(b.name);
           if (idxA === -1) return 1;
           if (idxB === -1) return -1;
           return idxA - idxB;
         });
+        setLocations(sorted);
       }
-
-      setLocations(formattedLocations);
-    };
-    loadLocations();
-  }, [activeStaff, todayAttendance, selectedDate, userRole, userLocation, locationOrder]);
+    }
+  }, [locationOrder, locations]);
 
   const [dragIndex, setDragIndex] = React.useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = React.useState<number | null>(null);
 
-  const moveBranch = (index: number, direction: 'up' | 'down') => {
-    const names = locations.map(l => l.name);
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= names.length) return;
-    [names[index], names[newIndex]] = [names[newIndex], names[index]];
-    setLocationOrder(names);
-    localStorage.setItem(LOCATION_ORDER_KEY, JSON.stringify(names));
+  const moveBranch = (direction: 'up' | 'down', index: number) => {
+    setLocationOrder(prev => {
+      const names = prev.length > 0 ? [...prev] : locations.map(l => l.name);
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+      if (newIndex < 0 || newIndex >= names.length) return prev;
+      [names[index], names[newIndex]] = [names[newIndex], names[index]];
+      return names;
+    });
   };
   const moveLocation = moveBranch;
 
-  const handleLocDragStart = (index: number) => {
-    setDragIndex(index);
-  };
-
-  const handleLocDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverIdx(index);
-  };
-
-  const handleLocDrop = (e: React.DragEvent, dropIdx: number) => {
-    e.preventDefault();
+  const handleDrop = (dropIdx: number) => {
     if (dragIndex === null || dragIndex === dropIdx) {
       setDragIndex(null);
       setDragOverIdx(null);
       return;
     }
-    const names = locations.map(l => l.name);
-    const [moved] = names.splice(dragIndex, 1);
-    names.splice(dropIdx, 0, moved);
-    setLocationOrder(names);
-    localStorage.setItem(LOCATION_ORDER_KEY, JSON.stringify(names));
+    setLocationOrder(prev => {
+      const names = prev.length > 0 ? [...prev] : locations.map(l => l.name);
+      const [moved] = names.splice(dragIndex, 1);
+      names.splice(dropIdx, 0, moved);
+      return names;
+    });
     setDragIndex(null);
     setDragOverIdx(null);
   };

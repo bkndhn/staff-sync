@@ -49,8 +49,6 @@ export const DEFAULT_STATUTORY_CONFIG: StatutoryPortalConfig = {
   },
 };
 
-const LS_KEY = 'statutoryPortalConfig';
-
 // All reads/writes go through the session-validated data-api edge function.
 // Direct anon writes to statutory_portal_config are blocked by RLS — only
 // admin sessions can mutate the row.
@@ -69,25 +67,17 @@ export const statutoryPortalService = {
           dashboardWidgets: { ...DEFAULT_STATUTORY_CONFIG.dashboardWidgets, ...((data as any).dashboard_widgets || {}) },
           dataVisibility: { ...DEFAULT_STATUTORY_CONFIG.dataVisibility, ...((data as any).data_visibility || {}) },
         };
-        try { localStorage.setItem(LS_KEY, JSON.stringify(cfg)); } catch {}
         return cfg;
       }
     } catch (err) {
-      console.warn('statutoryPortalService.load failed, using cache/defaults', err);
+      console.warn('statutoryPortalService.load failed, using defaults', err);
     }
-    try {
-      const cached = localStorage.getItem(LS_KEY);
-      if (cached) return JSON.parse(cached);
-    } catch {}
     return DEFAULT_STATUTORY_CONFIG;
   },
 
-  loadCached(): StatutoryPortalConfig {
-    try {
-      const cached = localStorage.getItem(LS_KEY);
-      if (cached) return JSON.parse(cached);
-    } catch {}
-    return DEFAULT_STATUTORY_CONFIG;
+  // Removed loadCached, components should await load()
+  async loadCached(): Promise<StatutoryPortalConfig> {
+    return this.load();
   },
 
   async save(cfg: StatutoryPortalConfig): Promise<StatutoryPortalConfig> {
@@ -106,7 +96,6 @@ export const statutoryPortalService = {
         .single();
       if (data) cfg.id = (data as any).id;
     }
-    try { localStorage.setItem(LS_KEY, JSON.stringify(cfg)); } catch {}
     return cfg;
   },
 };

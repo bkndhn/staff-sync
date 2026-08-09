@@ -7,6 +7,8 @@ export interface Staff {
   designation?: string;
   type: 'full-time' | 'part-time';
   shift?: 'Morning' | 'Evening' | 'Both';
+  phone?: string;
+  tier?: 'Novice' | 'Experienced' | 'Expert';
   ratePerDay?: number;
   ratePerShift?: number;
   experience: string;
@@ -117,6 +119,10 @@ export interface Attendance {
   isUninformed?: boolean;
   appliedRuleType?: string;
   appliedRuleDetails?: any;
+  totalHours?: number;
+  overtimeHours?: number;
+  phone?: string;
+  isSettled?: boolean;
 }
 
 export interface PayrollDetail {

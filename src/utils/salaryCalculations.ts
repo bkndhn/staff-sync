@@ -1,6 +1,6 @@
-import { Staff, Attendance, AdvanceDeduction, PartTimeSalaryDetail, WeeklySalary, DailyPayroll, DailySalary } from '../types';
+import { Staff, Attendance, AdvanceDeduction, PartTimeSalaryDetail, WeeklySalary, DailySalary } from '../types';
 import { AdvanceEntry } from '../services/advanceEntryService';
-import { settingsService } from '../services/settingsService';
+import { PartTimeRates, DEFAULT_PART_TIME_RATES } from '../services/settingsService';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, minutesBetween } from '../services/shiftService';
 
 // Round to nearest 10
@@ -36,13 +36,26 @@ export const calculateExperience = (joinedDate: string): string => {
 };
 
 // Get part-time salary based on day and override
-export const getPartTimeDailyPayroll = (date: string, isOverride: boolean = false, overrideAmount?: number): number => {
-  if (isOverride && overrideAmount !== undefined) {
-    return overrideAmount;
+
+export interface PartTimeSalaryOptions {
+  isOverride?: boolean;
+  overrideAmount?: number;
+  tier?: 'Novice' | 'Experienced' | 'Expert';
+  surgeMultiplier?: number;
+}
+
+export const getPartTimeDailyPayroll = (date: string, rates: PartTimeRates = DEFAULT_PART_TIME_RATES, options: PartTimeSalaryOptions = {}): number => {
+  if (options.isOverride && options.overrideAmount !== undefined) {
+    return options.overrideAmount;
   }
-  const rates = settingsService.getPartTimeRates();
   const isSundayDate = isSunday(date);
-  return isSundayDate ? rates.sundayRate : rates.weekdayRate;
+  let baseRate = isSundayDate ? rates.sundayRate : rates.weekdayRate;
+  
+  if (options.tier === 'Experienced') baseRate *= 1.1;
+  else if (options.tier === 'Expert') baseRate *= 1.25;
+  if (options.surgeMultiplier) baseRate *= options.surgeMultiplier;
+
+  return Math.round(baseRate);
 };
 export const getPartTimeDailySalary = getPartTimeDailyPayroll;
 
@@ -148,7 +161,7 @@ export const calculatePartTimePayroll = (
     const weekAttendance = weeks[weekNum];
 
     const dailySalaries: DailySalary[] = weekAttendance.map(record => {
-      const salary = record.salary || getPartTimeDailyPayroll(record.date, record.salaryOverride, record.salary);
+      const salary = record.salary || getPartTimeDailyPayroll(record.date, { isOverride: record.salaryOverride, overrideAmount: record.salary });
       totalEarnings += salary;
       totalDays++;
 
@@ -281,7 +294,8 @@ export const calculatePayroll = (
   scheduledDeductionTotal?: number,
   globalShiftWindows?: any
 ) => {
-  let { totalPresentDays, sundayAbsents, presentDays, halfDays, leaveDays } = attendanceMetrics;
+  let { totalPresentDays, presentDays, halfDays, leaveDays } = attendanceMetrics;
+  const { sundayAbsents } = attendanceMetrics;
 
   // Get salary calculation days from staff settings (default 26)
   const calculationDays = staff.salaryCalculationDays || 26;
@@ -337,8 +351,6 @@ export const calculatePayroll = (
   }
 
   // 2. Count late arrivals and early leaves beyond grace periods and compute daily deductions
-  let lateCount = 0;
-  let earlyCount = 0;
   let recordLateDeduction = 0;
   let recordEarlyDeduction = 0;
   const dailyRate = (staff.basicPayroll ?? staff.basicSalary ?? 0) / calculationDays;

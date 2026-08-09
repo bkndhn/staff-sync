@@ -204,9 +204,9 @@ Deno.serve(async (req) => {
     }
 
     // Return user without password_hash, plus session token
-    const { password_hash: _, ...safeUser } = user;
+    delete (user as any).password_hash;
     return new Response(
-      JSON.stringify({ user: { ...safeUser, tenant }, sessionToken }),
+      JSON.stringify({ user: { ...user, tenant }, sessionToken }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

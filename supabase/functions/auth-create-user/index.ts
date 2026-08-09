@@ -43,7 +43,7 @@ async function validateAdminSession(
       }
 
       // Fetch the app_user profile using the service role (no RLS)
-      const { data: profile, error: profileErr } = await supabase
+      const { data: profile } = await supabase
         .from('app_users')
         .select('id, role, is_active, tenant_id')
         .eq('auth_id', user.id)

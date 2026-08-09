@@ -652,3 +652,71 @@ const renderCompactSalarySlip = (
 
   doc.setTextColor(0, 0, 0);
 };
+
+export interface FlexDirectoryExportEntry {
+  name: string;
+  phone: string;
+  roles: string;
+  status: string;
+}
+
+export const exportFlexDirectoryExcel = async (data: FlexDirectoryExportEntry[]) => {
+  const XLSX = await import('xlsx');
+
+  const excelData = data.map((entry, index) => ({
+    'S.No': index + 1,
+    'Name': entry.name,
+    'Phone': entry.phone,
+    'Roles': entry.roles,
+    'Status': entry.status
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(excelData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Flex Directory');
+  
+  // Auto-size columns
+  const colWidths = [
+    { wch: 8 },
+    { wch: 25 },
+    { wch: 15 },
+    { wch: 30 },
+    { wch: 15 }
+  ];
+  ws['!cols'] = colWidths;
+
+  XLSX.writeFile(wb, `flex-directory-${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
+export const exportFlexDirectoryPDF = async (data: FlexDirectoryExportEntry[]) => {
+  const { default: jsPDF } = await import('jspdf');
+  const autoTable = (await import('jspdf-autotable')).default;
+
+  const doc = new jsPDF();
+  
+  doc.setFontSize(18);
+  doc.text('Flex Staff Directory', 14, 20);
+  
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 28);
+
+  const tableData = data.map((entry, index) => [
+    index + 1,
+    entry.name,
+    entry.phone,
+    entry.roles,
+    entry.status
+  ]);
+
+  autoTable(doc, {
+    head: [['S.No', 'Name', 'Phone', 'Roles', 'Status']],
+    body: tableData,
+    startY: 35,
+    theme: 'grid',
+    styles: { fontSize: 9, cellPadding: 2 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' }
+  });
+
+  doc.save(`flex-directory-${new Date().toISOString().split('T')[0]}.pdf`);
+};

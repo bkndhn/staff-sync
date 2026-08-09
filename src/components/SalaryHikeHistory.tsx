@@ -2,6 +2,7 @@ import React from 'react';
 import { TrendingUp, Calendar, DollarSign } from 'lucide-react';
 import { PayrollHike, SalaryHike, Staff } from '../types';
 import { settingsService } from '../services/settingsService';
+import { salaryCategoryService, SalaryCategory, DEFAULT_BUILT_INS } from '../services/salaryCategoryService';
 import { customConfirm, customAlert } from './CustomDialog';
 
 interface SalaryHikeHistoryProps {
@@ -28,6 +29,11 @@ export const SalaryHikeHistory: React.FC<SalaryHikeHistoryProps> = (props) => {
   };
 
   const [previousSalaryData, setPreviousSalaryData] = React.useState<{ previousPayroll: number | null, changeDate: string | null }>({ previousPayroll: null, changeDate: null });
+  const [salaryCategories, setSalaryCategories] = React.useState<SalaryCategory[]>(DEFAULT_BUILT_INS);
+
+  React.useEffect(() => {
+    salaryCategoryService.getCategories().then(setSalaryCategories);
+  }, []);
   const [showAddPastHike, setShowAddPastHike] = React.useState(false);
   const [editingHike, setEditingHike] = React.useState<SalaryHike | null>(null);
 
@@ -283,7 +289,7 @@ export const SalaryHikeHistory: React.FC<SalaryHikeHistoryProps> = (props) => {
               <div className="bg-white p-3 rounded-lg border border-blue-200 shadow-sm">
                 <h6 className="text-xs font-bold text-blue-900 mb-3 uppercase tracking-wider">New Component Breakdown (After Hike):</h6>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {settingsService.getSalaryCategories().map(category => (
+                  {salaryCategories.map(category => (
                     <div key={category.id} className="space-y-1">
                       <label className="block text-[10px] uppercase font-bold text-gray-500">{category.name}</label>
                       <div className="relative">
@@ -299,7 +305,7 @@ export const SalaryHikeHistory: React.FC<SalaryHikeHistoryProps> = (props) => {
                   ))}
                   {/* Meal Allowance is a special field not in categories sometimes, but handled by settingsService now? 
                       Wait, line 351 in original had it hardcoded. Let's ensure it's here. */}
-                  {!settingsService.getSalaryCategories().find(c => c.id === 'meal_allowance') && (
+                  {!salaryCategories.find(c => c.id === 'meal_allowance') && (
                     <div className="space-y-1">
                       <label className="block text-[10px] uppercase font-bold text-gray-500">Meal Allowance</label>
                       <div className="relative">
@@ -408,7 +414,7 @@ export const SalaryHikeHistory: React.FC<SalaryHikeHistoryProps> = (props) => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {/* Standard and Dynamic Categories combined */}
                       {(() => {
-                        const categories = settingsService.getSalaryCategories();
+                        const categories = salaryCategories;
                         const displayedIds = new Set(categories.map(c => c.id));
 
                         // Ensure meal_allowance is always considered

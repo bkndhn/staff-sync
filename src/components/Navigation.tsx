@@ -8,6 +8,7 @@ import {
 import { SyncBadge } from './SyncBadge';
 import { statutoryPortalService, StatutoryPortalConfig, DEFAULT_STATUTORY_CONFIG } from '../services/statutoryPortalService';
 import { hardResetAppCache } from '../lib/cacheService';
+import { useUserPreference } from '../hooks/useUserPreference';
 
 interface NavigationProps {
   activeTab: NavigationTab;
@@ -25,9 +26,10 @@ const Navigation: React.FC<NavigationProps> = ({
   statutoryScope = 'statutory', onStatutoryScopeChange,
 }) => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem('sidebarCollapsed') === '1'; } catch { return false; }
-  });
+  const [collapsed, setCollapsed, collapsedLoading] = useUserPreference<boolean>(
+    'sidebarCollapsed',
+    false
+  );
   const [portalCfg, setPortalCfg] = useState<StatutoryPortalConfig>(() =>
     user.role === 'statutory_admin' ? statutoryPortalService.loadCached() : DEFAULT_STATUTORY_CONFIG
   );
@@ -39,9 +41,10 @@ const Navigation: React.FC<NavigationProps> = ({
   }, [user.role]);
 
   useEffect(() => {
-    try { localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0'); } catch {}
-    document.documentElement.style.setProperty('--sidebar-w', collapsed ? '68px' : '232px');
-  }, [collapsed]);
+    if (!collapsedLoading) {
+      document.documentElement.style.setProperty('--sidebar-w', collapsed ? '68px' : '232px');
+    }
+  }, [collapsed, collapsedLoading]);
 
   useEffect(() => {
     // Initialize CSS var on mount

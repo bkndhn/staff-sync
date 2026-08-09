@@ -1,5 +1,6 @@
 import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
+import { appSettingsService } from './appSettingsService';
 
 export interface PayrollCategoryDB {
   id: string;
@@ -22,7 +23,7 @@ export type SalaryCategory = PayrollCategory;
 
 const BUILT_IN_IDS = ['basic', 'incentive', 'hra', 'meal_allowance'];
 
-const DEFAULT_BUILT_INS: PayrollCategory[] = [
+export const DEFAULT_BUILT_INS: PayrollCategory[] = [
   { id: 'basic', name: 'Basic Payroll', key: 'basicSalary', isBuiltIn: true },
   { id: 'incentive', name: 'Incentive', key: 'incentive', isBuiltIn: true },
   { id: 'hra', name: 'HRA', key: 'hra', isBuiltIn: true },
@@ -30,28 +31,27 @@ const DEFAULT_BUILT_INS: PayrollCategory[] = [
 ];
 
 const BUILT_IN_NAMES_KEY = 'salary_builtin_names';
-const CUSTOM_CATEGORIES_KEY = 'salary_custom_categories';
 
-// Get custom display names for built-in categories (stored in localStorage)
-function getBuiltInOverrides(): Record<string, string> {
+// Get custom display names for built-in categories (from Supabase app_settings)
+async function getBuiltInOverrides(): Promise<Record<string, string>> {
   try {
-    const stored = localStorage.getItem(BUILT_IN_NAMES_KEY);
+    const stored = await appSettingsService.getSetting(BUILT_IN_NAMES_KEY);
     return stored ? JSON.parse(stored) : {};
   } catch {
     return {};
   }
 }
 
-function saveBuiltInOverride(id: string, name: string) {
-  const overrides = getBuiltInOverrides();
+async function saveBuiltInOverride(id: string, name: string) {
+  const overrides = await getBuiltInOverrides();
   overrides[id] = name;
-  localStorage.setItem(BUILT_IN_NAMES_KEY, JSON.stringify(overrides));
+  await appSettingsService.setSetting(BUILT_IN_NAMES_KEY, JSON.stringify(overrides));
 }
 
 export const salaryCategoryService = {
   // Get all active categories (built-in + custom from Supabase)
   async getCategories(): Promise<SalaryCategory[]> {
-    const builtInOverrides = getBuiltInOverrides();
+    const builtInOverrides = await getBuiltInOverrides();
 
     // Get built-ins with any name overrides and deletion state
     const builtIns: PayrollCategory[] = DEFAULT_BUILT_INS.map(b => ({
@@ -80,28 +80,19 @@ export const salaryCategoryService = {
       return [...builtIns, ...custom];
     } catch (err) {
       console.error('Error fetching salary categories from DB:', err);
-      // Fallback to localStorage for custom categories
-      const localCustom = getLocalCustomCategories();
-      return [...builtIns, ...localCustom];
+      return builtIns;
     }
   },
 
   // Get categories synchronously (for components that can't use async)
   getCategoriesSync(): PayrollCategory[] {
-    const builtInOverrides = getBuiltInOverrides();
-    const builtIns = DEFAULT_BUILT_INS.map(b => ({
-      ...b,
-      name: builtInOverrides[b.id] || b.name,
-      isDeleted: builtInOverrides[`${b.id}_deleted`] === 'true',
-    }));
-    const localCustom = getLocalCustomCategories();
-    return [...builtIns, ...localCustom];
+    return DEFAULT_BUILT_INS;
   },
 
-  // Update built-in category name (stored locally)
-  updateBuiltInName(id: string, name: string): void {
+  // Update built-in category name (stored locally -> now in Supabase)
+  async updateBuiltInName(id: string, name: string): Promise<void> {
     if (!BUILT_IN_IDS.includes(id)) return;
-    saveBuiltInOverride(id, name);
+    await saveBuiltInOverride(id, name);
   },
 
   // Add a new custom category to Supabase
@@ -130,9 +121,7 @@ export const salaryCategoryService = {
 
     if (error) {
       console.error('Error adding salary category:', error);
-      // Fallback: save locally
-      const local = addLocalCustomCategory(displayName);
-      return local;
+      return null;
     }
 
     const cat: PayrollCategory = {
@@ -143,16 +132,14 @@ export const salaryCategoryService = {
       isDeleted: false,
     };
 
-    // Also sync to localStorage for sync access
-    syncLocalCustom(cat);
     return cat;
   },
 
   // Update custom category name in Supabase
   async updateCategory(id: string, displayName: string): Promise<boolean> {
-    // If it's a built-in, update locally
+    // If it's a built-in, update in app_settings
     if (BUILT_IN_IDS.includes(id)) {
-      saveBuiltInOverride(id, displayName);
+      await saveBuiltInOverride(id, displayName);
       return true;
     }
 
@@ -166,18 +153,16 @@ export const salaryCategoryService = {
       return false;
     }
 
-    // Update local cache
-    updateLocalCustomName(id, displayName);
     return true;
   },
 
   // Soft-delete (deactivate) a category (built-in or custom)
   async softDeleteCategory(id: string): Promise<boolean> {
-    // For built-in categories, store deletion state locally
+    // For built-in categories, store deletion state in app_settings
     if (BUILT_IN_IDS.includes(id)) {
-      const overrides = getBuiltInOverrides();
+      const overrides = await getBuiltInOverrides();
       overrides[`${id}_deleted`] = 'true';
-      localStorage.setItem(BUILT_IN_NAMES_KEY, JSON.stringify(overrides));
+      await appSettingsService.setSetting(BUILT_IN_NAMES_KEY, JSON.stringify(overrides));
       return true;
     }
 
@@ -191,18 +176,16 @@ export const salaryCategoryService = {
       return false;
     }
 
-    // Update local cache
-    updateLocalCustomDeleted(id, true);
     return true;
   },
 
   // Restore a soft-deleted category
   async restoreCategory(id: string): Promise<boolean> {
-    // For built-in categories, remove deletion state locally
+    // For built-in categories, remove deletion state in app_settings
     if (BUILT_IN_IDS.includes(id)) {
-      const overrides = getBuiltInOverrides();
+      const overrides = await getBuiltInOverrides();
       delete overrides[`${id}_deleted`];
-      localStorage.setItem(BUILT_IN_NAMES_KEY, JSON.stringify(overrides));
+      await appSettingsService.setSetting(BUILT_IN_NAMES_KEY, JSON.stringify(overrides));
       return true;
     }
 
@@ -216,53 +199,6 @@ export const salaryCategoryService = {
       return false;
     }
 
-    updateLocalCustomDeleted(id, false);
     return true;
   },
 };
-
-// ===== Local storage helpers for offline fallback and sync =====
-
-function getLocalCustomCategories(): PayrollCategory[] {
-  try {
-    const stored = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-}
-
-function addLocalCustomCategory(displayName: string): PayrollCategory {
-  const key = displayName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-  const id = `local_${Date.now()}`;
-  const cat: PayrollCategory = { id, name: displayName, key, isBuiltIn: false, isDeleted: false };
-  const all = getLocalCustomCategories();
-  all.push(cat);
-  localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(all));
-  return cat;
-}
-
-function syncLocalCustom(cat: PayrollCategory) {
-  const all = getLocalCustomCategories();
-  const idx = all.findIndex(c => c.key === cat.key);
-  if (idx !== -1) {
-    all[idx] = cat;
-  } else {
-    all.push(cat);
-  }
-  localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(all));
-}
-
-function updateLocalCustomName(id: string, name: string) {
-  const all = getLocalCustomCategories();
-  const idx = all.findIndex(c => c.id === id);
-  if (idx !== -1) { all[idx].name = name; }
-  localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(all));
-}
-
-function updateLocalCustomDeleted(id: string, isDeleted: boolean) {
-  const all = getLocalCustomCategories();
-  const idx = all.findIndex(c => c.id === id);
-  if (idx !== -1) { all[idx].isDeleted = isDeleted; }
-  localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(all));
-}

@@ -1,6 +1,6 @@
 /**
  * Cache Service for Supabase Data
- * Reduces API calls by caching data in memory and localStorage
+ * Reduces API calls by caching data in memory and sessionStorage
  */
 
 interface CacheEntry<T> {
@@ -19,7 +19,7 @@ class CacheService {
     private readonly defaultTTL = 5 * 60 * 1000; // 5 minutes default
 
     /**
-     * Get data from cache (memory first, then localStorage)
+     * Get data from cache (memory first, then sessionStorage)
      */
     get<T>(key: string): T | null {
         // Check memory cache first
@@ -28,9 +28,9 @@ class CacheService {
             return memoryEntry.data as T;
         }
 
-        // Check localStorage
+        // Check sessionStorage
         try {
-            const stored = localStorage.getItem(`cache_${key}`);
+            const stored = sessionStorage.getItem(`cache_${key}`);
             if (stored) {
                 const entry: CacheEntry<T> = JSON.parse(stored);
                 if (Date.now() < entry.expiresAt) {
@@ -39,7 +39,7 @@ class CacheService {
                     return entry.data;
                 } else {
                     // Expired, remove it
-                    localStorage.removeItem(`cache_${key}`);
+                    sessionStorage.removeItem(`cache_${key}`);
                 }
             }
         } catch (e) {
@@ -50,7 +50,7 @@ class CacheService {
     }
 
     /**
-     * Set data in cache (both memory and localStorage)
+     * Set data in cache (both memory and sessionStorage)
      */
     set<T>(key: string, data: T, ttl: number = this.defaultTTL): void {
         const entry: CacheEntry<T> = {
@@ -62,11 +62,11 @@ class CacheService {
         // Store in memory
         this.memoryCache.set(key, entry);
 
-        // Store in localStorage for persistence
+        // Store in sessionStorage for persistence
         try {
-            localStorage.setItem(`cache_${key}`, JSON.stringify(entry));
+            sessionStorage.setItem(`cache_${key}`, JSON.stringify(entry));
         } catch (e) {
-            console.warn('Cache write error (localStorage may be full):', e);
+            console.warn('Cache write error (sessionStorage may be full):', e);
         }
     }
 
@@ -76,7 +76,7 @@ class CacheService {
     invalidate(key: string): void {
         this.memoryCache.delete(key);
         try {
-            localStorage.removeItem(`cache_${key}`);
+            sessionStorage.removeItem(`cache_${key}`);
         } catch (e) {
             console.warn('Cache invalidate error:', e);
         }
@@ -95,12 +95,12 @@ class CacheService {
         });
         keysToDelete.forEach(key => this.memoryCache.delete(key));
 
-        // localStorage
+        // sessionStorage
         try {
-            const keys = Object.keys(localStorage);
+            const keys = Object.keys(sessionStorage);
             keys.forEach(key => {
                 if (key.startsWith('cache_') && key.includes(pattern)) {
-                    localStorage.removeItem(key);
+                    sessionStorage.removeItem(key);
                 }
             });
         } catch (e) {
@@ -114,10 +114,10 @@ class CacheService {
     clearAll(): void {
         this.memoryCache.clear();
         try {
-            const keys = Object.keys(localStorage);
+            const keys = Object.keys(sessionStorage);
             keys.forEach(key => {
                 if (key.startsWith('cache_')) {
-                    localStorage.removeItem(key);
+                    sessionStorage.removeItem(key);
                 }
             });
         } catch (e) {
@@ -128,17 +128,17 @@ class CacheService {
     /**
      * Get cache stats
      */
-    getStats(): { memoryCacheSize: number; localStorageCacheKeys: number } {
-        let localStorageCacheKeys = 0;
+    getStats(): { memoryCacheSize: number; sessionStorageCacheKeys: number } {
+        let sessionStorageCacheKeys = 0;
         try {
-            const keys = Object.keys(localStorage);
-            localStorageCacheKeys = keys.filter(k => k.startsWith('cache_')).length;
+            const keys = Object.keys(sessionStorage);
+            sessionStorageCacheKeys = keys.filter(k => k.startsWith('cache_')).length;
         } catch (e) {
             // Ignore
         }
         return {
             memoryCacheSize: this.memoryCache.size,
-            localStorageCacheKeys
+            sessionStorageCacheKeys
         };
     }
 }

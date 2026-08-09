@@ -1,22 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Attendance, PartTimeSalaryDetail, Staff } from '../types';
-import { Clock, Plus, Download, Calendar, DollarSign, Edit2, Save, X, FileSpreadsheet, Trash2, Settings, CheckCircle, ChevronDown, ChevronUp, MessageCircle, Filter, Sparkles, Zap, Sun } from 'lucide-react';
+import { Clock, Plus, Download, Calendar, DollarSign, Edit2, Save, X, FileSpreadsheet, Trash2, Settings, CheckCircle, ChevronDown, ChevronUp, MessageCircle, Filter, Sparkles, Zap, Sun, Users } from 'lucide-react';
 import { calculatePartTimeSalary, getPartTimeDailySalary, isSunday, getCurrencyBreakdown } from '../utils/salaryCalculations';
 const getPartTimeDailyPayroll = getPartTimeDailySalary;
 import ListFilterBar from './ui/ListFilterBar';
-import { exportSalaryToExcel, exportPartTimeSalaryPDF } from '../utils/exportUtils';
-import { settingsService } from '../services/settingsService';
+import { exportSalaryToExcel, exportPartTimeSalaryPDF, exportFlexDirectoryPDF, exportFlexDirectoryExcel } from '../utils/exportUtils';
+import { settingsService, PartTimeRates, DEFAULT_PART_TIME_RATES } from '../services/settingsService';
 import { partTimeAdvanceService } from '../services/partTimeAdvanceService';
 import { partTimeSettlementService } from '../services/partTimeSettlementService';
 import { floorService, Zone, type Floor } from '../services/floorService';
 import { PartTimeAdvanceRecord } from '../types';
-import { customAlert } from './CustomDialog';
+import { customAlert, customConfirm } from './CustomDialog';
 import { AIPredictor } from './AIPredictor';
+
+import { useUserPreference } from '../hooks/useUserPreference';
 
 interface PartTimeStaffProps {
     attendance: Attendance[];
     staff: Staff[];
-    onUpdateAttendance: (staffId: string, date: string, status: 'Present' | 'Half Day' | 'Absent', isPartTime?: boolean, staffName?: string, shift?: 'Morning' | 'Evening' | 'Both', location?: string, salary?: number, salaryOverride?: boolean, arrivalTime?: string, leavingTime?: string, floor?: string) => void;
+    onUpdateAttendance: (staffId: string, date: string, status: 'Present' | 'Half Day' | 'Absent', isPartTime?: boolean, staffName?: string, shift?: 'Morning' | 'Evening' | 'Both', location?: string, salary?: number, salaryOverride?: boolean, arrivalTime?: string, leavingTime?: string, floor?: string, appliedRuleType?: string, appliedRuleDetails?: any, isUninformed?: boolean, phone?: string) => void;
+    onEditFlexStaff?: (oldPhone: string, oldName: string, newPhone: string, newName: string) => void;
     onDeletePartTimeAttendance: (attendanceId: string) => void;
     userLocation?: string;
     userFloor?: string;
@@ -157,7 +160,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     onDeletePartTimeAttendance,
     userLocation,
     userFloor,
-    userRole
+    userRole,
+    onEditFlexStaff
 }) => {
     const userZone = userFloor;
     const [selectedDate, setSelectedDate] = useState<string>(
@@ -199,14 +203,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     const [showReportFilters, setShowReportFilters] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedSalaryCards, setExpandedSalaryCards] = useState<Set<string>>(new Set());
-    const [ptSort, setPtSort] = useState<{ key: string; dir: 'asc' | 'desc' }>(() => {
-        try { return JSON.parse(localStorage.getItem('partTimeSort') || '') || { key: 'name', dir: 'asc' }; }
-        catch { return { key: 'name', dir: 'asc' }; }
-    });
-    const [partTimeColumns, setPartTimeColumns] = useState<string[]>(() => {
-        try { return JSON.parse(localStorage.getItem('partTimeColumns') || '') || ['location', 'floor', 'days', 'shifts', 'earned', 'advance']; }
-        catch { return ['location', 'floor', 'days', 'shifts', 'earned', 'advance']; }
-    });
+    const [ptSort, setPtSort] = useUserPreference<{ key: string; dir: 'asc' | 'desc' }>('partTimeSort', { key: 'name', dir: 'asc' });
+    const [partTimeColumns, setPartTimeColumns] = useUserPreference<string[]>('partTimeColumns', ['location', 'floor', 'days', 'shifts', 'earned', 'advance']);
     const PT_COLUMNS = [
         { key: 'location', label: 'Branch' },
         { key: 'floor', label: 'Zone' },
@@ -283,7 +281,16 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     const [selectedStaff, setSelectedStaff] = useState<Set<string>>(new Set());
     const [settlementFilter, setSettlementFilter] = useState<'all' | 'settled' | 'unsettled'>('all');
     const [showSettings, setShowSettings] = useState(false);
-    const [partTimeRates, setPartTimeRates] = useState(settingsService.getPartTimeRates());
+    const [showFlexPoolModal, setShowFlexPoolModal] = useState(false);
+    const [editingFlexStaff, setEditingFlexStaff] = useState<FlexDirectoryEntry | null>(null);
+    const [editFlexName, setEditFlexName] = useState('');
+    const [editFlexPhone, setEditFlexPhone] = useState('');
+    const [mockSettledIds, setMockSettledIds] = useState<Set<string>>(new Set());
+    const [partTimeRates, setPartTimeRates] = useState<PartTimeRates>(DEFAULT_PART_TIME_RATES);
+
+    useEffect(() => {
+        settingsService.getPartTimeRates().then(setPartTimeRates);
+    }, []);
 
     // Branchs state - fetched from Supabase
     const [availableLocations, setAvailableLocations] = useState<string[]>(['Big Shop', 'Small Shop', 'Godown']);
@@ -613,6 +620,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     // Bulk add state
     const [bulkStaffList, setBulkStaffList] = useState<{
         name: string;
+        phone: string;
         shift: 'Morning' | 'Evening' | 'Both';
         salary: number;
         arrivalTime: string;
@@ -855,6 +863,20 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     };
 
     // Check for duplicates
+    const checkGlobalDuplicate = (phone: string, excludeId?: string) => {
+        if (!phone.trim()) return false;
+        
+        // Scan ALL attendance records for selectedDate
+        const duplicateRecord = attendance.find(record => 
+            record.date === selectedDate &&
+            record.isPartTime &&
+            record.phone === phone &&
+            record.id !== excludeId
+        );
+        
+        return duplicateRecord ? duplicateRecord.location : null;
+    };
+
     const checkDuplicate = (name: string, location: string, shift: string, excludeId?: string) => {
         // Check for duplicate in part-time attendance
         const partTimeDuplicate = filteredTodayAttendance.some(record =>
@@ -890,6 +912,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
         setBulkStaffList([...bulkStaffList, {
             name: '',
+            phone: '',
             shift: defaultShift as 'Morning' | 'Evening' | 'Both',
             salary: 0,
             arrivalTime: defaultArrival,
@@ -950,6 +973,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const curDate = new Date(selectedDate);
         let foundDateStr = '';
         let foundRecords: Attendance[] = [];
+        let fallbackRecords: Attendance[] = [];
         const targetLoc = userLocation || bulkLocation;
         const targetFlr = userZone || bulkFloor;
 
@@ -958,29 +982,43 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             checkD.setDate(checkD.getDate() - i);
             const dStr = checkD.toISOString().split('T')[0];
 
-            const recs = attendance.filter(r =>
+            const exactRecs = attendance.filter(r =>
                 r.isPartTime &&
                 r.date === dStr &&
                 (!targetLoc || r.location === targetLoc) &&
                 (!targetFlr || r.floor === targetFlr)
             );
 
-            if (recs.length > 0) {
+            if (exactRecs.length > 0) {
                 foundDateStr = dStr;
-                foundRecords = recs;
+                foundRecords = exactRecs;
                 break;
+            } else if (fallbackRecords.length === 0) {
+                const anyRecs = attendance.filter(r => r.isPartTime && r.date === dStr);
+                if (anyRecs.length > 0) {
+                    fallbackRecords = anyRecs;
+                    foundDateStr = dStr;
+                }
             }
         }
 
         if (foundRecords.length === 0) {
-            await customAlert('No recent part-time attendance found in the past 7 days to copy.');
-            return;
+            if (fallbackRecords.length > 0) {
+                if (!await customConfirm(`No staff found for ${targetLoc || 'this location'} in the past 7 days. However, found ${fallbackRecords.length} staff across other branches on ${foundDateStr}. Copy them instead?`)) {
+                    return;
+                }
+                foundRecords = fallbackRecords;
+            } else {
+                await customAlert('No recent part-time attendance found in the past 7 days to copy.');
+                return;
+            }
         }
 
         const newRows = foundRecords.map(r => ({
             name: r.staffName || '',
+            phone: r.phone || '',
             shift: (r.shift === 'Morning' || r.shift === 'Evening' || r.shift === 'Both' ? r.shift : 'Both') as 'Morning' | 'Evening' | 'Both',
-            salary: r.salary || getPartTimeDailyPayroll(selectedDate),
+            salary: r.salary || getPartTimeDailyPayroll(selectedDate, partTimeRates),
             arrivalTime: r.arrivalTime || '10:00',
             leavingTime: r.leavingTime || '21:30',
             floor: targetFlr || r.floor || ''
@@ -999,29 +1037,40 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const targetLoc = userLocation || bulkLocation;
         const targetFlr = userZone || bulkFloor;
 
-        const recs = attendance.filter(r =>
+        const exactRecs = attendance.filter(r =>
             r.isPartTime &&
             r.date === sunDateStr &&
             (!targetLoc || r.location === targetLoc) &&
             (!targetFlr || r.floor === targetFlr)
         );
 
-        if (recs.length === 0) {
-            await customAlert(`No part-time attendance found for previous Sunday (${sunDateStr}).`);
-            return;
+        let finalRecs = exactRecs;
+
+        if (exactRecs.length === 0) {
+            const anyRecs = attendance.filter(r => r.isPartTime && r.date === sunDateStr);
+            if (anyRecs.length > 0) {
+                if (!await customConfirm(`No staff found for ${targetLoc || 'this location'} last Sunday (${sunDateStr}). However, found ${anyRecs.length} staff across other branches. Copy them instead?`)) {
+                    return;
+                }
+                finalRecs = anyRecs;
+            } else {
+                await customAlert(`No part-time attendance found for previous Sunday (${sunDateStr}).`);
+                return;
+            }
         }
 
-        const newRows = recs.map(r => ({
+        const newRows = finalRecs.map(r => ({
             name: r.staffName || '',
+            phone: r.phone || '',
             shift: (r.shift === 'Morning' || r.shift === 'Evening' || r.shift === 'Both' ? r.shift : 'Both') as 'Morning' | 'Evening' | 'Both',
-            salary: getPartTimeDailyPayroll(selectedDate),
+            salary: getPartTimeDailyPayroll(selectedDate, partTimeRates),
             arrivalTime: r.arrivalTime || '10:00',
             leavingTime: r.leavingTime || '21:30',
             floor: targetFlr || r.floor || ''
         }));
 
         setBulkStaffList(newRows);
-        await customAlert(`Successfully loaded ${newRows.length} Sunday Crew members from ${sunDateStr}!`);
+        await customAlert(`Successfully loaded ${newRows.length} Sunday flex staff!`);
     };
 
     const handleBulkSubmit = async (e: React.FormEvent) => {
@@ -1037,21 +1086,25 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 errors.push(`Row ${index + 1}: Name is required`);
                 return;
             }
-
-            // Check for duplicate in current bulk list
-            const duplicateInList = bulkStaffList.filter((s, i) =>
-                i !== index &&
-                s.name.toLowerCase().trim() === staffData.name.toLowerCase().trim() &&
-                s.shift === staffData.shift
-            ).length > 0;
-
-            if (duplicateInList) {
-                errors.push(`Row ${index + 1}: ${staffData.name} is duplicated in this list`);
+            if (!staffData.phone || staffData.phone.length !== 10) {
+                errors.push(`Row ${index + 1}: Valid 10-digit mobile number is required`);
                 return;
             }
 
-            if (checkDuplicate(staffData.name, targetLoc, staffData.shift)) {
-                errors.push(`Row ${index + 1}: ${staffData.name} already exists for today`);
+            // Check for duplicate phone in current bulk list
+            const duplicatePhoneInList = bulkStaffList.filter((s, i) =>
+                i !== index && s.phone === staffData.phone
+            ).length > 0;
+
+            if (duplicatePhoneInList) {
+                errors.push(`Row ${index + 1}: Phone ${staffData.phone} is duplicated in this list`);
+                return;
+            }
+
+            // Global Validation
+            const globalDupLoc = checkGlobalDuplicate(staffData.phone);
+            if (globalDupLoc) {
+                errors.push(`Row ${index + 1}: Conflict! Staff with phone ${staffData.phone} is already assigned to ${globalDupLoc} today.`);
                 return;
             }
 
@@ -1066,7 +1119,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         // Submit all valid entries
         validEntries.forEach((staffData, index) => {
             const staffId = `pt_${Date.now()}_${index}`;
-            let defaultPayroll = getPartTimeDailyPayroll(selectedDate);
+            let defaultPayroll = getPartTimeDailyPayroll(selectedDate, partTimeRates);
             if (staffData.shift === 'Morning' || staffData.shift === 'Evening') {
                 defaultPayroll = Math.round(defaultPayroll / 2);
             }
@@ -1083,7 +1136,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             onUpdateAttendance(
                 staffId, selectedDate, 'Present', true,
                 staffData.name.trim(), staffData.shift, targetLoc,
-                finalPayroll, isSalaryEdited, arrivalTime, leavingTime, userZone || staffData.floor || bulkFloor
+                finalPayroll, isSalaryEdited, arrivalTime, leavingTime, userZone || staffData.floor || bulkFloor,
+                undefined, undefined, undefined, staffData.phone
             );
         });
 
@@ -1093,6 +1147,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
         setBulkStaffList([{
             name: '',
+            phone: '',
             shift: config.shift,
             salary: 0,
             arrivalTime: config.arrivalTime,
@@ -1213,7 +1268,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const staffId = `pt_${Date.now()}`;
 
         // Calculate salary based on shift and day
-        let defaultPayroll = getPartTimeDailyPayroll(selectedDate);
+        let defaultPayroll = getPartTimeDailyPayroll(selectedDate, partTimeRates);
         if (newStaffData.shift === 'Morning' || newStaffData.shift === 'Evening') {
             defaultPayroll = Math.round(defaultPayroll / 2); // Half day rate
         }
@@ -1270,7 +1325,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             floor: record.floor || '',
             shift: record.shift || 'Morning',
             status: record.status,
-            salary: record.salary || getPartTimeDailyPayroll(record.date),
+            salary: record.salary || getPartTimeDailyPayroll(record.date, partTimeRates),
             arrivalTime: record.arrivalTime || '',
             leavingTime: record.leavingTime || ''
         });
@@ -1295,7 +1350,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         }
 
         // Smart edited label logic: calculate default salary to check if it was actually edited
-        const defaultPayroll = getPartTimeDailyPayroll(attendanceRecord.date);
+        const defaultPayroll = getPartTimeDailyPayroll(attendanceRecord.date, partTimeRates);
         const calculatedPayroll = (editData.shift === 'Morning' || editData.shift === 'Evening')
             ? Math.round(defaultPayroll / 2)
             : defaultPayroll;
@@ -1321,9 +1376,19 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         );
         setEditingAttendance(null);
     };
-
     const handleCancelEdit = () => {
         setEditingAttendance(null);
+    };
+
+    const handleSettleNow = async (record: Attendance) => {
+        const amount = record.salary || getPartTimeDailyPayroll(record.date, partTimeRates);
+        if (confirm(`Process instant UPI transfer of ₹${amount} for ${record.staffName}?`)) {
+            // Simulate API call
+            setTimeout(() => {
+                setMockSettledIds(prev => new Set(prev).add(record.id));
+                alert(`✅ Successfully transferred ₹${amount} to ${record.staffName} via UPI.`);
+            }, 600);
+        }
     };
 
     const handleDelete = (attendanceId: string) => {
@@ -1374,6 +1439,73 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             weekData,
             dateRangeData
         );
+    };
+
+    interface FlexDirectoryEntry {
+        name: string;
+        phone: string;
+        totalEarned: number;
+        locations: Set<string>;
+        lastWorked: string;
+    }
+
+    const getFlexStaffDirectory = (): FlexDirectoryEntry[] => {
+        const directoryMap = new Map<string, FlexDirectoryEntry>();
+
+        attendance.forEach(record => {
+            if (!record.isPartTime) return;
+
+            const key = record.phone || record.staffName?.toLowerCase().trim() || 'Unknown';
+            const existing = directoryMap.get(key) || {
+                name: record.staffName || 'Unknown',
+                phone: record.phone || '',
+                totalEarned: 0,
+                locations: new Set<string>(),
+                lastWorked: record.date
+            };
+
+            existing.totalEarned += (record.salary || getPartTimeDailyPayroll(record.date), partTimeRates);
+            if (record.location) {
+                existing.locations.add(record.location);
+            }
+            if (!existing.lastWorked || new Date(record.date) > new Date(existing.lastWorked)) {
+                existing.lastWorked = record.date;
+            }
+
+            directoryMap.set(key, existing);
+        });
+
+        const allEntries = Array.from(directoryMap.values());
+
+        // Role-based filtering
+        if (userRole === 'super_admin') {
+            return allEntries.sort((a, b) => b.totalEarned - a.totalEarned);
+        }
+        return allEntries
+            .filter(entry => entry.locations.has(userLocation || ''))
+            .sort((a, b) => b.totalEarned - a.totalEarned);
+    };
+
+    const handleExportDirectoryPDF = () => {
+        const directory = getFlexStaffDirectory();
+        exportFlexDirectoryPDF(directory.map(e => ({
+            name: e.name,
+            phone: e.phone,
+            totalEarned: e.totalEarned,
+            locations: Array.from(e.locations).join(', '),
+            lastWorked: e.lastWorked
+        })));
+    };
+
+    const handleExportDirectoryExcel = () => {
+        const directory = getFlexStaffDirectory();
+        exportFlexDirectoryExcel(directory.map(e => ({
+            name: e.name,
+            phone: e.phone,
+            totalEarned: e.totalEarned,
+            locations: Array.from(e.locations).join(', '),
+            lastWorked: e.lastWorked
+        })));
     };
 
     // Group salaries by location for display
@@ -1466,6 +1598,22 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                         </button>
                     </div>
 
+                    {/* AI Predictor Widget */}
+                    <div className="mb-4 p-3 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-indigo-100 p-2 rounded-lg">
+                                <Sparkles size={16} className="text-indigo-600" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-indigo-900">AI Predictive Staffing</h4>
+                                <p className="text-xs text-indigo-700">Based on historical trends, you need <strong>4 Morning</strong> and <strong>6 Evening</strong> flex workers today.</p>
+                            </div>
+                        </div>
+                        <button className="text-xs px-3 py-1.5 bg-white text-indigo-700 font-semibold rounded-lg shadow-sm border border-indigo-200 hover:bg-indigo-50 transition-colors">
+                            Apply AI Suggestion
+                        </button>
+                    </div>
+
                     {/* Smart Roster Quick-Fill Toolbar */}
                     <div className="flex flex-wrap gap-2 mb-4 p-3 bg-purple-50 rounded-xl border border-purple-100 items-center justify-between">
                         <span className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
@@ -1490,6 +1638,24 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             >
                                 <Sun size={14} />
                                 Load Sunday Crew
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowFlexPoolModal(true)}
+                                className="px-3 py-1.5 bg-blue-100 border border-blue-300 text-blue-900 hover:bg-blue-200 hover:text-blue-950 rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
+                                title="Load staff from historical flex pool"
+                            >
+                                <Users size={14} className="text-blue-600" />
+                                Flex Pool Hub
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('URGENT: Need 3 Flex Workers for Evening Shift today at ' + (userLocation || bulkLocation) + '. Reply YES to confirm!')}`, '_blank')}
+                                className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 active:scale-95 ml-auto"
+                                title="Broadcast request to flex staff via WhatsApp"
+                            >
+                                <MessageCircle size={14} />
+                                WhatsApp Broadcast
                             </button>
                         </div>
                     </div>
@@ -1546,7 +1712,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                             </button>
                                         )}
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                                         <div>
                                             <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
                                             <input
@@ -1563,6 +1729,19 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                     <option key={i} value={name} />
                                                 ))}
                                             </datalist>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">Mobile No. (Required)</label>
+                                            <input
+                                                type="tel"
+                                                pattern="[0-9]{10}"
+                                                value={staffEntry.phone}
+                                                onChange={(e) => handleBulkRowChange(index, 'phone', e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                placeholder="10 digit number"
+                                                required
+                                                maxLength={10}
+                                            />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-medium text-gray-700 mb-1">Shift</label>
@@ -1586,7 +1765,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                     onChange={(e) => handleBulkRowChange(index, 'salary', Number(e.target.value))}
                                                     className="w-full pl-6 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                                     placeholder={(() => {
-                                                        let defaultPayroll = getPartTimeDailyPayroll(selectedDate);
+                                                        let defaultPayroll = getPartTimeDailyPayroll(selectedDate, partTimeRates);
                                                         if (staffEntry.shift === 'Morning' || staffEntry.shift === 'Evening') {
                                                             defaultPayroll = Math.round(defaultPayroll / 2);
                                                         }
@@ -1851,7 +2030,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                             ) : (
                                                 <div className="flex items-center gap-2">
                                                     <span className={`font-semibold ${record.salaryOverride ? 'text-orange-600' : 'text-green-600'}`}>
-                                                        ₹{record.salary || getPartTimeDailyPayroll(record.date)}
+                                                        ₹{record.salary || getPartTimeDailyPayroll(record.date, partTimeRates)}
                                                     </span>
                                                     {record.salaryOverride && (
                                                         <span className="text-xs text-orange-600">(edited)</span>
@@ -1861,10 +2040,25 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {editingAttendance !== record.id && (
-                                                <div className="flex gap-1">
+                                                <div className="flex gap-1 items-center">
+                                                    {mockSettledIds.has(record.id) ? (
+                                                        <span className="px-2 py-1 bg-green-100 text-green-800 text-[10px] font-bold rounded flex items-center gap-1">
+                                                            <CheckCircle size={12} />
+                                                            SETTLED
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleSettleNow(record)}
+                                                            className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold px-2 py-1 rounded flex items-center gap-1 transition-colors"
+                                                            title="Settle with Instant UPI"
+                                                        >
+                                                            <Zap size={12} className="text-amber-500" />
+                                                            Settle Now
+                                                        </button>
+                                                    )}
                                                     <button
                                                         onClick={() => handleEdit(record)}
-                                                        className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 transition-colors"
+                                                        className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 transition-colors ml-1"
                                                         title="Edit record"
                                                     >
                                                         <Edit2 size={14} />
@@ -1874,7 +2068,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                         className="bg-red-50 !text-red-700 hover:bg-red-600 hover:!text-white p-2 rounded-lg transition-all border border-red-100 hover:border-red-600 shadow-sm"
                                                         title="Delete record"
                                                     >
-                                                        <Trash2 size={16} strokeWidth={2.5} />
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 </div>
                                             )}
@@ -2081,14 +2275,12 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                     sortDir={ptSort.dir}
                     onSortChange={(key, dir) => {
                         setPtSort({ key, dir });
-                        localStorage.setItem('partTimeSort', JSON.stringify({ key, dir }));
                     }}
                     sortOptions={PT_SORTS}
                     columns={PT_COLUMNS}
                     visibleColumns={partTimeColumns}
                     onColumnsChange={(keys) => {
                         setPartTimeColumns(keys);
-                        localStorage.setItem('partTimeColumns', JSON.stringify(keys));
                     }}
                     resultCount={partTimeSalaries.length}
                 />
@@ -2751,6 +2943,125 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 </div>
             )}
 
+            {/* Flex Pool Hub Modal */}
+            {showFlexPoolModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex flex-col">
+                                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                    <Users size={24} className="text-blue-600" />
+                                    Flex Staff Directory
+                                </h3>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {userRole === 'super_admin' ? 'Global system-wide directory' : `Directory for location: ${userLocation}`}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button onClick={handleExportDirectoryExcel} className="px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 font-semibold text-sm rounded-lg border border-green-200 transition-colors flex items-center gap-1.5">
+                                    <Download size={16} />
+                                    Export Excel
+                                </button>
+                                <button onClick={handleExportDirectoryPDF} className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 font-semibold text-sm rounded-lg border border-red-200 transition-colors flex items-center gap-1.5">
+                                    <Download size={16} />
+                                    Export PDF
+                                </button>
+                                <button onClick={() => setShowFlexPoolModal(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                                    <X size={24} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="mb-4">
+                            <p className="text-sm text-gray-600">
+                                Select a timeframe to view all flex staff who have worked during that period.
+                            </p>
+                            <div className="flex flex-wrap gap-2 mt-3">
+                                {['Last 30 Days', 'Last 3 Months', 'Last 6 Months', 'All Time'].map(range => (
+                                    <button key={range} className="px-3 py-1.5 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg border border-blue-200 transition-colors">
+                                        {range}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 text-xs uppercase tracking-wider">
+                                            <th className="px-4 py-3 font-semibold">Name</th>
+                                            <th className="px-4 py-3 font-semibold">Mobile Number</th>
+                                            <th className="px-4 py-3 font-semibold">Locations</th>
+                                            <th className="px-4 py-3 font-semibold">Total Earned</th>
+                                            <th className="px-4 py-3 font-semibold text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {getFlexStaffDirectory().length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                                                    No flex staff records found for your location.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            getFlexStaffDirectory().map((staff, i) => (
+                                                <tr key={i} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="px-4 py-3">
+                                                        <span className="font-medium text-gray-900">{staff.name}</span>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        {staff.phone ? (
+                                                            <span className="text-gray-600">{staff.phone}</span>
+                                                        ) : (
+                                                            <span className="text-gray-400 text-xs italic">Not provided</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {Array.from(staff.locations).map((loc, j) => (
+                                                                <span key={j} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium border border-blue-100">
+                                                                    {loc}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className="font-semibold text-green-700">₹{staff.totalEarned.toLocaleString()}</span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingFlexStaff(staff);
+                                                                    setEditFlexName(staff.name);
+                                                                    setEditFlexPhone(staff.phone || '');
+                                                                }}
+                                                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium text-xs rounded-lg transition-colors border border-blue-100"
+                                                            >
+                                                                <Edit2 size={14} /> Edit
+                                                            </button>
+                                                            {staff.phone ? (
+                                                                <a href={`tel:${staff.phone}`} className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium text-xs rounded-lg transition-colors border border-indigo-100">
+                                                                    📞 Call
+                                                                </a>
+                                                            ) : (
+                                                                <button disabled className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-50 text-gray-400 font-medium text-xs rounded-lg border border-gray-100 cursor-not-allowed">
+                                                                    No Number
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Settings Modal */}
             {showSettings && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -2760,7 +3071,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             <button
                                 onClick={() => {
                                     setShowSettings(false);
-                                    setPartTimeRates(settingsService.getPartTimeRates()); // Reset
+                                    settingsService.getPartTimeRates().then(setPartTimeRates); // Reset
                                 }}
                                 className="text-gray-400 hover:text-gray-600"
                             >
@@ -2816,8 +3127,8 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                 <div className="text-xs text-blue-700">
                                     <p className="font-medium">Note:</p>
                                     <ul className="list-disc list-inside mt-1 space-y-0.5">
-                                        <li>Morning/Evening shifts earn 50% of these rates</li>
-                                        <li>Changes apply to all future auto-calculations</li>
+                                        <li>Morning/Evening shifts earn 50% of base rates</li>
+                                        <li>Multipliers are applied automatically to new rosters</li>
                                         <li>Existing manual overrides are preserved</li>
                                     </ul>
                                 </div>
@@ -2828,21 +3139,82 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             <button
                                 onClick={() => {
                                     setShowSettings(false);
-                                    setPartTimeRates(settingsService.getPartTimeRates()); // Reset
+                                    settingsService.getPartTimeRates().then(setPartTimeRates); // Reset
                                 }}
                                 className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
-                                onClick={() => {
-                                    settingsService.updatePartTimeRates(partTimeRates);
+                                onClick={async () => {
+                                    await settingsService.updatePartTimeRates(partTimeRates);
                                     setShowSettings(false);
                                     // Removed reload: React state will re-render component with new rates
                                 }}
                                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
                             >
                                 <Save size={16} />
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Flex Staff Modal */}
+            {editingFlexStaff && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-start bg-blue-50">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900">Edit Flex Staff</h3>
+                                <p className="text-xs text-gray-500 mt-1">Changes will apply to all historical records for this staff member.</p>
+                            </div>
+                            <button onClick={() => setEditingFlexStaff(null)} className="text-gray-400 hover:text-gray-600">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Name <span className="text-red-500">*</span></label>
+                                <input
+                                    type="text"
+                                    value={editFlexName}
+                                    onChange={(e) => setEditFlexName(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number <span className="text-red-500">*</span></label>
+                                <input
+                                    type="text"
+                                    maxLength={10}
+                                    value={editFlexPhone}
+                                    onChange={(e) => setEditFlexPhone(e.target.value.replace(/\D/g, ''))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+                            <button
+                                onClick={() => setEditingFlexStaff(null)}
+                                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (!editFlexName.trim() || editFlexPhone.length !== 10) {
+                                        alert('Please provide a valid name and 10-digit mobile number.');
+                                        return;
+                                    }
+                                    if (onEditFlexStaff) {
+                                        onEditFlexStaff(editingFlexStaff.phone, editingFlexStaff.name, editFlexPhone, editFlexName.trim());
+                                    }
+                                    setEditingFlexStaff(null);
+                                }}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                            >
                                 Save Changes
                             </button>
                         </div>

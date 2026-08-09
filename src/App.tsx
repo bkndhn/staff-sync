@@ -15,7 +15,7 @@ import { advanceService } from './services/advanceService';
 import { oldStaffService } from './services/oldStaffService';
 import { salaryHikeService } from './services/salaryHikeService';
 import { isSunday } from './utils/salaryCalculations';
-import { isSupabaseConfigured } from './lib/supabase';
+import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { cacheService, CACHE_KEYS, CACHE_TTL } from './lib/cacheService';
 import { AuditLogViewer } from './components/AuditLogViewer';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -93,85 +93,78 @@ function App() {
     errorTracker.init();
   }, []);
 
-  // ── Capacitor Offline Sync — auto-syncs punches when network restores ────────
+  // 🚀 Capacitor Offline Sync - auto-syncs punches when network restores 🚀
   const { status: offlineSyncStatus } = useOfflineSync();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
-  const [user, setUser] = useState<User | null>(() => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-    // ── Synchronous session restore — no async useEffect needed ──────────────
-    try {
-      const saved = localStorage.getItem('staffManagementLogin');
-      if (!saved) return null;
-      const d = JSON.parse(saved);
-      if (d?.user?.email && d?.user?.role) {
-        if (d.expiresAt && Date.now() > d.expiresAt) { 
-          localStorage.removeItem('staffManagementLogin'); 
-          return null; 
-        }
-        
-        // Force logout of legacy staff sessions missing new auth data
-        if (d.user.role === 'staff' && (!d.sessionToken || !d.user.staffRecord)) {
-          localStorage.removeItem('staffManagementLogin');
-          return null;
-        }
-
-        return d.user as User;
-      }
-    } catch {}
-    return null;
-  });
-  // Legacy "view as client" state is no longer used — clear any stale scope.
+  // 🚀 Auth session restore via Supabase 🚀
   useEffect(() => {
-    try { localStorage.removeItem('impersonateTenantName'); } catch { /* ignore */ }
+    let mounted = true;
+    
+    async function restoreSession() {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session) {
+          if (mounted) setIsAuthLoading(false);
+          return;
+        }
+
+        const email = session.user.email;
+        // Fetch full profile from app_users
+        const { data: uRow } = await supabase
+            .from('app_users')
+            .select('id, email, full_name, role, location, location_id, floor, floor_id, is_active, last_login, created_at, updated_at, tenant_id')
+            .eq('id', session.user.id)
+            .single();
+
+        if (mounted && uRow) {
+          setUser({
+            id: uRow.id,
+            email: uRow.email || email,
+            full_name: uRow.full_name || email,
+            role: (uRow.role || 'admin') as any,
+            location: uRow.location || null,
+            location_id: uRow.location_id || null,
+            floor: uRow.floor || null,
+            floor_id: uRow.floor_id || null,
+            is_active: uRow.is_active ?? true,
+            last_login: uRow.last_login,
+            created_at: uRow.created_at,
+            updated_at: uRow.updated_at,
+            tenant_id: uRow.tenant_id,
+          });
+        }
+      } catch (err) {
+        console.warn('Session restore failed:', err);
+      } finally {
+        if (mounted) setIsAuthLoading(false);
+      }
+    }
+
+    restoreSession();
+
+    // Listen to auth changes (logout from other tabs, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // ── Background profile refresh — picks up missing fields (floor, etc.) ──
+  // Legacy "view as client" state is no longer used - clear any stale scope.
   useEffect(() => {
-    if (!user || user.role === 'staff' || user.role === 'super_admin') return;
-    // Only refresh if key fields are missing
-    const saved = localStorage.getItem('staffManagementLogin');
-    if (!saved) return;
-    const session = JSON.parse(saved);
-    const token = session?.sessionToken;
-    if (!token) return;
+    try { sessionStorage.removeItem('impersonateTenantId'); } catch { /* ignore */ }
+  }, []);
 
-    const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || "https://nsmppwnpdxomjmgrtqka.supabase.co";
-    const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY || (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zbXBwd25wZHhvbWptZ3J0cWthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1NDM3NjksImV4cCI6MjA2NzExOTc2OX0.gVzJ4uPAmFT5yngvdcFsHXHH1cUL-nIq0e71Gx8ALOk";
-
-    fetch(`${SUPABASE_URL}/functions/v1/data-api`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'x-session-token': token,
-        ...(token.startsWith('eyJ') ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({
-        table: 'app_users',
-        op: 'select',
-        filters: [{ col: 'email', op: 'eq', val: user.email }],
-        columns: 'id, email, full_name, role, location, location_id, floor, floor_id',
-        single: true,
-      }),
-    })
-      .then(r => r.json())
-      .then(json => {
-        const fresh = Array.isArray(json.data) ? json.data[0] : json.data;
-        if (!fresh) return;
-        // Merge fresh server data into user state
-        const updated = { ...user, location: fresh.location, floor: fresh.floor, floorId: fresh.floor_id };
-        setUser(updated as any);
-        // Also update localStorage so next load is immediate
-        if (session.user) {
-          session.user.location = fresh.location;
-          session.user.floor = fresh.floor;
-          session.user.floorId = fresh.floor_id;
-          localStorage.setItem('staffManagementLogin', JSON.stringify(session));
-        }
-      })
-      .catch(() => { /* silent — best-effort refresh */ });
-  }, []); // Run once on mount
+  // 🚀 Background profile refresh is no longer needed via edge function 🚀
 
   const [activeTab, setActiveTabState] = useState<NavigationTab>(() => {
     const saved = localStorage.getItem('activeTab');
@@ -465,9 +458,12 @@ function App() {
     setUser(userData as User);
   };
 
-  const handleLogout = () => {
-    try { localStorage.removeItem('impersonateTenantName'); } catch {}
+  const handleLogout = async () => {
+    try { sessionStorage.removeItem('impersonateTenantId'); } catch {}
     
+    // Sign out from Supabase
+    try { await supabase.auth.signOut(); } catch (e) { console.warn('Supabase signout failed', e); }
+
     localStorage.removeItem('staffManagementLogin');
     localStorage.removeItem('sessionToken');
     localStorage.removeItem('activeTab');
@@ -1514,6 +1510,16 @@ function App() {
               Check the browser console for more details.
             </p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0b] flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <SkeletonLoader />
         </div>
       </div>
     );

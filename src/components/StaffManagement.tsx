@@ -23,6 +23,8 @@ import { StaffBulkActionBar } from './StaffBulkActionBar';
 import { CustomFieldsManagerModal } from './CustomFieldsManagerModal';
 import { Sliders } from 'lucide-react';
 
+import { userPreferencesService } from '../services/userPreferencesService';
+
 interface StaffManagementProps {
   staff: Staff[];
   salaryHikes: PayrollHike[];
@@ -61,23 +63,25 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const [designationFilter, setDesignationFilter] = useState<string>('All');
   const [experienceSort, setExperienceSort] = useState<'none' | 'asc' | 'desc'>('none');
   const [showColumnPicker, setShowColumnPicker] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem('staffVisibleColumns');
-    if (saved) return JSON.parse(saved);
-    return {
-      employeeCode: true,
-      location: true, floor: true, designation: true, experience: true,
-      basic: true, incentive: true, hra: true, meal: true, total: true,
-      staffType: true, payment: true, bankName: false, accountNo: false,
-      ifsc: false, nextHike: false, hikeInterval: false, salaryHistory: true,
-      contact: true, address: true, image: true
-    };
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
+    employeeCode: true,
+    location: true, floor: true, designation: true, experience: true,
+    basic: true, incentive: true, hra: true, meal: true, total: true,
+    staffType: true, payment: true, bankName: false, accountNo: false,
+    ifsc: false, nextHike: false, hikeInterval: false, salaryHistory: true,
+    contact: true, address: true, image: true
   });
+
+  useEffect(() => {
+    userPreferencesService.getPreference<Record<string, boolean> | null>('staffVisibleColumns', null).then(saved => {
+      if (saved) setVisibleColumns(saved);
+    });
+  }, []);
 
   const toggleColumn = (col: string) => {
     setVisibleColumns(prev => {
       const updated = { ...prev, [col]: !prev[col] };
-      localStorage.setItem('staffVisibleColumns', JSON.stringify(updated));
+      userPreferencesService.setPreference('staffVisibleColumns', updated);
       return updated;
     });
   };
@@ -757,7 +761,6 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     const experience = calculateExperience(formData.joinedDate);
 
     if (editingStaff) {
-      settingsService.updateStaffSupplement(editingStaff.id, formData.salarySupplements);
       onUpdateStaff(editingStaff.id, {
         ...formData,
         totalPayroll,

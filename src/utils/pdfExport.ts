@@ -1,14 +1,16 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { Staff, Attendance, PayrollDetail, OldStaffRecord, PartTimeSalaryDetail } from '../types';
 
-export const exportAttendancePDF = (
+export const exportAttendancePDF = async (
   staff: Staff[],
   attendance: Attendance[],
   selectedDate: string,
   isMonthly: boolean = false,
   monthlyData?: { month: number; year: number }
 ) => {
+  const XLSX = await import('xlsx');
+  const { default: jsPDF } = await import('jspdf');
+  const autoTable = (await import('jspdf-autotable')).default;
+
   const doc = new jsPDF();
   
   // Header
@@ -60,13 +62,17 @@ export const exportAttendancePDF = (
   doc.save(`attendance-report-${selectedDate}.pdf`);
 };
 
-export const exportSalaryPDF = (
+export const exportSalaryPDF = async (
   salaryDetails: PayrollDetail[],
   partTimeSalaries: PartTimeSalaryDetail[],
   staff: Staff[],
   month: number,
   year: number
 ) => {
+  const XLSX = await import('xlsx');
+  const { default: jsPDF } = await import('jspdf');
+  const autoTable = (await import('jspdf-autotable')).default;
+
   const doc = new jsPDF('landscape');
   
   // Header
@@ -143,10 +149,14 @@ export const OLD_STAFF_PDF_COLUMNS = [
   { key: 'reason', label: 'Reason' },
 ];
 
-export const exportOldStaffPDF = (
+export const exportOldStaffPDF = async (
   oldStaffRecords: OldStaffRecord[],
   visibleColumns?: string[]
 ) => {
+  const XLSX = await import('xlsx');
+  const { default: jsPDF } = await import('jspdf');
+  const autoTable = (await import('jspdf-autotable')).default;
+
   const doc = new jsPDF('landscape');
   const cols = OLD_STAFF_PDF_COLUMNS.filter(c => !visibleColumns || visibleColumns.includes(c.key));
 

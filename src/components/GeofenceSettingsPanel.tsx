@@ -13,7 +13,7 @@ export const GeofenceSettingsPanel: React.FC = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        setRequireGeofence(settingsService.getRequireGeofence());
+        settingsService.getRequireGeofence().then(setRequireGeofence);
         loadBranches();
     }, []);
 

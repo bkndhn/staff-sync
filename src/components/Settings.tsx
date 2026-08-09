@@ -19,6 +19,8 @@ import { BiometricIntegrationHub } from './BiometricIntegrationHub';
 import { GeofenceSettingsPanel } from './GeofenceSettingsPanel';
 import { FeatureTogglesPanel } from './FeatureTogglesPanel';
 
+import { userPreferencesService } from '../services/userPreferencesService';
+
 interface SettingsProps {
     userRole: string;
     currentUserEmail?: string;
@@ -212,10 +214,14 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [staffLoginEnabled, setStaffLoginEnabled] = useState(() => {
-        const saved = localStorage.getItem('staffLoginEnabled');
-        return saved !== 'false';
-    });
+    const [staffLoginEnabled, setStaffLoginEnabled] = useState(true);
+
+    useEffect(() => {
+        userPreferencesService.getPreference<boolean>('staffLoginEnabled', true).then(val => {
+            setStaffLoginEnabled(val);
+        });
+    }, []);
+
     const [defaultHikeInterval, setDefaultHikeInterval] = useState(12);
     const [hikeSaving, setHikeSaving] = useState(false);
     const [showTodayPunches, setShowTodayPunches] = useState(true);
@@ -486,7 +492,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                     onClick={() => {
                         const newVal = !staffLoginEnabled;
                         setStaffLoginEnabled(newVal);
-                        localStorage.setItem('staffLoginEnabled', String(newVal));
+                        userPreferencesService.setPreference('staffLoginEnabled', newVal);
                     }}
                     style={{
                         position: 'relative',

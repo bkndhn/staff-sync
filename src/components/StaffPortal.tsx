@@ -202,7 +202,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         const { settingsService } = await import('../services/settingsService');
         const allLocs = await locationService.getLocations();
         const locConfig: any = allLocs.find(l => l.name === staff.location);
-        const requireGeofence = settingsService.getRequireGeofence();
+        const requireGeofence = await settingsService.getRequireGeofence();
         
         if (locConfig && locConfig.latitude != null && locConfig.longitude != null) {
           if (requireGeofence) {

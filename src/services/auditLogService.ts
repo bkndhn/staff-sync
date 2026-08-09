@@ -38,16 +38,6 @@ export function diffObjects(
 
 export const auditLogService = {
   async getLogs(): Promise<AuditLog[]> {
-    const localLogsJson = localStorage.getItem(STORAGE_KEY);
-    let localLogs: AuditLog[] = [];
-    if (localLogsJson) {
-      try {
-        localLogs = JSON.parse(localLogsJson);
-      } catch (e) {
-        console.error('Failed to parse local audit logs', e);
-      }
-    }
-
     if (isSupabaseConfigured) {
       try {
         const { data, error } = await (supabase as any)
@@ -69,14 +59,13 @@ export const auditLogService = {
             before: d.before ?? undefined,
             after: d.after ?? undefined,
           }));
-          const mergedMap = new Map<string, AuditLog>();
-          [...localLogs, ...remoteLogs].forEach(log => mergedMap.set(log.id, log));
-          return Array.from(mergedMap.values()).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+          return remoteLogs;
         }
-      } catch { /* fall through */ }
+      } catch (e) {
+        console.error('Error fetching audit logs:', e);
+      }
     }
-
-    return localLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    return [];
   },
 
   async log(entry: Omit<AuditLog, 'id' | 'timestamp'>): Promise<AuditLog> {
@@ -93,16 +82,6 @@ export const auditLogService = {
       timestamp: new Date().toISOString(),
     };
 
-    // Persist locally (BUG FIX: was passing object to setItem, so nothing was ever saved)
-    try {
-      const existingJson = localStorage.getItem(STORAGE_KEY);
-      const existing: AuditLog[] = existingJson ? JSON.parse(existingJson) : [];
-      const updated = [newLog, ...existing].slice(0, 500);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    } catch (e) {
-      console.error('Failed to persist audit log locally', e);
-    }
-
     if (isSupabaseConfigured) {
       try {
         await (supabase as any).from('audit_logs').insert([{
@@ -117,13 +96,18 @@ export const auditLogService = {
           before: newLog.before ?? null,
           after: newLog.after ?? null,
         }]);
-      } catch { /* non-fatal */ }
+      } catch (e) {
+        console.error('Failed to log to Supabase:', e);
+      }
     }
 
     return newLog;
   },
 
   async clearLogs(): Promise<void> {
-    localStorage.removeItem(STORAGE_KEY);
+    // If we want to allow clearing audit logs from Supabase, we could do it here.
+    // However, audit logs usually shouldn't be clearable by standard admins.
+    // Assuming this is fine to do nothing or log a warning.
+    console.warn('Audit logs cannot be cleared locally anymore.');
   },
 };

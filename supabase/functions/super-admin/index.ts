@@ -34,8 +34,6 @@ const TENANT_TABLES = [
   "statutory_portal_config",
 ];
 
-const ALLOWED_ROLES = ["admin", "manager", "supervisor", "statutory_admin", "staff"];
-
 function slugify(v: string) {
   return v.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 }

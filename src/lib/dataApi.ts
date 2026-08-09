@@ -4,9 +4,9 @@
 //
 //   await dataApi.from('staff').select('*').eq('id', x).single();
 //   await dataApi.from('attendance').upsert(rows, { onConflict: 'staff_id,date,is_part_time' });
-//
-// The session token is read from localStorage('sessionToken') — same place
-// the legacy custom auth stores it today.
+// The session token is read from Supabase Auth directly.
+
+import { supabase } from './supabase';
 
 type Filter = { col: string; op: string; val: unknown };
 
@@ -85,31 +85,29 @@ class QueryBuilder<T = any> implements PromiseLike<{ data: T | null; error: Erro
     onRejected?: ((reason: unknown) => TR2 | PromiseLike<TR2>) | null,
   ): Promise<TR1 | TR2> {
     try {
-      // Session token priority: staffManagementLogin blob (always fresh from
-      // latest login) → bare sessionToken key (legacy/staff logins).
       let token: string | null = null;
       try {
-        const raw = localStorage.getItem("staffManagementLogin");
-        if (raw) token = JSON.parse(raw)?.sessionToken || null;
-      } catch { /* ignore malformed cache */ }
-      if (!token) token = localStorage.getItem("sessionToken");
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          token = session.access_token;
+        }
+      } catch { /* ignore */ }
+      
       if (!token) {
-        // Not logged in yet — short-circuit so screens render empty
-        // instead of throwing on a 401 from the edge function.
         const empty = { data: (this.state.single ? null : []) as unknown as T, error: null };
         return onFulfilled ? onFulfilled(empty) : (empty as unknown as TR1);
       }
+      
       // Super admin "view as client" support: scopes every request to a client.
       const impersonated = (() => {
-        try { return localStorage.getItem('impersonateTenantId') || ''; } catch { return ''; }
+        try { return sessionStorage.getItem('impersonateTenantId') || ''; } catch { return ''; }
       })();
       const res = await fetch(FUNCTION_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           apikey: SUPABASE_PUBLISHABLE_KEY,
-          "x-session-token": token,
-          ...(token.startsWith("eyJ") ? { "Authorization": `Bearer ${token}` } : {}),
+          ...(token ? { "x-session-token": token, "Authorization": `Bearer ${token}` } : {}),
           ...(impersonated ? { "x-tenant-id": impersonated } : {}),
         },
         body: JSON.stringify(this.state),
