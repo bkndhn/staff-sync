@@ -763,15 +763,18 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
 
   const handleExportPDF = () => {
     if (!payrollRun) return customAlert('Please generate payroll first.');
+    if (blockIfInvalid('exporting the PDF')) return;
     exportSalaryPDF(salaryDetails, partTimeSalaries, getBaseStaffList(), selectedMonth, selectedYear);
   };
 
   const handleDownloadAllSlips = () => {
     if (!payrollRun) return customAlert('Please generate payroll first.');
+    if (blockIfInvalid('downloading salary slips')) return;
     exportBulkSalarySlipsPDF(salaryDetails, getBaseStaffList(), selectedMonth, selectedYear);
   };
 
   const handleGeneratePayroll = async () => {
+    if (blockIfInvalid('generating payroll')) return;
     if (!await customConfirm('Generate Payroll', 'Are you sure you want to generate payroll for this month? This will snapshot the current salaries and lock them.')) return;
     setGeneratingPayroll(true);
     try {
