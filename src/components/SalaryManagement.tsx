@@ -529,7 +529,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
   const partTimeSalaries = calculatePartTimeSalaries();
   const salaryValidation = validateSalaryBatch(
     salaryDetails,
-    (id) => getStaffForDisplay(id)?.name
+    (id: string) => getStaffForDisplay(id)?.name
   );
   const [showValidationDetails, setShowValidationDetails] = useState(false);
 
