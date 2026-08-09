@@ -14,6 +14,7 @@ import { salaryCategoryService, type PayrollCategory } from '../services/salaryC
 import { salaryOverrideService } from '../services/salaryOverrideService';
 import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryService';
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
+import { validateSalaryBatch, reconcileSalary, type SalaryIssue } from '../utils/salaryValidation';
 import { appSettingsService } from '../services/appSettingsService';
 import { payrollService } from '../services/payrollService';
 import { leaveService, type LeaveRequest } from '../services/leaveService';
