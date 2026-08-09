@@ -192,18 +192,16 @@ body.light-theme [class*="bg-gradient"] span,
 body.light-theme [class*="bg-gradient"] button:not(.bg-white):not([class*="bg-white"]),
 body.light-theme [class*="from-blue"] .text-white,
 body.light-theme [class*="from-blue"] h1,
-body.light-theme [class*="from-blue"] h2,
-body.light-theme [class*="from-blue"] h3,
-body.light-theme [class*="from-purple"] .text-white,
-body.light-theme [class*="from-purple"] h1,
-body.light-theme [class*="from-purple"] h2,
-body.light-theme [class*="from-purple"] h3,
-body.light-theme [class*="from-amber"] .text-white,
-body.light-theme [class*="from-amber"] h1,
-body.light-theme [class*="from-amber"] h2,
-body.light-theme [class*="from-amber"] h3,
-body.light-theme [class*="from-amber"] p,
-body.light-theme [class*="from-amber"] span {
+body.light-theme .section-header[class*="from-blue"] h2,
+body.light-theme .section-header[class*="from-blue"] h3,
+body.light-theme .section-header[class*="from-purple"] .text-white,
+body.light-theme .section-header[class*="from-purple"] h1,
+body.light-theme .section-header[class*="from-purple"] h2,
+body.light-theme .section-header[class*="from-purple"] h3,
+body.light-theme .section-header[class*="from-amber"] .text-white,
+body.light-theme .section-header[class*="from-amber"] h1,
+body.light-theme .section-header[class*="from-amber"] h2,
+body.light-theme .section-header[class*="from-amber"] h3 {
   color: #ffffff !important;
 }
 
@@ -2873,18 +2871,6 @@ body.light-theme .bg-sky-600 * {
   color: #ffffff !important;
 }
 
-/* COMPREHENSIVE LIGHT THEME TEXT VISIBILITY FIX */
-body.light-theme .text-white { color: var(--text-primary) !important; }
-body.light-theme .text-white\/90 { color: rgba(26, 26, 46, 0.9) !important; }
-body.light-theme .text-white\/80 { color: rgba(26, 26, 46, 0.8) !important; }
-body.light-theme .text-white\/70 { color: rgba(26, 26, 46, 0.7) !important; }
-body.light-theme .text-white\/60 { color: rgba(26, 26, 46, 0.6) !important; }
-body.light-theme .text-white\/50 { color: rgba(26, 26, 46, 0.5) !important; }
-body.light-theme .text-white\/40 { color: rgba(26, 26, 46, 0.4) !important; }
-body.light-theme .text-white\/30 { color: rgba(26, 26, 46, 0.3) !important; }
-body.light-theme .text-white\/20 { color: rgba(26, 26, 46, 0.2) !important; }
-body.light-theme .text-white\/10 { color: rgba(26, 26, 46, 0.1) !important; }
-
 /* ============================================
    LIGHT THEME SOLID BUTTON & BADGE WHITE TEXT GUARANTEE
    ============================================ */
@@ -3125,93 +3111,6 @@ body.light-theme .glass-card-static,
 body.light-theme .glass-card {
   color: #1E293B !important;
 }
-body.light-theme .glass-card-static h1,
-body.light-theme .glass-card-static h2,
-body.light-theme .glass-card-static h3,
-body.light-theme .glass-card-static h4,
-body.light-theme .glass-card-static h5,
-body.light-theme .glass-card h1,
-body.light-theme .glass-card h2,
-body.light-theme .glass-card h3,
-body.light-theme .glass-card h4,
-body.light-theme .glass-card h5 {
-  color: #0F172A !important;
-}
-body.light-theme .glass-card-static p:not([class*="text-white"]),
-body.light-theme .glass-card-static span:not(button *):not([class*="bg-"]):not([class*="badge"]):not([class*="rounded-full"]),
-body.light-theme .glass-card p:not([class*="text-white"]),
-body.light-theme .glass-card span:not(button *):not([class*="bg-"]):not([class*="badge"]):not([class*="rounded-full"]) {
-  color: #334155 !important;
-}
-
-/* ============================================================
-   10. EXCEPTION: Keep white text INSIDE colored bg containers
-   even when nested inside glass-card-static.
-   These selectors are MORE specific than section 9 above.
-   ============================================================ */
-body.light-theme .glass-card-static [class*="bg-blue-5"] *,
-body.light-theme .glass-card-static [class*="bg-blue-6"] *,
-body.light-theme .glass-card-static [class*="bg-blue-7"] *,
-body.light-theme .glass-card-static [class*="bg-sky-5"] *,
-body.light-theme .glass-card-static [class*="bg-sky-6"] *,
-body.light-theme .glass-card-static [class*="bg-indigo-5"] *,
-body.light-theme .glass-card-static [class*="bg-indigo-6"] *,
-body.light-theme .glass-card-static [class*="bg-emerald-5"] *,
-body.light-theme .glass-card-static [class*="bg-emerald-6"] *,
-body.light-theme .glass-card-static [class*="bg-red-5"] *,
-body.light-theme .glass-card-static [class*="bg-red-6"] *,
-body.light-theme .glass-card-static [class*="bg-green-5"] *,
-body.light-theme .glass-card-static [class*="bg-green-6"] *,
-body.light-theme .glass-card-static [class*="bg-amber-5"] *,
-body.light-theme .glass-card-static [class*="bg-amber-6"] *,
-body.light-theme .glass-card-static [class*="bg-orange-5"] *,
-body.light-theme .glass-card-static [class*="bg-orange-6"] *,
-body.light-theme .glass-card-static [class*="bg-purple-5"] *,
-body.light-theme .glass-card-static [class*="bg-purple-6"] *,
-body.light-theme .glass-card-static [class*="bg-gradient"] *,
-body.light-theme .glass-card-static .btn-premium,
-body.light-theme .glass-card-static .btn-premium *,
-body.light-theme .glass-card-static button.bg-blue-600,
-body.light-theme .glass-card-static button.bg-blue-600 *,
-body.light-theme .glass-card-static button.bg-sky-500,
-body.light-theme .glass-card-static button.bg-sky-500 *,
-body.light-theme .glass-card [class*="bg-blue-5"] *,
-body.light-theme .glass-card [class*="bg-blue-6"] *,
-body.light-theme .glass-card [class*="bg-blue-7"] *,
-body.light-theme .glass-card [class*="bg-sky-5"] *,
-body.light-theme .glass-card [class*="bg-sky-6"] *,
-body.light-theme .glass-card [class*="bg-indigo-5"] *,
-body.light-theme .glass-card [class*="bg-indigo-6"] *,
-body.light-theme .glass-card [class*="bg-emerald-5"] *,
-body.light-theme .glass-card [class*="bg-emerald-6"] *,
-body.light-theme .glass-card [class*="bg-red-5"] *,
-body.light-theme .glass-card [class*="bg-red-6"] *,
-body.light-theme .glass-card .btn-premium,
-body.light-theme .glass-card .btn-premium * {
-  color: #FFFFFF !important;
-}
-
-/* Colored text inside glass cards should use their darker light-theme variant */
-body.light-theme .glass-card-static .text-amber-400,
-body.light-theme .glass-card .text-amber-400 { color: #B45309 !important; }
-body.light-theme .glass-card-static .text-emerald-400,
-body.light-theme .glass-card .text-emerald-400 { color: #047857 !important; }
-body.light-theme .glass-card-static .text-blue-400,
-body.light-theme .glass-card .text-blue-400 { color: #1D4ED8 !important; }
-body.light-theme .glass-card-static .text-red-400,
-body.light-theme .glass-card .text-red-400 { color: #B91C1C !important; }
-body.light-theme .glass-card-static .text-indigo-400,
-body.light-theme .glass-card .text-indigo-400 { color: #4338CA !important; }
-body.light-theme .glass-card-static .text-purple-400,
-body.light-theme .glass-card .text-purple-400 { color: #6D28D9 !important; }
-body.light-theme .glass-card-static .text-orange-400,
-body.light-theme .glass-card .text-orange-400 { color: #C2410C !important; }
-
-/* Status badge text remains white on colored pill backgrounds */
-body.light-theme .glass-card-static [class*="rounded-full"][class*="bg-"],
-body.light-theme .glass-card [class*="rounded-full"][class*="bg-"] {
-  color: inherit !important;
-}
 
 /* ====================================================================
    UNIVERSAL COMPACT & FULL-WIDTH RESPONSIVE SYSTEM
@@ -3350,4 +3249,108 @@ table td {
     padding-right: 6px;
     font-size: 0.75rem !important;
   }
+}
+
+/* ====================================================================
+   DASHBOARD WIDGET LIGHT THEME TEXT FIX — LOADED LAST, WINS ALL
+   These rules live at the very bottom so they override every earlier
+   !important rule. They restore correct text colors for all dashboard
+   widgets, stat cards, and the AI Insights panel in light theme.
+   ==================================================================== */
+
+/* ---- Widget card titles & subtitles ---- */
+body.light-theme .glass-card-static h3,
+body.light-theme .glass-card-static h2,
+body.light-theme .glass-card-static h4 {
+  color: #0F172A !important;
+}
+body.light-theme .glass-card-static p,
+body.light-theme .glass-card-static .text-\[var\(--text-muted\)\] {
+  color: #475569 !important;
+}
+
+/* ---- Tailwind text utility overrides inside cards ---- */
+body.light-theme .glass-card-static .text-gray-900 { color: #0F172A !important; }
+body.light-theme .glass-card-static .text-gray-800 { color: #1E293B !important; }
+body.light-theme .glass-card-static .text-gray-700 { color: #334155 !important; }
+body.light-theme .glass-card-static .text-gray-600 { color: #475569 !important; }
+body.light-theme .glass-card-static .text-gray-500 { color: #64748B !important; }
+body.light-theme .glass-card-static .text-gray-400 { color: #94A3B8 !important; }
+
+/* ---- Coloured accent text in cards ---- */
+body.light-theme .glass-card-static .text-emerald-600 { color: #047857 !important; }
+body.light-theme .glass-card-static .text-emerald-400 { color: #059669 !important; }
+body.light-theme .glass-card-static .text-amber-600  { color: #B45309 !important; }
+body.light-theme .glass-card-static .text-amber-400  { color: #D97706 !important; }
+body.light-theme .glass-card-static .text-rose-600   { color: #BE123C !important; }
+body.light-theme .glass-card-static .text-rose-400   { color: #E11D48 !important; }
+body.light-theme .glass-card-static .text-indigo-600 { color: #4338CA !important; }
+body.light-theme .glass-card-static .text-indigo-400 { color: #6366F1 !important; }
+body.light-theme .glass-card-static .text-cyan-600   { color: #0E7490 !important; }
+body.light-theme .glass-card-static .text-cyan-400   { color: #0891B2 !important; }
+body.light-theme .glass-card-static .text-purple-700 { color: #6D28D9 !important; }
+body.light-theme .glass-card-static .text-purple-400 { color: #7C3AED !important; }
+body.light-theme .glass-card-static .text-orange-600 { color: #C2410C !important; }
+body.light-theme .glass-card-static .text-orange-400 { color: #EA580C !important; }
+body.light-theme .glass-card-static .text-green-700  { color: #15803D !important; }
+body.light-theme .glass-card-static .text-emerald-500 { color: #059669 !important; }
+body.light-theme .glass-card-static .text-amber-500  { color: #D97706 !important; }
+
+/* ---- span/div generic text inside cards ---- */
+body.light-theme .glass-card-static span:not([class*="bg-"]):not([class*="rounded-full"]),
+body.light-theme .glass-card-static div:not([class*="bg-"]) > span {
+  color: inherit;
+}
+
+/* ---- SVG icons inside coloured icon containers keep their colour ---- */
+body.light-theme .glass-card-static [class*="bg-indigo-500/20"] svg,
+body.light-theme .glass-card-static [class*="bg-purple-500/20"] svg,
+body.light-theme .glass-card-static [class*="bg-cyan-500/20"] svg,
+body.light-theme .glass-card-static [class*="bg-emerald-500/20"] svg,
+body.light-theme .glass-card-static [class*="bg-amber-500/20"] svg,
+body.light-theme .glass-card-static [class*="bg-rose-500/20"] svg {
+  color: inherit !important;
+}
+
+/* ---- AI Insights Widget gradient card text ---- */
+body.light-theme .glass-card-static [class*="from-emerald"] p,
+body.light-theme .glass-card-static [class*="from-emerald"] span,
+body.light-theme .glass-card-static [class*="from-amber"] p,
+body.light-theme .glass-card-static [class*="from-amber"] span,
+body.light-theme .glass-card-static [class*="from-indigo"] p,
+body.light-theme .glass-card-static [class*="from-indigo"] span {
+  color: inherit !important;
+}
+
+/* ---- Stat cards — top row numbers stay dark in light theme ---- */
+body.light-theme .stat-card p,
+body.light-theme .stat-card span {
+  color: var(--text-primary) !important;
+}
+/* Large number inside stat cards */
+body.light-theme .stat-card .text-3xl {
+  color: #0F172A !important;
+}
+body.light-theme .stat-card .text-amber-400 { color: #B45309 !important; }
+body.light-theme .stat-card .text-red-400   { color: #B91C1C !important; }
+body.light-theme .stat-card .text-purple-400 { color: #6D28D9 !important; }
+
+/* ---- Breaks Today widget ---- */
+body.light-theme [class*="from-amber-500/10"] h3,
+body.light-theme [class*="from-amber-500/10"] p,
+body.light-theme [class*="from-amber-500/10"] span:not([class*="bg-"]) {
+  color: #0F172A !important;
+}
+
+/* ---- White text on solid gradient buttons stays white ---- */
+body.light-theme [class*="from-indigo-5"][class*="to-purple"] *,
+body.light-theme [class*="from-green-5"][class*="to-emerald"] *,
+body.light-theme [class*="bg-gradient-to-r"][class*="from-indigo"] *,
+body.light-theme [class*="bg-gradient-to-r"][class*="from-green"] * {
+  color: #FFFFFF !important;
+}
+
+/* ---- Section header (branch title bar) always white ---- */
+body.light-theme .section-header * {
+  color: #FFFFFF !important;
 }

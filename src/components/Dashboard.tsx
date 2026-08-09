@@ -13,6 +13,15 @@ import {
   type ReportColumnKey,
   type ReportSortKey,
 } from '../utils/dashboardPdfExport';
+import AttendanceTrendChart from './dashboard/AttendanceTrendChart';
+import AttendanceDonutChart from './dashboard/AttendanceDonutChart';
+import BranchComparisonBarChart from './dashboard/BranchComparisonBarChart';
+import LivePunchActivityFeed from './dashboard/LivePunchActivityFeed';
+import PunctualityMetricsWidget from './dashboard/PunctualityMetricsWidget';
+import DailyPayrollOverviewWidget from './dashboard/DailyPayrollOverviewWidget';
+import AIWorkforceInsightsWidget from './dashboard/AIWorkforceInsightsWidget';
+import DashboardQuickActions from './dashboard/DashboardQuickActions';
+import DashboardWidgetConfigModal, { DashboardWidgetConfig, DEFAULT_WIDGET_CONFIG } from './dashboard/DashboardWidgetConfigModal';
 
 interface DashboardProps {
   staff: Staff[];
@@ -53,6 +62,20 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [reportSort, setReportSort] = React.useState<ReportSortKey>(() => {
     return (localStorage.getItem('dashboard_report_sort') as ReportSortKey) || 'name';
   });
+  const [showWidgetConfigModal, setShowWidgetConfigModal] = React.useState(false);
+  const [widgetConfig, setWidgetConfig] = React.useState<DashboardWidgetConfig>(() => {
+    try {
+      const stored = localStorage.getItem('dashboard_widget_config');
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return DEFAULT_WIDGET_CONFIG;
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('dashboard_widget_config', JSON.stringify(widgetConfig));
+    } catch {}
+  }, [widgetConfig]);
 
   React.useEffect(() => {
     try { localStorage.setItem('dashboard_report_columns', JSON.stringify(reportColumns)); } catch { /* ignore */ }
@@ -366,29 +389,13 @@ const Dashboard: React.FC<DashboardProps> = ({
             {/* Mobile Actions could go here if needed */}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            <button
-              onClick={() => handleSharePDF('overall')}
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white text-xs font-semibold transition-all shadow-sm"
-              title="Share report on WhatsApp"
-            >
-              <Share2 size={14} />
-              <span>Share</span>
-            </button>
-            <button
-              onClick={() => handleExportPDF('overall')}
-              className="p-1.5 px-3 bg-white/10 hover:bg-white/20 text-[var(--text-primary)] rounded-lg transition-colors border border-[var(--glass-border)]"
-              title="Download PDF"
-            >
-              <Download size={14} />
-            </button>
-            <button
-              onClick={() => setShowReportConfig(true)}
-              className="p-1.5 px-3 bg-white/10 hover:bg-white/20 text-[var(--text-primary)] rounded-lg transition-colors border border-[var(--glass-border)]"
-              title="Report Config"
-            >
-              <SlidersHorizontal size={14} />
-            </button>
+          <div className="w-full md:w-auto">
+            <DashboardQuickActions
+              onShareWhatsApp={() => handleSharePDF('overall')}
+              onExportPDF={() => handleExportPDF('overall')}
+              onOpenReportConfig={() => setShowReportConfig(true)}
+              onOpenWidgetConfig={() => setShowWidgetConfigModal(true)}
+            />
           </div>
         </div>
 
@@ -419,6 +426,15 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* AI Workforce Insights Highlight Banner */}
+      {widgetConfig.showAIInsights && (
+        <AIWorkforceInsightsWidget
+          staff={staff}
+          todayAttendance={todayAttendance}
+          locations={locations}
+        />
+      )}
 
       {/* Stats Cards - Admin Only */}
       {userRole === 'admin' && (
@@ -473,6 +489,14 @@ const Dashboard: React.FC<DashboardProps> = ({
               </div>
             </div>
           </div>
+
+          {widgetConfig.showDailyPayroll && (
+            <DailyPayrollOverviewWidget
+              todayAttendance={todayAttendance}
+              staff={staff}
+            />
+          )}
+
           {!statutoryMode && (
             <div className="grid grid-cols-1">
               <div className="stat-card stat-card-purple card-animate">
@@ -491,11 +515,66 @@ const Dashboard: React.FC<DashboardProps> = ({
               </div>
             </div>
           )}
-
         </div>
       )}
 
+      {/* Visual Analytics Charts Grid */}
+      {(widgetConfig.showTrendChart || widgetConfig.showDonutChart) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {widgetConfig.showTrendChart && (
+            <div className={widgetConfig.showDonutChart ? 'lg:col-span-2' : 'lg:col-span-3'}>
+              <AttendanceTrendChart
+                attendance={attendance}
+                totalActiveStaff={allActiveStaff.length}
+              />
+            </div>
+          )}
+          {widgetConfig.showDonutChart && (
+            <div className={widgetConfig.showTrendChart ? 'lg:col-span-1' : 'lg:col-span-3'}>
+              <AttendanceDonutChart
+                present={presentToday}
+                halfDay={halfDayToday}
+                absent={absentToday}
+                uninformed={uninformedCount}
+                totalStaff={allActiveStaff.length}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Real-time Operations & Branch Comparison Grid */}
+      {(widgetConfig.showPunchStream || widgetConfig.showPunctuality || widgetConfig.showBranchBarChart) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {widgetConfig.showBranchBarChart && userRole === 'admin' && (
+            <BranchComparisonBarChart
+              locations={locations}
+              activeStaff={activeStaff}
+              todayAttendance={todayAttendance}
+            />
+          )}
+          {widgetConfig.showPunchStream && (
+            <LivePunchActivityFeed
+              todayAttendance={todayAttendance}
+              staff={staff}
+            />
+          )}
+          {widgetConfig.showPunctuality && (
+            <PunctualityMetricsWidget
+              todayAttendance={todayAttendance}
+              staff={staff}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Breaks Today Widget */}
+      {widgetConfig.showBreaksWidget && (
+        <BreaksDashboardWidget location={userRole === 'admin' ? undefined : userLocation} />
+      )}
+
       {/* Branch-based Attendance */}
+      {widgetConfig.showBranchCards && (
       <div className="section-card">
         <div className="section-header">
           <MapPin size={20} className="text-white" />
@@ -722,6 +801,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           })}
         </div>
       </div>
+      )}
 
       {/* Overall Organization Attendance - Admin Only */}
       {userRole === 'admin' && (
@@ -854,6 +934,13 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
+      {/* Dashboard Widget Customization Modal */}
+      <DashboardWidgetConfigModal
+        isOpen={showWidgetConfigModal}
+        onClose={() => setShowWidgetConfigModal(false)}
+        config={widgetConfig}
+        onChange={setWidgetConfig}
+      />
     </div>
 
   );
