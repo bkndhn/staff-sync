@@ -14,6 +14,7 @@ import { salaryCategoryService, type PayrollCategory } from '../services/salaryC
 import { salaryOverrideService } from '../services/salaryOverrideService';
 import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryService';
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
+import { validateSalaryBatch, reconcileSalary, type SalaryIssue } from '../utils/salaryValidation';
 import { appSettingsService } from '../services/appSettingsService';
 import { payrollService } from '../services/payrollService';
 import { leaveService, type LeaveRequest } from '../services/leaveService';
@@ -526,6 +527,22 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
 
   const salaryDetails = calculateSalaryDetails();
   const partTimeSalaries = calculatePartTimeSalaries();
+  const salaryValidation = validateSalaryBatch(
+    salaryDetails,
+    (id: string) => getStaffForDisplay(id)?.name
+  );
+  const [showValidationDetails, setShowValidationDetails] = useState(false);
+
+  const blockIfInvalid = (action: string): boolean => {
+    if (salaryValidation.errorCount > 0) {
+      customAlert(
+        `${salaryValidation.errorCount} salary record(s) do not reconcile. Fix them before ${action}. Open "Salary checks" for details.`
+      );
+      setShowValidationDetails(true);
+      return true;
+    }
+    return false;
+  };
   const totalSalaryDisbursed = salaryDetails.reduce((sum, detail) => sum + (detail.netPayroll ?? detail.netSalary ?? 0), 0);
   const totalPartTimeEarnings = partTimeSalaries.reduce((sum, salary) => sum + salary.totalEarnings, 0);
   const averageAttendance = salaryDetails.length > 0
@@ -746,15 +763,18 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
 
   const handleExportPDF = () => {
     if (!payrollRun) return customAlert('Please generate payroll first.');
+    if (blockIfInvalid('exporting the PDF')) return;
     exportSalaryPDF(salaryDetails, partTimeSalaries, getBaseStaffList(), selectedMonth, selectedYear);
   };
 
   const handleDownloadAllSlips = () => {
     if (!payrollRun) return customAlert('Please generate payroll first.');
+    if (blockIfInvalid('downloading salary slips')) return;
     exportBulkSalarySlipsPDF(salaryDetails, getBaseStaffList(), selectedMonth, selectedYear);
   };
 
   const handleGeneratePayroll = async () => {
+    if (blockIfInvalid('generating payroll')) return;
     if (!await customConfirm('Generate Payroll', 'Are you sure you want to generate payroll for this month? This will snapshot the current salaries and lock them.')) return;
     setGeneratingPayroll(true);
     try {
@@ -1430,6 +1450,41 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Salary consistency checks */}
+        {salaryDetails.length > 0 && (
+          <div className={`mx-3 my-3 rounded-xl border p-3 ${salaryValidation.errorCount > 0 ? 'border-red-200 bg-red-50' : salaryValidation.warningCount > 0 ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
+            <button
+              type="button"
+              onClick={() => setShowValidationDetails(!showValidationDetails)}
+              className="w-full flex items-center justify-between gap-2 text-left"
+            >
+              <span className={`text-sm font-semibold ${salaryValidation.errorCount > 0 ? 'text-red-700' : salaryValidation.warningCount > 0 ? 'text-amber-700' : 'text-green-700'}`}>
+                {salaryValidation.errorCount > 0
+                  ? `${salaryValidation.errorCount} salary check(s) failed`
+                  : salaryValidation.warningCount > 0
+                    ? `${salaryValidation.warningCount} salary warning(s)`
+                    : 'All salary components reconcile'}
+              </span>
+              <span className="text-xs text-gray-600 underline">{showValidationDetails ? 'Hide' : 'Details'}</span>
+            </button>
+            {showValidationDetails && salaryValidation.issues.length > 0 && (
+              <ul className="mt-2 space-y-1 max-h-56 overflow-y-auto">
+                {salaryValidation.issues.map((issue: SalaryIssue, i: number) => (
+                  <li key={`${issue.staffId}-${issue.code}-${i}`} className="text-xs text-gray-700">
+                    <span className={`font-semibold ${issue.severity === 'error' ? 'text-red-700' : 'text-amber-700'}`}>
+                      {issue.severity === 'error' ? '✕' : '!'} {issue.staffName || issue.staffId}:
+                    </span>{' '}
+                    {issue.message}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {showValidationDetails && salaryValidation.issues.length === 0 && (
+              <p className="mt-2 text-xs text-gray-600">Gross, deductions, statutory and advances match the computed Net for every employee.</p>
+            )}
+          </div>
+        )}
 
         {/* Mobile card list (native app feel) */}
         <div className="md:hidden divide-y divide-gray-100">
