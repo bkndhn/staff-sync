@@ -166,34 +166,63 @@ Deno.serve(async (req) => {
       return json({ ok: true, fetched: punches.length, inserted: 0, skipped: 0, sample: punches.slice(0, 10) });
     }
 
-    // Insert into punch_events. Dedup on (device_id, punched_at).
+    // Insert into punch_events. Dedup on (staff_id, date, event_time).
     let inserted = 0, skipped = 0;
     const errors: string[] = [];
     for (const p of punches) {
       const d = new Date(p.timestamp);
       if (isNaN(d.getTime())) { skipped++; continue; }
       const iso = d.toISOString();
+      const dateStr = iso.split('T')[0];
+      const timeStr = iso.split('T')[1].substring(0, 8);
+      const dTime = d.getTime();
 
-      // Skip duplicates within ±60s
-      const winStart = new Date(d.getTime() - 60_000).toISOString();
-      const winEnd = new Date(d.getTime() + 60_000).toISOString();
+      // Resolve deviceId to staff record
+      const { data: staffData, error: staffErr } = await admin
+        .from("staff")
+        .select("id, name, location, tenant_id")
+        .eq("device_id", p.deviceId)
+        .limit(1)
+        .maybeSingle();
+
+      if (staffErr || !staffData) {
+        errors.push(`Unmapped device_id: ${p.deviceId}`);
+        skipped++;
+        continue;
+      }
+
+      // Check for duplicates within ±60s
       const { data: existing } = await admin
         .from("punch_events")
-        .select("id")
-        .eq("device_id", p.deviceId)
-        .gte("punched_at", winStart)
-        .lte("punched_at", winEnd)
-        .limit(1);
-      if (existing && existing.length > 0) { skipped++; continue; }
+        .select("id, event_time")
+        .eq("staff_id", staffData.id)
+        .eq("date", dateStr);
+
+      let isDuplicate = false;
+      if (existing) {
+        for (const e of existing) {
+           // Create a Date object for the existing event to compare timestamps
+           const eTime = new Date(`${dateStr}T${e.event_time}Z`).getTime(); 
+           if (Math.abs(dTime - eTime) < 60_000) {
+             isDuplicate = true;
+             break;
+           }
+        }
+      }
+      if (isDuplicate) { skipped++; continue; }
 
       const { error: insErr } = await admin.from("punch_events").insert({
-        device_id: p.deviceId,
-        punched_at: iso,
+        staff_id: staffData.id,
+        staff_name: staffData.name,
+        location: staffData.location,
+        tenant_id: staffData.tenant_id,
+        date: dateStr,
+        event_time: timeStr,
         kind: p.kind,
         source: "cloud_api",
         device_label: p.deviceName || provider,
-        location: body.location || null,
       });
+      
       if (insErr) {
         errors.push(insErr.message);
         skipped++;

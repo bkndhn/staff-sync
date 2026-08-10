@@ -23,6 +23,7 @@ import { auditLogService } from './services/auditLogService';
 import { offlineSyncService } from './services/offlineSyncService';
 import { punchEventService } from './services/punchEventService';
 import { useOfflineSync } from './hooks/useOfflineSync';
+import { useBiometricSync } from './hooks/useBiometricSync';
 import { usePayrollAutoGenerate } from './hooks/usePayrollAutoGenerate';
 import { db } from './lib/db';
 import { useRealtimeUpdates } from './hooks/useRealtimeUpdates';

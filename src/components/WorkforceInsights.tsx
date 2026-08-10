@@ -95,7 +95,7 @@ const getDateRangeFromType = (type: string) => {
   }
 };
 
-export const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
+const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
   staff,
   attendance,
   advances,

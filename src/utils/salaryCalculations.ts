@@ -353,6 +353,8 @@ export const calculatePayroll = (
   // 2. Count late arrivals and early leaves beyond grace periods and compute daily deductions
   let recordLateDeduction = 0;
   let recordEarlyDeduction = 0;
+  let lateCount = 0;
+  let earlyCount = 0;
   const dailyRate = (staff.basicPayroll ?? staff.basicSalary ?? 0) / calculationDays;
 
   monthlyAttendance.forEach(record => {

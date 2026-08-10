@@ -4,6 +4,7 @@ import {
   CheckCircle2, AlertTriangle, Loader2, ChevronDown, ChevronRight,
   ExternalLink, Copy, Check, RefreshCw, Fingerprint, Server, Globe, MapPin
 } from 'lucide-react';
+import { useUserPreference } from '../hooks/useUserPreference';
 import { customAlert } from './CustomDialog';
 import { locationService, type Branch, type Location } from '../services/locationService';
 
@@ -73,14 +74,15 @@ const DeviceIntegration: React.FC<DeviceIntegrationProps> = ({ onImportPunches }
   const [csvImported, setCsvImported] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [apiConfig, setApiConfig] = useState<CloudApiConfig>({
+  const [apiConfig, setApiConfig] = useUserPreference<CloudApiConfig>('biometricConfig', {
     provider: 'essl',
     serverUrl: '',
     apiKey: '',
-    locationCode: '',
+    locationCode: ''
   });
-  const [apiTesting, setApiTesting] = useState(false);
-  const [apiStatus, setApiStatus] = useState<'idle' | 'ok' | 'error'>('idle');
+
+  const [autoSyncEnabled, setAutoSyncEnabled] = useUserPreference<boolean>('biometricAutoSync', false);
+  const [apiStatus, setApiStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [apiMessage, setApiMessage] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -88,6 +90,31 @@ const DeviceIntegration: React.FC<DeviceIntegrationProps> = ({ onImportPunches }
   const [locations, setLocations] = useState<Location[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  // Background Auto-Sync
+  useEffect(() => {
+    if (!autoSyncEnabled || !apiConfig.serverUrl || !apiConfig.apiKey) return;
+
+    const pullData = async () => {
+      try {
+        const { supabase } = await import('../lib/supabase');
+        await supabase.functions.invoke('device-pull', {
+          body: {
+            provider: apiConfig.provider,
+            serverUrl: apiConfig.serverUrl,
+            apiKey: apiConfig.apiKey,
+            location: apiConfig.locationCode || undefined,
+          },
+        });
+      } catch (err) {
+        console.error('Background biometric sync failed', err);
+      }
+    };
+
+    pullData();
+    const interval = setInterval(pullData, 15 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [autoSyncEnabled, apiConfig]);
 
   useEffect(() => {
     locationService.getLocations().then(setLocations).catch(() => setLocations([]));
@@ -387,6 +414,19 @@ LOCATION_NAME=${apiConfig.locationCode || ''}`;
                 placeholder="Paste API key or auth token"
                 className="input-premium text-sm"
               />
+            </div>
+
+            <div className="flex items-center gap-3 py-2 border-t border-[var(--glass-border)] mt-2">
+              <input
+                type="checkbox"
+                id="autoSync"
+                checked={autoSyncEnabled}
+                onChange={(e) => setAutoSyncEnabled(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-600 bg-black/20 text-indigo-500 focus:ring-indigo-500/50"
+              />
+              <label htmlFor="autoSync" className="text-sm text-gray-300 select-none cursor-pointer">
+                Enable automated background polling (every 15 mins)
+              </label>
             </div>
 
             <div>

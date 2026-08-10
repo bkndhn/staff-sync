@@ -165,28 +165,59 @@ export const CACHE_TTL = {
     VERY_LONG: 60 * 60 * 1000  // 1 hour - for static data
 };
 
+export const cacheEventTarget = new EventTarget();
+const inFlightFetches = new Map<string, Promise<any>>();
+
 /**
  * Cached fetch wrapper for Supabase queries
- * Only fetches from Supabase if cache is stale or missing
+ * Implements Stale-While-Revalidate (SWR) logic.
+ * Returns cache instantly if available, but fetches fresh data in background.
  */
 export async function cachedFetch<T>(
     key: string,
     fetchFn: () => Promise<T>,
-    ttl: number = CACHE_TTL.MEDIUM
+    ttl: number = CACHE_TTL.MEDIUM,
+    forceRefresh: boolean = false
 ): Promise<T> {
-    // Try to get from cache first
     const cached = cacheService.get<T>(key);
-    if (cached !== null) {
+
+    const doFetch = async () => {
+        if (inFlightFetches.has(key)) {
+            return inFlightFetches.get(key);
+        }
+        
+        const promise = (async () => {
+            try {
+                const freshData = await fetchFn();
+                const freshStr = JSON.stringify(freshData);
+                const cachedStr = JSON.stringify(cached);
+                
+                // Only update and emit if data actually changed
+                if (freshStr !== cachedStr) {
+                    cacheService.set(key, freshData, ttl);
+                    cacheEventTarget.dispatchEvent(new CustomEvent('cache-update', {
+                        detail: { key, data: freshData }
+                    }));
+                }
+                return freshData;
+            } catch (e) {
+                console.warn(`Background fetch failed for ${key}`, e);
+                throw e;
+            } finally {
+                inFlightFetches.delete(key);
+            }
+        })();
+        
+        inFlightFetches.set(key, promise);
+        return promise;
+    };
+
+    if (cached !== null && !forceRefresh) {
+        doFetch().catch(() => {}); // Fire and forget background fetch
         return cached;
     }
 
-    // Cache miss - fetch from Supabase
-    const data = await fetchFn();
-
-    // Store in cache
-    cacheService.set(key, data, ttl);
-
-    return data;
+    return await doFetch();
 }
 
 /**

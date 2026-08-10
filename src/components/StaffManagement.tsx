@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Staff, PayrollHike } from '../types';
 import { Users, Plus, Edit2, Trash2, Archive, Calendar, TrendingUp, MapPin, DollarSign, Check, X, GripVertical, Filter, Copy, AlertCircle, RotateCcw, Layers, Briefcase, Upload, Shield, Camera, ShieldOff, Settings2, ChevronDown } from 'lucide-react';
 import { calculateExperience } from '../utils/salaryCalculations';
