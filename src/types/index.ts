@@ -115,6 +115,8 @@ export interface Attendance {
   salary?: number;
   salaryOverride?: boolean;
   arrivalTime?: string;
+  breakTimeOut?: string;
+  breakTimeIn?: string;
   leavingTime?: string;
   isUninformed?: boolean;
   appliedRuleType?: string;

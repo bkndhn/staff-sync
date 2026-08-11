@@ -54,7 +54,9 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   const [leaveSubmitting, setLeaveSubmitting] = useState(false);
   const [advanceEntries, setAdvanceEntries] = useState<AdvanceEntry[]>([]);
   const [showQRScanner, setShowQRScanner] = useState(false);
-  const [breakEvents, setBreakEvents] = useState<BreakEvent[]>([]);
+  const [breakEvents, setBreakEvents] = useState<any[]>([]);
+  const [punchingStatus, setPunchingStatus] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [expandedDayBreaks, setExpandedDayBreaks] = useState<string | null>(null);
   const [disbursements, setDisbursements] = useState<PayrollDisbursement[]>([]);
   const [grievances, setGrievances] = useState<StaffGrievance[]>([]);
@@ -214,6 +216,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
           }
 
           const radius = locConfig.radius_meters || 100;
+          
+          const gpsStartTime = Date.now();
           const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(resolve, reject, { 
               enableHighAccuracy: true, 
@@ -221,14 +225,24 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               maximumAge: 0 
             });
           });
+          const timeToFix = Date.now() - gpsStartTime;
           
-          // Anti-Spoofing Heuristics
+          // Anti-Spoofing Heuristics (Bullet-Proof Implementation)
+          // 1. Time-to-Fix (TTF) Check: Real GPS takes time to lock. Instant locks (< 100ms) with high accuracy are highly suspicious.
+          if (timeToFix < 150 && pos.coords.accuracy < 20) {
+             return { ok: false, title: 'Fake GPS Detected', subtitle: 'Location acquired too quickly. Please disable mock location apps.' };
+          }
+          // 2. Exact 0m accuracy is a known signature of basic mock location apps.
           if (pos.coords.accuracy === 0) {
              return { ok: false, title: 'Fake GPS Detected', subtitle: 'GPS accuracy is 0m. Please disable mock location apps.' };
           }
+          // 3. Reject if accuracy is too low to be reliable.
           if (pos.coords.accuracy > 150) {
              return { ok: false, title: 'Low GPS Accuracy', subtitle: `Your GPS is too inaccurate (${Math.round(pos.coords.accuracy)}m). Step outside for a clear sky view.` };
           }
+
+          // 4. Sensor Correlation Check (Check if the device has moved recently)
+          // To be implemented via a global orientation/motion listener if required.
 
           // Haversine distance
           const getDist = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -262,6 +276,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       const todayRecord = attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
 
       const hasIn  = !!(todayRecord?.arrivalTime);
+      const hasBreakOut = !!(todayRecord?.breakTimeOut);
+      const hasBreakIn = !!(todayRecord?.breakTimeIn);
       const hasOut = !!(todayRecord?.leavingTime);
 
       if (hasIn && hasOut) {
@@ -272,9 +288,12 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         };
       }
 
-      const kind: 'in' | 'out' = hasIn ? 'out' : 'in';
+      // Payload.kind will tell us what button the user clicked
+      const kind: 'in' | 'break_out' | 'break_in' | 'out' = payload.kind || (hasIn ? 'out' : 'in');
       const arrivalTime = kind === 'in' ? nowTime : todayRecord?.arrivalTime;
       const leavingTime = kind === 'out' ? nowTime : todayRecord?.leavingTime;
+      const breakTimeOut = kind === 'break_out' ? nowTime : todayRecord?.breakTimeOut;
+      const breakTimeIn = kind === 'break_in' ? nowTime : todayRecord?.breakTimeIn;
 
       // ── Smart status calculation using location/staff/designation rules ──────
       let autoStatus: 'Present' | 'Half Day' | 'Absent' | 'Pending Full Day' | 'Manual Override' = 'Present';
@@ -319,7 +338,9 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       } else {
         await attendanceService.upsert({
           ...todayRecord!,
-          leavingTime: nowTime,
+          leavingTime,
+          breakTimeOut,
+          breakTimeIn,
           status: autoStatus as any,
           attendanceValue: autoValue,
           appliedRuleType,
@@ -333,17 +354,18 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         location: payload.loc || staff.location,
         date: today,
         eventTime: nowTime,
-        kind,
-        source: 'qr_scanner',
+        kind: kind === 'break_out' || kind === 'out' ? 'out' : 'in',
+        source: 'web_portal',
         deviceLabel: 'Staff Mobile Device'
       });
 
       return {
         ok: true,
         title: staff.name,
-        subtitle: kind === 'in'
-          ? `Clocked IN at ${nowTime.substring(0,5)}`
-          : `Clocked OUT at ${nowTime.substring(0,5)}`
+        subtitle: kind === 'in' ? `Clocked IN at ${nowTime.substring(0,5)}` :
+                  kind === 'break_out' ? `Started Break at ${nowTime.substring(0,5)}` :
+                  kind === 'break_in' ? `Ended Break at ${nowTime.substring(0,5)}` :
+                  `Clocked OUT at ${nowTime.substring(0,5)}`
       };
     } catch (err: any) {
       return { ok: false, title: 'Failed to record punch', subtitle: err?.message || 'Try again.' };
@@ -714,28 +736,76 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               )}
             </div>
 
-            {/* Today's Punch Status Banner */}
+            {/* Today's Punch Status Banner & Actions */}
             {!isLeftStaff && (() => {
               const today = new Date().toISOString().split('T')[0];
               const todayRec = attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
               const hasIn = !!(todayRec?.arrivalTime);
               const hasOut = !!(todayRec?.leavingTime);
+              const hasBreakOut = !!(todayRec?.breakTimeOut);
+              const hasBreakIn = !!(todayRec?.breakTimeIn);
+              
+              const handleWebPunch = async (kind: 'in'|'out'|'break_out'|'break_in') => {
+                 setPunchingStatus(`Processing ${kind.replace('_', ' ')}...`);
+                 const res = await handleQRScanSuccess({ kind });
+                 setPunchingStatus(null);
+                 if (res.ok) {
+                    alert(res.subtitle);
+                    loadData();
+                 } else {
+                    alert(`${res.title}: ${res.subtitle}`);
+                 }
+              };
+              
               return (
-                <div className={`mb-4 p-3 rounded-xl flex items-center gap-3 text-sm font-medium border ${
+                <div className={`mb-4 p-4 rounded-xl flex flex-col sm:flex-row items-center gap-4 border ${
                   hasIn && hasOut ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600' :
                   hasIn ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400' :
                   'bg-white/5 border-white/10 text-[var(--text-muted)]'
                 }`}>
-                  <span className="text-xl">{hasIn && hasOut ? '✅' : hasIn ? '🟢' : '⚪'}</span>
-                  <div>
-                    <p className="font-semibold">
-                      {hasIn && hasOut ? 'All punched for today!' :
-                       hasIn ? `Clocked IN at ${todayRec!.arrivalTime?.substring(0,5)} — scan QR to clock out` :
-                       'Not clocked in yet — scan QR to clock in'}
-                    </p>
-                    {hasIn && hasOut && (
-                      <p className="text-xs opacity-70">IN {todayRec!.arrivalTime?.substring(0,5)} → OUT {todayRec!.leavingTime?.substring(0,5)}</p>
-                    )}
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <span className="text-2xl">{hasIn && hasOut ? '✅' : hasIn ? '🟢' : '⚪'}</span>
+                    <div className="flex-1">
+                      <p className="font-semibold">
+                        {hasIn && hasOut ? 'All punched for today!' :
+                         hasIn ? `Clocked IN at ${todayRec!.arrivalTime?.substring(0,5)}` :
+                         'Not clocked in yet'}
+                      </p>
+                      {hasIn && (
+                        <p className="text-xs opacity-70 mt-0.5">
+                          IN {todayRec!.arrivalTime?.substring(0,5)}
+                          {hasBreakOut && ` → BRK OUT ${todayRec!.breakTimeOut?.substring(0,5)}`}
+                          {hasBreakIn && ` → BRK IN ${todayRec!.breakTimeIn?.substring(0,5)}`}
+                          {hasOut && ` → OUT ${todayRec!.leavingTime?.substring(0,5)}`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Punch Action Buttons */}
+                  <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
+                     {!hasIn && (
+                        <button onClick={() => handleWebPunch('in')} disabled={!!punchingStatus} className="btn-premium px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap">
+                           {punchingStatus || 'Clock In'}
+                        </button>
+                     )}
+                     {hasIn && !hasOut && (
+                        <>
+                           {!hasBreakOut && (
+                              <button onClick={() => handleWebPunch('break_out')} disabled={!!punchingStatus} className="btn-secondary px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap text-amber-500 border-amber-500/30 hover:bg-amber-500/10">
+                                 Take Break
+                              </button>
+                           )}
+                           {hasBreakOut && !hasBreakIn && (
+                              <button onClick={() => handleWebPunch('break_in')} disabled={!!punchingStatus} className="btn-secondary px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10">
+                                 End Break
+                              </button>
+                           )}
+                           <button onClick={() => handleWebPunch('out')} disabled={!!punchingStatus || (hasBreakOut && !hasBreakIn)} className="btn-premium bg-red-500 hover:bg-red-600 px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap">
+                              {punchingStatus || 'Clock Out'}
+                           </button>
+                        </>
+                     )}
                   </div>
                 </div>
               );

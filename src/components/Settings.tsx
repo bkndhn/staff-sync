@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode, ChevronDown, Cpu } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode, ChevronDown, Cpu, Globe, Layers } from 'lucide-react';
 import { userService, AppUser, CreateUserInput, UpdateUserInput } from '../services/userService';
 import { locationService, Branch, type Location } from '../services/locationService';
 import { staffService } from '../services/staffService';
@@ -18,12 +18,14 @@ import { WorkflowBuilder } from './WorkflowBuilder';
 import { BiometricIntegrationHub } from './BiometricIntegrationHub';
 import { GeofenceSettingsPanel } from './GeofenceSettingsPanel';
 import { FeatureTogglesPanel } from './FeatureTogglesPanel';
+import StaffPortalSettingsPanel from './StaffPortalSettingsPanel';
 
 import { userPreferencesService } from '../services/userPreferencesService';
 
 interface SettingsProps {
     userRole: string;
     currentUserEmail?: string;
+    tenantId?: string;
 }
 
 // Native-style collapsible settings section
@@ -203,7 +205,7 @@ const UserCard: React.FC<{
     );
 };
 
-const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
+const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantId }) => {
     const [users, setUsers] = useState<AppUser[]>([]);
     const [locations, setLocations] = useState<Location[]>([]);
     const [loading, setLoading] = useState(true);
@@ -214,13 +216,6 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [staffLoginEnabled, setStaffLoginEnabled] = useState(true);
-
-    useEffect(() => {
-        userPreferencesService.getPreference<boolean>('staffLoginEnabled', true).then(val => {
-            setStaffLoginEnabled(val);
-        });
-    }, []);
 
     const [defaultHikeInterval, setDefaultHikeInterval] = useState(12);
     const [hikeSaving, setHikeSaving] = useState(false);
@@ -468,84 +463,11 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
                     <FeatureTogglesPanel />
                 </SettingsSection>
             )}
-            <SettingsSection title="General" subtitle="Login, QR and hike defaults" icon={SettingsIcon}>
-            {/* Staff Self-Service Toggle */}
-            <div className="glass-card-static p-4 rounded-xl flex items-center justify-between gap-4 border border-gray-100 dark:border-white/10 shadow-sm hover:shadow transition-all">
-                <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${staffLoginEnabled ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-gray-100 text-gray-400 dark:bg-white/5'}`}>
-                        <Users size={20} />
-                    </div>
-                    <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-[var(--text-primary)] text-sm">Staff Self-Service Login</h3>
-                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${staffLoginEnabled ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-gray-500/10 text-gray-500 border border-gray-500/20'}`}>
-                                {staffLoginEnabled ? 'Enabled' : 'Disabled'}
-                            </span>
-                        </div>
-                        <p className="text-xs text-[var(--text-muted)] mt-0.5">Allow staff members to log in to the portal to view their own salary, attendance, and hikes</p>
-                    </div>
-                </div>
-                <button
-                    type="button"
-                    role="switch"
-                    aria-checked={staffLoginEnabled}
-                    onClick={() => {
-                        const newVal = !staffLoginEnabled;
-                        setStaffLoginEnabled(newVal);
-                        userPreferencesService.setPreference('staffLoginEnabled', newVal);
-                    }}
-                    style={{
-                        position: 'relative',
-                        width: '50px',
-                        height: '26px',
-                        minWidth: '50px',
-                        maxWidth: '50px',
-                        minHeight: '26px',
-                        maxHeight: '26px',
-                        borderRadius: '13px',
-                        padding: '2px',
-                        backgroundColor: staffLoginEnabled ? '#10b981' : '#cbd5e1',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s ease',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        boxSizing: 'border-box',
-                        outline: 'none',
-                    }}
-                >
-                    <span
-                        style={{
-                            display: 'block',
-                            width: '22px',
-                            height: '22px',
-                            borderRadius: '50%',
-                            backgroundColor: '#ffffff',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
-                            transform: staffLoginEnabled ? 'translateX(24px)' : 'translateX(0px)',
-                            transition: 'transform 0.2s ease',
-                        }}
-                    />
-                </button>
-            </div>
-
-            {/* Biometric & eSSL Integration Hub */}
-            <SettingsSection
-                title="Biometric & eSSL Integration Hub"
-                subtitle="Live hardware status, Webhook push API, enroll number mapping, and local Windows sync agent"
-                icon={Cpu}
-                defaultOpen={true}
-            >
-                <BiometricIntegrationHub />
+            <SettingsSection title="Staff Portal Setup" subtitle="Configure your customized Web URL and staff access" icon={Globe}>
+                <StaffPortalSettingsPanel tenantId={tenantId} />
             </SettingsSection>
 
-            {/* Hardware Device Integration */}
-            <DeviceIntegration
-                onImportPunches={(records) => {
-                    console.log('[DeviceIntegration] Imported', records.length, 'punch records');
-                }}
-            />
-
+            <SettingsSection title="General" subtitle="Login, QR and hike defaults" icon={SettingsIcon}>
             {/* QR Refresh Interval */}
             <div className="glass-card-static p-4 rounded-xl flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3 min-w-0">
@@ -713,6 +635,20 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail }) => {
             </SettingsSection>
 
             <SettingsSection title="Attendance & Devices" subtitle="Shifts, smart rules and kiosk" icon={Clock}>
+            {/* Biometric & eSSL Integration Hub */}
+            <div className="mb-6">
+                <BiometricIntegrationHub />
+            </div>
+
+            {/* Hardware Device Integration */}
+            <div className="mb-6">
+                <DeviceIntegration
+                    onImportPunches={(records) => {
+                        console.log('[DeviceIntegration] Imported', records.length, 'punch records');
+                    }}
+                />
+            </div>
+
             {/* Shift Windows & Auto Half-Day Rules */}
             <ShiftWindowsPanel />
 

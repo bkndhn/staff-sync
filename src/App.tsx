@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, Suspense, useRef } fr
 import Navigation from './components/Navigation';
 import SuperAdminConsole from './components/SuperAdminConsole';
 import Login from './components/Login';
+import StaffPortalLogin from './components/StaffPortalLogin';
 import ResetPassword from './components/ResetPassword';
 import Dashboard from './components/Dashboard';
 import AttendanceTracker from './components/AttendanceTracker';
@@ -1401,7 +1402,7 @@ function App() {
         if (user?.role !== 'admin' && user?.role !== 'statutory_admin') return null;
         return (
           <Suspense fallback={<ComponentLoader />}>
-            <Settings userRole={user?.role || 'manager'} currentUserEmail={user?.email} />
+            <Settings userRole={user?.role || 'manager'} currentUserEmail={user?.email} tenantId={user?.tenant_id} />
           </Suspense>
         );
       case 'Leave Management':
@@ -1527,8 +1528,8 @@ function App() {
   }
 
   if (!user) {
-    const isResetPasswordRoute = window.location.pathname === '/reset-password';
-    if (isResetPasswordRoute) {
+    const pathname = window.location.pathname;
+    if (pathname === '/reset-password') {
       return (
         <>
           <ResetPassword />
@@ -1536,6 +1537,19 @@ function App() {
         </>
       );
     }
+
+    // Dynamic slug routing for Staff Portal
+    const isRootOrLogin = pathname === '/' || pathname === '/login' || pathname === '';
+    if (!isRootOrLogin && pathname.length > 1) {
+      const slug = pathname.substring(1).split('/')[0]; // Extract just the slug part
+      return (
+        <>
+          <StaffPortalLogin slug={slug} onLogin={handleLogin} />
+          <CustomDialogProvider />
+        </>
+      );
+    }
+
     return (
       <>
         <Login onLogin={handleLogin} />

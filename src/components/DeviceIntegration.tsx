@@ -83,6 +83,7 @@ const DeviceIntegration: React.FC<DeviceIntegrationProps> = ({ onImportPunches }
 
   const [autoSyncEnabled, setAutoSyncEnabled] = useUserPreference<boolean>('biometricAutoSync', false);
   const [apiStatus, setApiStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [apiTesting, setApiTesting] = useState(false);
   const [apiMessage, setApiMessage] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
 

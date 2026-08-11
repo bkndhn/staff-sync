@@ -190,6 +190,8 @@ export const attendanceService = {
       salaryOverride: dbAttendance.salary_override ?? undefined,
       arrivalTime: dbAttendance.arrival_time ?? undefined,
       leavingTime: dbAttendance.leaving_time ?? undefined,
+      breakTimeIn: dbAttendance.break_time_in ?? undefined,
+      breakTimeOut: dbAttendance.break_time_out ?? undefined,
       isUninformed: dbAttendance.is_uninformed ?? undefined,
       appliedRuleType: dbAttendance.applied_rule_type ?? undefined,
       appliedRuleDetails: dbAttendance.applied_rule_details ?? undefined
@@ -249,6 +251,8 @@ export const attendanceService = {
       salary_override: attendance.salaryOverride,
       arrival_time: attendance.arrivalTime,
       leaving_time: attendance.leavingTime,
+      break_time_in: attendance.breakTimeIn,
+      break_time_out: attendance.breakTimeOut,
       is_uninformed: attendance.isUninformed,
       applied_rule_type: attendance.appliedRuleType,
       applied_rule_details: attendance.appliedRuleDetails

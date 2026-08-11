@@ -9,6 +9,8 @@ const SUPABASE_PUBLISHABLE_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zbXBwd25wZHhvbWptZ3J0cWthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1NDM3NjksImV4cCI6MjA2NzExOTc2OX0.gVzJ4uPAmFT5yngvdcFsHXHH1cUL-nIq0e71Gx8ALOk';
 const FN_URL = `${SUPABASE_URL}/functions/v1/super-admin`;
 
+import { supabase } from '../lib/supabase';
+
 export interface TenantUser {
   id: string;
   email: string;
@@ -53,7 +55,9 @@ export interface PlatformOverview {
 }
 
 async function call<T>(action: string, payload: Record<string, unknown> = {}): Promise<T> {
-  let token = localStorage.getItem('sessionToken');
+  const { data: { session } } = await supabase.auth.getSession();
+  let token = session?.access_token;
+  
   if (!token) {
     try {
       const raw = localStorage.getItem('staffManagementLogin');
