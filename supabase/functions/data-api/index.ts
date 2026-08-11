@@ -318,7 +318,7 @@ Deno.serve(async (req) => {
       try {
         let fetchBefore = admin.from(body.table).select("*");
         fetchBefore = applyFilters(fetchBefore, [...scopeFilters, ...(body.filters ?? [])]);
-        if (body.single) fetchBefore = fetchBefore.limit(1);
+        if (body.single) fetchBefore = fetchBefore.order("id", { ascending: true }).limit(1);
         const res = await fetchBefore;
         beforeData = res.data;
       } catch (e) {
@@ -415,7 +415,12 @@ Deno.serve(async (req) => {
         query = query.select(body.columns ?? "*");
         query = applyFilters(query, [...scopeFilters, ...(body.filters ?? [])]);
         if (body.order) query = query.order(body.order.col, { ascending: body.order.ascending ?? true });
-        if (body.limit) query = query.limit(body.limit);
+        if (body.limit) {
+          // Keep limited queries deterministic and compatible with PostgREST's
+          // max-affected safeguards, which reject a limit without an order.
+          if (!body.order) query = query.order("id", { ascending: true });
+          query = query.limit(body.limit);
+        }
         break;
       }
       case "insert": {
@@ -523,7 +528,10 @@ Deno.serve(async (req) => {
     const wantSingle = !!body.single;
     // PostgREST rejects `limit` on update/delete unless an explicit order is set,
     // so only narrow selects here; mutations are narrowed client-side below.
-    if (wantSingle && body.op === "select") query = query.limit(1);
+    if (wantSingle && body.op === "select") {
+      if (!body.order) query = query.order("id", { ascending: true });
+      query = query.limit(1);
+    }
 
     const { data, error } = await query;
     if (error) {

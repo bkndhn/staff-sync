@@ -42,12 +42,6 @@ interface StaffPortalSettingsPanelProps {
   tenantId?: string;
 }
 
-const RESERVED_SLUGS = [
-  'login', 'logout', 'admin', 'superadmin', 'super-admin', 
-  'reset-password', 'forgot-password', 'settings', 'dashboard', 
-  'staff', 'api', 'auth', 'app', 'home', 'portal'
-];
-
 export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> = ({ tenantId }) => {
   const [slug, setSlug] = useState('');
   const [originalSlug, setOriginalSlug] = useState('');
@@ -105,18 +99,12 @@ export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> =
       return;
     }
 
-    if (slug.length < 3 || !/^[a-z0-9-]+$/.test(slug)) {
+    if (!/^[a-z0-9-]+$/.test(slug)) {
       setAvailability('idle');
       return;
     }
 
     setAvailability('checking');
-
-    if (RESERVED_SLUGS.includes(slug.trim())) {
-      setAvailability('taken');
-      return;
-    }
-
     const timer = setTimeout(async () => {
       try {
         // Use data-api to check if slug is taken by another tenant
@@ -149,17 +137,8 @@ export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> =
     }
     
     // Slug basic validation
-    if (slug.length < 3) {
-      setError('Slug must be at least 3 characters long');
-      return;
-    }
     if (!/^[a-z0-9-]+$/.test(slug)) {
       setError('Slug can only contain lowercase letters, numbers, and hyphens');
-      return;
-    }
-
-    if (RESERVED_SLUGS.includes(slug.trim())) {
-      setError('This URL is reserved and cannot be used. Please choose another one.');
       return;
     }
 
