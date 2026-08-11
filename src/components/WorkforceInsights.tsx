@@ -31,6 +31,7 @@ import { salaryCategoryService } from '../services/salaryCategoryService';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, shiftService } from '../services/shiftService';
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
 import { AIPredictor } from './AIPredictor';
+import AIWorkforceInsightsWidget from './dashboard/AIWorkforceInsightsWidget';
 
 interface WorkforceInsightsProps {
   staff: Staff[];
@@ -586,6 +587,15 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
           <span>Range Span: {representedMonths.map(({ month, year }) => new Date(year, month).toLocaleString('default', { month: 'short', year: '2-digit' })).join(', ')}</span>
         </div>
       </div>
+
+      {/* AI Workforce Insights (moved here from Dashboard) */}
+      <AIWorkforceInsightsWidget
+        staff={staff}
+        todayAttendance={attendance.filter(a => a.date === new Date().toISOString().split('T')[0])}
+        locations={Array.from(new Set(staff.map(s => s.location).filter(Boolean))).map(name => ({ name: name as string, color: '', stats: {} }))}
+      />
+
+
 
       {/* Date Filters Panel */}
       <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6 rounded-3xl shadow-[var(--shadow-soft)] space-y-4">
