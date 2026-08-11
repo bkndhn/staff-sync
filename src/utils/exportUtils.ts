@@ -708,8 +708,8 @@ export const exportFlexDirectoryPDF = async (data: FlexDirectoryExportEntry[]) =
     index + 1,
     entry.name,
     entry.phone,
-    entry.roles,
-    entry.status
+    entry.roles ?? '',
+    entry.status ?? ''
   ]);
 
   autoTable(doc, {

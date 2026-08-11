@@ -628,6 +628,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         floor: string;
     }[]>([{
         name: '',
+        phone: '',
         shift: getDefaultShiftConfig().shift,
         salary: 0,
         arrivalTime: getDefaultShiftConfig().arrivalTime,
@@ -1464,7 +1465,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                 lastWorked: record.date
             };
 
-            existing.totalEarned += (record.salary || getPartTimeDailyPayroll(record.date), partTimeRates);
+            existing.totalEarned += (record.salary || getPartTimeDailyPayroll(record.date, partTimeRates));
             if (record.location) {
                 existing.locations.add(record.location);
             }

@@ -161,7 +161,7 @@ export const calculatePartTimePayroll = (
     const weekAttendance = weeks[weekNum];
 
     const dailySalaries: DailySalary[] = weekAttendance.map(record => {
-      const salary = record.salary || getPartTimeDailyPayroll(record.date, { isOverride: record.salaryOverride, overrideAmount: record.salary });
+      const salary = record.salary || getPartTimeDailyPayroll(record.date, DEFAULT_PART_TIME_RATES, { isOverride: record.salaryOverride, overrideAmount: record.salary });
       totalEarnings += salary;
       totalDays++;
 

@@ -9,7 +9,7 @@ interface AttendanceTrendChartProps {
 
 export const AttendanceTrendChart: React.FC<AttendanceTrendChartProps> = ({ attendance, totalActiveStaff }) => {
   const [rangeDays, setRangeDays] = useState<7 | 14 | 30>(7);
-  const [hoveredPoint, setHoveredPoint] = useState<{ date: string; present: number; rate: number; index: number } | null>(null);
+  const [hoveredPoint, setHoveredPoint] = useState<{ date: string; label?: string; present: number; total?: number; rate: number; index?: number } | null>(null);
 
   const trendData = React.useMemo(() => {
     const result: { date: string; label: string; present: number; total: number; rate: number }[] = [];
