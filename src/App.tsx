@@ -450,14 +450,40 @@ function App() {
     }, [])
   );
 
-  const handleLogin = (userData: { id?: string; email: string; role: string; location?: string; floor?: string; floorId?: string; staffId?: string; staffName?: string }) => {
+  const handleLogin = async (userData: { id?: string; email: string; role: string; location?: string; floor?: string; floorId?: string; staffId?: string; staffName?: string }) => {
     cacheService.clearAll();
     setStaff([]);
     setAttendance([]);
     setAdvances([]);
     setOldStaffRecords([]);
     setSalaryHikes([]);
-    setUser(userData as User);
+
+    // Enrich with tenant_id from app_users so Settings panels work immediately after login
+    let enriched: any = { ...userData };
+    if (userData.id) {
+      try {
+        const { data: uRow } = await supabase
+          .from('app_users')
+          .select('tenant_id, location_id, floor_id, is_active, last_login, created_at, updated_at')
+          .eq('id', userData.id)
+          .single();
+        if (uRow) {
+          enriched = {
+            ...enriched,
+            tenant_id: uRow.tenant_id,
+            location_id: uRow.location_id,
+            floor_id: uRow.floor_id,
+            is_active: uRow.is_active ?? true,
+            last_login: uRow.last_login,
+            created_at: uRow.created_at,
+            updated_at: uRow.updated_at,
+          };
+        }
+      } catch (e) {
+        console.warn('handleLogin: could not enrich tenant_id', e);
+      }
+    }
+    setUser(enriched as User);
   };
 
   const handleLogout = async () => {
