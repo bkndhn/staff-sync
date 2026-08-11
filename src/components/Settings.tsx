@@ -453,7 +453,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                     <p className="text-white/50 text-sm">Manage user accounts and access</p>
                 </div>
             </div>
-            {userRole === 'super_admin' && (
+            {(userRole as string) === 'super_admin' && (
                 <SettingsSection
                     title="Feature Toggles"
                     subtitle="Enable or disable heavy modules globally across the tenant."

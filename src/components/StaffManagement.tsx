@@ -896,7 +896,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const handleResetStaffPassword = async (staffId: string, staffName: string) => {
     if (!await customConfirm(`Reset login password for ${staffName}? They will need to log in with their joined date (DDMMYYYY) and set a new password.`)) return;
     try {
-      const sessionToken = userService.getSessionToken();
+      const sessionToken = await userService.getSessionToken();
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-reset-password`,
         {
