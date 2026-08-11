@@ -125,13 +125,13 @@ function App() {
         if (mounted && uRow) {
           setUser({
             id: uRow.id,
-            email: uRow.email || email,
+            email: uRow.email || email || '',
             full_name: uRow.full_name || email,
             role: (uRow.role || 'admin') as any,
-            location: uRow.location || null,
-            location_id: uRow.location_id || null,
-            floor: uRow.floor || null,
-            floor_id: uRow.floor_id || null,
+            location: uRow.location || undefined,
+            location_id: uRow.location_id || undefined,
+            floor: uRow.floor || undefined,
+            floor_id: uRow.floor_id || undefined,
             is_active: uRow.is_active ?? true,
             last_login: uRow.last_login,
             created_at: uRow.created_at,

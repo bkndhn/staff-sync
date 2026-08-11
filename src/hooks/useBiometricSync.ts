@@ -4,7 +4,7 @@ import { punchEventService } from '../services/punchEventService';
 import { attendanceService } from '../services/attendanceService';
 import { useUserPreference } from './useUserPreference';
 import { resolveActiveRule, calculateAttendanceStatus } from '../utils/attendanceRules';
-import { Staff, LocationDesignationShiftConfig, Designation, LocationShiftConfig, KioskSettings } from '../types';
+import { Staff, LocationDesignationShiftConfig, Designation, LocationShiftConfig } from '../types';
 import { formatTime12h, ShiftWindows } from '../services/shiftService';
 
 import { db } from '../lib/db';

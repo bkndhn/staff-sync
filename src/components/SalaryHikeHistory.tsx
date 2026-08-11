@@ -419,7 +419,7 @@ export const SalaryHikeHistory: React.FC<SalaryHikeHistoryProps> = (props) => {
 
                         // Ensure meal_allowance is always considered
                         if (!displayedIds.has('meal_allowance')) {
-                          categories.push({ id: 'meal_allowance', name: 'Meal Allowance', key: 'meal_allowance' });
+                          categories.push({ id: 'meal_allowance', name: 'Meal Allowance', key: 'meal_allowance', isBuiltIn: true });
                         }
 
                         return categories.map(category => {

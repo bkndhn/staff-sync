@@ -271,8 +271,8 @@ export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> =
                
                {/* Availability Indicator */}
                {availability === 'checking' && <div className="w-4 h-4 rounded-full border-2 border-indigo-500/30 border-t-indigo-500 animate-spin shrink-0" />}
-               {availability === 'available' && <Check size={16} className="text-emerald-500 shrink-0" title="URL is available" />}
-               {availability === 'taken' && <AlertCircle size={16} className="text-red-500 shrink-0" title="URL is already taken" />}
+               {availability === 'available' && <span title="URL is available" className="shrink-0"><Check size={16} className="text-emerald-500" /></span>}
+               {availability === 'taken' && <span title="URL is already taken" className="shrink-0"><AlertCircle size={16} className="text-red-500" /></span>}
              </div>
              
              {availability === 'taken' && (

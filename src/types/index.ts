@@ -268,6 +268,7 @@ export interface User {
   floorId?: string;
   staffId?: string;
   staffName?: string;
+  tenant_id?: string | null;
   tenant?: {
     id: string;
     name: string;
