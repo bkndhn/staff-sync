@@ -521,7 +521,9 @@ Deno.serve(async (req) => {
     // first row (or null). PostgREST's single/maybeSingle 400s on duplicates,
     // which blanked screens for tables with legacy duplicate rows.
     const wantSingle = !!body.single;
-    if (wantSingle) query = query.limit(1);
+    // PostgREST rejects `limit` on update/delete unless an explicit order is set,
+    // so only narrow selects here; mutations are narrowed client-side below.
+    if (wantSingle && body.op === "select") query = query.limit(1);
 
     const { data, error } = await query;
     if (error) {
