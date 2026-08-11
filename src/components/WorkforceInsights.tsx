@@ -588,6 +588,15 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
         </div>
       </div>
 
+      {/* AI Workforce Insights (moved here from Dashboard) */}
+      <AIWorkforceInsightsWidget
+        staff={staff}
+        todayAttendance={attendance.filter(a => a.date === new Date().toISOString().split('T')[0])}
+        locations={Array.from(new Set(staff.map(s => s.location).filter(Boolean))).map(name => ({ name: name as string, color: '', stats: {} }))}
+      />
+
+
+
       {/* Date Filters Panel */}
       <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6 rounded-3xl shadow-[var(--shadow-soft)] space-y-4">
         <div className="flex items-center justify-between">
