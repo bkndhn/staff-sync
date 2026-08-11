@@ -656,8 +656,11 @@ const renderCompactSalarySlip = (
 export interface FlexDirectoryExportEntry {
   name: string;
   phone: string;
-  roles: string;
-  status: string;
+  roles?: string;
+  status?: string;
+  totalEarned?: number;
+  locations?: string;
+  lastWorked?: string;
 }
 
 export const exportFlexDirectoryExcel = async (data: FlexDirectoryExportEntry[]) => {
