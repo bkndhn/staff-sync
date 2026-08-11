@@ -54,6 +54,8 @@ export interface Staff {
   pfNumber?: string;
   /** Statutory ESI insurance number (optional). */
   esiNumber?: string;
+  /** Marks the staff member as a statutory (compliance) employee. */
+  isStatutory?: boolean;
   /** Bound physical device ID for anti-buddy punching */
   deviceId?: string | null;
   exemptFromLateDeduction?: boolean;
