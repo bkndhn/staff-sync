@@ -125,19 +125,20 @@ function App() {
         if (mounted && uRow) {
           setUser({
             id: uRow.id,
-            email: uRow.email || email,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            email: uRow.email || email || '',
             full_name: uRow.full_name || email,
             role: (uRow.role || 'admin') as any,
-            location: uRow.location || null,
-            location_id: uRow.location_id || null,
-            floor: uRow.floor || null,
-            floor_id: uRow.floor_id || null,
+            location: uRow.location || undefined,
+            location_id: uRow.location_id || undefined,
+            floor: uRow.floor || undefined,
+            floor_id: uRow.floor_id || undefined,
             is_active: uRow.is_active ?? true,
             last_login: uRow.last_login,
             created_at: uRow.created_at,
             updated_at: uRow.updated_at,
             tenant_id: uRow.tenant_id,
-          });
+          } as any);
         }
       } catch (err) {
         console.warn('Session restore failed:', err);
@@ -1428,7 +1429,7 @@ function App() {
         if (user?.role !== 'admin' && user?.role !== 'statutory_admin') return null;
         return (
           <Suspense fallback={<ComponentLoader />}>
-            <Settings userRole={user?.role || 'manager'} currentUserEmail={user?.email} tenantId={user?.tenant_id} />
+            <Settings userRole={user?.role || 'manager'} currentUserEmail={user?.email} tenantId={user?.tenant_id ?? undefined} />
           </Suspense>
         );
       case 'Leave Management':

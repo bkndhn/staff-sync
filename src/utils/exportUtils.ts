@@ -656,8 +656,11 @@ const renderCompactSalarySlip = (
 export interface FlexDirectoryExportEntry {
   name: string;
   phone: string;
-  roles: string;
-  status: string;
+  roles?: string;
+  status?: string;
+  totalEarned?: number;
+  locations?: string;
+  lastWorked?: string;
 }
 
 export const exportFlexDirectoryExcel = async (data: FlexDirectoryExportEntry[]) => {
@@ -705,8 +708,8 @@ export const exportFlexDirectoryPDF = async (data: FlexDirectoryExportEntry[]) =
     index + 1,
     entry.name,
     entry.phone,
-    entry.roles,
-    entry.status
+    entry.roles ?? '',
+    entry.status ?? ''
   ]);
 
   autoTable(doc, {

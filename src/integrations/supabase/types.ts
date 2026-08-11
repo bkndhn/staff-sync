@@ -278,6 +278,8 @@ export type Database = {
           arrival_time: string | null
           attendance_value: number
           break_minutes: number
+          break_time_in: string | null
+          break_time_out: string | null
           created_at: string | null
           date: string
           floor: string | null
@@ -303,6 +305,8 @@ export type Database = {
           arrival_time?: string | null
           attendance_value: number
           break_minutes?: number
+          break_time_in?: string | null
+          break_time_out?: string | null
           created_at?: string | null
           date: string
           floor?: string | null
@@ -328,6 +332,8 @@ export type Database = {
           arrival_time?: string | null
           attendance_value?: number
           break_minutes?: number
+          break_time_in?: string | null
+          break_time_out?: string | null
           created_at?: string | null
           date?: string
           floor?: string | null

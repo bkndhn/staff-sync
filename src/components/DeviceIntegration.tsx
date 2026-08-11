@@ -204,7 +204,7 @@ const DeviceIntegration: React.FC<DeviceIntegrationProps> = ({ onImportPunches }
         signal: AbortSignal.timeout(5000)
       });
       if (resp.ok) {
-        setApiStatus('ok');
+        setApiStatus('success');
         setApiMessage('Connection successful! Device is reachable.');
       } else {
         setApiStatus('error');
@@ -216,7 +216,7 @@ const DeviceIntegration: React.FC<DeviceIntegrationProps> = ({ onImportPunches }
         setApiStatus('error');
         setApiMessage('Connection timed out. Verify server URL and network.');
       } else if (err?.message?.includes('CORS') || err?.message?.includes('fetch')) {
-        setApiStatus('ok'); // CORS error means server exists; treat as reachable
+        setApiStatus('success'); // CORS error means server exists; treat as reachable
         setApiMessage('Server is reachable (CORS policy active — use the Local Bridge for full access).');
       } else {
         setApiStatus('error');
@@ -465,16 +465,16 @@ LOCATION_NAME=${apiConfig.locationCode || ''}`;
 
             {apiStatus !== 'idle' && (
               <div className={`p-3 rounded-xl text-sm flex items-start gap-2 border ${
-                apiStatus === 'ok'
+                apiStatus === 'success'
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                   : 'bg-red-500/10 border-red-500/30 text-red-400'
               }`}>
-                {apiStatus === 'ok' ? <CheckCircle2 size={16} className="shrink-0 mt-0.5" /> : <WifiOff size={16} className="shrink-0 mt-0.5" />}
+                {apiStatus === 'success' ? <CheckCircle2 size={16} className="shrink-0 mt-0.5" /> : <WifiOff size={16} className="shrink-0 mt-0.5" />}
                 {apiMessage}
               </div>
             )}
 
-            {apiStatus === 'ok' && (
+            {apiStatus === 'success' && (
               <button
                 onClick={handleSyncNow}
                 disabled={syncing}

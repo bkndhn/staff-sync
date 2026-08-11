@@ -751,7 +751,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                  setPunchingStatus(null);
                  if (res.ok) {
                     alert(res.subtitle);
-                    loadData();
+                    window.location.reload();
                  } else {
                     alert(`${res.title}: ${res.subtitle}`);
                  }

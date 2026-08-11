@@ -160,7 +160,17 @@ const Dashboard: React.FC<DashboardProps> = ({
       return names;
     });
   };
-  const moveLocation = moveBranch;
+  const moveLocation = (index: number, direction: 'up' | 'down') => moveBranch(direction, index);
+
+  const handleLocDragStart = (index: number) => setDragIndex(index);
+  const handleLocDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIdx(index);
+  };
+  const handleLocDrop = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    handleDrop(index);
+  };
 
   const handleDrop = (dropIdx: number) => {
     if (dragIndex === null || dragIndex === dropIdx) {

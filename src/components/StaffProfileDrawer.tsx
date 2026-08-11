@@ -290,11 +290,11 @@ export const StaffProfileDrawer: React.FC<StaffProfileDrawerProps> = ({
                       <div className="absolute -left-6 top-1.5 w-3 h-3 rounded-full bg-purple-500 ring-4 ring-slate-900" />
                       <div className="p-3.5 rounded-xl bg-white/5 border border-[var(--glass-border)] text-xs space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-emerald-400">₹{(hike.newSalary || hike.newBasicSalary).toLocaleString()}</span>
+                          <span className="font-bold text-emerald-400">₹{(hike.newSalary || hike.newPayroll || 0).toLocaleString()}</span>
                           <span className="text-[10px] text-[var(--text-muted)]">{new Date(hike.hikeDate).toLocaleDateString()}</span>
                         </div>
-                        <p className="text-[var(--text-primary)]">Previous: ₹{(hike.previousSalary || hike.previousBasicSalary).toLocaleString()}</p>
-                        {hike.notes && <p className="text-[11px] text-indigo-400 italic">{hike.notes}</p>}
+                        <p className="text-[var(--text-primary)]">Previous: ₹{(hike.oldSalary || hike.oldPayroll || 0).toLocaleString()}</p>
+                        {hike.reason && <p className="text-[11px] text-indigo-400 italic">{hike.reason}</p>}
                       </div>
                     </div>
                   ))}
