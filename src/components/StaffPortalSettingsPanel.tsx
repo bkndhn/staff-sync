@@ -3,6 +3,41 @@ import { Settings, Save, AlertCircle, Check, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { userPreferencesService } from '../services/userPreferencesService';
 
+const SUPABASE_URL =
+  (import.meta.env.VITE_SUPABASE_URL as string | undefined) ||
+  'https://nsmppwnpdxomjmgrtqka.supabase.co';
+const SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zbXBwd25wZHhvbWptZ3J0cWthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1NDM3NjksImV4cCI6MjA2NzExOTc2OX0.gVzJ4uPAmFT5yngvdcFsHXHH1cUL-nIq0e71Gx8ALOk';
+
+async function getSessionToken(): Promise<string | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) return session.access_token;
+  try {
+    const raw = localStorage.getItem('staffManagementLogin');
+    if (raw) return JSON.parse(raw)?.sessionToken || null;
+  } catch { /* ignore */ }
+  return null;
+}
+
+async function dataApi(body: object): Promise<any> {
+  const token = await getSessionToken();
+  const isJwt = token && token.startsWith('eyJ');
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/data-api`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      ...(token && isJwt
+        ? { 'Authorization': `Bearer ${token}`, 'x-session-token': token }
+        : token ? { 'x-session-token': token } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json?.error || `data-api error (${res.status})`);
+  return json;
+}
+
 interface StaffPortalSettingsPanelProps {
   tenantId?: string;
 }
@@ -33,25 +68,26 @@ export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> =
     }
     setLoading(true);
     try {
-      // Load slug and super admin permission from the tenants table
-      const { data, error } = await supabase
-        .from('tenants')
-        .select('slug, staff_portal_enabled')
-        .eq('id', tenantId)
-        .single();
-        
-      if (error) throw error;
-      
-      setSlug(data.slug || '');
-      setOriginalSlug(data.slug || '');
-      setPortalAllowedBySuperAdmin(data.staff_portal_enabled !== false);
-      
-      // Load client admin's preference for this specific setting
+      // Use data-api (service role) — direct anon client is blocked by RLS on tenants
+      const json = await dataApi({
+        table: 'tenants',
+        op: 'select',
+        columns: 'slug, staff_portal_enabled',
+        filters: [{ col: 'id', op: 'eq', val: tenantId }],
+        single: true,
+      });
+      const row = json?.data || json;
+
+      setSlug(row?.slug || '');
+      setOriginalSlug(row?.slug || '');
+      setPortalAllowedBySuperAdmin(row?.staff_portal_enabled !== false);
+
+      // Load client admin's own preference for enabling self-service login
       const isEnabled = await userPreferencesService.getPreference<boolean>('staffLoginEnabled', true);
       setStaffLoginEnabled(isEnabled);
     } catch (err: any) {
       console.error('Error loading tenant settings:', err);
-      setError('Failed to load portal settings');
+      setError('Failed to load portal settings. Check console for details.');
     } finally {
       setLoading(false);
     }
@@ -102,17 +138,18 @@ export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> =
     setSuccess('');
 
     try {
-      // Call the RPC to safely update slug and enforce uniqueness
-      const { data, error } = await supabase.rpc('update_tenant_slug', {
-        p_tenant_id: tenantId,
-        p_new_slug: slug.trim()
+      // Use data-api to call the RPC (anon client blocked by RLS)
+      const json = await dataApi({
+        op: 'rpc',
+        fn: 'update_tenant_slug',
+        args: { p_tenant_id: tenantId, p_new_slug: slug.trim() },
       });
-
-      if (error) {
-        if (error.message.includes('Slug already in use') || error.code === '23505') {
-           setError('This slug is already taken. Please choose another one.');
+      if (json?.error) {
+        const msg: string = json.error || '';
+        if (msg.includes('Slug already in use') || msg.includes('23505')) {
+          setError('This slug is already taken. Please choose another one.');
         } else {
-           throw error;
+          throw new Error(msg);
         }
       } else {
         setSuccess('Staff Portal URL updated successfully!');
