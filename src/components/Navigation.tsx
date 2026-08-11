@@ -30,9 +30,7 @@ const Navigation: React.FC<NavigationProps> = ({
     'sidebarCollapsed',
     false
   );
-  const [portalCfg, setPortalCfg] = useState<StatutoryPortalConfig>(() =>
-    user.role === 'statutory_admin' ? statutoryPortalService.loadCached() : DEFAULT_STATUTORY_CONFIG
-  );
+  const [portalCfg, setPortalCfg] = useState<StatutoryPortalConfig>(DEFAULT_STATUTORY_CONFIG);
 
   useEffect(() => {
     if (user.role === 'statutory_admin') {

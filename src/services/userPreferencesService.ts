@@ -10,7 +10,7 @@ export const userPreferencesService = {
   async getPreference<T>(key: string, defaultValue: T): Promise<T> {
     try {
       const { data, error } = await supabase
-        .from('user_preferences')
+        .from('user_preferences' as any)
         .select('value')
         .eq('key', key)
         .maybeSingle();
@@ -20,7 +20,7 @@ export const userPreferencesService = {
         return defaultValue;
       }
 
-      return data ? (data.value as T) : defaultValue;
+      return data ? ((data as any).value as T) : defaultValue;
     } catch (err) {
       console.error(`Exception fetching preference ${key}:`, err);
       return defaultValue;
@@ -31,8 +31,8 @@ export const userPreferencesService = {
     try {
       // Upsert by key (unique on tenant_id, user_id, key)
       const { error } = await supabase
-        .from('user_preferences')
-        .upsert({ key, value }, { onConflict: 'tenant_id,user_id,key' });
+        .from('user_preferences' as any)
+        .upsert({ key, value } as any, { onConflict: 'tenant_id,user_id,key' });
 
       if (error) {
         console.error(`Error setting preference ${key}:`, error);
@@ -45,7 +45,7 @@ export const userPreferencesService = {
   async removePreference(key: string): Promise<void> {
     try {
       const { error } = await supabase
-        .from('user_preferences')
+        .from('user_preferences' as any)
         .delete()
         .eq('key', key);
 
