@@ -43,6 +43,7 @@ interface TableAcl {
   locationCol?: string; // column to use for manager location-scoping
   floorCol?: string;    // column to use for supervisor floor-scoping
   staffIdCol?: string;  // column to use for staff user scoping
+  tenantIdCol?: string; // override column for tenant scoping (default: 'tenant_id')
 }
 
 const ACL: Record<string, TableAcl> = {
@@ -90,6 +91,8 @@ const ACL: Record<string, TableAcl> = {
   device_status:                     { read: ["admin","manager","supervisor","floor_supervisor","super_admin"], write: ["admin","super_admin"] },
   // ── Platform-level ──────────────────────────────────────────────────────────
   app_users:                         { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["super_admin","admin"] },
+  // ── Tenants (self-scoped: the tenant's own PK is 'id', not 'tenant_id') ─
+  tenants:                           { read: ["admin","statutory_admin","super_admin"], write: ["admin","super_admin"], tenantIdCol: "id" },
 };
 
 
@@ -269,7 +272,8 @@ Deno.serve(async (req) => {
 
     // Location + floor scoping
     const scopeFilters: Filter[] = [];
-    if (tenantId) scopeFilters.push({ col: "tenant_id", op: "eq", val: tenantId });
+    const tenantCol = acl.tenantIdCol || "tenant_id";
+    if (tenantId) scopeFilters.push({ col: tenantCol, op: "eq", val: tenantId });
     if (role === "manager" && acl.locationCol && user.location) {
       scopeFilters.push({ col: acl.locationCol, op: "eq", val: user.location });
     }
@@ -294,7 +298,7 @@ Deno.serve(async (req) => {
     }
 
     const forceScope = (rows: Array<Record<string, unknown>>) => {
-      if (tenantId) for (const r of rows) r["tenant_id"] = tenantId;
+      if (tenantId) for (const r of rows) r[tenantCol] = tenantId;
       if (role === "manager" && acl.locationCol && user.location) {
         for (const r of rows) r[acl.locationCol!] = user.location;
       }
