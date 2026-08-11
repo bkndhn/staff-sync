@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
     const sessionToken = req.headers.get("x-session-token");
     if (!sessionToken) return json({ error: "unauthorized" }, 401);
 
-    const { staffId } = await req.json();
+    const { staffId, resetDevice } = await req.json();
     if (!staffId || typeof staffId !== "string") {
       return json({ error: "Missing staffId" }, 400);
     }
@@ -44,35 +44,40 @@ Deno.serve(async (req) => {
     // Verify the caller has an active admin session.
     const { data: session } = await admin
       .from("app_sessions")
-      .select("user_id, expires_at")
-      .eq("session_token", sessionToken)
-      .maybeSingle();
+      .select("user_id, expires_at, is_valid")
+      .eq("token", sessionToken)
+      .order("created_at", { ascending: false })
+      .limit(1);
 
-    if (!session || (session.expires_at && new Date(session.expires_at as any) < new Date())) {
+    const sess: any = Array.isArray(session) ? session[0] : session;
+
+    if (!sess || sess.is_valid === false || (sess.expires_at && new Date(sess.expires_at) < new Date())) {
       return json({ error: "unauthorized" }, 401);
     }
 
     const { data: caller } = await admin
       .from("app_users")
       .select("role, is_active")
-      .eq("id", (session as any).user_id)
+      .eq("id", sess.user_id)
       .maybeSingle();
 
     if (!caller || !(caller as any).is_active || !["admin", "manager"].includes((caller as any).role)) {
       return json({ error: "forbidden" }, 403);
     }
 
-    // Reset: clear hash, force password change on next login, unbind device
-    // so the staff member can re-enroll from a new phone if that's why they
-    // asked for a reset.
+    // Reset: clear hash, force password change on next login. When resetDevice
+    // is true we also unbind the device so the staff member can enroll from a
+    // new phone and go through the first-time password setup again.
     const { error: updateErr } = await admin
       .from("staff")
       .update({
         password_hash: null,
         must_change_password: true,
         password_updated_at: new Date().toISOString(),
+        ...(resetDevice ? { device_id: null } : {}),
       })
       .eq("id", staffId);
+
 
     if (updateErr) {
       console.error("staff-reset-password update error:", updateErr);
