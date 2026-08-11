@@ -2251,7 +2251,11 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      get_tenant_by_slug: { Args: { p_slug: string }; Returns: Json }
+      update_tenant_slug: {
+        Args: { p_new_slug: string; p_tenant_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
