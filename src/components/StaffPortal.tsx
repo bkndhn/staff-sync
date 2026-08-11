@@ -657,8 +657,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     <div className={`p-2 md:p-6 pb-24 md:pb-6 space-y-4 ${isWideTab ? 'w-full' : 'max-w-4xl mx-auto'}`}>
       <TenantStatusBanner tenant={(staff as any).tenant} role="staff" />
       {/* Punch confirmation now shown inside the scanner overlay */}
-      {/* Section Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+      {/* Section Tabs (desktop) */}
+      <div className="hidden md:flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         {sections.map(s => (
           <button
             key={s.id}
@@ -674,6 +674,34 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
           </button>
         ))}
       </div>
+
+      {/* Bottom Navigation (mobile) — every tab, horizontally scrollable */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 safe-area-padding staff-bottom-nav border-t border-[var(--glass-border)] bg-[var(--bg-card)]/95 backdrop-blur-xl shadow-[0_-4px_24px_rgba(15,23,42,0.12)]">
+        <style>{`.staff-bottom-nav .staff-nav-scroll::-webkit-scrollbar { display: none; }`}</style>
+        <div
+          className="staff-nav-scroll flex items-end gap-1 px-2 pt-1.5 pb-1.5 w-max min-w-full justify-around overflow-x-auto"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', minHeight: '58px' }}
+        >
+          {sections.map(s => {
+            const isActive = activeSection === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setActiveSection(s.id as any)}
+                className={`flex-shrink-0 min-w-[60px] flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-2xl transition-all active:scale-95 ${
+                  isActive
+                    ? 'bg-gradient-to-b from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/30'
+                    : 'text-[var(--text-secondary)]'
+                }`}
+              >
+                <s.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                <span className="text-[9px] font-semibold leading-tight text-center whitespace-nowrap">{s.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
 
       {/* Month Navigator (for attendance & salary) */}
       {(activeSection === 'attendance' || activeSection === 'salary') && (

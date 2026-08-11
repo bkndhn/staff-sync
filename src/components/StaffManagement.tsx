@@ -882,16 +882,33 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   };
 
   const handleResetDevice = async (staffId: string, staffName: string) => {
-    if (!await customConfirm(`Are you sure you want to reset the device lock for ${staffName}? They will be able to log in from a new device.`)) return;
+    if (!await customConfirm(`Reset the device lock for ${staffName}? Their password will also be cleared — they must register from a new device and set a brand new password using their joined date (DDMMYYYY).`)) return;
     try {
-      await onUpdateStaff(staffId, { deviceId: null });
+      const sessionToken = await userService.getSessionToken();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-reset-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
+          },
+          body: JSON.stringify({ staffId, resetDevice: true }),
+        },
+      );
+      if (!res.ok) {
+        await customAlert('Failed to reset device lock. Check your admin session and try again.');
+        return;
+      }
       await onRefreshStaff?.();
-      await customAlert(`Device lock reset successfully for ${staffName}. They can now register or log in from a new device.`);
+      await customAlert(`Device lock and password reset for ${staffName}. They can now register from a new device and set a new password using their joined date (DDMMYYYY).`);
     } catch (error) {
       console.error("Error resetting device:", error);
       await customAlert("Failed to reset device lock.");
     }
   };
+
 
   const handleResetStaffPassword = async (staffId: string, staffName: string) => {
     if (!await customConfirm(`Reset login password for ${staffName}? They will need to log in with their joined date (DDMMYYYY) and set a new password.`)) return;
