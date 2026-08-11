@@ -964,6 +964,32 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     await customAlert(`Successfully archived ${count} staff member(s).`);
   };
 
+  const exportStaffCSV = (list: Staff[]) => {
+    const headers = ['Name', 'Employee Code', 'Location', 'Floor', 'Designation', 'Phone', 'Joined Date', 'Basic', 'Incentive', 'HRA', 'Total'];
+    const rows = list.map(s => [
+      s.name,
+      s.employeeCode || '',
+      s.location || '',
+      s.floor || '',
+      s.designation || '',
+      s.phone || '',
+      s.joinedDate || '',
+      String(s.basicSalary ?? s.basicPayroll ?? 0),
+      String(s.incentive ?? 0),
+      String(s.hra ?? 0),
+      String(s.totalSalary ?? s.totalPayroll ?? 0),
+    ]);
+    const csv = [headers, ...rows]
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `staff-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleExportSelected = () => {
     const selectedList = activeStaff.filter(s => selectedStaffIds.includes(s.id));
     exportStaffCSV(selectedList);
