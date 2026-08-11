@@ -19,7 +19,7 @@ import BranchComparisonBarChart from './dashboard/BranchComparisonBarChart';
 import LivePunchActivityFeed from './dashboard/LivePunchActivityFeed';
 import PunctualityMetricsWidget from './dashboard/PunctualityMetricsWidget';
 import DailyPayrollOverviewWidget from './dashboard/DailyPayrollOverviewWidget';
-import AIWorkforceInsightsWidget from './dashboard/AIWorkforceInsightsWidget';
+
 import DashboardQuickActions from './dashboard/DashboardQuickActions';
 import DashboardWidgetConfigModal, { DashboardWidgetConfig, DEFAULT_WIDGET_CONFIG } from './dashboard/DashboardWidgetConfigModal';
 import { useUserPreference } from '../hooks/useUserPreference';
@@ -403,14 +403,9 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* AI Workforce Insights Highlight Banner */}
-      {widgetConfig.showAIInsights && (
-        <AIWorkforceInsightsWidget
-          staff={staff}
-          todayAttendance={todayAttendance}
-          locations={locations}
-        />
-      )}
+      {/* AI Workforce Insights moved to the Workforce Insights page */}
+
+
 
       {/* Stats Cards - Admin Only */}
       {userRole === 'admin' && (

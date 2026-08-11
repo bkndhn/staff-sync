@@ -31,6 +31,7 @@ import { salaryCategoryService } from '../services/salaryCategoryService';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, shiftService } from '../services/shiftService';
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
 import { AIPredictor } from './AIPredictor';
+import AIWorkforceInsightsWidget from './dashboard/AIWorkforceInsightsWidget';
 
 interface WorkforceInsightsProps {
   staff: Staff[];
