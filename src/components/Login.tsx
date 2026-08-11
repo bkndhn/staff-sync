@@ -83,7 +83,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           location: dbUser.location || undefined,
           floor: (dbUser as any).floor || undefined,
           floorId: (dbUser as any).floor_id || undefined,
-        });
+          tenant_id: (dbUser as any).tenant_id || undefined,
+        } as any);
       } else {
         recordFailedAttempt(sanitizedEmail);
         setError('Invalid email address or password. Please check and try again.');

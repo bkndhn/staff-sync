@@ -107,14 +107,23 @@ export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> =
     setAvailability('checking');
     const timer = setTimeout(async () => {
       try {
-        const { data, error } = await supabase.rpc('get_tenant_by_slug', { p_slug: slug.trim() });
-        if (data && data.id !== tenantId) {
+        // Use data-api to check if slug is taken by another tenant
+        const json = await dataApi({
+          table: 'tenants',
+          op: 'select',
+          columns: 'id',
+          filters: [{ col: 'slug', op: 'eq', val: slug.trim() }],
+          single: true,
+        });
+        const row = json?.data;
+        if (row && row.id !== tenantId) {
           setAvailability('taken');
         } else {
           setAvailability('available');
         }
       } catch (err) {
-        setAvailability('idle');
+        // If data-api returns error (e.g. no rows), treat as available
+        setAvailability('available');
       }
     }, 500);
 
@@ -138,15 +147,16 @@ export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> =
     setSuccess('');
 
     try {
-      // Use data-api to call the RPC (anon client blocked by RLS)
+      // Use data-api update on tenants table directly
       const json = await dataApi({
-        op: 'rpc',
-        fn: 'update_tenant_slug',
-        args: { p_tenant_id: tenantId, p_new_slug: slug.trim() },
+        table: 'tenants',
+        op: 'update',
+        values: { slug: slug.trim() },
+        filters: [{ col: 'id', op: 'eq', val: tenantId }],
       });
       if (json?.error) {
         const msg: string = json.error || '';
-        if (msg.includes('Slug already in use') || msg.includes('23505')) {
+        if (msg.includes('duplicate') || msg.includes('unique') || msg.includes('23505')) {
           setError('This slug is already taken. Please choose another one.');
         } else {
           throw new Error(msg);
