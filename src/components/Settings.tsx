@@ -18,7 +18,7 @@ import { WorkflowBuilder } from './WorkflowBuilder';
 import { BiometricIntegrationHub } from './BiometricIntegrationHub';
 import { GeofenceSettingsPanel } from './GeofenceSettingsPanel';
 import { FeatureTogglesPanel } from './FeatureTogglesPanel';
-import StaffPortalSettingsPanel from './StaffPortalSettingsPanel';
+import { StaffPortalSettingsPanel } from './StaffPortalSettingsPanel';
 
 import { userPreferencesService } from '../services/userPreferencesService';
 

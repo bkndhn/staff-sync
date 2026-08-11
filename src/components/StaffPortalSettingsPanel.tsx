@@ -27,7 +27,10 @@ export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> =
   }, [tenantId]);
 
   const loadTenantSettings = async () => {
-    if (!tenantId) return;
+    if (!tenantId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       // Load slug and super admin permission from the tenants table
@@ -130,6 +133,10 @@ export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> =
 
   if (loading) {
     return <div className="text-[var(--text-muted)] text-sm animate-pulse">Loading portal settings...</div>;
+  }
+
+  if (!tenantId) {
+    return <div className="text-[var(--text-muted)] text-sm">Please select a tenant to configure Staff Portal.</div>;
   }
 
   return (
