@@ -57,11 +57,23 @@ Deno.serve(async (req) => {
 
     const { data: caller } = await admin
       .from("app_users")
-      .select("role, is_active")
+      .select("role, is_active, tenant_id")
       .eq("id", sess.user_id)
       .maybeSingle();
 
     if (!caller || !(caller as any).is_active || !["admin", "manager"].includes((caller as any).role)) {
+      return json({ error: "forbidden" }, 403);
+    }
+
+    // Tenant isolation: an admin may only reset staff inside their own tenant.
+    const { data: target } = await admin
+      .from("staff")
+      .select("id, tenant_id")
+      .eq("id", staffId)
+      .maybeSingle();
+
+    if (!target) return json({ error: "not_found" }, 404);
+    if ((caller as any).tenant_id && (target as any).tenant_id !== (caller as any).tenant_id) {
       return json({ error: "forbidden" }, 403);
     }
 
@@ -77,6 +89,7 @@ Deno.serve(async (req) => {
         ...(resetDevice ? { device_id: null } : {}),
       })
       .eq("id", staffId);
+
 
 
     if (updateErr) {
