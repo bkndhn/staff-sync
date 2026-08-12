@@ -198,14 +198,15 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
   const handleQRScanSuccess = async (payload: any): Promise<import('./QRAttendanceScanner').ScanConfirmation> => {
     try {
-      // 1. Geofence Validation
+      // 1. Geofence Validation (shared engine — same rules everywhere)
       try {
         const { locationService } = await import('../services/locationService');
         const { settingsService } = await import('../services/settingsService');
+        const { verifyWithinGeofence } = await import('../lib/geofence');
         const allLocs = await locationService.getLocations();
         const locConfig: any = allLocs.find(l => l.name === staff.location);
         const requireGeofence = await settingsService.getRequireGeofence();
-        
+
         if (locConfig && locConfig.latitude != null && locConfig.longitude != null) {
           if (requireGeofence) {
             return {
@@ -215,51 +216,14 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
             };
           }
 
-          const radius = locConfig.radius_meters || 100;
-          
-          const gpsStartTime = Date.now();
-          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { 
-              enableHighAccuracy: true, 
-              timeout: 10000, 
-              maximumAge: 0 
-            });
+          const verdict = await verifyWithinGeofence({
+            latitude: locConfig.latitude,
+            longitude: locConfig.longitude,
+            radius_meters: locConfig.radius_meters,
+            name: staff.location,
           });
-          const timeToFix = Date.now() - gpsStartTime;
-          
-          // Anti-Spoofing Heuristics (Bullet-Proof Implementation)
-          // 1. Time-to-Fix (TTF) Check: Real GPS takes time to lock. Instant locks (< 100ms) with high accuracy are highly suspicious.
-          if (timeToFix < 150 && pos.coords.accuracy < 20) {
-             return { ok: false, title: 'Fake GPS Detected', subtitle: 'Location acquired too quickly. Please disable mock location apps.' };
-          }
-          // 2. Exact 0m accuracy is a known signature of basic mock location apps.
-          if (pos.coords.accuracy === 0) {
-             return { ok: false, title: 'Fake GPS Detected', subtitle: 'GPS accuracy is 0m. Please disable mock location apps.' };
-          }
-          // 3. Reject if accuracy is too low to be reliable.
-          if (pos.coords.accuracy > 150) {
-             return { ok: false, title: 'Low GPS Accuracy', subtitle: `Your GPS is too inaccurate (${Math.round(pos.coords.accuracy)}m). Step outside for a clear sky view.` };
-          }
-
-          // 4. Sensor Correlation Check (Check if the device has moved recently)
-          // To be implemented via a global orientation/motion listener if required.
-
-          // Haversine distance
-          const getDist = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-            const R = 6371e3;
-            const φ1 = lat1 * Math.PI/180;
-            const φ2 = lat2 * Math.PI/180;
-            const a = Math.sin((lat2-lat1)*Math.PI/180/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin((lon2-lon1)*Math.PI/180/2)**2;
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-          };
-          
-          const dist = getDist(pos.coords.latitude, pos.coords.longitude, locConfig.latitude, locConfig.longitude);
-          if (dist > radius) {
-            return {
-              ok: false,
-              title: 'Geofence Block',
-              subtitle: `You are ${Math.round(dist)}m away from ${staff.location} (Max: ${radius}m).`
-            };
+          if (!verdict.ok) {
+            return { ok: false, title: verdict.title, subtitle: verdict.subtitle };
           }
         }
       } catch (err: any) {

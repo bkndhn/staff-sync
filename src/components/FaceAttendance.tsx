@@ -337,20 +337,15 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const punch = useCallback(async (s: Staff, distance: number, livenessScore: number) => {
     const locConfig = locations.find(l => l.name === s.location);
     if (locConfig && locConfig.latitude != null && locConfig.longitude != null) {
-      const radius = locConfig.radius_meters || 100;
-      try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 10000 });
-        });
-        const dist = getDistanceInMeters(pos.coords.latitude, pos.coords.longitude, locConfig.latitude, locConfig.longitude);
-        if (dist > radius) {
-          haptics.error();
-          setMessage({ kind: 'err', text: `Geofence block: You are ${Math.round(dist)}m away from ${s.location} (Max: ${radius}m).` });
-          return;
-        }
-      } catch (err: any) {
+      const verdict = await verifyWithinGeofence({
+        latitude: locConfig.latitude,
+        longitude: locConfig.longitude,
+        radius_meters: locConfig.radius_meters,
+        name: s.location,
+      });
+      if (!verdict.ok) {
         haptics.error();
-        setMessage({ kind: 'err', text: `Geofence failed: Could not get GPS location. ${err.message}` });
+        setMessage({ kind: 'err', text: `${verdict.title}: ${verdict.subtitle}` });
         return;
       }
     }
