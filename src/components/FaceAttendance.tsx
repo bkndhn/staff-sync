@@ -13,6 +13,7 @@ import { locationService } from '../services/locationService';
 import { calculateAttendanceStatus, resolveAttendanceRules, resolveActiveRule } from '../utils/attendanceRules';
 import QRAttendanceGenerator from './QRAttendanceGenerator';
 import { buildCentroidIndex, findBestMatch as findCosineMatch, type StaffEmbedding } from '../lib/embeddingMatcher';
+import { verifyWithinGeofence } from '../lib/geofence';
 import { createLivenessState, updateLiveness, evaluateLiveness, type LivenessState } from '../lib/livenessEngine';
 import { db } from '../lib/db';
 import { customConfirm } from './CustomDialog';
@@ -93,16 +94,6 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const [globalKioskSettingsState, setGlobalKioskSettingsState] = useState<any | null>(null);
   const [locations, setLocations] = useState<any[]>([]);
 
-  // Haversine distance
-  const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371e3;
-    const φ1 = lat1 * Math.PI/180;
-    const φ2 = lat2 * Math.PI/180;
-    const Δφ = (lat2-lat1) * Math.PI/180;
-    const Δλ = (lon2-lon1) * Math.PI/180;
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
-    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-  };
 
   const availableLocations = useMemo(() => Array.from(new Set(staff.map(s => s.location).filter(Boolean))), [staff]);
   const [selectedLocation, setSelectedLocation] = useState<string>(
@@ -337,20 +328,15 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const punch = useCallback(async (s: Staff, distance: number, livenessScore: number) => {
     const locConfig = locations.find(l => l.name === s.location);
     if (locConfig && locConfig.latitude != null && locConfig.longitude != null) {
-      const radius = locConfig.radius_meters || 100;
-      try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 10000 });
-        });
-        const dist = getDistanceInMeters(pos.coords.latitude, pos.coords.longitude, locConfig.latitude, locConfig.longitude);
-        if (dist > radius) {
-          haptics.error();
-          setMessage({ kind: 'err', text: `Geofence block: You are ${Math.round(dist)}m away from ${s.location} (Max: ${radius}m).` });
-          return;
-        }
-      } catch (err: any) {
+      const verdict = await verifyWithinGeofence({
+        latitude: locConfig.latitude,
+        longitude: locConfig.longitude,
+        radius_meters: locConfig.radius_meters,
+        name: s.location,
+      });
+      if (!verdict.ok) {
         haptics.error();
-        setMessage({ kind: 'err', text: `Geofence failed: Could not get GPS location. ${err.message}` });
+        setMessage({ kind: 'err', text: `${verdict.title}: ${verdict.subtitle}` });
         return;
       }
     }
