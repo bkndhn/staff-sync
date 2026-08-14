@@ -1630,7 +1630,14 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                           <p className="text-sm text-[var(--text-primary)]">{leave.managerComment}</p>
                         </div>
                       )}
+                      <details className="mt-3 group">
+                        <summary className="text-xs font-semibold text-indigo-500 cursor-pointer select-none">Track status</summary>
+                        <div className="mt-3 pl-1">
+                          <LeaveTimeline leave={leave} compact />
+                        </div>
+                      </details>
                     </div>
+
                   );
                 })}
               </div>
