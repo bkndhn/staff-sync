@@ -1542,6 +1542,23 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                   </div>
                 </div>
 
+                {/* Policy validation feedback */}
+                {(leaveForm.leaveDate || leaveForm.reason) && (
+                  <div className="mt-3 space-y-2">
+                    {leaveValidation.days > 0 && (
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Duration: <span className="font-semibold text-[var(--text-primary)]">{leaveValidation.days} day(s)</span>
+                      </p>
+                    )}
+                    {leaveValidation.errors.map((e, i) => (
+                      <p key={`e${i}`} className="text-xs text-red-600 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{e}</p>
+                    ))}
+                    {leaveValidation.warnings.map((w, i) => (
+                      <p key={`w${i}`} className="text-xs text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">{w}</p>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex gap-3 mt-5">
                   <button
                     onClick={() => setShowLeaveForm(false)}
@@ -1551,11 +1568,12 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                   </button>
                   <button
                     onClick={handleLeaveSubmit}
-                    disabled={leaveSubmitting || !leaveForm.leaveDate || !leaveForm.reason.trim()}
+                    disabled={leaveSubmitting || !leaveValidation.valid}
                     className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold text-sm disabled:opacity-50 transition-all"
                   >
                     {leaveSubmitting ? 'Submitting...' : 'Submit'}
                   </button>
+
                 </div>
               </div>
             </div>
