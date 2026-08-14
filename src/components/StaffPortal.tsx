@@ -10,6 +10,9 @@ import { calculateAttendanceMetrics, calculateSalary, calculatePayroll, getDaysI
 import { salaryOverrideService } from '../services/salaryOverrideService';
 import { salaryCategoryService, type PayrollCategory } from '../services/salaryCategoryService';
 import { leaveService, LeaveRequest } from '../services/leaveService';
+import { computeLeaveBalances, validateLeaveRequest, LEAVE_TYPE_LABELS } from '../lib/leavePolicy';
+import LeaveTimeline from './LeaveTimeline';
+
 import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryService';
 import { salaryDisbursementService, PayrollDisbursement } from '../services/salaryDisbursementService';
 import { grievanceService, StaffGrievance } from '../services/grievanceService';
@@ -176,8 +179,14 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     advanceEntries.filter(e => e.month === selectedMonth && e.year === selectedYear),
   [advanceEntries, selectedMonth, selectedYear]);
 
+  const leaveBalances = useMemo(() => computeLeaveBalances(leaveRequests), [leaveRequests]);
+  const leaveValidation = useMemo(
+    () => validateLeaveRequest(leaveForm as any, leaveRequests),
+    [leaveForm, leaveRequests]
+  );
+
   const handleLeaveSubmit = async () => {
-    if (!leaveForm.leaveDate || !leaveForm.reason.trim()) return;
+    if (!leaveValidation.valid) return;
     setLeaveSubmitting(true);
     const result = await leaveService.create({
       staffId: staff.id,
@@ -195,6 +204,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     }
     setLeaveSubmitting(false);
   };
+
 
   const handleQRScanSuccess = async (payload: any): Promise<import('./QRAttendanceScanner').ScanConfirmation> => {
     try {
