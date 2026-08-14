@@ -1470,6 +1470,24 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
             </button>
           )}
 
+          {/* Leave Balances */}
+          <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 rounded-2xl shadow-[var(--shadow-soft)]">
+            <h3 className="text-sm font-bold text-[var(--text-primary)] mb-3">
+              Leave Balance · {new Date().getFullYear()}
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {leaveBalances.filter(b => b.entitled > 0).map(b => (
+                <div key={b.type} className="p-3 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)]">
+                  <p className="text-[10px] font-semibold uppercase text-[var(--text-muted)]">{LEAVE_TYPE_LABELS[b.type]}</p>
+                  <p className="text-xl font-bold text-[var(--text-primary)]">{b.remaining}<span className="text-xs text-[var(--text-muted)]">/{b.entitled}</span></p>
+                  <p className="text-[10px] text-[var(--text-muted)]">Used {b.used}{b.pending > 0 ? ` · ${b.pending} pending` : ''}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+
+
           {/* Leave Form Modal */}
           {showLeaveForm && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowLeaveForm(false)}>
