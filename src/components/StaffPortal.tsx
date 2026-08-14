@@ -10,6 +10,9 @@ import { calculateAttendanceMetrics, calculateSalary, calculatePayroll, getDaysI
 import { salaryOverrideService } from '../services/salaryOverrideService';
 import { salaryCategoryService, type PayrollCategory } from '../services/salaryCategoryService';
 import { leaveService, LeaveRequest } from '../services/leaveService';
+import { computeLeaveBalances, validateLeaveRequest, LEAVE_TYPE_LABELS } from '../lib/leavePolicy';
+import LeaveTimeline from './LeaveTimeline';
+
 import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryService';
 import { salaryDisbursementService, PayrollDisbursement } from '../services/salaryDisbursementService';
 import { grievanceService, StaffGrievance } from '../services/grievanceService';
@@ -176,8 +179,14 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     advanceEntries.filter(e => e.month === selectedMonth && e.year === selectedYear),
   [advanceEntries, selectedMonth, selectedYear]);
 
+  const leaveBalances = useMemo(() => computeLeaveBalances(leaveRequests), [leaveRequests]);
+  const leaveValidation = useMemo(
+    () => validateLeaveRequest(leaveForm as any, leaveRequests),
+    [leaveForm, leaveRequests]
+  );
+
   const handleLeaveSubmit = async () => {
-    if (!leaveForm.leaveDate || !leaveForm.reason.trim()) return;
+    if (!leaveValidation.valid) return;
     setLeaveSubmitting(true);
     const result = await leaveService.create({
       staffId: staff.id,
@@ -195,6 +204,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     }
     setLeaveSubmitting(false);
   };
+
 
   const handleQRScanSuccess = async (payload: any): Promise<import('./QRAttendanceScanner').ScanConfirmation> => {
     try {
@@ -1460,6 +1470,24 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
             </button>
           )}
 
+          {/* Leave Balances */}
+          <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 rounded-2xl shadow-[var(--shadow-soft)]">
+            <h3 className="text-sm font-bold text-[var(--text-primary)] mb-3">
+              Leave Balance · {new Date().getFullYear()}
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {leaveBalances.filter(b => b.entitled > 0).map(b => (
+                <div key={b.type} className="p-3 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)]">
+                  <p className="text-[10px] font-semibold uppercase text-[var(--text-muted)]">{LEAVE_TYPE_LABELS[b.type]}</p>
+                  <p className="text-xl font-bold text-[var(--text-primary)]">{b.remaining}<span className="text-xs text-[var(--text-muted)]">/{b.entitled}</span></p>
+                  <p className="text-[10px] text-[var(--text-muted)]">Used {b.used}{b.pending > 0 ? ` · ${b.pending} pending` : ''}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+
+
           {/* Leave Form Modal */}
           {showLeaveForm && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowLeaveForm(false)}>
@@ -1514,6 +1542,23 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                   </div>
                 </div>
 
+                {/* Policy validation feedback */}
+                {(leaveForm.leaveDate || leaveForm.reason) && (
+                  <div className="mt-3 space-y-2">
+                    {leaveValidation.days > 0 && (
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Duration: <span className="font-semibold text-[var(--text-primary)]">{leaveValidation.days} day(s)</span>
+                      </p>
+                    )}
+                    {leaveValidation.errors.map((e, i) => (
+                      <p key={`e${i}`} className="text-xs text-red-600 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{e}</p>
+                    ))}
+                    {leaveValidation.warnings.map((w, i) => (
+                      <p key={`w${i}`} className="text-xs text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">{w}</p>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex gap-3 mt-5">
                   <button
                     onClick={() => setShowLeaveForm(false)}
@@ -1523,11 +1568,12 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                   </button>
                   <button
                     onClick={handleLeaveSubmit}
-                    disabled={leaveSubmitting || !leaveForm.leaveDate || !leaveForm.reason.trim()}
+                    disabled={leaveSubmitting || !leaveValidation.valid}
                     className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold text-sm disabled:opacity-50 transition-all"
                   >
                     {leaveSubmitting ? 'Submitting...' : 'Submit'}
                   </button>
+
                 </div>
               </div>
             </div>
@@ -1584,7 +1630,14 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                           <p className="text-sm text-[var(--text-primary)]">{leave.managerComment}</p>
                         </div>
                       )}
+                      <details className="mt-3 group">
+                        <summary className="text-xs font-semibold text-indigo-500 cursor-pointer select-none">Track status</summary>
+                        <div className="mt-3 pl-1">
+                          <LeaveTimeline leave={leave} compact />
+                        </div>
+                      </details>
                     </div>
+
                   );
                 })}
               </div>

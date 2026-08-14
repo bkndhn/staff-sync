@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Check, X, Clock, MessageSquare, FileText, Search, Filter } from 'lucide-react';
 import { leaveService, LeaveRequest } from '../services/leaveService';
 import { staffService } from '../services/staffService';
+import LeaveTimeline from './LeaveTimeline';
+
 
 interface LeaveManagementProps {
   userRole: 'admin' | 'manager' | 'supervisor' | 'floor_supervisor' | 'statutory_admin';
@@ -365,7 +367,22 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
                       <p className="text-sm text-[var(--text-primary)]">{leave.managerComment}</p>
                     </div>
                   )}
+
+                  <details className="mt-3">
+                    <summary className="text-xs font-semibold text-indigo-500 cursor-pointer select-none">
+                      Approval timeline
+                      {(leave.requiredApprovalLevels || 1) > 1 && (
+                        <span className="ml-1 text-[var(--text-muted)] font-normal">
+                          (level {Math.min(leave.currentApprovalLevel || 1, leave.requiredApprovalLevels || 1)} of {leave.requiredApprovalLevels})
+                        </span>
+                      )}
+                    </summary>
+                    <div className="mt-3 pl-1">
+                      <LeaveTimeline leave={leave} />
+                    </div>
+                  </details>
                 </div>
+
 
                 <div className="flex flex-col items-end gap-2">
                   <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${statusColors[leave.status]}`}>
