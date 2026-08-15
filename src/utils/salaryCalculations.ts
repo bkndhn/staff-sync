@@ -3,6 +3,30 @@ import { AdvanceEntry } from '../services/advanceEntryService';
 import { PartTimeRates, DEFAULT_PART_TIME_RATES } from '../services/settingsService';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, minutesBetween } from '../services/shiftService';
 
+/**
+ * Global punctuality-deduction policy.
+ *
+ * `disableLateDeductionForAll` / `disableEarlyDeductionForAll` are org-wide kill
+ * switches set from Settings. Per-staff `exemptFromLateDeduction` always wins on
+ * top of these — an exempt staff member is never docked for late arrival or
+ * early leaving, regardless of the global switches.
+ */
+export interface PunctualityPolicy {
+  disableLateDeductionForAll: boolean;
+  disableEarlyDeductionForAll: boolean;
+}
+
+let punctualityPolicy: PunctualityPolicy = {
+  disableLateDeductionForAll: false,
+  disableEarlyDeductionForAll: false,
+};
+
+export const setPunctualityPolicy = (policy: Partial<PunctualityPolicy>): void => {
+  punctualityPolicy = { ...punctualityPolicy, ...policy };
+};
+
+export const getPunctualityPolicy = (): PunctualityPolicy => punctualityPolicy;
+
 // Round to nearest 10
 export const roundToNearest10 = (value: number): number => {
   return Math.round(value / 10) * 10;
@@ -388,6 +412,11 @@ export const calculatePayroll = (
       };
     }
 
+    // Per-staff exemption and org-wide kill switches suppress the money impact,
+    // while late/early counts are still tracked for reporting.
+    const skipLateDeduction = !!staff.exemptFromLateDeduction || punctualityPolicy.disableLateDeductionForAll;
+    const skipEarlyDeduction = !!staff.exemptFromLateDeduction || punctualityPolicy.disableEarlyDeductionForAll;
+
     if (record.arrivalTime) {
       const arr = parseHHMM(record.arrivalTime);
       const start = parseHHMM(rulesToUse.shiftStart || rulesToUse.start);
@@ -395,7 +424,7 @@ export const calculatePayroll = (
         const lateBy = arr - start;
         if (lateBy > (rulesToUse.graceLateMin ?? 15)) {
           lateCount++;
-          if (!staff.exemptFromLateDeduction) {
+          if (!skipLateDeduction) {
             const rate = rulesToUse.lateDeductionRate !== undefined ? rulesToUse.lateDeductionRate : 0.5;
             recordLateDeduction += rate * dailyRate;
           }
@@ -410,11 +439,14 @@ export const calculatePayroll = (
         const earlyBy = end - lev;
         if (earlyBy > (rulesToUse.graceEarlyMin ?? 15)) {
           earlyCount++;
-          const rate = rulesToUse.earlyDeductionRate !== undefined ? rulesToUse.earlyDeductionRate : 0.5;
-          recordEarlyDeduction += rate * dailyRate;
+          if (!skipEarlyDeduction) {
+            const rate = rulesToUse.earlyDeductionRate !== undefined ? rulesToUse.earlyDeductionRate : 0.5;
+            recordEarlyDeduction += rate * dailyRate;
+          }
         }
       }
     }
+
   });
 
   let lateComingDeduction = roundToNearest10(recordLateDeduction);
