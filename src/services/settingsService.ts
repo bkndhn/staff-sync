@@ -46,5 +46,21 @@ export const settingsService = {
 
     async setRequireGeofence(require: boolean): Promise<void> {
         await appSettingsService.setSetting(STORAGE_KEYS.REQUIRE_GEOFENCE, JSON.stringify(require));
+    },
+
+    // Org-wide late / early punctuality deduction switches
+    async getPunctualityPolicy(): Promise<PunctualityPolicySetting> {
+        const stored = await appSettingsService.getSetting(STORAGE_KEYS.PUNCTUALITY_POLICY);
+        if (!stored) return DEFAULT_PUNCTUALITY_POLICY;
+        try {
+            return { ...DEFAULT_PUNCTUALITY_POLICY, ...JSON.parse(stored) };
+        } catch {
+            return DEFAULT_PUNCTUALITY_POLICY;
+        }
+    },
+
+    async setPunctualityPolicySetting(policy: PunctualityPolicySetting): Promise<void> {
+        await appSettingsService.setSetting(STORAGE_KEYS.PUNCTUALITY_POLICY, JSON.stringify(policy));
     }
 };
+
