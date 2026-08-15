@@ -412,6 +412,11 @@ export const calculatePayroll = (
       };
     }
 
+    // Per-staff exemption and org-wide kill switches suppress the money impact,
+    // while late/early counts are still tracked for reporting.
+    const skipLateDeduction = !!staff.exemptFromLateDeduction || punctualityPolicy.disableLateDeductionForAll;
+    const skipEarlyDeduction = !!staff.exemptFromLateDeduction || punctualityPolicy.disableEarlyDeductionForAll;
+
     if (record.arrivalTime) {
       const arr = parseHHMM(record.arrivalTime);
       const start = parseHHMM(rulesToUse.shiftStart || rulesToUse.start);
@@ -419,7 +424,7 @@ export const calculatePayroll = (
         const lateBy = arr - start;
         if (lateBy > (rulesToUse.graceLateMin ?? 15)) {
           lateCount++;
-          if (!staff.exemptFromLateDeduction) {
+          if (!skipLateDeduction) {
             const rate = rulesToUse.lateDeductionRate !== undefined ? rulesToUse.lateDeductionRate : 0.5;
             recordLateDeduction += rate * dailyRate;
           }
@@ -434,11 +439,14 @@ export const calculatePayroll = (
         const earlyBy = end - lev;
         if (earlyBy > (rulesToUse.graceEarlyMin ?? 15)) {
           earlyCount++;
-          const rate = rulesToUse.earlyDeductionRate !== undefined ? rulesToUse.earlyDeductionRate : 0.5;
-          recordEarlyDeduction += rate * dailyRate;
+          if (!skipEarlyDeduction) {
+            const rate = rulesToUse.earlyDeductionRate !== undefined ? rulesToUse.earlyDeductionRate : 0.5;
+            recordEarlyDeduction += rate * dailyRate;
+          }
         }
       }
     }
+
   });
 
   let lateComingDeduction = roundToNearest10(recordLateDeduction);
