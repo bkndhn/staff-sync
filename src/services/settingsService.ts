@@ -7,8 +7,20 @@ export interface PartTimeRates {
 
 const STORAGE_KEYS = {
     PART_TIME_RATES: 'staff_management_part_time_rates',
-    REQUIRE_GEOFENCE: 'staff_management_require_geofence'
+    REQUIRE_GEOFENCE: 'staff_management_require_geofence',
+    PUNCTUALITY_POLICY: 'staff_management_punctuality_policy'
 };
+
+export interface PunctualityPolicySetting {
+    disableLateDeductionForAll: boolean;
+    disableEarlyDeductionForAll: boolean;
+}
+
+export const DEFAULT_PUNCTUALITY_POLICY: PunctualityPolicySetting = {
+    disableLateDeductionForAll: false,
+    disableEarlyDeductionForAll: false
+};
+
 
 export const DEFAULT_PART_TIME_RATES: PartTimeRates = {
     weekdayRate: 350,
