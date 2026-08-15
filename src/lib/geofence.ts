@@ -40,6 +40,34 @@ export function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2:
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/**
+ * Ensures the browser/device has granted location permission BEFORE a punch.
+ * Returns null when permission is usable, or a failure result to show the user.
+ */
+export async function ensureLocationPermission(): Promise<GeofenceResult | null> {
+  if (!('geolocation' in navigator)) {
+    return {
+      ok: false,
+      title: 'Location Not Supported',
+      subtitle: 'This device cannot provide GPS location, so attendance punching is blocked.',
+    };
+  }
+  try {
+    const perms = (navigator as any).permissions;
+    if (perms?.query) {
+      const status = await perms.query({ name: 'geolocation' as PermissionName });
+      if (status.state === 'denied') {
+        return {
+          ok: false,
+          title: 'Location Permission Denied',
+          subtitle: 'Enable location access for this app in your browser/device settings, then retry the punch.',
+        };
+      }
+    }
+  } catch { /* permissions API unavailable — the GPS read below still gates us */ }
+  return null;
+}
+
 /** Acquire a fresh, non-cached GPS fix. Never reuses a cached position. */
 export function acquirePosition(timeout = 10000): Promise<{ pos: GeolocationPosition; timeToFix: number }> {
   const started = Date.now();
@@ -56,9 +84,18 @@ export function acquirePosition(timeout = 10000): Promise<{ pos: GeolocationPosi
   });
 }
 
+const LAST_FIX_KEY = 'geofence_last_fix';
+/** Max believable travel speed between two fixes (m/s) — ~430 km/h. */
+const MAX_PLAUSIBLE_SPEED = 120;
+
 /** Mock-location heuristics. Returns a failure result, or null when the fix looks genuine. */
 export function detectSpoofing(pos: GeolocationPosition, timeToFix: number): GeofenceResult | null {
   const { accuracy, latitude, longitude } = pos.coords;
+
+  // Android/Capacitor exposes a mocked flag on injected fixes.
+  if ((pos as any).mocked === true || (pos.coords as any).mocked === true) {
+    return { ok: false, title: 'Fake GPS Detected', subtitle: 'A mock location provider is active. Disable it and retry.' };
+  }
 
   // Real hardware needs time to lock. Instant, pin-sharp fixes are injected.
   if (timeToFix < 150 && accuracy < 20) {
@@ -72,6 +109,31 @@ export function detectSpoofing(pos: GeolocationPosition, timeToFix: number): Geo
   if (Number.isInteger(latitude) && Number.isInteger(longitude)) {
     return { ok: false, title: 'Fake GPS Detected', subtitle: 'Coordinates look manually entered. Disable mock location apps.' };
   }
+  // A GPS timestamp far from wall-clock time means the fix was replayed.
+  if (pos.timestamp && Math.abs(Date.now() - pos.timestamp) > 120000) {
+    return { ok: false, title: 'Stale GPS Fix', subtitle: 'The location reading is not live. Close mock location tools and retry.' };
+  }
+
+  // Teleport check: compare against the previous fix stored on this device.
+  try {
+    const raw = localStorage.getItem(LAST_FIX_KEY);
+    if (raw) {
+      const last = JSON.parse(raw) as { lat: number; lon: number; t: number };
+      const seconds = Math.max(1, (Date.now() - last.t) / 1000);
+      if (seconds < 3600) {
+        const moved = distanceInMeters(last.lat, last.lon, latitude, longitude);
+        if (moved / seconds > MAX_PLAUSIBLE_SPEED && moved > 1000) {
+          return {
+            ok: false,
+            title: 'Impossible Location Jump',
+            subtitle: 'Your device reported an impossible travel distance since the last reading. Disable fake GPS apps.',
+          };
+        }
+      }
+    }
+    localStorage.setItem(LAST_FIX_KEY, JSON.stringify({ lat: latitude, lon: longitude, t: Date.now() }));
+  } catch { /* storage unavailable — skip the teleport heuristic */ }
+
   if (accuracy > MAX_ACCEPTABLE_ACCURACY) {
     return {
       ok: false,
@@ -82,6 +144,7 @@ export function detectSpoofing(pos: GeolocationPosition, timeToFix: number): Geo
   }
   return null;
 }
+
 
 /**
  * Full check: acquire a fix, run anti-spoofing, then compare against the branch fence.
