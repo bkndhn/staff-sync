@@ -3,6 +3,30 @@ import { AdvanceEntry } from '../services/advanceEntryService';
 import { PartTimeRates, DEFAULT_PART_TIME_RATES } from '../services/settingsService';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, minutesBetween } from '../services/shiftService';
 
+/**
+ * Global punctuality-deduction policy.
+ *
+ * `disableLateDeductionForAll` / `disableEarlyDeductionForAll` are org-wide kill
+ * switches set from Settings. Per-staff `exemptFromLateDeduction` always wins on
+ * top of these — an exempt staff member is never docked for late arrival or
+ * early leaving, regardless of the global switches.
+ */
+export interface PunctualityPolicy {
+  disableLateDeductionForAll: boolean;
+  disableEarlyDeductionForAll: boolean;
+}
+
+let punctualityPolicy: PunctualityPolicy = {
+  disableLateDeductionForAll: false,
+  disableEarlyDeductionForAll: false,
+};
+
+export const setPunctualityPolicy = (policy: Partial<PunctualityPolicy>): void => {
+  punctualityPolicy = { ...punctualityPolicy, ...policy };
+};
+
+export const getPunctualityPolicy = (): PunctualityPolicy => punctualityPolicy;
+
 // Round to nearest 10
 export const roundToNearest10 = (value: number): number => {
   return Math.round(value / 10) * 10;
