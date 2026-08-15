@@ -10,6 +10,7 @@ import ShiftWindowsPanel from './ShiftWindowsPanel';
 import AttendanceRulesPanel from './AttendanceRulesPanel';
 import DeviceIntegration from './DeviceIntegration';
 import PayrollOverridesPanel from './SalaryOverridesPanel';
+import PunctualityPolicyPanel from './PunctualityPolicyPanel';
 const SalaryOverridesPanel = PayrollOverridesPanel;
 import StatutoryPortalSettingsPanel from './StatutoryPortalSettingsPanel';
 import StatutoryCredentialsPanel from './StatutoryCredentialsPanel';
