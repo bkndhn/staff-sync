@@ -681,7 +681,22 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
               </div>
               <SalaryOverridesPanel />
             </div>
+
+            {/* Punctuality deduction switches */}
+            <div className="glass-card-static p-4 rounded-xl space-y-3 mt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <Clock size={20} className="text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)] text-sm">Late / Early Deduction Rules</h3>
+                  <p className="text-xs text-[var(--text-muted)]">Turn off late-coming or early-leaving deductions for the whole organisation.</p>
+                </div>
+              </div>
+              <PunctualityPolicyPanel />
+            </div>
             </SettingsSection>
+
 
             <div className="flex flex-col sm:flex-row gap-3">
                 <input
