@@ -191,3 +191,65 @@ export async function verifyWithinGeofence(target: GeofenceTarget | null | undef
     accuracy: pos.coords.accuracy,
   };
 }
+
+/**
+ * Punch gate used by every clock IN/OUT and break punch.
+ *
+ * Order of enforcement (all mandatory, no bypass):
+ *   1. Location permission must be granted — a denied/blocked prompt fails the punch.
+ *   2. A live, non-cached GPS fix must be obtained.
+ *   3. Anti-spoofing heuristics must pass (mock providers, teleports, stale fixes).
+ *   4. When the branch has a fence configured, the fix must be inside its radius.
+ *
+ * A branch without coordinates still requires steps 1–3, so a punch can never be
+ * made with location services switched off.
+ */
+export async function enforcePunchLocation(target: GeofenceTarget | null | undefined): Promise<GeofenceResult> {
+  const permission = await ensureLocationPermission();
+  if (permission) return permission;
+
+  let pos: GeolocationPosition;
+  let timeToFix: number;
+  try {
+    ({ pos, timeToFix } = await acquirePosition());
+  } catch (err) {
+    return {
+      ok: false,
+      title: 'Location Permission Required',
+      subtitle: `Allow location access to punch in or out. (${(err as Error).message})`,
+    };
+  }
+
+  const spoof = detectSpoofing(pos, timeToFix);
+  if (spoof) return spoof;
+
+  if (!target || target.latitude == null || target.longitude == null) {
+    return {
+      ok: true,
+      title: 'Location Verified',
+      subtitle: `GPS confirmed (±${Math.round(pos.coords.accuracy)}m). No branch fence configured.`,
+      accuracy: pos.coords.accuracy,
+    };
+  }
+
+  const radius = target.radius_meters || DEFAULT_RADIUS_METERS;
+  const dist = distanceInMeters(pos.coords.latitude, pos.coords.longitude, target.latitude, target.longitude);
+  if (dist > radius) {
+    return {
+      ok: false,
+      title: 'Outside Work Location',
+      subtitle: `You are ${Math.round(dist)}m away from ${target.name || 'your branch'} (allowed: ${radius}m).`,
+      distance: dist,
+      accuracy: pos.coords.accuracy,
+    };
+  }
+
+  return {
+    ok: true,
+    title: 'Location Verified',
+    subtitle: `${Math.round(dist)}m from ${target.name || 'branch'} (±${Math.round(pos.coords.accuracy)}m).`,
+    distance: dist,
+    accuracy: pos.coords.accuracy,
+  };
+}
+
