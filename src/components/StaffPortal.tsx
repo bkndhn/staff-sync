@@ -208,41 +208,44 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
   const handleQRScanSuccess = async (payload: any): Promise<import('./QRAttendanceScanner').ScanConfirmation> => {
     try {
-      // 1. Geofence Validation (shared engine — same rules everywhere)
+      // 1. Location gate (permission + live fix + anti-spoof + branch fence)
       try {
         const { locationService } = await import('../services/locationService');
         const { settingsService } = await import('../services/settingsService');
-        const { verifyWithinGeofence } = await import('../lib/geofence');
+        const { enforcePunchLocation } = await import('../lib/geofence');
         const allLocs = await locationService.getLocations();
         const locConfig: any = allLocs.find(l => l.name === staff.location);
         const requireGeofence = await settingsService.getRequireGeofence();
 
-        if (locConfig && locConfig.latitude != null && locConfig.longitude != null) {
-          if (requireGeofence) {
-            return {
-              ok: false,
-              title: 'Mobile App Required',
-              subtitle: `Your branch requires strict geofencing. Please use the Geofence Mobile App to clock in.`
-            };
-          }
+        if (requireGeofence && locConfig && locConfig.latitude != null && locConfig.longitude != null) {
+          return {
+            ok: false,
+            title: 'Mobile App Required',
+            subtitle: `Your branch requires strict geofencing. Please use the Geofence Mobile App to clock in.`
+          };
+        }
 
-          const verdict = await verifyWithinGeofence({
-            latitude: locConfig.latitude,
-            longitude: locConfig.longitude,
-            radius_meters: locConfig.radius_meters,
-            name: staff.location,
-          });
-          if (!verdict.ok) {
-            return { ok: false, title: verdict.title, subtitle: verdict.subtitle };
-          }
+        const verdict = await enforcePunchLocation(
+          locConfig
+            ? {
+                latitude: locConfig.latitude,
+                longitude: locConfig.longitude,
+                radius_meters: locConfig.radius_meters,
+                name: staff.location,
+              }
+            : null
+        );
+        if (!verdict.ok) {
+          return { ok: false, title: verdict.title, subtitle: verdict.subtitle };
         }
       } catch (err: any) {
         return {
           ok: false,
-          title: 'Geofence Failed',
+          title: 'Location Check Failed',
           subtitle: `Could not verify GPS location: ${err.message}`
         };
       }
+
 
       const today = new Date().toISOString().split('T')[0];
       const nowTime = new Date().toTimeString().split(' ')[0];
