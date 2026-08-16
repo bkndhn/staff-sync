@@ -93,6 +93,14 @@ const ComponentLoader = () => <SkeletonLoader />;
 function App() {
   useEffect(() => {
     errorTracker.init();
+    // Load org-wide punctuality policy so payroll respects the global late/early switches.
+    (async () => {
+      try {
+        const { settingsService } = await import('./services/settingsService');
+        const { setPunctualityPolicy } = await import('./utils/salaryCalculations');
+        setPunctualityPolicy(await settingsService.getPunctualityPolicy());
+      } catch { /* defaults stay in effect */ }
+    })();
   }, []);
 
   // 🚀 Capacitor Offline Sync - auto-syncs punches when network restores 🚀
@@ -1442,6 +1450,7 @@ function App() {
               userLocation={user?.location}
               userName={user?.role === 'admin' ? 'Admin' : (user?.role === 'supervisor' || user?.role === 'floor_supervisor') ? `${user?.location} Supervisor` : `${user?.location} Manager`}
               userFloor={user?.role === 'supervisor' || user?.role === 'floor_supervisor' ? user?.floor : undefined}
+              allowedStaffIds={statutoryStaffIds || undefined}
             />
           </Suspense>
         );
@@ -1453,6 +1462,7 @@ function App() {
               userRole={user?.role || 'manager'}
               userName={user?.staffName || user?.email || 'Approver'}
               userLocation={user?.location}
+              allowedStaffIds={statutoryStaffIds || undefined}
             />
           </Suspense>
         );
