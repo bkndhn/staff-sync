@@ -163,7 +163,7 @@ const UserCard: React.FC<{
                     <h3 className="font-semibold text-white text-lg">{user.full_name}</h3>
                     <p className="text-white/60 text-sm font-mono break-all">{user.email}</p>
                 </div>
-                <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'statutory_admin' ? 'badge-emerald' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
+                <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'statutory_admin' ? 'badge-success' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
                     {user.role === 'admin' ? 'Admin' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
                 </span>
             </div>
@@ -791,7 +791,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                                         <td className="font-medium text-white !text-left">{user.full_name}</td>
                                         <td className="text-white/70 font-mono text-sm !text-left">{user.email}</td>
                                         <td className="!text-center">
-                                            <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'statutory_admin' ? 'badge-emerald' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
+                                            <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'statutory_admin' ? 'badge-success' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
                                                 {user.role === 'admin' ? 'Admin' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
                                             </span>
                                         </td>
