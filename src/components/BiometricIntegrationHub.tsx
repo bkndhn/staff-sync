@@ -21,7 +21,7 @@ export const BiometricIntegrationHub: React.FC = () => {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'devices' | 'webhook' | 'mapping' | 'desktopAgent'>('devices');
+  const [activeTab, setActiveTab] = useState<'devices' | 'webhook' | 'mapping' | 'desktopAgent' | 'adms'>('devices');
 
   const pushEndpointUrl = "https://nsmppwnpdxomjmgrtqka.supabase.co/functions/v1/device-push";
   const pushToken = "essl_cloud_secure_push_token_2026"; // Standard configured push token
@@ -146,6 +146,15 @@ while ($true) {
             <Activity size={16} style={{ color: '#ffffff' }} /> <span style={{ color: '#ffffff' }}>Live Hardware Devices ({devices.length})</span>
           </button>
           <button
+            onClick={() => setActiveTab('adms')}
+            style={{ color: '#ffffff' }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === 'adms' ? 'bg-purple-500 !text-white shadow-lg' : 'bg-white/15 !text-white hover:bg-white/25'
+            }`}
+          >
+            <Wifi size={16} style={{ color: '#ffffff' }} /> <span style={{ color: '#ffffff' }}>Direct ADMS (iclock)</span>
+          </button>
+          <button
             onClick={() => setActiveTab('webhook')}
             style={{ color: '#ffffff' }}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
@@ -235,6 +244,64 @@ while ($true) {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Tab: Direct ADMS (iclock) */}
+      {activeTab === 'adms' && (
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 space-y-6">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <Wifi className="text-purple-600" size={20} /> Direct ZKTeco ADMS (iclock) Setup
+            </h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Configure your physical biometric device to sync punches directly to this server using the standard ZKTeco iclock protocol.
+            </p>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                Server Address (IP / Domain)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value="nsmppwnpdxomjmgrtqka.supabase.co"
+                  className="flex-1 bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-mono text-gray-800"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                Server Port
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value="443"
+                  className="flex-1 bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-mono text-gray-800"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                Base Path / ADMS Path
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value="/functions/v1/iclock"
+                  className="flex-1 bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-mono text-gray-800"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
