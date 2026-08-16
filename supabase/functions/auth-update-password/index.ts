@@ -130,8 +130,7 @@ Deno.serve(async (req) => {
     }
 
     // Hash password for app_users
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Get the user's auth_id if they have one
     const { data: userToUpdate } = await supabase
@@ -156,16 +155,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. Update Supabase Auth if auth_id exists
+    // 2. Update Supabase Auth if auth_id exists, otherwise create
     if (userToUpdate?.auth_id) {
       const { error: authError } = await supabase.auth.admin.updateUserById(
         userToUpdate.auth_id,
         { password: newPassword }
       );
-      
-      if (authError) {
-        console.error('Failed to update Supabase Auth password:', authError);
-        // Continue even if this fails, as they can still login via legacy fallback
+      if (authError) console.error('Failed to update Supabase Auth password:', authError);
+    } else {
+      // Get full user details to create them in Supabase Auth
+      const { data: fullUser } = await supabase.from('app_users').select('*').eq('id', userId).single();
+      if (fullUser) {
+        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+          email: fullUser.email,
+          password: newPassword,
+          email_confirm: true,
+          user_metadata: {
+            full_name: fullUser.full_name,
+            role: fullUser.role,
+            tenant_id: fullUser.tenant_id
+          }
+        });
+        if (!authError && authUser?.user) {
+          await supabase.from('app_users').update({ auth_id: authUser.user.id }).eq('id', userId);
+        }
       }
     }
 

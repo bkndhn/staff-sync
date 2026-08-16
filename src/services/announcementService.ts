@@ -14,40 +14,27 @@ export interface Announcement {
 
 export const announcementService = {
   async getAnnouncements(): Promise<Announcement[]> {
-    const json = await dataApi({
-      table: 'announcements',
-      op: 'select',
-      columns: '*',
-    });
+    const { data, error } = await dataApi.from('announcements').select('*');
+    if (error) throw error;
     // sort by created_at descending
-    return (json?.data || []).sort((a: Announcement, b: Announcement) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return (data || []).sort((a: Announcement, b: Announcement) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   },
 
   async createAnnouncement(data: Partial<Announcement>): Promise<Announcement | null> {
-    const json = await dataApi({
-      table: 'announcements',
-      op: 'insert',
-      values: data,
-    });
-    return Array.isArray(json?.data) ? json.data[0] : json?.data;
+    const { data: res, error } = await dataApi.from('announcements').insert(data).select();
+    if (error) throw error;
+    return Array.isArray(res) ? res[0] : res;
   },
 
   async updateAnnouncement(id: string, data: Partial<Announcement>): Promise<Announcement | null> {
-    const json = await dataApi({
-      table: 'announcements',
-      op: 'update',
-      filters: [{ col: 'id', op: 'eq', val: id }],
-      values: { ...data, updated_at: new Date().toISOString() },
-    });
-    return Array.isArray(json?.data) ? json.data[0] : json?.data;
+    const { data: res, error } = await dataApi.from('announcements').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id).select();
+    if (error) throw error;
+    return Array.isArray(res) ? res[0] : res;
   },
 
   async deleteAnnouncement(id: string): Promise<boolean> {
-    const json = await dataApi({
-      table: 'announcements',
-      op: 'delete',
-      filters: [{ col: 'id', op: 'eq', val: id }],
-    });
-    return !json?.error;
+    const { error } = await dataApi.from('announcements').delete().eq('id', id);
+    if (error) throw error;
+    return true;
   }
 };

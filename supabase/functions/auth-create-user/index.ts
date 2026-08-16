@@ -204,11 +204,32 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Create user in Supabase Auth first
+    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+      email: email.trim().toLowerCase(),
+      password: password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: full_name.trim(),
+        role: role,
+        tenant_id: sessionCheck.tenantId || null
+      }
+    });
+
+    if (authError) {
+      console.error('Supabase Auth insert error:', authError);
+      return new Response(
+        JSON.stringify({ error: `Failed to create auth user: ${authError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { data, error } = await supabase
       .from('app_users')
       .insert([{
         email: email.trim().toLowerCase(),
         password_hash: passwordHash,
+        auth_id: authUser.user.id,
         full_name: full_name.trim(),
         role,
         location: location?.trim() || null,
