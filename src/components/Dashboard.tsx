@@ -5,6 +5,7 @@ import { calculateLocationAttendance } from '../utils/salaryCalculations';
 import { appSettingsService } from '../services/appSettingsService';
 import { customAlert } from './CustomDialog';
 import BreaksDashboardWidget from './BreaksDashboardWidget';
+import { AIInsightsWidget } from './AIInsightsWidget';
 import {
   exportDashboardPDF,
   shareDashboardPDFWhatsApp,
@@ -31,6 +32,7 @@ interface DashboardProps {
   onDateChange: (date: string) => void;
   userRole?: 'admin' | 'manager';
   userLocation?: string;
+  currentUser?: any;
   isDarkTheme: boolean;
   toggleTheme: () => void;
   statutoryMode?: boolean;
@@ -45,6 +47,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   selectedDate,
   onDateChange,
   userRole = 'manager',
+  currentUser,
   userLocation = '',
   isDarkTheme,
   toggleTheme,
@@ -403,9 +406,10 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* AI Workforce Insights moved to the Workforce Insights page */}
-
-
+      {/* AI Workforce Insights */}
+      {(userRole === 'admin' || userRole === 'manager') && (
+        <AIInsightsWidget tenantId={currentUser?.tenant_id} />
+      )}
 
       {/* Stats Cards - Admin Only */}
       {userRole === 'admin' && (

@@ -91,6 +91,7 @@ const ACL: Record<string, TableAcl> = {
   device_status:                     { read: ["admin","manager","supervisor","floor_supervisor","super_admin"], write: ["admin","super_admin"] },
   loan_repayments:                   { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"],                   write: ["admin","manager"] },
   feature_toggles:                   { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin","statutory_admin"], write: ["admin","super_admin"], tenantIdCol: "tenant_id" },
+  ai_insights:                       { read: ["admin","manager","super_admin","statutory_admin"], write: ["admin","manager"] },
   announcements:                     { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin","statutory_admin"], write: ["admin","manager"] },
   // ── Platform-level ──────────────────────────────────────────────────────────
   app_users:                         { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["super_admin","admin"] },

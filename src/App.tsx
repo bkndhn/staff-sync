@@ -1325,7 +1325,7 @@ function App() {
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
             userRole={user?.role === 'admin' || user?.role === 'statutory_admin' || user?.role === 'super_admin' ? 'admin' : 'manager'}
-
+            currentUser={user}
             userLocation={user?.location || ''}
             isDarkTheme={isDarkTheme}
             toggleTheme={toggleTheme}

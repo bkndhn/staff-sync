@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
 
     if (newPassword.length < 8 || newPassword.length > 128) {
       return new Response(
-        JSON.stringify({ error: 'Password must be 8-128 characters' }),
+        JSON.stringify({ error: 'Password must be between 8 and 128 characters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -129,51 +129,62 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify the target user exists before updating
-    const { data: targetUser, error: fetchError } = await supabase
+    // Hash password for app_users
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Get the user's auth_id if they have one
+    const { data: userToUpdate } = await supabase
       .from('app_users')
-      .select('id')
+      .select('auth_id')
       .eq('id', userId)
-      .eq('is_active', true)
       .single();
 
-    if (fetchError || !targetUser) {
-      return new Response(
-        JSON.stringify({ error: 'User not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const newHash = await bcrypt.hash(newPassword, 10);
-
-    const { error } = await supabase
+    // 1. Update app_users
+    const { error: dbError } = await supabase
       .from('app_users')
-      .update({ password_hash: newHash, updated_at: new Date().toISOString() })
+      .update({
+        password_hash: hashedPassword,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', userId);
 
-    if (error) {
+    if (dbError) {
       return new Response(
-        JSON.stringify({ error: 'Failed to update password' }),
+        JSON.stringify({ error: 'Failed to update user password in database' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Invalidate all other sessions for this user for security
+    // 2. Update Supabase Auth if auth_id exists
+    if (userToUpdate?.auth_id) {
+      const { error: authError } = await supabase.auth.admin.updateUserById(
+        userToUpdate.auth_id,
+        { password: newPassword }
+      );
+      
+      if (authError) {
+        console.error('Failed to update Supabase Auth password:', authError);
+        // Continue even if this fails, as they can still login via legacy fallback
+      }
+    }
+
+    // 3. Invalidate all existing legacy sessions for this user (force re-login)
+    // We don't invalidate the current session so they stay logged in
     await supabase
       .from('app_sessions')
       .update({ is_valid: false })
       .eq('user_id', userId)
-      .neq('token', sessionToken!);
+      .neq('token', req.headers.get('x-session-token') || '');
 
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, message: 'Password updated successfully' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
-  } catch (err) {
-    console.error('Password update error:', err);
+  } catch (err: any) {
+    console.error('Internal server error:', err);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error', details: err.message || err.toString() }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
