@@ -1442,6 +1442,7 @@ function App() {
               userLocation={user?.location}
               userName={user?.role === 'admin' ? 'Admin' : (user?.role === 'supervisor' || user?.role === 'floor_supervisor') ? `${user?.location} Supervisor` : `${user?.location} Manager`}
               userFloor={user?.role === 'supervisor' || user?.role === 'floor_supervisor' ? user?.floor : undefined}
+              allowedStaffIds={statutoryStaffIds || undefined}
             />
           </Suspense>
         );
@@ -1453,6 +1454,7 @@ function App() {
               userRole={user?.role || 'manager'}
               userName={user?.staffName || user?.email || 'Approver'}
               userLocation={user?.location}
+              allowedStaffIds={statutoryStaffIds || undefined}
             />
           </Suspense>
         );

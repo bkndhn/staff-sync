@@ -15,9 +15,11 @@ interface Props {
   userRole: string;
   userName: string;
   userLocation?: string;
+  /** When provided, only loans belonging to these staff ids are shown (statutory scope). */
+  allowedStaffIds?: Set<string>;
 }
 
-const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation }) => {
+const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation, allowedStaffIds }) => {
   const [loans, setLoans] = useState<LoanRequest[]>([]);
   const [deducted, setDeducted] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -61,6 +63,7 @@ const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation }) =
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return loans.filter(l => {
+      if (allowedStaffIds && !allowedStaffIds.has(l.staffId)) return false;
       if (tab === 'pending' && l.status !== 'pending') return false;
       if (tab === 'approved' && l.status !== 'approved') return false;
       if (tab === 'rejected' && !['rejected', 'cancelled'].includes(l.status)) return false;
@@ -68,7 +71,7 @@ const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation }) =
       if (dateFilter && (l.createdAt || '').slice(0, 10) !== dateFilter) return false;
       return true;
     });
-  }, [loans, tab, search, dateFilter]);
+  }, [loans, tab, search, dateFilter, allowedStaffIds]);
 
   const canAct = (l: LoanRequest) => l.status === 'pending' && (isAdmin || l.currentApprovalLevel === 1);
 

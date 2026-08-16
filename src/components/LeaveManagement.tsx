@@ -10,6 +10,8 @@ interface LeaveManagementProps {
   userLocation?: string;
   userName?: string;
   userFloor?: string;
+  /** When provided, only leaves belonging to these staff ids are shown (statutory scope). */
+  allowedStaffIds?: Set<string>;
 }
 
 const leaveTypeLabels: Record<string, string> = {
@@ -27,7 +29,7 @@ const statusColors: Record<string, string> = {
   postponed: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
 };
 
-const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocation, userName, userFloor }) => {
+const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocation, userName, userFloor, allowedStaffIds }) => {
   const userZone = userFloor;
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,15 +104,16 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
 
   // For supervisor/floor_supervisor, auto-scope leaves to their floor
   const scopedLeaves = React.useMemo(() => {
+    const base = allowedStaffIds ? leaves.filter(l => allowedStaffIds.has(l.staffId)) : leaves;
     if ((userRole === 'supervisor' || userRole === 'floor_supervisor') && userFloor) {
-      return leaves.filter(l => {
+      return base.filter(l => {
         const staffZone = staffMeta[l.staffId]?.floor;
         // Only show leaves from staff on the supervisor's floor
         return staffZone === userFloor;
       });
     }
-    return leaves;
-  }, [leaves, staffMeta, userRole, userFloor]);
+    return base;
+  }, [leaves, staffMeta, userRole, userFloor, allowedStaffIds]);
 
   const filtered = scopedLeaves.filter(l => {
     // Status filter
