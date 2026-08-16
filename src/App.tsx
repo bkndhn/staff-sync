@@ -93,6 +93,14 @@ const ComponentLoader = () => <SkeletonLoader />;
 function App() {
   useEffect(() => {
     errorTracker.init();
+    // Load org-wide punctuality policy so payroll respects the global late/early switches.
+    (async () => {
+      try {
+        const { settingsService } = await import('./services/settingsService');
+        const { setPunctualityPolicy } = await import('./utils/salaryCalculations');
+        setPunctualityPolicy(await settingsService.getPunctualityPolicy());
+      } catch { /* defaults stay in effect */ }
+    })();
   }, []);
 
   // 🚀 Capacitor Offline Sync - auto-syncs punches when network restores 🚀
