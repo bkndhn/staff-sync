@@ -32,13 +32,15 @@ import { DEFAULT_SHIFT_WINDOWS, parseHHMM, shiftService } from '../services/shif
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
 import { AIPredictor } from './AIPredictor';
 import AIWorkforceInsightsWidget from './dashboard/AIWorkforceInsightsWidget';
-
+import { AIInsightsWidget } from './AIInsightsWidget';
+import DailyPayrollOverviewWidget from './dashboard/DailyPayrollOverviewWidget';
 interface WorkforceInsightsProps {
   staff: Staff[];
   attendance: Attendance[];
   advances: AdvanceDeduction[];
   userLocation?: string;
   userRole?: 'admin' | 'manager' | 'staff';
+  currentUser?: any;
 }
 
 const getDatesInRange = (fromStr: string, toStr: string): string[] => {
@@ -101,7 +103,8 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
   attendance,
   advances,
   userLocation,
-  userRole = 'manager'
+  userRole = 'manager',
+  currentUser
 }) => {
   const [filterType, setFilterType] = useState<'today' | 'yesterday' | 'week' | 'month' | 'year' | 'custom'>('today');
   const [fromDate, setFromDate] = useState<string>(() => getDateRangeFromType('today').from);
@@ -595,7 +598,12 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
         locations={Array.from(new Set(staff.map(s => s.location).filter(Boolean))).map(name => ({ name: name as string, color: '', stats: {} }))}
       />
 
+      <AIInsightsWidget tenantId={currentUser?.tenant_id} />
 
+      <DailyPayrollOverviewWidget
+        todayAttendance={attendance.filter(a => a.date === new Date().toISOString().split('T')[0])}
+        staff={staff}
+      />
 
       {/* Date Filters Panel */}
       <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6 rounded-3xl shadow-[var(--shadow-soft)] space-y-4">

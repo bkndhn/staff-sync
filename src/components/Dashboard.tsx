@@ -406,10 +406,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* AI Workforce Insights */}
-      {(userRole === 'admin' || userRole === 'manager') && (
-        <AIInsightsWidget tenantId={currentUser?.tenant_id} />
-      )}
+      {/* AI Workforce Insights moved to Workforce Insights page */}
 
       {/* Stats Cards - Admin Only */}
       {userRole === 'admin' && (
@@ -465,12 +462,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          {widgetConfig.showDailyPayroll && (
-            <DailyPayrollOverviewWidget
-              todayAttendance={todayAttendance}
-              staff={staff}
-            />
-          )}
+
 
           {!statutoryMode && (
             <div className="grid grid-cols-1">
