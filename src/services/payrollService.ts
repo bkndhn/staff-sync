@@ -48,6 +48,32 @@ export const payrollService = {
     }));
   },
 
+  async getSnapshotForStaff(month: number, year: number, staffId: string): Promise<PayrollSnapshot | null> {
+    const run = await this.getPayrollRun(month, year);
+    if (!run) return null;
+
+    const { data, error } = await supabase
+      .from('payroll_snapshots')
+      .select('*')
+      .eq('run_id', run.id)
+      .eq('staff_id', staffId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null; // Not found
+      console.error('Error fetching staff snapshot:', error);
+      throw error;
+    }
+
+    return {
+      id: data.id,
+      runId: data.run_id,
+      staffId: data.staff_id,
+      staffSnapshot: data.staff_snapshot as Staff,
+      salaryDetail: data.salary_detail as PayrollDetail
+    };
+  },
+
   // Generate payroll for a month/year
   async generatePayroll(
     month: number, 

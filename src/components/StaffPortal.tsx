@@ -441,64 +441,120 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       .filter(item => item.amount > 0); // Only show allowances that exist for this staff
   }, [activeCustomCategories, overrides?.salarySupplementsOverride, staff.salarySupplements]);
 
-  // Payroll for selected month - with overrides applied
-  const salaryDetail = useMemo(() => {
-    const adv = advances.find(a => a.staffId === staff.id && a.month === selectedMonth && a.year === selectedYear) || null;
-    const baseDetail = calculatePayroll(staff, metrics, adv, advances, attendance, selectedMonth, selectedYear, currentMonthAdvanceEntries);
+  const [salaryDetail, setSalaryDetail] = useState<ReturnType<typeof calculatePayroll> & { statutoryTotal?: number; statutoryBreakdown?: Array<{ key: string; label: string; amount: number }> } | null>(null);
 
-    // Apply overrides if they exist
-    let result = baseDetail as typeof baseDetail & { statutoryTotal?: number; statutoryBreakdown?: Array<{ key: string; label: string; amount: number }> };
-    if (overrides) {
-      const basic = overrides.basicOverride ?? baseDetail.basicEarned;
-      const incentive = overrides.incentiveOverride ?? baseDetail.incentiveEarned;
-      const hra = overrides.hraOverride ?? baseDetail.hraEarned;
-      const meal = overrides.mealAllowanceOverride ?? baseDetail.mealAllowance;
-      const sundayPenalty = overrides.sundayPenaltyOverride ?? baseDetail.sundayPenalty;
-      const lateComingDeduction = overrides.lateComingDeductionOverride ?? (baseDetail.lateComingDeduction ?? 0);
-      const earlyLeaveDeduction = overrides.earlyLeaveDeductionOverride ?? (baseDetail.earlyLeaveDeduction ?? 0);
-      const supplementsTotal = effectiveSupplements.reduce((sum, item) => sum + item.amount, 0);
+  useEffect(() => {
+    let isMounted = true;
+    const computeDetail = async () => {
+      // 1. Check for locked snapshot first
+      try {
+        const { payrollService } = await import('../services/payrollService');
+        const snapshot = await payrollService.getSnapshotForStaff(selectedMonth, selectedYear, staff.id);
+        
+        if (snapshot && isMounted) {
+          // Add statutory total from the snapshot's detail if available
+          const detail = snapshot.salaryDetail as any;
+          setSalaryDetail(detail);
+          return;
+        }
+      } catch (e) {
+        console.error("Error loading staff portal payroll snapshot", e);
+      }
+      
+      if (!isMounted) return;
 
-      const gross = roundToNearest10(basic + incentive + hra + meal + supplementsTotal);
-      const net = roundToNearest10(gross - baseDetail.curAdv - baseDetail.deduction - sundayPenalty - lateComingDeduction - earlyLeaveDeduction);
-
-      result = {
-        ...baseDetail,
-        basicEarned: basic,
-        incentiveEarned: incentive,
-        hraEarned: hra,
-        mealAllowance: meal,
-        sundayPenalty,
-        lateComingDeduction,
-        earlyLeaveDeduction,
-        grossPayroll: gross,
-        netPayroll: Math.max(0, net)
-      };
-    }
-
-    // Apply per-staff statutory deductions (ESI/PF/PT/TDS/Custom)
-    const breakdown = computeStatutoryBreakdown(staff, {
-      basic: result.basicEarned,
-      hra: result.hraEarned,
-      incentive: result.incentiveEarned,
-      gross: result.grossSalary,
-    });
-    const statutoryTotal = breakdown.reduce((s: number, b) => s + b.amount, 0);
-    if (statutoryTotal > 0) {
-      result = {
-        ...result,
-        statutoryTotal,
-        statutoryBreakdown: breakdown.map((b) => ({ key: b.key, label: b.label, amount: b.amount })),
-        netPayroll: Math.max(0, roundToNearest10(result.netPayroll - statutoryTotal)),
-      };
-    }
-    return result;
-  }, [staff, metrics, advances, attendance, selectedMonth, selectedYear, overrides, effectiveSupplements]);
+      // 2. Fallback to dynamic calculation
+      const adv = advances.find(a => a.staffId === staff.id && a.month === selectedMonth && a.year === selectedYear) || null;
+      const baseDetail = calculatePayroll(staff, metrics, adv, advances, attendance, selectedMonth, selectedYear, currentMonthAdvanceEntries);
+  
+      // Apply overrides if they exist
+      let result = baseDetail as typeof baseDetail & { statutoryTotal?: number; statutoryBreakdown?: Array<{ key: string; label: string; amount: number }> };
+      if (overrides) {
+        const basic = overrides.basicOverride ?? baseDetail.basicEarned;
+        const incentive = overrides.incentiveOverride ?? baseDetail.incentiveEarned;
+        const hra = overrides.hraOverride ?? baseDetail.hraEarned;
+        const meal = overrides.mealAllowanceOverride ?? baseDetail.mealAllowance;
+        const sundayPenalty = overrides.sundayPenaltyOverride ?? baseDetail.sundayPenalty;
+        const lateComingDeduction = overrides.lateComingDeductionOverride ?? (baseDetail.lateComingDeduction ?? 0);
+        const earlyLeaveDeduction = overrides.earlyLeaveDeductionOverride ?? (baseDetail.earlyLeaveDeduction ?? 0);
+        const supplementsTotal = effectiveSupplements.reduce((sum, item) => sum + item.amount, 0);
+  
+        const gross = roundToNearest10(basic + incentive + hra + meal + supplementsTotal);
+        const net = roundToNearest10(gross - baseDetail.curAdv - baseDetail.deduction - sundayPenalty - lateComingDeduction - earlyLeaveDeduction);
+  
+        result = {
+          ...baseDetail,
+          basicEarned: basic,
+          incentiveEarned: incentive,
+          hraEarned: hra,
+          mealAllowance: meal,
+          sundayPenalty,
+          lateComingDeduction,
+          earlyLeaveDeduction,
+          grossPayroll: gross,
+          grossSalary: gross,
+          netPayroll: Math.max(0, net),
+          netSalary: Math.max(0, net)
+        };
+      }
+  
+      const breakdown = await import('../utils/statutoryDeductions').then(m => m.computeStatutoryBreakdown(staff, {
+        basic: result.basicEarned,
+        hra: result.hraEarned,
+        incentive: result.incentiveEarned,
+        gross: result.grossPayroll
+      }));
+      const statutoryTotal = breakdown.reduce((s, b) => s + b.amount, 0);
+      result.statutoryTotal = statutoryTotal;
+      result.statutoryBreakdown = breakdown;
+      result.netPayroll = Math.max(0, result.netPayroll - statutoryTotal);
+      result.netSalary = result.netPayroll;
+      
+      setSalaryDetail(result);
+    };
+    
+    computeDetail();
+    
+    return () => { isMounted = false; };
+  }, [staff, metrics, advances, attendance, selectedMonth, selectedYear, currentMonthAdvanceEntries, overrides, effectiveSupplements]);
 
   // Staff hikes
   const staffHikes = useMemo(() =>
     salaryHikes.filter(h => h.staffId === staff.id).sort((a, b) => new Date(b.hikeDate).getTime() - new Date(a.hikeDate).getTime()),
     [salaryHikes, staff.id]
   );
+
+  const handleDownloadSlip = () => {
+    if (!salaryDetail) return;
+    import('../utils/exportUtils').then(({ generateSalarySlipPDF }) => {
+      const breakdown = (salaryDetail.statutoryBreakdown || []).map((b: any) => ({
+        label: b.label,
+        amount: b.amount,
+        type: 'deduction' as const
+      }));
+      generateSalarySlipPDF({
+        staffName: staff.name,
+        month: selectedMonth,
+        year: selectedYear,
+        basic: salaryDetail.basicEarned,
+        hra: salaryDetail.hraEarned,
+        incentive: salaryDetail.incentiveEarned,
+        mealAllowance: salaryDetail.mealAllowance,
+        supplements: effectiveSupplements,
+        gross: salaryDetail.grossSalary || salaryDetail.grossPayroll,
+        oldAdvance: salaryDetail.oldAdv,
+        currentAdvance: salaryDetail.curAdv,
+        deduction: salaryDetail.deduction,
+        newAdvance: salaryDetail.newAdv,
+        sundayPenalty: salaryDetail.sundayPenalty,
+        lateComingDeduction: salaryDetail.lateComingDeduction || 0,
+        earlyLeaveDeduction: salaryDetail.earlyLeaveDeduction || 0,
+        net: salaryDetail.netSalary || salaryDetail.netPayroll,
+        statutoryBreakdown: breakdown,
+        customFields: staff.customFields
+      });
+    });
+  };
 
   const navigateMonth = (dir: number) => {
     let m = selectedMonth + dir;
@@ -1246,6 +1302,11 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
       {/* SALARY */}
       {activeSection === 'salary' && (
+        !salaryDetail ? (
+          <div className="flex justify-center p-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+          </div>
+        ) : (
         <div className="space-y-4">
           {/* Download button */}
           <button onClick={downloadSalarySlip} className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all active:scale-[0.98]">
@@ -1445,6 +1506,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
             </div>
           </div>
         </div>
+        )
       )}
 
       {/* HIKES */}

@@ -28,15 +28,29 @@ export const getDeductionLabel = (key: string, cfg?: StatutoryDeduction): string
 
 /** Resolve the rupee value for one deduction line. */
 export const computeDeductionAmount = (
+  key: string,
   cfg: StatutoryDeduction,
   bases: { basic: number; hra: number; incentive: number; gross: number }
 ): number => {
   if (!cfg.enabled) return 0;
+  
+  // ESI: Max gross salary limit is 21,000. If gross > 21000, ESI is not applicable.
+  if (key === 'esi' && bases.gross > 21000) {
+    return 0;
+  }
+
   if (cfg.base === 'fixed') return Math.max(0, Math.round(cfg.fixedAmount || 0));
-  const baseValue =
+  
+  let baseValue =
     cfg.base === 'basic' ? bases.basic :
     cfg.base === 'basic_hra' ? bases.basic + bases.hra :
     bases.gross;
+    
+  // PF: Wage ceiling is 15,000. If base > 15000, PF is calculated on 15,000 max.
+  if (key === 'pf' && baseValue > 15000) {
+    baseValue = 15000;
+  }
+  
   const pct = Number(cfg.percentage) || 0;
   return Math.max(0, Math.round((baseValue * pct) / 100));
 };
@@ -50,7 +64,7 @@ export const computeStatutoryBreakdown = (
   const out: Array<{ key: string; label: string; amount: number; cfg: StatutoryDeduction }> = [];
   Object.entries(map).forEach(([key, cfg]) => {
     if (!cfg || !cfg.enabled) return;
-    const amount = computeDeductionAmount(cfg, bases);
+    const amount = computeDeductionAmount(key, cfg, bases);
     if (amount <= 0) return;
     out.push({ key, label: getDeductionLabel(key, cfg), amount, cfg });
   });

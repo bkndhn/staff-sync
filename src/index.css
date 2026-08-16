@@ -3353,3 +3353,38 @@ body.light-theme [class*="bg-gradient-to-r"][class*="from-green"] * {
 body.light-theme .section-header * {
   color: #FFFFFF !important;
 }
+
+/* Global rule to fix light theme text visibility in ALL dialogs and modals */
+body.light-theme [role="dialog"] *,
+body.light-theme .modal-content * {
+  --tw-text-opacity: 1;
+}
+
+body.light-theme .modal-content .text-slate-400,
+body.light-theme .modal-content .text-slate-500,
+body.light-theme .modal-content .text-gray-400,
+body.light-theme .modal-content .text-gray-500,
+body.light-theme [role="dialog"] .text-slate-400,
+body.light-theme [role="dialog"] .text-slate-500,
+body.light-theme [role="dialog"] .text-gray-400,
+body.light-theme [role="dialog"] .text-gray-500 {
+  color: #475569 !important;
+}
+
+body.light-theme .modal-content .text-slate-600,
+body.light-theme .modal-content .text-slate-700,
+body.light-theme .modal-content .text-slate-800,
+body.light-theme .modal-content .text-gray-600,
+body.light-theme .modal-content .text-gray-700,
+body.light-theme .modal-content .text-gray-800,
+body.light-theme .modal-content p,
+body.light-theme .modal-content label,
+body.light-theme [role="dialog"] .text-slate-600,
+body.light-theme [role="dialog"] .text-slate-700,
+body.light-theme [role="dialog"] .text-slate-800,
+body.light-theme [role="dialog"] .text-gray-600,
+body.light-theme [role="dialog"] .text-gray-700,
+body.light-theme [role="dialog"] .text-gray-800 {
+  color: #0F172A !important;
+}
+

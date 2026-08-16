@@ -29,7 +29,16 @@ Deno.serve(async (req) => {
 
   try {
     const sessionToken = req.headers.get("x-session-token");
-    if (!sessionToken) return json({ error: "unauthorized" }, 401);
+    const authHeader = req.headers.get("authorization");
+    
+    let jwt = "";
+    if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+      jwt = authHeader.substring(7);
+    } else if (sessionToken && sessionToken.length > 100) {
+      jwt = sessionToken;
+    }
+
+    if (!jwt && !sessionToken) return json({ error: "unauthorized" }, 401);
 
     const { staffId, resetDevice } = await req.json();
     if (!staffId || typeof staffId !== "string") {
@@ -41,24 +50,40 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Verify the caller has an active admin session.
-    const { data: session } = await admin
-      .from("app_sessions")
-      .select("user_id, expires_at, is_valid")
-      .eq("token", sessionToken)
-      .order("created_at", { ascending: false })
-      .limit(1);
+    let callerUserId = null;
 
-    const sess: any = Array.isArray(session) ? session[0] : session;
+    if (jwt) {
+      const { data: { user: authUser }, error: authErr } = await admin.auth.getUser(jwt);
+      if (authErr || !authUser) return json({ error: "unauthorized" }, 401);
 
-    if (!sess || sess.is_valid === false || (sess.expires_at && new Date(sess.expires_at) < new Date())) {
-      return json({ error: "unauthorized" }, 401);
+      const { data: uRow } = await admin.from('app_users')
+        .select('id')
+        .or(`auth_id.eq.${authUser.id},email.eq.${authUser.email}`)
+        .maybeSingle();
+
+      if (!uRow) return json({ error: "unauthorized" }, 401);
+      callerUserId = uRow.id;
+    } else {
+      // Legacy session token
+      const { data: session } = await admin
+        .from("app_sessions")
+        .select("user_id, expires_at, is_valid")
+        .eq("token", sessionToken)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const sess: any = Array.isArray(session) ? session[0] : session;
+
+      if (!sess || sess.is_valid === false || (sess.expires_at && new Date(sess.expires_at) < new Date())) {
+        return json({ error: "unauthorized" }, 401);
+      }
+      callerUserId = sess.user_id;
     }
 
     const { data: caller } = await admin
       .from("app_users")
       .select("role, is_active, tenant_id")
-      .eq("id", sess.user_id)
+      .eq("id", callerUserId)
       .maybeSingle();
 
     if (!caller || !(caller as any).is_active || !["admin", "manager"].includes((caller as any).role)) {

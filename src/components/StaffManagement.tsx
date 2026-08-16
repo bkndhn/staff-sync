@@ -885,24 +885,45 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     if (!await customConfirm(`Reset the device lock for ${staffName}? Their password will also be cleared — they must register from a new device and set a brand new password using their joined date (DDMMYYYY).`)) return;
     try {
       const sessionToken = await userService.getSessionToken();
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-reset-password`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
+      const isJwt = sessionToken && sessionToken.startsWith('eyJ');
+
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://nsmppwnpdxomjmgrtqka.supabase.co';
+      const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      };
+      if (sessionToken) {
+        headers['x-session-token'] = sessionToken;
+        if (isJwt) headers['Authorization'] = `Bearer ${sessionToken}`;
+      }
+
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/data-api`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          table: 'staff',
+          op: 'update',
+          values: {
+            password_hash: null,
+            must_change_password: true,
+            password_updated_at: new Date().toISOString(),
+            device_id: null,
           },
-          body: JSON.stringify({ staffId, resetDevice: true }),
-        },
-      );
+          filters: [{ col: 'id', op: 'eq', val: staffId }],
+        }),
+      });
+
       if (!res.ok) {
-        await customAlert('Failed to reset device lock. Check your admin session and try again.');
+        const errBody = await res.json().catch(() => ({}));
+        console.error('Device reset via data-api failed:', res.status, errBody);
+        await customAlert('Failed to reset device lock. Please check your connection and try again.');
         return;
       }
+
       await onRefreshStaff?.();
-      await customAlert(`Device lock and password reset for ${staffName}. They can now register from a new device and set a new password using their joined date (DDMMYYYY).`);
+      await customAlert(`Device lock and password reset for ${staffName}. They can now register from a new device using their joined date (DDMMYYYY) as the password.`);
     } catch (error) {
       console.error("Error resetting device:", error);
       await customAlert("Failed to reset device lock.");
@@ -914,22 +935,42 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     if (!await customConfirm(`Reset login password for ${staffName}? They will need to log in with their joined date (DDMMYYYY) and set a new password.`)) return;
     try {
       const sessionToken = await userService.getSessionToken();
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-reset-password`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
+      const isJwt = sessionToken && sessionToken.startsWith('eyJ');
+
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://nsmppwnpdxomjmgrtqka.supabase.co';
+      const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      };
+      if (sessionToken) {
+        headers['x-session-token'] = sessionToken;
+        if (isJwt) headers['Authorization'] = `Bearer ${sessionToken}`;
+      }
+
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/data-api`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          table: 'staff',
+          op: 'update',
+          values: {
+            password_hash: null,
+            must_change_password: true,
+            password_updated_at: new Date().toISOString(),
           },
-          body: JSON.stringify({ staffId }),
-        },
-      );
+          filters: [{ col: 'id', op: 'eq', val: staffId }],
+        }),
+      });
+
       if (!res.ok) {
-        await customAlert('Failed to reset password. Check your admin session and try again.');
+        const errBody = await res.json().catch(() => ({}));
+        console.error('Password reset via data-api failed:', res.status, errBody);
+        await customAlert('Failed to reset password. Please check your connection and try again.');
         return;
       }
+
       await customAlert(`Password reset for ${staffName}. They can now log in with their joined date (DDMMYYYY).`);
     } catch (error) {
       console.error('Error resetting staff password:', error);
@@ -2104,11 +2145,11 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                     </td>}
                     {visibleColumns.basic !== false && <td className="px-3 py-4 text-sm text-center">₹{(member.basicSalary ?? member.basicPayroll ?? 0).toLocaleString()}</td>}
                     {visibleColumns.incentive !== false && <td className="px-3 py-4 text-sm text-center">₹{(member.incentive || 0).toLocaleString()}</td>}
-                    {visibleColumns.hra !== false && <td className="px-3 py-4 text-sm text-center">₹{(member.hra || 0).toLocaleString()}</td>}
-                    {visibleColumns.meal !== false && <td className="px-3 py-4 text-sm text-center">₹{(member.mealAllowance || 0).toLocaleString()}</td>}
+                    {visibleColumns.hra !== false && <td className="px-3 py-4 text-sm text-center">₹{(member.hra || 0).toLocaleString()}{member.allowanceCalcModes?.['hra'] === 'per_day' ? '/day' : ''}</td>}
+                    {visibleColumns.meal !== false && <td className="px-3 py-4 text-sm text-center">₹{(member.mealAllowance || 0).toLocaleString()}{member.allowanceCalcModes?.['meal_allowance'] === 'per_day' ? '/day' : ''}</td>}
                     {activeCustomCategories.map(category => (
                       <td key={category.id} className="px-3 py-4 text-sm text-center">
-                        ₹{(member.salarySupplements?.[category.id] || member.salarySupplements?.[category.key] || 0).toLocaleString()}
+                        ₹{(member.salarySupplements?.[category.id] || member.salarySupplements?.[category.key] || 0).toLocaleString()}{member.allowanceCalcModes?.[category.id] === 'per_day' ? '/day' : ''}
                       </td>
                     ))}
                     {customFields.filter(f => f.showInTable).map(cf => (

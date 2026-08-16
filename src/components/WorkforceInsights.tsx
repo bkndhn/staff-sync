@@ -116,41 +116,64 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
   const [globalShiftWindows, setGlobalShiftWindows] = useState<any>(DEFAULT_SHIFT_WINDOWS);
   const [salaryCategories, setSalaryCategories] = useState<any[]>([]);
   const [monthlyOverrides, setMonthlyOverrides] = useState<Record<string, PayrollOverride[]>>({});
+  const [historicalSnapshots, setHistoricalSnapshots] = useState<Record<string, any>>({});
 
   useEffect(() => {
     shiftService.loadGlobal().then(setGlobalShiftWindows);
     salaryCategoryService.getCategories().then(setSalaryCategories);
   }, []);
 
-  // Fetch overrides for months spanned by selected date range
+  // Fetch overrides and snapshots for months spanned by selected date range
   useEffect(() => {
-    const fetchAllOverrides = async () => {
+    const fetchAllOverridesAndSnapshots = async () => {
       if (!fromDate || !toDate || toDate < fromDate) return;
-      const yearMonths: { month: number; year: number }[] = [];
+      
       const start = new Date(fromDate);
       const end = new Date(toDate);
+      const months: { month: number; year: number }[] = [];
       
-      const curr = new Date(start.getFullYear(), start.getMonth(), 1);
-      while (curr <= end) {
-        yearMonths.push({ month: curr.getMonth() + 1, year: curr.getFullYear() });
+      let curr = new Date(start.getFullYear(), start.getMonth(), 1);
+      const endObj = new Date(end.getFullYear(), end.getMonth(), 1);
+      
+      while (curr <= endObj) {
+        months.push({ month: curr.getMonth(), year: curr.getFullYear() });
         curr.setMonth(curr.getMonth() + 1);
       }
-      
+
       const overridesMap: Record<string, PayrollOverride[]> = {};
+      const snapshotsMap: Record<string, any> = {};
+
+      const { payrollService } = await import('../services/payrollService');
+
       await Promise.all(
-        yearMonths.map(async ({ month, year }) => {
+        months.map(async ({ month, year }) => {
+          const mKey = `${year}-${month + 1}`;
           try {
-            const list = await salaryOverrideService.getOverrides(month, year);
-            overridesMap[`${year}-${month}`] = list;
-          } catch (e) {
-            console.error('Error fetching overrides:', e);
+            const result = await salaryOverrideService.getOverrides(month, year);
+            overridesMap[mKey] = result;
+          } catch (err) {
+            console.error("Error loading overrides for", mKey, err);
+          }
+
+          try {
+            const run = await payrollService.getPayrollRun(month, year);
+            if (run) {
+              const snaps = await payrollService.getSnapshots(run.id);
+              snaps.forEach(snap => {
+                const sKey = `${snap.staffId}-${year}-${month}`;
+                snapshotsMap[sKey] = snap.salaryDetail;
+              });
+            }
+          } catch (err) {
+            console.error("Error loading snapshots for", mKey, err);
           }
         })
       );
       setMonthlyOverrides(overridesMap);
+      setHistoricalSnapshots(snapshotsMap);
     };
     
-    fetchAllOverrides();
+    fetchAllOverridesAndSnapshots();
   }, [fromDate, toDate]);
 
   const handleFilterTypeChange = (type: 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'custom') => {
@@ -400,7 +423,8 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
       visibleStaff.forEach(s => {
         const metrics = calculateAttendanceMetrics(s.id, attendance, year, month);
         const adv = advances.find(a => a.staffId === s.id && a.month === month && a.year === year) || null;
-        const baseDetail = calculatePayroll(s, metrics, adv, advances, attendance, month, year);
+        const sKey = `${s.id}-${year}-${month}`;
+        const baseDetail = historicalSnapshots[sKey] || calculatePayroll(s, metrics, adv, advances, attendance, month, year);
         
         const monthKey = `${year}-${month + 1}`;
         const overridesList = monthlyOverrides[monthKey] || [];
@@ -468,7 +492,7 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
       lateDeductionTotal,
       earlyDeductionTotal
     };
-  }, [representedMonths, visibleStaff, attendance, advances, monthlyOverrides]);
+  }, [representedMonths, visibleStaff, attendance, advances, monthlyOverrides, historicalSnapshots]);
 
   // Top 5 highest salary employees for active month
   const highestSalaryEmployees = useMemo(() => {
@@ -478,7 +502,8 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
     const list = visibleStaff.map(s => {
       const metrics = calculateAttendanceMetrics(s.id, attendance, year, month);
       const adv = advances.find(a => a.staffId === s.id && a.month === month && a.year === year) || null;
-      const baseDetail = calculatePayroll(s, metrics, adv, advances, attendance, month, year);
+      const sKey = `${s.id}-${year}-${month}`;
+      const baseDetail = historicalSnapshots[sKey] || calculatePayroll(s, metrics, adv, advances, attendance, month, year);
       
       const monthKey = `${year}-${month + 1}`;
       const overridesList = monthlyOverrides[monthKey] || [];
@@ -508,17 +533,20 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
           lateComingDeduction,
           earlyLeaveDeduction,
           grossPayroll: gross,
-          netPayroll: Math.max(0, net)
+          grossSalary: gross,
+          netPayroll: Math.max(0, net),
+          netSalary: Math.max(0, net)
         };
       }
       
+      // Apply statutory deductions
       const breakdown = computeStatutoryBreakdown(s, {
         basic: finalDetail.basicEarned,
         hra: finalDetail.hraEarned,
         incentive: finalDetail.incentiveEarned,
-        gross: finalDetail.grossSalary
+        gross: finalDetail.grossPayroll
       });
-      const statutoryTotal = breakdown.reduce((sum, b) => sum + b.amount, 0);
+      const statutoryTotal = breakdown.reduce((acc, curr) => acc + curr.amount, 0);
       const finalNet = Math.max(0, roundToNearest10(finalDetail.netPayroll - statutoryTotal));
       
       return {
@@ -527,13 +555,13 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
         designation: s.designation || 'Staff',
         location: s.location,
         basicPayroll: s.basicSalary,
-        grossPayroll: finalDetail.grossSalary,
+        grossPayroll: finalDetail.grossSalary || finalDetail.grossPayroll,
         netPayroll: finalNet
       };
     });
     
     return list.sort((a, b) => b.netPayroll - a.netPayroll).slice(0, 5);
-  }, [visibleStaff, attendance, advances, monthlyOverrides, representedMonths]);
+  }, [visibleStaff, attendance, advances, monthlyOverrides, representedMonths, historicalSnapshots]);
 
   // Toggle expanded details
   const toggleRow = (id: string) => {

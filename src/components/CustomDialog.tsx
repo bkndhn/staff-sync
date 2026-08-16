@@ -122,6 +122,8 @@ export const CustomDialogProvider: React.FC = () => {
       tabIndex={-1}
     >
       <div 
+        role="dialog"
+        aria-modal="true"
         className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl relative select-none animate-in zoom-in-95 duration-200" 
         onClick={e => e.stopPropagation()}
       >
@@ -147,7 +149,7 @@ export const CustomDialogProvider: React.FC = () => {
           </div>
         </div>
 
-        <div className="text-slate-700 dark:text-slate-200 text-sm mb-6 whitespace-pre-line leading-relaxed pr-1 select-text">
+        <div className="text-slate-900 dark:text-slate-200 text-sm mb-6 whitespace-pre-line leading-relaxed pr-1 select-text">
           {state.message}
         </div>
 
