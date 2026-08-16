@@ -10,27 +10,46 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 // Validate session token - returns session info if valid
 async function validateSession(
-  supabase: ReturnType<typeof createClient>,
-  sessionToken: string | null
+  req: Request,
+  supabase: ReturnType<typeof createClient>
 ): Promise<{ valid: boolean; userId?: string; role?: string; error?: string }> {
-  if (!sessionToken || typeof sessionToken !== 'string' || sessionToken.length !== 64) {
+  const legacyToken = req.headers.get("x-session-token");
+  const authHeader = req.headers.get("authorization");
+  let jwt = "";
+  if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+    jwt = authHeader.substring(7);
+  } else if (legacyToken && legacyToken.length > 100) {
+    // Sometimes frontend passes JWT in x-session-token
+    jwt = legacyToken;
+  }
+
+  if (jwt) {
+    const { data: { user: authUser }, error: authErr } = await supabase.auth.getUser(jwt);
+    if (authErr || !authUser) return { valid: false, error: 'Invalid JWT' };
+
+    // Find the app_user role and id
+    const { data: uRow } = await supabase.from('app_users')
+      .select('id, role')
+      .or(`auth_id.eq.${authUser.id},email.eq.${authUser.email}`)
+      .maybeSingle();
+
+    if (uRow) return { valid: true, userId: uRow.id, role: uRow.role };
+    return { valid: false, error: 'User not found in app_users' };
+  }
+
+  if (!legacyToken || legacyToken.length !== 64) {
     return { valid: false, error: 'Missing or invalid session token' };
   }
 
   const { data: session, error } = await supabase
     .from('app_sessions')
     .select('user_id, role, expires_at, is_valid')
-    .eq('token', sessionToken)
+    .eq('token', legacyToken)
     .eq('is_valid', true)
     .single();
 
-  if (error || !session) {
-    return { valid: false, error: 'Invalid or expired session' };
-  }
-
-  if (new Date(session.expires_at) < new Date()) {
-    return { valid: false, error: 'Session expired' };
-  }
+  if (error || !session) return { valid: false, error: 'Invalid or expired session' };
+  if (new Date(session.expires_at) < new Date()) return { valid: false, error: 'Session expired' };
 
   return { valid: true, userId: session.user_id, role: session.role };
 }
@@ -52,8 +71,7 @@ Deno.serve(async (req) => {
     );
 
     // Require valid session token
-    const sessionToken = req.headers.get('x-session-token');
-    const sessionCheck = await validateSession(supabase, sessionToken);
+    const sessionCheck = await validateSession(req, supabase);
     if (!sessionCheck.valid) {
       return new Response(
         JSON.stringify({ error: sessionCheck.error || 'Unauthorized' }),
@@ -81,8 +99,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Authorization: admin can update any user, non-admin can only update themselves
-    if (sessionCheck.role !== 'admin' && sessionCheck.userId !== userId) {
+    // Authorization: admin/super_admin can update any user, others can only update themselves
+    if (sessionCheck.role !== 'admin' && sessionCheck.role !== 'super_admin' && sessionCheck.userId !== userId) {
       return new Response(
         JSON.stringify({ error: 'Forbidden: you can only update your own password' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

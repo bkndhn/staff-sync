@@ -89,6 +89,9 @@ const ACL: Record<string, TableAcl> = {
   workflow_configs:                  { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   staff_grievances:                  { read: ["admin","manager","super_admin"],                                        write: ["admin","manager","staff"] },
   device_status:                     { read: ["admin","manager","supervisor","floor_supervisor","super_admin"], write: ["admin","super_admin"] },
+  loan_repayments:                   { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"],                   write: ["admin","manager"] },
+  feature_toggles:                   { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin","statutory_admin"], write: ["admin","super_admin"], tenantIdCol: "tenant_id" },
+  announcements:                     { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin","statutory_admin"], write: ["admin","manager"] },
   // ── Platform-level ──────────────────────────────────────────────────────────
   app_users:                         { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["super_admin","admin"] },
   // ── Tenants (self-scoped: the tenant's own PK is 'id', not 'tenant_id') ─

@@ -42,7 +42,8 @@ const StaffManagement = React.lazy(() => import('./components/StaffManagement'))
 const PayrollManagement = React.lazy(() => import('./components/SalaryManagement'));
 const SalaryManagement = PayrollManagement;
 const PartTimeStaff = React.lazy(() => import('./components/PartTimeStaff'));
-const OldStaffRecords = React.lazy(() => import('./components/OldStaffRecords'));
+const OldStaffRecords = React.lazy(() => import('./components/OldStaffRecords').then(m => ({ default: m.default || m.OldStaffRecords })));
+const AnnouncementsManagement = React.lazy(() => import('./components/AnnouncementsManagement').then(m => ({ default: m.AnnouncementsManagement })));
 const Settings = React.lazy(() => import('./components/Settings'));
 const StaffPortal = React.lazy(() => import('./components/StaffPortal'));
 const LeaveManagement = React.lazy(() => import('./components/LeaveManagement'));
@@ -1405,6 +1406,13 @@ function App() {
               onUpdateAdvances={updateAdvances}
               userRole={user?.role}
             />
+          </Suspense>
+        );
+      case 'Announcements':
+        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'super_admin') return null;
+        return (
+          <Suspense fallback={<ComponentLoader />}>
+            <AnnouncementsManagement currentUserRole={user?.role} />
           </Suspense>
         );
       case 'Flex Staff':

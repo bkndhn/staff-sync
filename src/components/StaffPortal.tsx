@@ -32,8 +32,9 @@ import { resolveActiveRule, calculateAttendanceStatus } from '../utils/attendanc
 import BreakControls from './BreakControls';
 import { breakEventService } from '../services/breakService';
 import { BreakEvent } from '../types';
-import { Coffee, X } from 'lucide-react';
+import { Coffee, X, Megaphone } from 'lucide-react';
 import TenantStatusBanner from './TenantStatusBanner';
+import { announcementService, Announcement } from '../services/announcementService';
 import StaffLoanSection from './StaffLoanSection';
 
 interface StaffPortalProps {
@@ -51,6 +52,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   const [yearlyViewYear, setYearlyViewYear] = useState(new Date().getFullYear());
   const [overrides, setOverrides] = useState<PayrollOverride | null>(null);
   const [salaryCategories, setSalaryCategories] = useState<PayrollCategory[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [showLeaveForm, setShowLeaveForm] = useState(false);
   const [leaveForm, setLeaveForm] = useState({ leaveDate: '', leaveEndDate: '', leaveType: 'casual' as const, reason: '' });
@@ -161,6 +163,13 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       .then(setLeaveRequests)
       .catch((err) => console.error('Error loading leave requests:', err));
   }, [staff.id]);
+
+  // Load announcements
+  useEffect(() => {
+    announcementService.getAnnouncements()
+      .then(setAnnouncements)
+      .catch((err) => console.error('Error loading announcements:', err));
+  }, []);
 
   // Load all advance entries for this staff
   useEffect(() => {
@@ -869,6 +878,42 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       {/* ATTENDANCE */}
       {activeSection === 'attendance' && (
         <div className="space-y-4">
+          {/* Announcements Widget */}
+          {announcements.length > 0 && (
+            <div className="space-y-3 mb-6">
+              <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider px-1">Announcements</h3>
+              <div className="grid gap-3">
+                {announcements.map(announcement => (
+                  <div key={announcement.id} className={`p-4 rounded-2xl border ${
+                    announcement.priority === 'high' ? 'bg-red-500/10 border-red-500/20' :
+                    announcement.priority === 'low' ? 'bg-[var(--bg-card)] border-[var(--glass-border)] opacity-80' :
+                    'bg-indigo-500/10 border-indigo-500/20'
+                  }`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`mt-0.5 ${
+                        announcement.priority === 'high' ? 'text-red-400' :
+                        announcement.priority === 'low' ? 'text-[var(--text-muted)]' :
+                        'text-indigo-400'
+                      }`}>
+                        <Megaphone size={18} />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className={`font-semibold ${
+                          announcement.priority === 'high' ? 'text-red-400' :
+                          'text-[var(--text-primary)]'
+                        }`}>{announcement.title}</h4>
+                        <p className="text-sm text-[var(--text-secondary)] mt-1 whitespace-pre-wrap">{announcement.content}</p>
+                        <span className="text-[10px] text-[var(--text-muted)] mt-2 block font-medium">
+                          {new Date(announcement.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Summary */}
           <div className="grid grid-cols-2 sm:grid-cols-7 gap-3">
             <QuickStat label="Present" value={`${metrics.presentDays}`} icon={CheckCircle} color="emerald" />
