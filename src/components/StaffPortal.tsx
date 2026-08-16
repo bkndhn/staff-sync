@@ -3,7 +3,7 @@ import {
   User, Calendar, DollarSign, TrendingUp, Download, ChevronLeft, ChevronRight,
   CheckCircle, XCircle, Clock, Briefcase, MapPin, Phone, Home, IndianRupee,
   ArrowUpRight, ArrowDownRight, FileText, CreditCard, Send, MessageSquare, AlertTriangle,
-  CalendarDays, Trash2, Plus, Camera, QrCode
+  CalendarDays, Trash2, Plus, Camera, QrCode, Edit3
 } from 'lucide-react';
 import { Staff, Attendance, PayrollHike, AdvanceDeduction, PayrollOverride } from '../types';
 import { calculateAttendanceMetrics, calculateSalary, calculatePayroll, getDaysInMonth, isSunday, roundToNearest10, getPreviousMonthAdvance } from '../utils/salaryCalculations';
@@ -36,6 +36,10 @@ import { Coffee, X, Megaphone } from 'lucide-react';
 import TenantStatusBanner from './TenantStatusBanner';
 import { announcementService, Announcement } from '../services/announcementService';
 import StaffLoanSection from './StaffLoanSection';
+import { ProfileEditModal } from './portal/ProfileEditModal';
+import { AttendanceRegularizationModal } from './portal/AttendanceRegularizationModal';
+import { DocumentsTab } from './portal/DocumentsTab';
+import { NotificationPanel } from './portal/NotificationPanel';
 
 interface StaffPortalProps {
   staff: Staff;
@@ -46,7 +50,14 @@ interface StaffPortalProps {
 }
 
 const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHikes, advances, allStaff }) => {
-  const [activeSection, setActiveSection] = useState<'overview' | 'attendance' | 'yearly' | 'salary' | 'hikes' | 'leave' | 'face' | 'grievances' | 'disbursements' | 'loans'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'attendance' | 'yearly' | 'salary' | 'hikes' | 'leave' | 'face' | 'grievances' | 'disbursements' | 'loans' | 'documents'>('overview');
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
+  const [showRegularization, setShowRegularization] = useState(false);
+  const [regularizationDate, setRegularizationDate] = useState('');
+  const [regularizationStatus, setRegularizationStatus] = useState('');
+  const [regularizationPunchIn, setRegularizationPunchIn] = useState<string | undefined>();
+  const [regularizationPunchOut, setRegularizationPunchOut] = useState<string | undefined>();
+  const sessionToken = localStorage.getItem('sessionToken') || localStorage.getItem('token') || '';
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [yearlyViewYear, setYearlyViewYear] = useState(new Date().getFullYear());
@@ -690,6 +701,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     { id: 'loans', label: 'Loans', icon: CreditCard },
     { id: 'grievances', label: 'Issues', icon: AlertTriangle },
     { id: 'disbursements', label: 'Payroll Inbox', icon: CreditCard },
+    { id: 'documents', label: 'Documents', icon: FileText },
     { id: 'face', label: 'Face Registration', icon: Camera }
   ];
 
@@ -697,7 +709,14 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
   return (
     <div className={`p-2 md:p-6 pb-24 md:pb-6 space-y-4 ${isWideTab ? 'w-full' : 'max-w-4xl mx-auto'}`}>
-      <TenantStatusBanner tenant={(staff as any).tenant} role="staff" />
+      <div className="flex items-center justify-between mb-2">
+        <TenantStatusBanner tenant={(staff as any).tenant} role="staff" />
+        <NotificationPanel
+          staffId={staff.id || ''}
+          sessionToken={sessionToken}
+          onNavigate={(tab) => setActiveSection(tab as any)}
+        />
+      </div>
       {/* Punch confirmation now shown inside the scanner overlay */}
       {/* Section Tabs (desktop) */}
       <div className="hidden md:flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -791,6 +810,13 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               </div>
               {!isLeftStaff && (
                 <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={() => setShowProfileEdit(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 transition-colors"
+                  >
+                    <Edit3 size={14} />
+                    Edit Profile
+                  </button>
                   {/* Push Notifications Enable */}
                   {pushSupported && pushStatus !== 'granted' && pushStatus !== 'denied' && (
                     <button
@@ -1065,8 +1091,22 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                                         ? 'bg-amber-500 text-white'
                                         : 'bg-red-500 text-white'
                                   }`}>
-                                  {record?.isUninformed ? '⚠' : status === 'Present' ? 'P' : status === 'Half Day' ? halfCode : 'A'}
+                                  {record?.isUninformed ? 'UI' : status === 'Present' ? 'P' : status === 'Half Day' ? halfCode : 'A'}
                                 </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setRegularizationDate(dateStr);
+                                    setRegularizationStatus(status);
+                                    setRegularizationPunchIn(record?.arrivalTime || undefined);
+                                    setRegularizationPunchOut(record?.leavingTime || undefined);
+                                    setShowRegularization(true);
+                                  }}
+                                  className="text-xs text-blue-400 hover:text-blue-300 hover:underline mt-1"
+                                  title="Request correction"
+                                >
+                                  🔧
+                                </button>
                                 {(record?.arrivalTime || record?.leavingTime) && (() => {
                                   const shiftKey = record.shift || staff.shift || 'Both';
                                   const baseWin = DEFAULT_SHIFT_WINDOWS[shiftKey] || DEFAULT_SHIFT_WINDOWS['Both'];
@@ -1922,9 +1962,35 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         </div>
       )}
 
+      {/* DOCUMENTS */}
+      {activeSection === 'documents' && (
+        <DocumentsTab
+          staffId={staff.id || ''}
+          staffName={staff.name || ''}
+          sessionToken={sessionToken}
+        />
+      )}
+
       {/* FACE ID Temporarily Hidden */}
       
       {/* QR Scanner Modal Temporarily Hidden */}
+
+      <ProfileEditModal
+        isOpen={showProfileEdit}
+        onClose={() => setShowProfileEdit(false)}
+        staff={staff}
+        sessionToken={sessionToken}
+      />
+      <AttendanceRegularizationModal
+        isOpen={showRegularization}
+        onClose={() => setShowRegularization(false)}
+        staffId={staff.id || ''}
+        targetDate={regularizationDate}
+        currentStatus={regularizationStatus}
+        currentPunchIn={regularizationPunchIn}
+        currentPunchOut={regularizationPunchOut}
+        sessionToken={sessionToken}
+      />
     </div>
   );
 };

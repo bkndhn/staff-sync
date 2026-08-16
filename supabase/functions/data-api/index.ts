@@ -97,6 +97,12 @@ const ACL: Record<string, TableAcl> = {
   app_users:                         { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["super_admin","admin"] },
   // ── Tenants (self-scoped: the tenant's own PK is 'id', not 'tenant_id') ─
   tenants:                           { read: ["admin","statutory_admin","super_admin"], write: ["admin","super_admin"], tenantIdCol: "id" },
+  // ── ESS Portal ────────────────────────────────────────────────────────
+  profile_change_requests:      { read: ["admin","manager","staff","super_admin"], write: ["admin","manager","staff"], staffIdCol: "staff_id" },
+  attendance_regularizations:   { read: ["admin","manager","staff","super_admin"], write: ["admin","manager","staff"], locationCol: "location", staffIdCol: "staff_id" },
+  letter_requests:              { read: ["admin","manager","staff","super_admin"], write: ["admin","manager","staff"], staffIdCol: "staff_id" },
+  holidays:                     { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
+  staff_notifications:          { read: ["admin","manager","staff","super_admin"], write: ["admin","manager","staff"], staffIdCol: "staff_id" },
 };
 
 
