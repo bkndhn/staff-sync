@@ -770,12 +770,12 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                     <table className="table-premium w-full">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Role</th>
-                                <th>Branch</th>
-                                <th>Last Login</th>
-                                <th>Actions</th>
+                                <th className="!text-left">Name</th>
+                                <th className="!text-left">Email</th>
+                                <th className="!text-center">Role</th>
+                                <th className="!text-left">Branch</th>
+                                <th className="!text-left">Last Login</th>
+                                <th className="!text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -788,31 +788,31 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                             ) : (
                                 filteredUsers.map(user => (
                                     <tr key={user.id}>
-                                        <td className="font-medium text-white">{user.full_name}</td>
-                                        <td className="text-white/70 font-mono text-sm">{user.email}</td>
-                                        <td>
+                                        <td className="font-medium text-white !text-left">{user.full_name}</td>
+                                        <td className="text-white/70 font-mono text-sm !text-left">{user.email}</td>
+                                        <td className="!text-center">
                                             <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
                                                 {user.role === 'admin' ? 'Admin' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
                                             </span>
                                         </td>
-                                        <td>
+                                        <td className="!text-left">
                                             {user.location ? (
-                                                <span className="flex items-center gap-1 text-white/70">
+                                                <span className="flex items-center justify-start gap-1 text-white/70">
                                                     <MapPin size={14} />
                                                     {user.location}
                                                 </span>
                                             ) : (
-                                                <span className="text-white/40">All Branchs</span>
+                                                <span className="text-white/40">All Branches</span>
                                             )}
                                         </td>
-                                        <td>
-                                            <span className="flex items-center gap-1 text-white/50 text-sm">
+                                        <td className="!text-left">
+                                            <span className="flex items-center justify-start gap-1 text-white/50 text-sm">
                                                 <Clock size={12} />
                                                 {formatLastLogin(user.last_login)}
                                             </span>
                                         </td>
-                                        <td>
-                                            <div className="flex items-center gap-2">
+                                        <td className="!text-center">
+                                            <div className="flex items-center justify-center gap-2">
                                                 <button
                                                     onClick={() => handleEdit(user)}
                                                     className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 transition-colors"
