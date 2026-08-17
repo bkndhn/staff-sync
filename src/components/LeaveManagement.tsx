@@ -46,8 +46,11 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
   const [floorFilter, setFloorFilter] = useState<string>('all');
   const [staffMeta, setStaffMeta] = useState<Record<string, { location: string; floor?: string }>>({});
 
+  const [error, setError] = useState<string | null>(null);
+
   const loadLeaves = async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = userRole === 'admin'
         ? await leaveService.getAll()
@@ -55,10 +58,12 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
       setLeaves(data);
     } catch (err) {
       console.error('Error loading leaves:', err);
+      setError((err as Error)?.message || 'Could not load leave requests.');
     } finally {
       setLoading(false);
     }
   };
+
 
   useEffect(() => { loadLeaves(); }, [userRole, userLocation]);
 
