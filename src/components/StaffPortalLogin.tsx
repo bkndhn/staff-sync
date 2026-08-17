@@ -158,6 +158,9 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
           deviceFingerprint: currentFingerprint,
           staff: matchedStaff,
         });
+        if (matchedStaff.photo_url || matchedStaff.photo) {
+          setStaffPhoto(matchedStaff.photo_url || matchedStaff.photo);
+        }
         setLoading(false);
         return;
       }

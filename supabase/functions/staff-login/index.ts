@@ -105,21 +105,27 @@ Deno.serve(async (req) => {
 
     // Platform-level switch: the client's staff self-service portal can be
     // disabled (or the whole client suspended) from the super admin console.
+    let deviceLockEnabled = true;
     if (match.tenant_id) {
       const { data: tenant } = await admin
         .from("tenants")
-        .select("status, staff_portal_enabled")
+        .select("status, staff_portal_enabled, staff_device_lock_enabled")
         .eq("id", match.tenant_id)
         .maybeSingle();
       if (tenant && (tenant.status !== "ACTIVE" || tenant.staff_portal_enabled === false)) {
         return json({ error: "staff_portal_disabled" }, 403);
       }
+      if (tenant && tenant.staff_device_lock_enabled === false) {
+        deviceLockEnabled = false;
+      }
     }
 
-    if (!match.device_id) {
-      await admin.from("staff").update({ device_id: deviceFingerprint }).eq("id", match.id);
-    } else if (match.device_id !== deviceFingerprint) {
-      return json({ error: "device_locked" }, 403);
+    if (deviceLockEnabled) {
+      if (!match.device_id) {
+        await admin.from("staff").update({ device_id: deviceFingerprint }).eq("id", match.id);
+      } else if (match.device_id !== deviceFingerprint) {
+        return json({ error: "device_locked" }, 403);
+      }
     }
 
     // Anyone still on the temp password (joined_date) must set a real one.

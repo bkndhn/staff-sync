@@ -56,6 +56,7 @@ export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> =
   // Super admin / Client admin toggle states
   const [staffLoginEnabled, setStaffLoginEnabled] = useState(true);
   const [portalAllowedBySuperAdmin, setPortalAllowedBySuperAdmin] = useState(true);
+  const [staffDeviceLockEnabled, setStaffDeviceLockEnabled] = useState(true);
 
   useEffect(() => {
     loadTenantSettings();
@@ -68,11 +69,10 @@ export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> =
     }
     setLoading(true);
     try {
-      // Use data-api (service role) — direct anon client is blocked by RLS on tenants
       const json = await dataApi({
         table: 'tenants',
         op: 'select',
-        columns: 'slug, staff_portal_enabled',
+        columns: 'slug, staff_portal_enabled, staff_device_lock_enabled',
         filters: [{ col: 'id', op: 'eq', val: tenantId }],
         single: true,
       });
@@ -81,6 +81,7 @@ export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> =
       setSlug(row?.slug || '');
       setOriginalSlug(row?.slug || '');
       setPortalAllowedBySuperAdmin(row?.staff_portal_enabled !== false);
+      setStaffDeviceLockEnabled(row?.staff_device_lock_enabled !== false);
 
       // Load client admin's own preference for enabling self-service login
       const isEnabled = await userPreferencesService.getPreference<boolean>('staffLoginEnabled', true);
@@ -178,6 +179,22 @@ export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> =
      await userPreferencesService.setPreference('staffLoginEnabled', newValue);
   };
 
+  const handleToggleDeviceLock = async (newValue: boolean) => {
+    setStaffDeviceLockEnabled(newValue);
+    try {
+      await dataApi({
+        table: 'tenants',
+        op: 'update',
+        values: { staff_device_lock_enabled: newValue },
+        filters: [{ col: 'id', op: 'eq', val: tenantId }],
+      });
+    } catch (err) {
+      console.error('Error updating device lock:', err);
+      // Revert if failed
+      setStaffDeviceLockEnabled(!newValue);
+    }
+  };
+
   if (loading) {
     return <div className="text-[var(--text-muted)] text-sm animate-pulse">Loading portal settings...</div>;
   }
@@ -244,6 +261,68 @@ export const StaffPortalSettingsPanel: React.FC<StaffPortalSettingsPanelProps> =
               backgroundColor: '#ffffff',
               boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
               transform: staffLoginEnabled && portalAllowedBySuperAdmin ? 'translateX(24px)' : 'translateX(0px)',
+              transition: 'transform 0.2s ease',
+            }}
+          />
+        </button>
+      </div>
+
+      {/* Device Lock Toggle */}
+      <div className={`glass-card-static p-4 rounded-xl flex items-center justify-between gap-4 border border-gray-100 dark:border-white/10 shadow-sm transition-all ${!portalAllowedBySuperAdmin ? 'opacity-60 grayscale' : 'hover:shadow'}`}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${staffDeviceLockEnabled && portalAllowedBySuperAdmin ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400' : 'bg-gray-100 text-gray-400 dark:bg-white/5'}`}>
+            <AlertCircle size={20} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-[var(--text-primary)] text-sm">Strict Device Binding</h3>
+              <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${staffDeviceLockEnabled && portalAllowedBySuperAdmin ? 'bg-indigo-500/10 text-indigo-600 border border-indigo-500/20' : 'bg-gray-500/10 text-gray-500 border border-gray-500/20'}`}>
+                {staffDeviceLockEnabled && portalAllowedBySuperAdmin ? 'Enabled' : 'Disabled'}
+              </span>
+            </div>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              {portalAllowedBySuperAdmin 
+                ? 'Lock staff login to their registered device. If disabled, staff can log in from any device.' 
+                : 'Staff portal is disabled.'}
+            </p>
+          </div>
+        </div>
+        
+        <button
+          type="button"
+          role="switch"
+          aria-checked={staffDeviceLockEnabled && portalAllowedBySuperAdmin}
+          disabled={!portalAllowedBySuperAdmin}
+          onClick={() => handleToggleDeviceLock(!staffDeviceLockEnabled)}
+          style={{
+            position: 'relative',
+            width: '50px',
+            height: '26px',
+            minWidth: '50px',
+            maxWidth: '50px',
+            minHeight: '26px',
+            maxHeight: '26px',
+            borderRadius: '13px',
+            padding: '2px',
+            backgroundColor: staffDeviceLockEnabled && portalAllowedBySuperAdmin ? '#6366f1' : '#cbd5e1',
+            border: 'none',
+            cursor: portalAllowedBySuperAdmin ? 'pointer' : 'not-allowed',
+            transition: 'background-color 0.2s ease',
+            display: 'inline-flex',
+            alignItems: 'center',
+            boxSizing: 'border-box',
+            outline: 'none',
+          }}
+        >
+          <span
+            style={{
+              display: 'block',
+              width: '22px',
+              height: '22px',
+              borderRadius: '50%',
+              backgroundColor: '#ffffff',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
+              transform: staffDeviceLockEnabled && portalAllowedBySuperAdmin ? 'translateX(24px)' : 'translateX(0px)',
               transition: 'transform 0.2s ease',
             }}
           />
