@@ -69,8 +69,8 @@ export const payrollService = {
       id: data.id,
       runId: data.run_id,
       staffId: data.staff_id,
-      staffSnapshot: data.staff_snapshot as Staff,
-      salaryDetail: data.salary_detail as PayrollDetail
+      staffSnapshot: data.staff_snapshot as unknown as Staff,
+      salaryDetail: data.salary_detail as unknown as PayrollDetail
     };
   },
 

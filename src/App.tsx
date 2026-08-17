@@ -42,7 +42,7 @@ const StaffManagement = React.lazy(() => import('./components/StaffManagement'))
 const PayrollManagement = React.lazy(() => import('./components/SalaryManagement'));
 const SalaryManagement = PayrollManagement;
 const PartTimeStaff = React.lazy(() => import('./components/PartTimeStaff'));
-const OldStaffRecords = React.lazy(() => import('./components/OldStaffRecords').then(m => ({ default: m.default || m.OldStaffRecords })));
+const OldStaffRecords = React.lazy(() => import('./components/OldStaffRecords'));
 const AnnouncementsManagement = React.lazy(() => import('./components/AnnouncementsManagement').then(m => ({ default: m.AnnouncementsManagement })));
 const Settings = React.lazy(() => import('./components/Settings'));
 const StaffPortal = React.lazy(() => import('./components/StaffPortal'));

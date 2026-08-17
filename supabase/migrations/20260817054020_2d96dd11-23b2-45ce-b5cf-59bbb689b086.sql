@@ -1,0 +1,1 @@
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS staff_device_lock_enabled boolean NOT NULL DEFAULT true;

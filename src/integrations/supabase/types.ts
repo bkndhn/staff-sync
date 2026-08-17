@@ -2214,6 +2214,7 @@ export type Database = {
           notes: string | null
           plan: string
           slug: string | null
+          staff_device_lock_enabled: boolean
           staff_limit: number
           staff_portal_enabled: boolean
           status: string
@@ -2231,6 +2232,7 @@ export type Database = {
           notes?: string | null
           plan?: string
           slug?: string | null
+          staff_device_lock_enabled?: boolean
           staff_limit?: number
           staff_portal_enabled?: boolean
           status?: string
@@ -2248,6 +2250,7 @@ export type Database = {
           notes?: string | null
           plan?: string
           slug?: string | null
+          staff_device_lock_enabled?: boolean
           staff_limit?: number
           staff_portal_enabled?: boolean
           status?: string
