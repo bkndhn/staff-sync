@@ -285,6 +285,15 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         };
       }
 
+      // Block any punch if marked Absent manually
+      if (todayRecord && todayRecord.status === 'Absent') {
+        return {
+          ok: false,
+          title: 'Access Denied',
+          subtitle: 'You have been marked Absent for today by management.'
+        };
+      }
+
       // Payload.kind will tell us what button the user clicked
       const kind: 'in' | 'break_out' | 'break_in' | 'out' = payload.kind || (hasIn ? 'out' : 'in');
       const arrivalTime = kind === 'in' ? nowTime : todayRecord?.arrivalTime;
@@ -880,26 +889,34 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                   
                   {/* Punch Action Buttons */}
                   <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
-                     {!hasIn && (
-                        <button onClick={() => handleWebPunch('in')} disabled={!!punchingStatus} className="btn-premium px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap">
-                           {punchingStatus || 'Clock In'}
-                        </button>
-                     )}
-                     {hasIn && !hasOut && (
+                     {todayRec?.status === 'Absent' ? (
+                        <div className="px-4 py-2 text-sm text-red-500 font-semibold border border-red-500/20 bg-red-500/10 rounded-xl flex items-center justify-center">
+                          Marked Absent by Management
+                        </div>
+                     ) : (
                         <>
-                           {!hasBreakOut && (
-                              <button onClick={() => handleWebPunch('break_out')} disabled={!!punchingStatus} className="btn-secondary px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap text-amber-500 border-amber-500/30 hover:bg-amber-500/10">
-                                 Take Break
+                           {!hasIn && (
+                              <button onClick={() => handleWebPunch('in')} disabled={!!punchingStatus} className="btn-premium px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap">
+                                 {punchingStatus || 'Clock In'}
                               </button>
                            )}
-                           {hasBreakOut && !hasBreakIn && (
-                              <button onClick={() => handleWebPunch('break_in')} disabled={!!punchingStatus} className="btn-secondary px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10">
-                                 End Break
-                              </button>
+                           {hasIn && !hasOut && (
+                              <>
+                                 {!hasBreakOut && (
+                                    <button onClick={() => handleWebPunch('break_out')} disabled={!!punchingStatus} className="btn-secondary px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap text-amber-500 border-amber-500/30 hover:bg-amber-500/10">
+                                       Take Break
+                                    </button>
+                                 )}
+                                 {hasBreakOut && !hasBreakIn && (
+                                    <button onClick={() => handleWebPunch('break_in')} disabled={!!punchingStatus} className="btn-secondary px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10">
+                                       End Break
+                                    </button>
+                                 )}
+                                 <button onClick={() => handleWebPunch('out')} disabled={!!punchingStatus || (hasBreakOut && !hasBreakIn)} className="btn-premium bg-red-500 hover:bg-red-600 px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap">
+                                    {punchingStatus || 'Clock Out'}
+                                 </button>
+                              </>
                            )}
-                           <button onClick={() => handleWebPunch('out')} disabled={!!punchingStatus || (hasBreakOut && !hasBreakIn)} className="btn-premium bg-red-500 hover:bg-red-600 px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap">
-                              {punchingStatus || 'Clock Out'}
-                           </button>
                         </>
                      )}
                   </div>
