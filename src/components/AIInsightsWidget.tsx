@@ -20,11 +20,7 @@ export const AIInsightsWidget: React.FC<{ tenantId?: string }> = ({ tenantId }) 
   const loadInsights = async () => {
     setLoading(true);
     try {
-      const json = await dataApi({
-        table: 'ai_insights',
-        op: 'select',
-        columns: '*',
-      });
+      const json = await dataApi.from('ai_insights').select('*');
       if (json && json.data) {
         setInsights((json.data as AIInsight[]).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
       }
