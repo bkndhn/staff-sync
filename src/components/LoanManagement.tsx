@@ -145,21 +145,24 @@ const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation, all
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-          <IndianRupee size={22} className="text-blue-600" /> Loan Requests
-        </h2>
-        <div className="flex items-center gap-2">
-          <button onClick={load} className="p-2 rounded-xl border border-[var(--glass-border)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg)]" aria-label="Refresh">
-            <RefreshCw size={16} />
-          </button>
-          {isAdmin && (
-            <button onClick={() => setShowConfig(true)} className="px-3 py-2 rounded-xl border border-[var(--glass-border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--glass-bg)] flex items-center gap-1.5">
-              <Settings2 size={15} /> Rules
+      <PageHeader
+        title="Loan Requests"
+        icon={<IndianRupee size={20} />}
+        subtitle={`${filtered.length} ${tab} request${filtered.length === 1 ? '' : 's'}${userLocation ? ` • ${userLocation}` : ''}`}
+        actions={
+          <>
+            <button onClick={load} className="p-2 rounded-xl border border-[var(--glass-border)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg)]" aria-label="Refresh">
+              <RefreshCw size={16} />
             </button>
-          )}
-        </div>
-      </div>
+            {isAdmin && (
+              <button onClick={() => setShowConfig(true)} className="px-3 py-2 rounded-xl border border-[var(--glass-border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--glass-bg)] flex items-center gap-1.5">
+                <Settings2 size={15} /> Rules
+              </button>
+            )}
+          </>
+        }
+      />
+
 
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
