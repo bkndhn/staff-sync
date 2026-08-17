@@ -196,17 +196,31 @@ const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation, all
         </div>
       </div>
 
-      {error && <div className="p-3 rounded-xl bg-red-500/10 text-red-600 text-sm">{error}</div>}
+      {error && <ErrorState message={error} onRetry={load} compact />}
 
       {loading ? (
-        <div className="space-y-2">
-          {[0, 1, 2].map(i => <div key={i} className="h-24 rounded-2xl bg-[var(--glass-bg)] animate-pulse" />)}
-        </div>
+        <SkeletonList rows={3} />
       ) : filtered.length === 0 ? (
-        <div className="p-10 text-center rounded-2xl border border-dashed border-[var(--glass-border)] text-[var(--text-muted)]">
-          <Clock size={28} className="mx-auto mb-2 opacity-60" />
-          No {tab} loan requests.
-        </div>
+        <EmptyState
+          icon={<Clock size={26} />}
+          title={`No ${tab} loan requests`}
+          description={
+            dateFilter
+              ? 'Nothing was raised on this date. Switch to "All dates" to see the full history.'
+              : 'Staff loan requests raised from the portal land here for approval.'
+          }
+          action={
+            dateFilter ? (
+              <button
+                onClick={() => setDateFilter('')}
+                className="px-4 py-2 rounded-xl bg-[var(--primary-gradient)] text-[var(--on-primary)] text-sm font-semibold"
+              >
+                Show all dates
+              </button>
+            ) : undefined
+          }
+        />
+
       ) : (
         <div className="space-y-3">
           {filtered.map(l => {
