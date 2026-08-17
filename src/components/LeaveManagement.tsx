@@ -308,15 +308,30 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
 
       {/* Leave List */}
       {loading ? (
-        <div className="text-center py-12 text-[var(--text-muted)]">Loading...</div>
+        <SkeletonList rows={4} />
+      ) : error ? (
+        <ErrorState message={error} onRetry={loadLeaves} />
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16">
-          <Calendar size={48} className="mx-auto text-[var(--text-muted)] opacity-30 mb-3" />
-          <p className="text-[var(--text-muted)] font-medium">No leave requests found</p>
-          <p className="text-xs text-[var(--text-muted)] mt-1">
-            {dateFilterEnabled ? 'Try changing the date range or clearing the date filter' : 'No matching records'}
-          </p>
-        </div>
+        <EmptyState
+          icon={<Calendar size={26} />}
+          title="No leave requests found"
+          description={
+            dateFilterEnabled
+              ? 'Try widening the date range or clearing the date filter to see older requests.'
+              : 'Requests raised by staff from the portal will appear here for approval.'
+          }
+          action={
+            dateFilterEnabled ? (
+              <button
+                onClick={clearDateFilter}
+                className="px-4 py-2 rounded-xl bg-[var(--primary-gradient)] text-[var(--on-primary)] text-sm font-semibold"
+              >
+                Clear date filter
+              </button>
+            ) : undefined
+          }
+        />
+
       ) : (
         <div className="space-y-3">
           <p className="text-xs text-[var(--text-muted)]">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</p>
