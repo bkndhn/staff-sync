@@ -172,34 +172,30 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-            <FileText size={24} className="text-indigo-500" /> Leave Management
-          </h2>
-          <p className="text-sm text-[var(--text-muted)]">
-            {userRole === 'admin' ? 'All locations' : `${userLocation}`} • {stats.pending} pending
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Leave Management"
+        icon={<FileText size={20} />}
+        subtitle={`${userRole === 'admin' ? 'All branches' : userLocation || 'Your branch'} • ${stats.pending} pending approval`}
+        actions={
+          <button
+            onClick={loadLeaves}
+            className="px-3 py-2 rounded-xl border border-[var(--glass-border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--glass-bg)]"
+          >
+            Refresh
+          </button>
+        }
+      />
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        {[
-          { label: 'Total', value: stats.total, color: 'bg-gray-500/10 text-gray-700 border-gray-300' },
-          { label: 'Pending', value: stats.pending, color: 'bg-amber-500/10 text-amber-700 border-amber-300' },
-          { label: 'Approved', value: stats.approved, color: 'bg-emerald-500/10 text-emerald-700 border-emerald-300' },
-          { label: 'Rejected', value: stats.rejected, color: 'bg-red-500/10 text-red-700 border-red-300' },
-          { label: 'Postponed', value: stats.postponed, color: 'bg-blue-500/10 text-blue-700 border-blue-300' },
-          { label: 'This Month', value: stats.thisMonth, color: 'bg-indigo-500/10 text-indigo-700 border-indigo-300' },
-        ].map(s => (
-          <div key={s.label} className={`p-3 rounded-xl border ${s.color}`}>
-            <p className="text-[10px] font-semibold uppercase opacity-80">{s.label}</p>
-            <p className="text-2xl font-bold">{s.value}</p>
-          </div>
-        ))}
+        <StatTile label="Total" value={stats.total} onClick={() => setFilter('all')} active={filter === 'all'} />
+        <StatTile label="Pending" value={stats.pending} tone="warning" onClick={() => setFilter('pending')} active={filter === 'pending'} />
+        <StatTile label="Approved" value={stats.approved} tone="success" onClick={() => setFilter('approved')} active={filter === 'approved'} />
+        <StatTile label="Rejected" value={stats.rejected} tone="danger" onClick={() => setFilter('rejected')} active={filter === 'rejected'} />
+        <StatTile label="Postponed" value={stats.postponed} tone="primary" onClick={() => setFilter('postponed')} active={filter === 'postponed'} />
+        <StatTile label="This Month" value={stats.thisMonth} tone="info" />
       </div>
+
 
       {/* Search & Date Filters */}
       <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-2xl p-4 space-y-3">
