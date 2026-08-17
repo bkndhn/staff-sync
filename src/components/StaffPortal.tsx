@@ -570,7 +570,9 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   };
 
   const downloadSalarySlip = () => {
+    if (!salaryDetail) return;
     const doc = new jsPDF();
+
     const rs = 'Rs.';
 
     // Header
