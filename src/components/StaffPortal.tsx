@@ -546,35 +546,12 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
   const handleDownloadSlip = () => {
     if (!salaryDetail) return;
+    const detail = salaryDetail;
     import('../utils/exportUtils').then(({ generateSalarySlipPDF }) => {
-      const breakdown = (salaryDetail.statutoryBreakdown || []).map((b: any) => ({
-        label: b.label,
-        amount: b.amount,
-        type: 'deduction' as const
-      }));
-      generateSalarySlipPDF({
-        staffName: staff.name,
-        month: selectedMonth,
-        year: selectedYear,
-        basic: salaryDetail.basicEarned,
-        hra: salaryDetail.hraEarned,
-        incentive: salaryDetail.incentiveEarned,
-        mealAllowance: salaryDetail.mealAllowance,
-        supplements: effectiveSupplements,
-        gross: salaryDetail.grossSalary || salaryDetail.grossPayroll,
-        oldAdvance: salaryDetail.oldAdv,
-        currentAdvance: salaryDetail.curAdv,
-        deduction: salaryDetail.deduction,
-        newAdvance: salaryDetail.newAdv,
-        sundayPenalty: salaryDetail.sundayPenalty,
-        lateComingDeduction: salaryDetail.lateComingDeduction || 0,
-        earlyLeaveDeduction: salaryDetail.earlyLeaveDeduction || 0,
-        net: salaryDetail.netSalary || salaryDetail.netPayroll,
-        statutoryBreakdown: breakdown,
-        customFields: staff.customFields
-      });
+      generateSalarySlipPDF(detail as any, staff as any, selectedMonth, selectedYear);
     });
   };
+
 
   const navigateMonth = (dir: number) => {
     let m = selectedMonth + dir;
