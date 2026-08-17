@@ -102,12 +102,21 @@ export default function App() {
     setGpsLoading(true);
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission to access location was denied');
+      Alert.alert('Permission Denied', 'Permission to access location was denied');
       setGpsLoading(false);
       return;
     }
 
     let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+    
+    // Explicit Mock Location / Fake GPS Check
+    if (location.mocked) {
+      Alert.alert('Fake GPS Detected', 'Mock location tools are not allowed. Please disable them and try again.');
+      setCurrentDist(null);
+      setGpsLoading(false);
+      return;
+    }
+
     const dist = getDistanceFromLatLonInM(
       location.coords.latitude, 
       location.coords.longitude, 
