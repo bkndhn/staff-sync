@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Staff, Attendance, AttendanceFilter, Designation, BranchDesignationShiftConfig, type LocationDesignationShiftConfig } from '../types';
-import { Calendar, Download, Check, X, Filter, MapPin, Clock, Upload, Share2, AlertTriangle } from 'lucide-react';
+import { Calendar, Calendar as CalendarIcon, Download, Check, X, Filter, MapPin, Clock, Upload, Share2, AlertTriangle, Users } from 'lucide-react';
+import { EmptyState } from './ui/PageShell';
 import { isSunday } from '../utils/salaryCalculations';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, shiftService } from '../services/shiftService';
 import { exportAttendancePDF } from '../utils/exportUtils';
