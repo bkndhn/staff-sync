@@ -138,6 +138,119 @@ export type Database = {
           },
         ]
       }
+      ai_insights: {
+        Row: {
+          created_at: string
+          id: string
+          insight_text: string
+          is_active: boolean
+          severity: string | null
+          staff_id: string | null
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          insight_text: string
+          is_active?: boolean
+          severity?: string | null
+          staff_id?: string | null
+          tenant_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          insight_text?: string
+          is_active?: boolean
+          severity?: string | null
+          staff_id?: string | null
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_insights_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insights_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "app_users_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insights_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcements: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          priority: string | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          priority?: string | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          priority?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "app_users_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_sessions: {
         Row: {
           created_at: string
