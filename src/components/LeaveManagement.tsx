@@ -3,6 +3,9 @@ import { Calendar, Check, X, Clock, MessageSquare, FileText, Search, Filter } fr
 import { leaveService, LeaveRequest } from '../services/leaveService';
 import { staffService } from '../services/staffService';
 import LeaveTimeline from './LeaveTimeline';
+import { PageHeader, StatTile, EmptyState, ErrorState } from './ui/PageShell';
+import { SkeletonList } from './ui/Skeleton';
+
 
 
 interface LeaveManagementProps {
