@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { EmptyState } from './ui/PageShell';
 import { dataApi } from '../lib/dataApi';
 import { Staff, Attendance, PayrollDetail, AdvanceDeduction, PartTimeSalaryDetail, PayrollOverride, PayrollRun, PayrollSnapshot } from '../types';
 import { DollarSign, Download, Users, Calendar, TrendingUp, Edit2, Save, X, FileSpreadsheet, FileText, MessageCircle, Filter, Plus, Trash2, Check, RefreshCw, HandCoins } from 'lucide-react';

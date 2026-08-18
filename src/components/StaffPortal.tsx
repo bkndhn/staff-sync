@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { EmptyState } from './ui/PageShell';
 import {
   User, Calendar, DollarSign, TrendingUp, Download, ChevronLeft, ChevronRight,
   CheckCircle, XCircle, Clock, Briefcase, MapPin, Phone, Home, IndianRupee,
