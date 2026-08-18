@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Staff, Attendance, AttendanceFilter, Designation, BranchDesignationShiftConfig, type LocationDesignationShiftConfig } from '../types';
-import { Calendar, Download, Check, X, Filter, MapPin, Clock, Upload, Share2, AlertTriangle } from 'lucide-react';
+import { Calendar, Calendar as CalendarIcon, Download, Check, X, Filter, MapPin, Clock, Upload, Share2, AlertTriangle, Users } from 'lucide-react';
+import { EmptyState } from './ui/PageShell';
 import { isSunday } from '../utils/salaryCalculations';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, shiftService } from '../services/shiftService';
 import { exportAttendancePDF } from '../utils/exportUtils';
@@ -441,7 +442,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         {/* Mobile: native-style card list */}
         <div className="md:hidden space-y-2 pb-2">
           {monthlyFilteredStaff.length === 0 ? (
-            <div className="text-center py-10 text-gray-400 text-sm">No staff match this month's filters.</div>
+            <EmptyState icon={<Users size={26} />} title="No staff match these filters" description="Adjust the branch, zone or search filters above to see staff for this month." />
           ) : (
             monthlyFilteredStaff.map(member => {
               const summary = getStaffSummary(member.id);
@@ -744,7 +745,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         </div>
 
         {!selectedStaff ? (
-          <div className="text-center py-12 text-gray-400">Please select a staff member to view yearly attendance.</div>
+          <EmptyState icon={<CalendarIcon size={26} />} title="Select a staff member" description="Pick someone from the list above to see their full year of attendance at a glance." />
         ) : (
           <div className="space-y-5">
             <YearlyAttendanceSummary
@@ -1309,9 +1310,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       {/* Mobile Card View (native-app feel) */}
       <div className="md:hidden space-y-2 pb-24">
         {combinedAttendanceData.length === 0 && (
-          <div className="text-center py-10 text-sm text-gray-500 bg-white rounded-xl border border-gray-100">
-            No staff to show for this filter.
-          </div>
+          <EmptyState icon={<Users size={26} />} title="No staff to show" description="No one matches the current branch, zone or shift filter for this date." />
         )}
         {combinedAttendanceData.map((data: any) => {
           const inVal = individualTimes[data.id]?.inTime !== undefined ? individualTimes[data.id].inTime : (data.arrivalTime || '');
