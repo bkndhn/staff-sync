@@ -41,6 +41,7 @@ import { ProfileEditModal } from './portal/ProfileEditModal';
 import { AttendanceRegularizationModal } from './portal/AttendanceRegularizationModal';
 import { DocumentsTab } from './portal/DocumentsTab';
 import { NotificationPanel } from './portal/NotificationPanel';
+import { localDateKey } from '../lib/localDate';
 
 interface StaffPortalProps {
   staff: Staff;
@@ -268,7 +269,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       }
 
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = localDateKey();
       const nowTime = new Date().toTimeString().split(' ')[0];
 
       const todayRecord = attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
@@ -823,7 +824,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
             {/* Today's Punch Status Banner & Actions */}
             {!isLeftStaff && (() => {
-              const today = new Date().toISOString().split('T')[0];
+              const today = localDateKey();
               const todayRec = attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
               const hasIn = !!(todayRec?.arrivalTime);
               const hasOut = !!(todayRec?.leavingTime);

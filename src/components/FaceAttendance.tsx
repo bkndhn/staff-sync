@@ -22,6 +22,7 @@ import PerfOverlay from './ui/PerfOverlay';
 import { perfStart, perfRecord } from '../lib/perfProfiler';
 import { getDeviceProfile } from '../lib/deviceProfile';
 import { useIsMobile, useHaptics, useDoubleTap } from './face/mobileFace';
+import { localDateKey } from '../lib/localDate';
 
 
 interface Props {
@@ -107,7 +108,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     }
   }, [userRole, userLocation, selectedLocation]);
 
-  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const today = useMemo(() => localDateKey(), []);
 
   const todaysPunches = useMemo(() => {
     return attendance
