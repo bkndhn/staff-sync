@@ -1482,7 +1482,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         {/* Mobile card list (native app feel) */}
         <div className="md:hidden divide-y divide-gray-100">
           {salaryDetails.length === 0 && (
-            <div className="p-6 text-center text-sm text-gray-500">No salary records for this period.</div>
+            <div className="p-4"><EmptyState title="No salary records for this period" description="Pick another month or generate payroll to see salary details here." /></div>
           )}
           {salaryDetails.map((detail, index) => {
             const staffMember = getStaffForDisplay(detail.staffId);

@@ -1553,10 +1553,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               <TrendingUp size={20} className="text-emerald-500" /> Payroll Hike History
             </h3>
             {staffHikes.length === 0 ? (
-              <div className="text-center py-12">
-                <TrendingUp size={48} className="mx-auto text-[var(--text-muted)] mb-3 opacity-30" />
-                <p className="text-[var(--text-muted)] font-medium">No salary hikes recorded yet.</p>
-              </div>
+              <EmptyState icon={<TrendingUp size={26} />} title="No salary hikes yet" description="When your pay is revised, the revision history will show up here." />
             ) : (
               <div className="space-y-3">
                 {staffHikes.map((hike, idx) => (
@@ -1731,10 +1728,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               <FileText size={20} className="text-indigo-500" /> Leave History
             </h3>
             {leaveRequests.length === 0 ? (
-              <div className="text-center py-12">
-                <Calendar size={48} className="mx-auto text-[var(--text-muted)] mb-3 opacity-30" />
-                <p className="text-[var(--text-muted)] font-medium">No leave requests yet.</p>
-              </div>
+              <EmptyState icon={<Calendar size={26} />} title="No leave requests yet" description="Apply for leave from this page and track its approval status here." />
             ) : (
               <div className="space-y-3">
                 {leaveRequests.map(leave => {

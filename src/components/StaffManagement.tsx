@@ -1959,7 +1959,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         {/* Mobile card list — thumb-friendly, no horizontal scroll */}
         <div className="md:hidden space-y-2 pb-4">
           {activeStaff.length === 0 ? (
-            <div className="p-8 text-center text-sm text-white/60">No staff to display.</div>
+            <div className="p-4"><EmptyState title="No staff to display" description="Adjust your search or filters, or add a new staff member to get started." /></div>
           ) : activeStaff.map((member, index) => (
             <div
               key={member.id}
@@ -2398,7 +2398,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 </div>
               ))}
               {locations.length === 0 && (
-                <p className="text-center text-white/50 py-4">No locations added yet</p>
+                <p className="text-center text-[var(--text-muted)] py-4 text-sm">No branches added yet</p>
               )}
             </div>
 
@@ -2578,7 +2578,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                   </div>
                 );
               })}
-              {floors.length === 0 && <p className="text-center text-white/50 py-4">No floors added yet</p>}
+              {floors.length === 0 && <p className="text-center text-[var(--text-muted)] py-4 text-sm">No zones added yet</p>}
             </div>
             <div className="mt-4 flex justify-end">
               <button onClick={() => setShowFloorManager(false)} className="btn-ghost px-4 py-2">Close</button>
@@ -2637,7 +2637,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                   )}
                 </div>
               ))}
-              {designations.length === 0 && <p className="text-center text-white/50 py-4">No designations added yet</p>}
+              {designations.length === 0 && <p className="text-center text-[var(--text-muted)] py-4 text-sm">No designations added yet</p>}
             </div>
             <div className="mt-4 flex justify-end">
               <button onClick={() => setShowDesignationManager(false)} className="btn-ghost px-4 py-2">Close</button>
