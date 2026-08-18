@@ -7,6 +7,8 @@ import {
   loanService, LoanRequest, LoanThresholds, DEFAULT_LOAN_THRESHOLDS, buildSchedule, emiAmount,
 } from '../services/loanService';
 import { dataApi } from '../lib/dataApi';
+import { PageHeader, EmptyState, ErrorState } from './ui/PageShell';
+import { SkeletonList } from './ui/Skeleton';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
@@ -142,21 +144,23 @@ const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation, all
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-          <IndianRupee size={22} className="text-blue-600" /> Loan Requests
-        </h2>
-        <div className="flex items-center gap-2">
-          <button onClick={load} className="p-2 rounded-xl border border-[var(--glass-border)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg)]" aria-label="Refresh">
-            <RefreshCw size={16} />
-          </button>
-          {isAdmin && (
-            <button onClick={() => setShowConfig(true)} className="px-3 py-2 rounded-xl border border-[var(--glass-border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--glass-bg)] flex items-center gap-1.5">
-              <Settings2 size={15} /> Rules
+      <PageHeader
+        title="Loan Requests"
+        icon={<IndianRupee size={20} />}
+        subtitle={`${filtered.length} ${tab} request${filtered.length === 1 ? '' : 's'}${userLocation ? ` • ${userLocation}` : ''}`}
+        actions={
+          <>
+            <button onClick={load} className="p-2 rounded-xl border border-[var(--glass-border)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg)]" aria-label="Refresh">
+              <RefreshCw size={16} />
             </button>
-          )}
-        </div>
-      </div>
+            {isAdmin && (
+              <button onClick={() => setShowConfig(true)} className="px-3 py-2 rounded-xl border border-[var(--glass-border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--glass-bg)] flex items-center gap-1.5">
+                <Settings2 size={15} /> Rules
+              </button>
+            )}
+          </>
+        }
+      />
 
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
@@ -196,17 +200,23 @@ const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation, all
         </div>
       </div>
 
-      {error && <div className="p-3 rounded-xl bg-red-500/10 text-red-600 text-sm">{error}</div>}
+      {error && <ErrorState message={error} onRetry={load} compact />}
 
       {loading ? (
-        <div className="space-y-2">
-          {[0, 1, 2].map(i => <div key={i} className="h-24 rounded-2xl bg-[var(--glass-bg)] animate-pulse" />)}
-        </div>
+        <SkeletonList rows={3} />
       ) : filtered.length === 0 ? (
-        <div className="p-10 text-center rounded-2xl border border-dashed border-[var(--glass-border)] text-[var(--text-muted)]">
-          <Clock size={28} className="mx-auto mb-2 opacity-60" />
-          No {tab} loan requests.
-        </div>
+        <EmptyState
+          icon={<Clock size={26} />}
+          title={`No ${tab} loan requests`}
+          description={dateFilter
+            ? 'Nothing was raised on this date. Switch to "All dates" to see the full history.'
+            : 'Staff loan requests raised from the portal land here for approval.'}
+          action={dateFilter ? (
+            <button onClick={() => setDateFilter('')} className="px-4 py-2 rounded-xl bg-[var(--primary-gradient)] text-[var(--on-primary)] text-sm font-semibold">
+              Show all dates
+            </button>
+          ) : undefined}
+        />
       ) : (
         <div className="space-y-3">
           {filtered.map(l => {
