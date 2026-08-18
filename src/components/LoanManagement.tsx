@@ -10,7 +10,6 @@ import { dataApi } from '../lib/dataApi';
 import { PageHeader, EmptyState, ErrorState } from './ui/PageShell';
 import { SkeletonList } from './ui/Skeleton';
 
-
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 
@@ -163,7 +162,6 @@ const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation, all
         }
       />
 
-
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
@@ -210,23 +208,15 @@ const LoanManagement: React.FC<Props> = ({ userRole, userName, userLocation, all
         <EmptyState
           icon={<Clock size={26} />}
           title={`No ${tab} loan requests`}
-          description={
-            dateFilter
-              ? 'Nothing was raised on this date. Switch to "All dates" to see the full history.'
-              : 'Staff loan requests raised from the portal land here for approval.'
-          }
-          action={
-            dateFilter ? (
-              <button
-                onClick={() => setDateFilter('')}
-                className="px-4 py-2 rounded-xl bg-[var(--primary-gradient)] text-[var(--on-primary)] text-sm font-semibold"
-              >
-                Show all dates
-              </button>
-            ) : undefined
-          }
+          description={dateFilter
+            ? 'Nothing was raised on this date. Switch to "All dates" to see the full history.'
+            : 'Staff loan requests raised from the portal land here for approval.'}
+          action={dateFilter ? (
+            <button onClick={() => setDateFilter('')} className="px-4 py-2 rounded-xl bg-[var(--primary-gradient)] text-[var(--on-primary)] text-sm font-semibold">
+              Show all dates
+            </button>
+          ) : undefined}
         />
-
       ) : (
         <div className="space-y-3">
           {filtered.map(l => {

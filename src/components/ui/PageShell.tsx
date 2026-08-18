@@ -59,7 +59,7 @@ export const StatTile: React.FC<{
       onClick={onClick}
       className={`text-left p-3 rounded-xl border transition-all ${toneStyles[tone]} ${
         onClick ? 'hover:shadow-[var(--shadow-soft)] active:scale-[0.98]' : ''
-      } ${active ? 'ring-2 ring-[var(--primary-gradient)]/40' : ''}`}
+      } ${active ? 'ring-2 ring-blue-500/40' : ''}`}
     >
       <p className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{label}</p>
       <p className="text-xl sm:text-2xl font-bold leading-tight">{value}</p>

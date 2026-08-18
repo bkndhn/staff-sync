@@ -7,7 +7,6 @@ import { PageHeader, StatTile, EmptyState, ErrorState } from './ui/PageShell';
 import { SkeletonList } from './ui/Skeleton';
 
 
-
 interface LeaveManagementProps {
   userRole: 'admin' | 'manager' | 'supervisor' | 'floor_supervisor' | 'statutory_admin';
   userLocation?: string;
@@ -66,7 +65,6 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
       setLoading(false);
     }
   };
-
 
   useEffect(() => { loadLeaves(); }, [userRole, userLocation]);
 
@@ -180,10 +178,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
         icon={<FileText size={20} />}
         subtitle={`${userRole === 'admin' ? 'All branches' : userLocation || 'Your branch'} • ${stats.pending} pending approval`}
         actions={
-          <button
-            onClick={loadLeaves}
-            className="px-3 py-2 rounded-xl border border-[var(--glass-border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--glass-bg)]"
-          >
+          <button onClick={loadLeaves} className="px-3 py-2 rounded-xl border border-[var(--glass-border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--glass-bg)]">
             Refresh
           </button>
         }
@@ -198,7 +193,6 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
         <StatTile label="Postponed" value={stats.postponed} tone="primary" onClick={() => setFilter('postponed')} active={filter === 'postponed'} />
         <StatTile label="This Month" value={stats.thisMonth} tone="info" />
       </div>
-
 
       {/* Search & Date Filters */}
       <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-2xl p-4 space-y-3">
@@ -315,23 +309,15 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
         <EmptyState
           icon={<Calendar size={26} />}
           title="No leave requests found"
-          description={
-            dateFilterEnabled
-              ? 'Try widening the date range or clearing the date filter to see older requests.'
-              : 'Requests raised by staff from the portal will appear here for approval.'
-          }
-          action={
-            dateFilterEnabled ? (
-              <button
-                onClick={clearDateFilter}
-                className="px-4 py-2 rounded-xl bg-[var(--primary-gradient)] text-[var(--on-primary)] text-sm font-semibold"
-              >
-                Clear date filter
-              </button>
-            ) : undefined
-          }
+          description={dateFilterEnabled
+            ? 'Try widening the date range or clearing the date filter to see older requests.'
+            : 'Requests raised by staff from the portal appear here for approval.'}
+          action={dateFilterEnabled ? (
+            <button onClick={clearDateFilter} className="px-4 py-2 rounded-xl bg-[var(--primary-gradient)] text-[var(--on-primary)] text-sm font-semibold">
+              Clear date filter
+            </button>
+          ) : undefined}
         />
-
       ) : (
         <div className="space-y-3">
           <p className="text-xs text-[var(--text-muted)]">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</p>

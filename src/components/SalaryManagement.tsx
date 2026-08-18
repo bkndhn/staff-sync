@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { EmptyState } from './ui/PageShell';
 import { dataApi } from '../lib/dataApi';
 import { Staff, Attendance, PayrollDetail, AdvanceDeduction, PartTimeSalaryDetail, PayrollOverride, PayrollRun, PayrollSnapshot } from '../types';
 import { DollarSign, Download, Users, Calendar, TrendingUp, Edit2, Save, X, FileSpreadsheet, FileText, MessageCircle, Filter, Plus, Trash2, Check, RefreshCw, HandCoins } from 'lucide-react';
@@ -1482,7 +1483,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         {/* Mobile card list (native app feel) */}
         <div className="md:hidden divide-y divide-gray-100">
           {salaryDetails.length === 0 && (
-            <div className="p-6 text-center text-sm text-gray-500">No salary records for this period.</div>
+            <div className="p-4"><EmptyState title="No salary records for this period" description="Pick another month or generate payroll to see salary details here." /></div>
           )}
           {salaryDetails.map((detail, index) => {
             const staffMember = getStaffForDisplay(detail.staffId);
