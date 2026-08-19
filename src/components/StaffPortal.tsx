@@ -41,7 +41,9 @@ import { ProfileEditModal } from './portal/ProfileEditModal';
 import { AttendanceRegularizationModal } from './portal/AttendanceRegularizationModal';
 import { DocumentsTab } from './portal/DocumentsTab';
 import { NotificationPanel } from './portal/NotificationPanel';
-import { localDateKey } from '../lib/localDate';
+import { localDateKey, localTimeKey } from '../lib/localDate';
+import { serverNow, syncServerTime } from '../lib/serverTime';
+
 
 interface StaffPortalProps {
   staff: Staff;
@@ -269,8 +271,12 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       }
 
 
-      const today = localDateKey();
-      const nowTime = new Date().toTimeString().split(' ')[0];
+      // Server-authoritative clock: a tampered device time cannot fake punches.
+      await syncServerTime(true);
+      const now = serverNow();
+      const today = localDateKey(now);
+      const nowTime = localTimeKey(now);
+
 
       const todayRecord = attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
 
@@ -824,7 +830,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
             {/* Today's Punch Status Banner & Actions */}
             {!isLeftStaff && (() => {
-              const today = localDateKey();
+              const today = localDateKey(serverNow());
               const todayRec = attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
               const hasIn = !!(todayRec?.arrivalTime);
               const hasOut = !!(todayRec?.leavingTime);
