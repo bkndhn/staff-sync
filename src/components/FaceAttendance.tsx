@@ -112,7 +112,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     }
   }, [userRole, userLocation, selectedLocation]);
 
-  const today = useMemo(() => localDateKey(), []);
+  useEffect(() => { void syncServerTime(true); }, []);
+
+  const today = useMemo(() => localDateKey(serverNow()), []);
+
 
   const todaysPunches = useMemo(() => {
     return attendance
