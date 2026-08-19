@@ -53,9 +53,11 @@ type RecentEvent = {
 };
 
 const formatNow = () => {
-  const d = new Date();
+  // Server-corrected clock so a tampered device time cannot fake punch times.
+  const d = serverNow();
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 };
+
 
 const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole, userLocation }) => {
   const { ready, loading, error, detect } = useFaceEngine(true);
