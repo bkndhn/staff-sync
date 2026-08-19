@@ -269,8 +269,12 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       }
 
 
-      const today = localDateKey();
-      const nowTime = new Date().toTimeString().split(' ')[0];
+      // Server-authoritative clock: a tampered device time cannot fake punches.
+      await syncServerTime(true);
+      const now = serverNow();
+      const today = localDateKey(now);
+      const nowTime = localTimeKey(now);
+
 
       const todayRecord = attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
 
