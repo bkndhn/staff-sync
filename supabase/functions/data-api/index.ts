@@ -149,10 +149,19 @@ Deno.serve(async (req) => {
     }
 
     const body = (await req.json()) as Body;
+
+    // Server-authoritative clock. Clients use this to correct a tampered
+    // device clock before recording a punch. No table access involved.
+    if (body?.op === "server_time") {
+      return new Response(JSON.stringify({ data: { now: new Date().toISOString() } }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     if (!body?.table || !body?.op) {
       return new Response(JSON.stringify({ error: "table and op are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
 
     const acl = ACL[body.table];
     if (!acl) {
