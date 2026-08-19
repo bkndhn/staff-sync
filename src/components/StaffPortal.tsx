@@ -41,7 +41,9 @@ import { ProfileEditModal } from './portal/ProfileEditModal';
 import { AttendanceRegularizationModal } from './portal/AttendanceRegularizationModal';
 import { DocumentsTab } from './portal/DocumentsTab';
 import { NotificationPanel } from './portal/NotificationPanel';
-import { localDateKey } from '../lib/localDate';
+import { localDateKey, localTimeKey } from '../lib/localDate';
+import { serverNow, syncServerTime } from '../lib/serverTime';
+
 
 interface StaffPortalProps {
   staff: Staff;
