@@ -830,7 +830,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
             {/* Today's Punch Status Banner & Actions */}
             {!isLeftStaff && (() => {
-              const today = localDateKey();
+              const today = localDateKey(serverNow());
               const todayRec = attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
               const hasIn = !!(todayRec?.arrivalTime);
               const hasOut = !!(todayRec?.leavingTime);
