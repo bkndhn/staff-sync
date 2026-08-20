@@ -39,6 +39,7 @@ import TenantStatusBanner from './components/TenantStatusBanner';
 import { errorTracker } from './services/errorTrackingService';
 
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
+const OnboardingWizard = React.lazy(() => import('./components/OnboardingWizard'));
 const PayrollManagement = React.lazy(() => import('./components/SalaryManagement'));
 const SalaryManagement = PayrollManagement;
 const PartTimeStaff = React.lazy(() => import('./components/PartTimeStaff'));
@@ -110,6 +111,31 @@ function App() {
 
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Guided setup: auto-open for client admins that haven't finished onboarding.
+  useEffect(() => {
+    const openWizard = () => setShowOnboarding(true);
+    window.addEventListener('open-onboarding', openWizard);
+    if (user?.role === 'admin') {
+      (async () => {
+        try {
+          const { onboardingService, applyBranding } = await import('./services/onboardingService');
+          const [state, branding] = await Promise.all([
+            onboardingService.getState(),
+            onboardingService.getBranding(),
+          ]);
+          applyBranding(branding);
+          if (!state.completed) setShowOnboarding(true);
+        } catch {
+          /* non-fatal */
+        }
+      })();
+    }
+    return () => window.removeEventListener('open-onboarding', openWizard);
+  }, [user?.role]);
+
+
 
   // 🚀 Auth session restore via Supabase 🚀
   useEffect(() => {
@@ -1656,6 +1682,14 @@ function App() {
           newPayroll={salaryHikeModal.newPayroll ?? salaryHikeModal.newSalary ?? 0}
           onConfirm={salaryHikeModal.onConfirm}
         />
+      )}
+      {showOnboarding && (
+        <Suspense fallback={null}>
+          <OnboardingWizard
+            onClose={() => setShowOnboarding(false)}
+            onFinished={() => setShowOnboarding(false)}
+          />
+        </Suspense>
       )}
       <CustomDialogProvider />
     </div>
