@@ -24,6 +24,7 @@ import BulkSalarySender from './BulkSalarySender';
 import { customAlert, customConfirm } from './CustomDialog';
 import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/roleVisibility';
 import { useUserPreference } from '../hooks/useUserPreference';
+import { shiftService, DEFAULT_SHIFT_WINDOWS } from '../services/shiftService';
 
 interface PayrollManagementProps {
   staff: Staff[];
@@ -70,6 +71,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
   const [generatingPayroll, setGeneratingPayroll] = useState(false);
   const [approvedLeaves, setApprovedLeaves] = useState<LeaveRequest[]>([]);
   const [payrollRules, setPayrollRules] = useState<Record<string, string>>({});
+  const [globalShiftWindows, setGlobalShiftWindows] = useState<any>(DEFAULT_SHIFT_WINDOWS);
 
   useEffect(() => {
     const loadData = async () => {
@@ -90,6 +92,9 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
 
         const rules = await payrollRulesService.getPayrollRules();
         setPayrollRules(rules);
+
+        const shifts = await shiftService.loadGlobal();
+        setGlobalShiftWindows(shifts);
       } catch (error) {
         console.error('Failed to load data:', error);
       }
@@ -438,25 +443,27 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         selectedMonth,
         selectedYear,
         memberAdvanceEntries,
+        overrideConfig,
         scheduledDeductions[member.id]?.total || 0,
         globalShiftWindows,
         payrollRules
-      );const mergedDetail = baseDetail;
+      );
+      const mergedDetail = baseDetail;
 
       // Merge with overrides if present
       const override = overrides[member.id];
       let resultDetail: PayrollDetail = mergedDetail;
       if (override) {
-        const basic = override.basicOverride ?? mergedDetail.basicEarned;
-        const incentive = override.incentiveOverride ?? mergedDetail.incentiveEarned;
-        const hra = override.hraOverride ?? mergedDetail.hraEarned;
-        const meal = override.mealAllowanceOverride ?? mergedDetail.mealAllowance;
-        const sundayPenalty = override.sundayPenaltyOverride ?? mergedDetail.sundayPenalty;
-        const lateComingDeduction = override.lateComingDeductionOverride ?? mergedDetail.lateComingDeduction ?? 0;
-        const earlyLeaveDeduction = override.earlyLeaveDeductionOverride ?? mergedDetail.earlyLeaveDeduction ?? 0;
+        const basic = Number(override.basicOverride ?? mergedDetail.basicEarned) || 0;
+        const incentive = Number(override.incentiveOverride ?? mergedDetail.incentiveEarned) || 0;
+        const hra = Number(override.hraOverride ?? mergedDetail.hraEarned) || 0;
+        const meal = Number(override.mealAllowanceOverride ?? mergedDetail.mealAllowance) || 0;
+        const sundayPenalty = Number(override.sundayPenaltyOverride ?? mergedDetail.sundayPenalty) || 0;
+        const lateComingDeduction = Number(override.lateComingDeductionOverride ?? mergedDetail.lateComingDeduction) || 0;
+        const earlyLeaveDeduction = Number(override.earlyLeaveDeductionOverride ?? mergedDetail.earlyLeaveDeduction) || 0;
 
         const gross = roundToNearest10(basic + incentive + hra + meal);
-        const net = roundToNearest10(gross - mergedDetail.curAdv - mergedDetail.deduction - sundayPenalty - lateComingDeduction - earlyLeaveDeduction);
+        const net = Math.max(0, roundToNearest10(gross - (mergedDetail.curAdv || 0) - (mergedDetail.deduction || 0) - sundayPenalty - lateComingDeduction - earlyLeaveDeduction));
 
         resultDetail = {
           ...mergedDetail,
@@ -547,10 +554,10 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
     }
     return false;
   };
-  const totalSalaryDisbursed = salaryDetails.reduce((sum, detail) => sum + (detail.netPayroll ?? detail.netSalary ?? 0), 0);
-  const totalPartTimeEarnings = partTimeSalaries.reduce((sum, salary) => sum + salary.totalEarnings, 0);
+  const totalSalaryDisbursed = salaryDetails.reduce((sum, detail) => sum + (Number(detail.netPayroll ?? detail.netSalary) || 0), 0);
+  const totalPartTimeEarnings = partTimeSalaries.reduce((sum, salary) => sum + (Number(salary.totalEarnings) || 0), 0);
   const averageAttendance = salaryDetails.length > 0
-    ? salaryDetails.reduce((sum, detail) => sum + detail.presentDays + (detail.halfDays * 0.5), 0) / salaryDetails.length
+    ? salaryDetails.reduce((sum, detail) => sum + (Number(detail.presentDays) || 0) + ((Number(detail.halfDays) || 0) * 0.5), 0) / salaryDetails.length
     : 0;
 
   const handleEnableEditAll = async () => {
@@ -786,7 +793,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
         const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
         const memberAdvanceEntries = advanceEntries[member.id] || [];
-        return calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides, scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules);
+        return calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides[member.id], scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules);
       });
 
       const run = await payrollService.generatePayroll(selectedMonth, selectedYear, activeStaff, fullDetails, 'System');
@@ -809,7 +816,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
         const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
         const memberAdvanceEntries = advanceEntries[member.id] || [];
-        return calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides, scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules);
+        return calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides[member.id], scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules);
       });
 
       const run = await payrollService.regeneratePayroll(selectedMonth, selectedYear, activeStaff, fullDetails, 'System');
@@ -1287,7 +1294,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-white/60 mb-1">Full-Time Payroll</p>
-              <p className="text-3xl font-bold text-emerald-400">₹{(editMode ? Object.values(tempAdvances).reduce((sum, t) => sum + (t.netPayroll || 0), 0) : totalSalaryDisbursed).toLocaleString()}</p>
+              <p className="text-3xl font-bold text-emerald-400">₹{((editMode ? Object.values(tempAdvances).reduce((sum, t) => sum + (Number(t.netPayroll) || 0), 0) : totalSalaryDisbursed) || 0).toLocaleString()}</p>
               <p className="text-xs text-white/50">
                 For {new Date(0, selectedMonth).toLocaleString('default', { month: 'long' })} {selectedYear}
               </p>
@@ -1302,7 +1309,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-white/60 mb-1">Flex Earnings</p>
-              <p className="text-3xl font-bold text-purple-400">₹{totalPartTimeEarnings.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-purple-400">₹{(totalPartTimeEarnings || 0).toLocaleString()}</p>
               <p className="text-xs text-white/50">{partTimeSalaries.length} staff</p>
             </div>
             <div className="stat-icon stat-icon-purple">
@@ -1315,7 +1322,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-white/60 mb-1">Average Attendance</p>
-              <p className="text-3xl font-bold text-amber-400">{averageAttendance.toFixed(1)}</p>
+              <p className="text-3xl font-bold text-amber-400">{(averageAttendance || 0).toFixed(1)}</p>
               <p className="text-xs text-white/50">Days per employee</p>
             </div>
             <div className="stat-icon stat-icon-warning">
@@ -1328,7 +1335,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-white/60 mb-1">Total Disbursed</p>
-              <p className="text-3xl font-bold text-indigo-400">₹{((editMode ? Object.values(tempAdvances).reduce((sum, t) => sum + (t.netPayroll || 0), 0) : totalSalaryDisbursed) + totalPartTimeEarnings).toLocaleString()}</p>
+              <p className="text-3xl font-bold text-indigo-400">₹{(((editMode ? Object.values(tempAdvances).reduce((sum, t) => sum + (Number(t.netPayroll) || 0), 0) : totalSalaryDisbursed) + totalPartTimeEarnings) || 0).toLocaleString()}</p>
               <p className="text-xs text-white/50">Full + Part-time</p>
             </div>
             <div className="stat-icon stat-icon-primary">

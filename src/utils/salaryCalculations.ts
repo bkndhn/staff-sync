@@ -27,8 +27,9 @@ export const setPunctualityPolicy = (policy: Partial<PunctualityPolicy>): void =
 
 export const getPunctualityPolicy = (): PunctualityPolicy => punctualityPolicy;
 
-// Round to nearest 10
+// Round to nearest 10 with NaN / null / undefined safety
 export const roundToNearest10 = (value: number): number => {
+  if (value === null || value === undefined || isNaN(value) || !isFinite(value)) return 0;
   return Math.round(value / 10) * 10;
 };
 
@@ -401,7 +402,8 @@ export const calculatePayroll = (
   let recordEarlyDeduction = 0;
   let lateCount = 0;
   let earlyCount = 0;
-  const dailyRate = (staff.basicPayroll ?? staff.basicSalary ?? 0) / calculationDays;
+  const effectiveCalcDays = calculationDays > 0 ? calculationDays : 26;
+  const dailyRate = (staff.basicPayroll ?? staff.basicSalary ?? 0) / effectiveCalcDays;
 
   monthlyAttendance.forEach(record => {
     if (record.status === 'Absent') return;
@@ -483,18 +485,20 @@ export const calculatePayroll = (
     earlyLeaveDeduction = manualOverrides.earlyLeaveDeduction;
   }
 
-  let basicEarned: number;
-  let incentiveEarned: number;
-  let hraEarned: number;
+  let basicEarned: number = 0;
+  let incentiveEarned: number = 0;
+  let hraEarned: number = 0;
   let hraDeduction: number = 0; // Track HRA deduction internally
   const basicAmount = staff.basicPayroll ?? staff.basicSalary ?? 0;
+  const staffIncentive = staff.incentive || 0;
+  const staffHra = staff.hra || 0;
 
   // SCENARIO 3: Fixed salary (calculationDays = 0)
   if (calculationDays === 0) {
     // No calculation based on present days - fixed salary
     basicEarned = basicAmount;
-    incentiveEarned = staff.incentive;
-    hraEarned = staff.hra;
+    incentiveEarned = staffIncentive;
+    hraEarned = staffHra;
   }
   // SCENARIO 1: 26 calculation days
   else if (calculationDays === 26) {
@@ -508,20 +512,20 @@ export const calculatePayroll = (
     // Incentive and HRA logic
     if (totalPresentDays >= 25) {
       // 25 or more days: Full incentive and full HRA
-      incentiveEarned = staff.incentive;
-      hraEarned = staff.hra;
+      incentiveEarned = staffIncentive;
+      hraEarned = staffHra;
     } else {
       // Less than 25 days: Pro-rated calculation with HRA deduction from incentive
 
       // Calculate pro-rated incentive
-      const proRatedIncentive = roundToNearest10((staff.incentive / 26) * totalPresentDays);
+      const proRatedIncentive = roundToNearest10((staffIncentive / 26) * totalPresentDays);
 
       // Calculate HRA reduction (what HRA would be vs full HRA)
-      const proRatedHRA = roundToNearest10((staff.hra / 26) * totalPresentDays);
-      hraDeduction = staff.hra - proRatedHRA; // This is the HRA shortfall
+      const proRatedHRA = roundToNearest10((staffHra / 26) * totalPresentDays);
+      hraDeduction = staffHra - proRatedHRA; // This is the HRA shortfall
 
       // HRA stays full (don't reduce HRA visually)
-      hraEarned = staff.hra;
+      hraEarned = staffHra;
 
       // Deduct HRA shortfall from incentive
       incentiveEarned = Math.max(0, proRatedIncentive - hraDeduction);
@@ -539,12 +543,12 @@ export const calculatePayroll = (
     // Incentive and HRA logic for 30-day calculation
     if (totalPresentDays >= 25) {
       // 25 or more days: Full incentive and full HRA
-      incentiveEarned = staff.incentive;
-      hraEarned = staff.hra;
+      incentiveEarned = staffIncentive;
+      hraEarned = staffHra;
     } else {
       // Less than 25 days: Pro-rated incentive (no HRA deduction for 30-day scenario)
-      incentiveEarned = roundToNearest10((staff.incentive / 30) * totalPresentDays);
-      hraEarned = staff.hra; // Full HRA
+      incentiveEarned = roundToNearest10((staffIncentive / 30) * totalPresentDays);
+      hraEarned = staffHra; // Full HRA
     }
   }
   // Default fallback (custom calculation days)
@@ -557,11 +561,11 @@ export const calculatePayroll = (
     }
 
     if (totalPresentDays >= 25) {
-      incentiveEarned = staff.incentive;
-      hraEarned = staff.hra;
+      incentiveEarned = staffIncentive;
+      hraEarned = staffHra;
     } else {
-      incentiveEarned = roundToNearest10((staff.incentive / calculationDays) * totalPresentDays);
-      hraEarned = staff.hra;
+      incentiveEarned = roundToNearest10((staffIncentive / calculationDays) * totalPresentDays);
+      hraEarned = staffHra;
     }
   }
 
@@ -572,8 +576,8 @@ export const calculatePayroll = (
   if (payrollRules && Object.keys(payrollRules).length > 0) {
     const context = {
       BASIC: basicAmount,
-      HRA: staff.hra || 0,
-      INCENTIVE: staff.incentive || 0,
+      HRA: staffHra || 0,
+      INCENTIVE: staffIncentive || 0,
       CALC_DAYS: calculationDays,
       PRESENT_DAYS: totalPresentDays,
       ABSENT_DAYS: getDaysInMonth(currentYear, currentMonth) - totalPresentDays,
@@ -627,10 +631,11 @@ export const calculatePayroll = (
   let supplementsTotal = 0;
   if (staff.salarySupplements) {
     Object.entries(staff.salarySupplements).forEach(([key, value]) => {
+      const numVal = typeof value === 'number' && !isNaN(value) ? value : Number(value) || 0;
       if (calcModes[key] === 'per_day') {
-        supplementsTotal += roundToNearest10((value / calcDaysForAllowance) * totalPresentDays);
+        supplementsTotal += roundToNearest10((numVal / calcDaysForAllowance) * totalPresentDays);
       } else {
-        supplementsTotal += value;
+        supplementsTotal += numVal;
       }
     });
   }
@@ -639,9 +644,9 @@ export const calculatePayroll = (
   // If threshold > 0: present >= threshold → fixed amount, else per-day calc
   // If threshold = 0: check calcMode (fixed or per_day)
   // per_day mode: presentDays * rate, rounded to nearest 10
-  const rawMeal = staff.mealAllowance || 0;
+  const rawMeal = typeof staff.mealAllowance === 'number' && !isNaN(staff.mealAllowance) ? staff.mealAllowance : Number(staff.mealAllowance) || 0;
   const mealThreshold = staff.mealAllowanceThreshold || 0;
-  let mealAllowance: number;
+  let mealAllowance: number = 0;
   
   if (mealThreshold > 0) {
     // Threshold mode: fixed if present >= threshold, else per-day
@@ -658,23 +663,23 @@ export const calculatePayroll = (
   }
 
   const overrides = advances?.overrides || {};
-  if (overrideConfig?.basic && overrides.basic !== undefined) basicEarned = overrides.basic;
-  if (overrideConfig?.incentive && overrides.incentive !== undefined) incentiveEarned = overrides.incentive;
-  if (overrideConfig?.hra && overrides.hra !== undefined) hraEarned = overrides.hra;
-  if (overrideConfig?.mealAllowance && overrides.mealAllowance !== undefined) mealAllowance = overrides.mealAllowance;
-  if (overrideConfig?.sundayPenalty && overrides.sundayPenalty !== undefined) sundayPenalty = overrides.sundayPenalty;
+  if (overrideConfig?.basic && overrides.basic !== undefined) basicEarned = Number(overrides.basic) || 0;
+  if (overrideConfig?.incentive && overrides.incentive !== undefined) incentiveEarned = Number(overrides.incentive) || 0;
+  if (overrideConfig?.hra && overrides.hra !== undefined) hraEarned = Number(overrides.hra) || 0;
+  if (overrideConfig?.mealAllowance && overrides.mealAllowance !== undefined) mealAllowance = Number(overrides.mealAllowance) || 0;
+  if (overrideConfig?.sundayPenalty && overrides.sundayPenalty !== undefined) sundayPenalty = Number(overrides.sundayPenalty) || 0;
 
   // Gross salary calculation
-  const grossPayroll = roundToNearest10(basicEarned + incentiveEarned + hraEarned + supplementsTotal + mealAllowance);
+  const grossPayroll = roundToNearest10((basicEarned || 0) + (incentiveEarned || 0) + (hraEarned || 0) + (supplementsTotal || 0) + (mealAllowance || 0));
 
   // Advance and deduction handling with carry-forward
-  const oldAdv = advances?.oldAdvance || getPreviousMonthAdvance(staff.id, allAdvances, currentMonth, currentYear);
+  const oldAdv = advances?.oldAdvance || getPreviousMonthAdvance(staff.id, allAdvances, currentMonth, currentYear) || 0;
   
   let curAdv = advances?.currentAdvance || 0;
   
   const entriesSum = advanceEntries
     .filter(e => e.month === currentMonth && e.year === currentYear)
-    .reduce((s, e) => s + e.amount, 0);
+    .reduce((s, e) => s + (Number(e.amount) || 0), 0);
   const hasManualAdvanceRow = !!advances && (advances.currentAdvance || 0) > 0;
   if (!hasManualAdvanceRow && entriesSum > 0) {
     curAdv = roundToNearest10(entriesSum);
@@ -682,13 +687,13 @@ export const calculatePayroll = (
 
   // Use manual deduction if set, otherwise use auto-scheduled deduction
   const manualDeduction = advances?.deduction || 0;
-  const deduction = manualDeduction > 0 ? manualDeduction : (scheduledDeductionTotal || 0);
+  const deduction = manualDeduction > 0 ? manualDeduction : (Number(scheduledDeductionTotal) || 0);
 
   // Calculate new advance
-  const newAdv = roundToNearest10(oldAdv + curAdv - deduction);
+  const newAdv = roundToNearest10((oldAdv || 0) + (curAdv || 0) - (deduction || 0));
 
   // Calculate net salary (deduct Sunday penalty and late/early deductions from net salary)
-  const netPayroll = Math.max(0, roundToNearest10(grossPayroll - curAdv - deduction - sundayPenalty - lateComingDeduction - earlyLeaveDeduction));
+  const netPayroll = Math.max(0, roundToNearest10((grossPayroll || 0) - (curAdv || 0) - (deduction || 0) - (sundayPenalty || 0) - (lateComingDeduction || 0) - (earlyLeaveDeduction || 0)));
 
   return {
     staffId: staff.id,
