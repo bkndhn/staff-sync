@@ -29,6 +29,8 @@ import {
 import { salaryOverrideService } from '../services/salaryOverrideService';
 import { salaryCategoryService } from '../services/salaryCategoryService';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, shiftService } from '../services/shiftService';
+import { payrollService } from '../services/payrollService';
+import { payrollRulesService } from '../services/payrollRulesService';
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
 import { AIPredictor } from './AIPredictor';
 import AIWorkforceInsightsWidget from './dashboard/AIWorkforceInsightsWidget';
@@ -117,10 +119,15 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
   const [salaryCategories, setSalaryCategories] = useState<any[]>([]);
   const [monthlyOverrides, setMonthlyOverrides] = useState<Record<string, PayrollOverride[]>>({});
   const [historicalSnapshots, setHistoricalSnapshots] = useState<Record<string, any>>({});
+  const [payrollRules, setPayrollRules] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    shiftService.loadGlobal().then(setGlobalShiftWindows);
-    salaryCategoryService.getCategories().then(setSalaryCategories);
+    const loadSettings = async () => {
+      shiftService.loadGlobal().then(setGlobalShiftWindows);
+      salaryCategoryService.getCategories().then(setSalaryCategories);
+      payrollRulesService.getPayrollRules().then(setPayrollRules);
+    };
+    loadSettings();
   }, []);
 
   // Fetch overrides and snapshots for months spanned by selected date range
@@ -424,7 +431,7 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
         const metrics = calculateAttendanceMetrics(s.id, attendance, year, month);
         const adv = advances.find(a => a.staffId === s.id && a.month === month && a.year === year) || null;
         const sKey = `${s.id}-${year}-${month}`;
-        const baseDetail = historicalSnapshots[sKey] || calculatePayroll(s, metrics, adv, advances, attendance, month, year);
+        const baseDetail = historicalSnapshots[sKey] || calculatePayroll(s, metrics, adv, advances, attendance, month, year, undefined, undefined, undefined, undefined, payrollRules);
         
         const monthKey = `${year}-${month + 1}`;
         const overridesList = monthlyOverrides[monthKey] || [];
@@ -503,7 +510,7 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
       const metrics = calculateAttendanceMetrics(s.id, attendance, year, month);
       const adv = advances.find(a => a.staffId === s.id && a.month === month && a.year === year) || null;
       const sKey = `${s.id}-${year}-${month}`;
-      const baseDetail = historicalSnapshots[sKey] || calculatePayroll(s, metrics, adv, advances, attendance, month, year);
+      const baseDetail = historicalSnapshots[sKey] || calculatePayroll(s, metrics, adv, advances, attendance, month, year, undefined, undefined, undefined, undefined, payrollRules);
       
       const monthKey = `${year}-${month + 1}`;
       const overridesList = monthlyOverrides[monthKey] || [];

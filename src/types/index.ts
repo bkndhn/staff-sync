@@ -39,6 +39,8 @@ export interface Staff {
   nextHikeDate?: string;
   hikeIntervalMonths?: number;
   statutoryDeductions?: Record<string, StatutoryDeduction>;
+  reset_pin?: string;
+  reset_pin_expires_at?: string;
   /** Per-staff override for shift window (start/end/grace/min hours). */
   shiftWindow?: {
     start?: string;

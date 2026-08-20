@@ -21,6 +21,9 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [doj, setDoj] = useState('');
+  const [managerPin, setManagerPin] = useState('');
 
   // First-login / forced password change flow
   const [mustSetPassword, setMustSetPassword] = useState<null | {
@@ -232,6 +235,80 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
     setLoading(false);
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    const trimmedMobile = mobileNumber.replace(/[^0-9]/g, '').slice(0, 10);
+    if (trimmedMobile.length !== 10) {
+      setError('Please enter a valid 10-digit mobile number');
+      return;
+    }
+
+    if (!doj) {
+      setError('Please enter your date of joining');
+      return;
+    }
+
+    if (!managerPin || managerPin.length !== 4) {
+      setError('Please enter the 4-digit Manager Reset PIN');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError('New password must be at least 6 characters');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://nsmppwnpdxomjmgrtqka.supabase.co";
+      const res = await fetch(
+        `${SUPABASE_URL}/functions/v1/staff-password-reset`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+          },
+          body: JSON.stringify({
+            contactNumber: trimmedMobile,
+            doj,
+            managerPin,
+            newPassword,
+            tenantSlug: slug
+          }),
+        },
+      );
+      const payload = await res.json();
+      if (!res.ok) {
+        setError(payload?.message || payload?.error || 'Could not reset password. Please check your details.');
+        setLoading(false);
+        return;
+      }
+      
+      // Success
+      setIsForgotPassword(false);
+      setDoj('');
+      setManagerPin('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setStaffPassword('');
+      setError('');
+      alert('Password reset successful. Please sign in with your new password.');
+      
+    } catch (err) {
+      console.error('Forgot password error:', err);
+      setError('Unable to reach server. Please try again.');
+    }
+    setLoading(false);
+  };
+
   if (loadingTenant) {
     return <div className="min-h-screen flex items-center justify-center p-4"><div className="w-8 h-8 border-4 border-blue-500/30 border-t-blue-600 rounded-full animate-spin" /></div>;
   }
@@ -329,8 +406,95 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
                   </span>
                   <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                 </button>
+                
+                {tenant && tenant.staff_device_lock_enabled === false && (
+                  <div className="mt-4 text-center">
+                    <button type="button" onClick={() => { setIsForgotPassword(true); setError(''); }} className="text-sm font-medium text-blue-500 hover:text-blue-400 transition-colors">
+                      Forgot Password?
+                    </button>
+                  </div>
+                )}
               </form>
             </div>
+          ) : isForgotPassword ? (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Mobile Number</label>
+                <input
+                  type="tel"
+                  value={mobileNumber}
+                  onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  className="input-premium"
+                  placeholder="Enter your registered mobile number"
+                  maxLength={10}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Date of Joining (DDMMYYYY)</label>
+                <input
+                  type="text"
+                  value={doj}
+                  onChange={(e) => setDoj(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  className="input-premium"
+                  placeholder="DDMMYYYY"
+                  maxLength={8}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Manager Reset PIN</label>
+                <input
+                  type="text"
+                  value={managerPin}
+                  onChange={(e) => setManagerPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  className="input-premium font-mono tracking-widest"
+                  placeholder="4-digit PIN from your manager"
+                  maxLength={4}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">New Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="input-premium"
+                  placeholder="Enter new password"
+                  minLength={6}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="input-premium"
+                  placeholder="Confirm new password"
+                  minLength={6}
+                  required
+                />
+              </div>
+              {error && (
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+                  <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
+                  <span className="text-red-600 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{error}</span>
+                </div>
+              )}
+              <button type="submit" disabled={loading} className="w-full py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg">
+                {loading ? 'Resetting...' : 'Reset Password'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIsForgotPassword(false); setError(''); }}
+                className="w-full py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              >
+                Back to Login
+              </button>
+            </form>
           ) : (
             <form onSubmit={handleStaffSetPassword} className="space-y-4">
               <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">

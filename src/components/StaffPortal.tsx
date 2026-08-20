@@ -17,6 +17,7 @@ import LeaveTimeline from './LeaveTimeline';
 import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryService';
 import { salaryDisbursementService, PayrollDisbursement } from '../services/salaryDisbursementService';
 import { grievanceService, StaffGrievance } from '../services/grievanceService';
+import { payrollRulesService } from '../services/payrollRulesService';
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
 import FaceRegistration from './FaceRegistration';
 import YearlyAttendanceSummary from './YearlyAttendanceSummary';
@@ -72,7 +73,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   const [showLeaveForm, setShowLeaveForm] = useState(false);
   const [leaveForm, setLeaveForm] = useState({ leaveDate: '', leaveEndDate: '', leaveType: 'casual' as const, reason: '' });
   const [leaveSubmitting, setLeaveSubmitting] = useState(false);
-  const [advanceEntries, setAdvanceEntries] = useState<AdvanceEntry[]>([]);
+  const [payrollRules, setPayrollRules] = useState<Record<string, string>>({});
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [breakEvents, setBreakEvents] = useState<any[]>([]);
   const [punchingStatus, setPunchingStatus] = useState<string | null>(null);
@@ -112,6 +113,9 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     breakEventService.list({ staffId: staff.id, startDate: monthStart, endDate: monthEnd })
       .then(setBreakEvents)
       .catch(() => setBreakEvents([]));
+      
+    // Load payroll rules
+    payrollRulesService.getPayrollRules().then(setPayrollRules).catch(console.error);
   }, [staff.id, selectedMonth, selectedYear]);
 
   const breaksByDate = useMemo(() => {
@@ -493,7 +497,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
       // 2. Fallback to dynamic calculation
       const adv = advances.find(a => a.staffId === staff.id && a.month === selectedMonth && a.year === selectedYear) || null;
-      const baseDetail = calculatePayroll(staff, metrics, adv, advances, attendance, selectedMonth, selectedYear, currentMonthAdvanceEntries);
+      const baseDetail = calculatePayroll(staff, metrics, adv, advances, attendance, selectedMonth, selectedYear, currentMonthAdvanceEntries, undefined, undefined, undefined, payrollRules);
   
       // Apply overrides if they exist
       let result = baseDetail as typeof baseDetail & { statutoryTotal?: number; statutoryBreakdown?: Array<{ key: string; label: string; amount: number }> };

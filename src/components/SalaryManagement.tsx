@@ -19,6 +19,7 @@ import { validateSalaryBatch, reconcileSalary, type SalaryIssue } from '../utils
 import { appSettingsService } from '../services/appSettingsService';
 import { payrollService } from '../services/payrollService';
 import { leaveService, type LeaveRequest } from '../services/leaveService';
+import { payrollRulesService } from '../services/payrollRulesService';
 import BulkSalarySender from './BulkSalarySender';
 import { customAlert, customConfirm } from './CustomDialog';
 import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/roleVisibility';
@@ -68,6 +69,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
   const [snapshots, setSnapshots] = useState<PayrollSnapshot[]>([]);
   const [generatingPayroll, setGeneratingPayroll] = useState(false);
   const [approvedLeaves, setApprovedLeaves] = useState<LeaveRequest[]>([]);
+  const [payrollRules, setPayrollRules] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const loadData = async () => {
@@ -85,6 +87,9 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         const allLeaves = await leaveService.getAll();
         const approved = allLeaves.filter(l => l.status === 'approved');
         setApprovedLeaves(approved);
+
+        const rules = await payrollRulesService.getPayrollRules();
+        setPayrollRules(rules);
       } catch (error) {
         console.error('Failed to load data:', error);
       }
@@ -433,11 +438,10 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         selectedMonth,
         selectedYear,
         memberAdvanceEntries,
-        overrideConfig,
-        scheduledDeductions[member.id]?.total || 0
-      );
-
-      const mergedDetail = baseDetail;
+        scheduledDeductions[member.id]?.total || 0,
+        globalShiftWindows,
+        payrollRules
+      );const mergedDetail = baseDetail;
 
       // Merge with overrides if present
       const override = overrides[member.id];
@@ -782,7 +786,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
         const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
         const memberAdvanceEntries = advanceEntries[member.id] || [];
-        return calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides, scheduledDeductions[member.id]?.total || 0);
+        return calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides, scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules);
       });
 
       const run = await payrollService.generatePayroll(selectedMonth, selectedYear, activeStaff, fullDetails, 'System');
@@ -805,7 +809,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
         const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
         const memberAdvanceEntries = advanceEntries[member.id] || [];
-        return calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides, scheduledDeductions[member.id]?.total || 0);
+        return calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides, scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules);
       });
 
       const run = await payrollService.regeneratePayroll(selectedMonth, selectedYear, activeStaff, fullDetails, 'System');

@@ -95,6 +95,8 @@ const ACL: Record<string, TableAcl> = {
   announcements:                     { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin","statutory_admin"], write: ["admin","manager"] },
   // ── Platform-level ──────────────────────────────────────────────────────────
   app_users:                         { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["super_admin","admin"] },
+  blacklisted_devices:               { read: ["admin","super_admin"], write: ["admin","super_admin"] },
+  payroll_rules:                     { read: ["admin","manager","super_admin","statutory_admin"], write: ["admin","super_admin"] },
   // ── Tenants (self-scoped: the tenant's own PK is 'id', not 'tenant_id') ─
   tenants:                           { read: ["admin","statutory_admin","super_admin"], write: ["admin","super_admin"], tenantIdCol: "id" },
   // ── ESS Portal ────────────────────────────────────────────────────────

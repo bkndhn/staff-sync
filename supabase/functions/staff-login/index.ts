@@ -121,6 +121,18 @@ Deno.serve(async (req) => {
     }
 
     if (deviceLockEnabled) {
+      // Check if device is blacklisted
+      const { data: blacklisted } = await admin
+        .from("blacklisted_devices")
+        .select("id")
+        .eq("staff_id", match.id)
+        .eq("device_fingerprint", deviceFingerprint)
+        .maybeSingle();
+
+      if (blacklisted) {
+        return json({ error: "device_locked", message: "This device has been permanently blocked due to a previous reset." }, 403);
+      }
+
       if (!match.device_id) {
         await admin.from("staff").update({ device_id: deviceFingerprint }).eq("id", match.id);
       } else if (match.device_id !== deviceFingerprint) {

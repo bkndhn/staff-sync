@@ -53,7 +53,7 @@ async function syncDevice(location) {
       // 1. Fetch all staff for this location to create a fast memory map
       const { data: staffList, error: staffError } = await supabase
         .from('staff')
-        .select('id, device_id')
+        .select('id, device_id, name, tenant_id')
         .eq('location', location.display_name)
         .not('device_id', 'is', null);
 
@@ -62,28 +62,47 @@ async function syncDevice(location) {
         return;
       }
 
-      // device_id (eSSL ID) -> supabase UUID
-      const staffMap = new Map(staffList.map(s => [s.device_id.toString(), s.id]));
+      // device_id (eSSL ID) -> { supabase UUID, name, tenant_id }
+      const staffMap = new Map(staffList.map(s => [s.device_id.toString(), { id: s.id, name: s.name, tenant_id: s.tenant_id }]));
       
       // 2. Prepare bulk insert array
       const punchEvents = [];
       let unknownCount = 0;
+      const affectedStaffDates = new Map();
 
       for (const log of newLogs) {
-        const staffId = staffMap.get(log.deviceUserId.toString());
+        const staffEntry = staffMap.get(log.deviceUserId.toString());
         
-        if (!staffId) {
+        if (!staffEntry) {
           unknownCount++;
           continue;
         }
 
+        const logDate = new Date(log.recordTime);
+        const date = logDate.toISOString().split('T')[0];
+        const time = logDate.toISOString().split('T')[1].substring(0, 8);
+
         punchEvents.push({
-          staff_id: staffId,
-          punch_time: new Date(log.recordTime).toISOString(),
-          direction: 'unknown', // eSSL cloud app resolves IN/OUT automatically
-          device_name: `eSSL (${location.device_ip})`,
-          is_manual: false
+          staff_id: staffEntry.id,
+          staff_name: staffEntry.name,
+          location: location.display_name,
+          date,
+          event_time: time,
+          kind: 'in',
+          source: 'local-bridge',
+          device_label: `eSSL (${location.device_ip})`,
+          ...(staffEntry.tenant_id ? { tenant_id: staffEntry.tenant_id } : {}),
         });
+
+        // Track for attendance aggregation
+        const aggKey = `${staffEntry.id}|${date}`;
+        if (!affectedStaffDates.has(aggKey)) {
+          affectedStaffDates.set(aggKey, {
+            staffName: staffEntry.name,
+            location: location.display_name,
+            tenantId: staffEntry.tenant_id || null,
+          });
+        }
       }
 
       if (unknownCount > 0) {
@@ -99,6 +118,46 @@ async function syncDevice(location) {
           return; // Abort so last_sync_time is not updated
         } else {
           console.log(`✅ [${location.display_name}] Successfully synced ${punchEvents.length} punches to cloud.`);
+        }
+
+        // 4. Auto-Attendance Aggregation
+        let attendanceUpdated = 0;
+        for (const [key, info] of affectedStaffDates) {
+          const [staffId, date] = key.split('|');
+          try {
+            const { data: allPunches } = await supabase.from('punch_events')
+              .select('event_time')
+              .eq('staff_id', staffId)
+              .eq('date', date)
+              .order('event_time', { ascending: true });
+
+            if (allPunches && allPunches.length > 0) {
+              const arrTime = allPunches[0].event_time.slice(0, 5);
+              const hasTwoPunches = allPunches.length > 1;
+              const leavTime = hasTwoPunches ? allPunches[allPunches.length - 1].event_time.slice(0, 5) : null;
+              const status = hasTwoPunches ? 'Present' : 'Pending Full Day';
+
+              await supabase.from('attendance').upsert({
+                staff_id: staffId,
+                staff_name: info.staffName,
+                date,
+                status,
+                attendance_value: 1.0,
+                location: info.location,
+                floor: null,
+                arrival_time: arrTime,
+                leaving_time: leavTime,
+                is_part_time: false,
+                ...(info.tenantId ? { tenant_id: info.tenantId } : {}),
+              }, { onConflict: 'staff_id,date,is_part_time' });
+              attendanceUpdated++;
+            }
+          } catch (ae) {
+            console.error('Local bridge auto-attendance aggregation failed:', ae);
+          }
+        }
+        if (attendanceUpdated > 0) {
+          console.log(`📊 [${location.display_name}] Auto-aggregated ${attendanceUpdated} attendance records.`);
         }
       } else {
         console.log(`ℹ️ [${location.display_name}] All new records were for unknown users. Nothing inserted.`);

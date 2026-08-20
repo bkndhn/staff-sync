@@ -16,6 +16,7 @@ import StatutoryPortalSettingsPanel from './StatutoryPortalSettingsPanel';
 import StatutoryCredentialsPanel from './StatutoryCredentialsPanel';
 import FaceTuningPanel from './face/FaceTuningPanel';
 import { WorkflowBuilder } from './WorkflowBuilder';
+import { PayrollRulesEngine } from './PayrollRulesEngine';
 import { BiometricIntegrationHub } from './BiometricIntegrationHub';
 import { GeofenceSettingsPanel } from './GeofenceSettingsPanel';
 import { FeatureTogglesPanel } from './FeatureTogglesPanel';
@@ -595,6 +596,12 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
             {userRole === 'admin' && (
                 <SettingsSection title="Enterprise Workflows" subtitle="Configure multi-level approval chains for leaves and expenses" icon={Users}>
                     <WorkflowBuilder />
+                </SettingsSection>
+            )}
+
+            {userRole === 'admin' && (
+                <SettingsSection title="World-Class Salary Engine" subtitle="Configure dynamic formulas to override standard payroll mathematics" icon={Cpu}>
+                    <PayrollRulesEngine />
                 </SettingsSection>
             )}
 

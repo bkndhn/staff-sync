@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { EmptyState } from './ui/PageShell';
 import { Staff, PayrollHike } from '../types';
-import { Users, Plus, Edit2, Trash2, Archive, Calendar, TrendingUp, MapPin, DollarSign, Check, X, GripVertical, Filter, Copy, AlertCircle, RotateCcw, Layers, Briefcase, Upload, Shield, Camera, ShieldOff, Settings2, ChevronDown } from 'lucide-react';
+import { Users, Plus, Edit2, Trash2, Archive, Calendar, TrendingUp, MapPin, DollarSign, Check, X, GripVertical, Filter, Copy, AlertCircle, RotateCcw, Layers, Briefcase, Upload, Shield, Camera, ShieldOff, Settings2, ChevronDown, Key } from 'lucide-react';
 import { calculateExperience } from '../utils/salaryCalculations';
 import { STATUTORY_DEFINITIONS, defaultConfigFor } from '../utils/statutoryDeductions';
 import type { StatutoryDeduction, DeductionBase } from '../types';
@@ -25,6 +25,7 @@ import { CustomFieldsManagerModal } from './CustomFieldsManagerModal';
 import { Sliders } from 'lucide-react';
 
 import { userPreferencesService } from '../services/userPreferencesService';
+import { supabase } from '../lib/supabase';
 
 interface StaffManagementProps {
   staff: Staff[];
@@ -54,6 +55,29 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const [showDeleteModal, setShowDeleteModal] = useState<Staff | null>(null);
   const [showSalaryHistory, setShowSalaryHistory] = useState<Staff | null>(null);
   const [showHikeDueModal, setShowHikeDueModal] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [deviceLockEnabled, setDeviceLockEnabled] = useState(true);
+
+  useEffect(() => {
+    const fetchTenantConfig = async () => {
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData.user) return;
+        const { data: tenantData } = await supabase
+          .from('app_users')
+          .select('tenants(staff_device_lock_enabled)')
+          .eq('auth_id', userData.user.id)
+          .single();
+        if (tenantData?.tenants && (tenantData.tenants as any).staff_device_lock_enabled === false) {
+          setDeviceLockEnabled(false);
+        }
+      } catch (err) {
+        console.error('Failed to fetch tenant device lock config', err);
+      }
+    };
+    fetchTenantConfig();
+  }, []);
+
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [faceModalStaff, setFaceModalStaff] = useState<Staff | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
@@ -882,7 +906,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       .sort((a, b) => new Date(b.hikeDate).getTime() - new Date(a.hikeDate).getTime());
   };
 
-  const handleResetDevice = async (staffId: string, staffName: string) => {
+  const handleResetDevice = async (staffId: string, staffName: string, deviceId?: string) => {
     if (!await customConfirm(`Reset the device lock for ${staffName}? Their password will also be cleared — they must register from a new device and set a brand new password using their joined date (DDMMYYYY).`)) return;
     try {
       const sessionToken = await userService.getSessionToken();
@@ -898,6 +922,20 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       if (sessionToken) {
         headers['x-session-token'] = sessionToken;
         if (isJwt) headers['Authorization'] = `Bearer ${sessionToken}`;
+      }
+
+      // Add to blacklist if it exists
+      if (deviceId) {
+        await fetch(`${SUPABASE_URL}/functions/v1/data-api`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            table: 'blacklisted_devices',
+            op: 'insert',
+            values: { staff_id: staffId, device_fingerprint: deviceId },
+            onConflict: 'staff_id, device_fingerprint',
+          }),
+        });
       }
 
       const res = await fetch(`${SUPABASE_URL}/functions/v1/data-api`, {
@@ -976,6 +1014,56 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     } catch (error) {
       console.error('Error resetting staff password:', error);
       await customAlert('Failed to reset password.');
+    }
+  };
+
+  const handleGenerateResetPin = async (staffId: string, staffName: string) => {
+    if (!await customConfirm(`Generate a secure 4-digit reset PIN for ${staffName}? You must read this PIN to them.`)) return;
+    try {
+      const pin = Math.floor(1000 + Math.random() * 9000).toString();
+      // valid for 10 mins
+      const expiresAt = new Date(Date.now() + 10 * 60000).toISOString();
+      
+      const sessionToken = await userService.getSessionToken();
+      const isJwt = sessionToken && sessionToken.startsWith('eyJ');
+
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://nsmppwnpdxomjmgrtqka.supabase.co';
+      const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      };
+      if (sessionToken) {
+        headers['x-session-token'] = sessionToken;
+        if (isJwt) headers['Authorization'] = `Bearer ${sessionToken}`;
+      }
+
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/data-api`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          table: 'staff',
+          op: 'update',
+          values: {
+            reset_pin: pin,
+            reset_pin_expires_at: expiresAt
+          },
+          filters: [{ col: 'id', op: 'eq', val: staffId }],
+        }),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        console.error('Failed to save PIN:', res.status, errBody);
+        await customAlert('Failed to generate PIN.');
+        return;
+      }
+      
+      await customAlert(`PIN Generated: ${pin}\n\nThis PIN is valid for 10 minutes. Please read this to ${staffName}.`);
+    } catch (err: any) {
+      console.error("Error generating reset PIN:", err);
+      await customAlert(`Failed to generate PIN: ${err.message || 'Unknown error'}`);
     }
   };
 
@@ -2010,11 +2098,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                       <button onClick={(e) => { e.stopPropagation(); setFaceModalStaff(member); }} className="p-2 rounded-lg bg-purple-500/15 text-purple-300 active:bg-purple-500/30" title="Face samples">
                         <Camera size={14} />
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleResetDevice(member.id, member.name); }} className="p-2 rounded-lg bg-orange-500/15 text-orange-400 active:bg-orange-500/30" title="Reset Device Lock">
-                        <ShieldOff size={14} />
-                      </button>
+                      {deviceLockEnabled && (
+                        <button onClick={(e) => { e.stopPropagation(); handleResetDevice(member.id, member.name, member.deviceId); }} className="p-2 rounded-lg bg-orange-500/15 text-orange-400 active:bg-orange-500/30" title="Reset Device Lock">
+                          <ShieldOff size={14} />
+                        </button>
+                      )}
                       <button onClick={(e) => { e.stopPropagation(); handleResetStaffPassword(member.id, member.name); }} className="p-2 rounded-lg bg-amber-500/15 text-amber-400 active:bg-amber-500/30" title="Reset Password">
                         <RotateCcw size={14} />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); handleGenerateResetPin(member.id, member.name); }} className="p-2 rounded-lg bg-emerald-500/15 text-emerald-400 active:bg-emerald-500/30" title="Generate Reset PIN">
+                        <Key size={14} />
                       </button>
                       <button onClick={(e) => { e.stopPropagation(); handleDelete(member); }} className="p-2 rounded-lg bg-red-500/15 text-red-300 active:bg-red-500/30" title="Archive">
                         <Archive size={14} />
@@ -2224,13 +2317,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                         <button onClick={() => setFaceModalStaff(member)} className="text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50" title="Face Samples">
                           <Camera size={16} />
                         </button>
-                        {member.deviceId && (
-                          <button onClick={() => handleResetDevice(member.id, member.name)} className="text-orange-600 hover:text-orange-800 p-1 rounded hover:bg-orange-50" title="Reset Device Lock">
+                        {member.deviceId && deviceLockEnabled && (
+                          <button onClick={() => handleResetDevice(member.id, member.name, member.deviceId)} className="text-orange-600 hover:text-orange-800 p-1 rounded hover:bg-orange-50" title="Reset Device Lock">
                             <ShieldOff size={16} />
                           </button>
                         )}
                         <button onClick={() => handleResetStaffPassword(member.id, member.name)} className="text-amber-600 hover:text-amber-800 p-1 rounded hover:bg-amber-50" title="Reset Password">
                           <RotateCcw size={16} />
+                        </button>
+                        <button onClick={() => handleGenerateResetPin(member.id, member.name)} className="text-emerald-600 hover:text-emerald-800 p-1 rounded hover:bg-emerald-50" title="Generate Reset PIN">
+                          <Key size={16} />
                         </button>
                         <button onClick={() => handleDelete(member)} className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50" title="Archive">
                           <Archive size={16} />

@@ -59,6 +59,27 @@ export const calculateExperience = (joinedDate: string): string => {
   return `${years}y ${months}m`;
 };
 
+// Evaluate dynamic payroll formulas
+export const evaluateRule = (expression: string, context: Record<string, number>): number => {
+  let evaluated = expression;
+  for (const [key, value] of Object.entries(context)) {
+    evaluated = evaluated.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value));
+  }
+  try {
+    // Basic safety check for math operations only
+    if (!/^[\d\.\+\-\*\/\(\)\s]+$/.test(evaluated)) {
+      console.warn('Invalid characters in expression:', evaluated);
+      return 0;
+    }
+    // eslint-disable-next-line no-new-func
+    const result = new Function(`return ${evaluated}`)();
+    return Number.isFinite(result) ? result : 0;
+  } catch (err) {
+    console.warn('Rule evaluation failed:', expression, err);
+    return 0;
+  }
+};
+
 // Get part-time salary based on day and override
 
 export interface PartTimeSalaryOptions {
@@ -316,7 +337,8 @@ export const calculatePayroll = (
   advanceEntries: AdvanceEntry[] = [],
   overrideConfig?: any,
   scheduledDeductionTotal?: number,
-  globalShiftWindows?: any
+  globalShiftWindows?: any,
+  payrollRules?: Record<string, string>
 ) => {
   let { totalPresentDays, presentDays, halfDays, leaveDays } = attendanceMetrics;
   const { sundayAbsents } = attendanceMetrics;
@@ -546,8 +568,43 @@ export const calculatePayroll = (
   // Calculate Sunday penalty - including half-day Sunday penalty
   let sundayPenalty = 0;
 
-  // Only apply penalty if enabled for this staff member (default to true if undefined)
-  if (staff.sundayPenalty !== false) {
+  // --- APPLY DYNAMIC RULES IF DEFINED ---
+  if (payrollRules && Object.keys(payrollRules).length > 0) {
+    const context = {
+      BASIC: basicAmount,
+      HRA: staff.hra || 0,
+      INCENTIVE: staff.incentive || 0,
+      CALC_DAYS: calculationDays,
+      PRESENT_DAYS: totalPresentDays,
+      ABSENT_DAYS: getDaysInMonth(currentYear, currentMonth) - totalPresentDays,
+      LATE_DAYS: lateCount,
+      EARLY_LEAVES: earlyCount,
+      SUNDAY_ABSENTS: sundayAbsents,
+    };
+
+    if (payrollRules['BASIC_EARNED']) {
+      basicEarned = roundToNearest10(evaluateRule(payrollRules['BASIC_EARNED'], context));
+    }
+    if (payrollRules['HRA_EARNED']) {
+      hraEarned = roundToNearest10(evaluateRule(payrollRules['HRA_EARNED'], context));
+    }
+    if (payrollRules['INCENTIVE_EARNED']) {
+      incentiveEarned = roundToNearest10(evaluateRule(payrollRules['INCENTIVE_EARNED'], context));
+    }
+    if (payrollRules['LATE_DEDUCTION']) {
+      lateComingDeduction = roundToNearest10(evaluateRule(payrollRules['LATE_DEDUCTION'], context));
+    }
+    if (payrollRules['EARLY_DEDUCTION']) {
+      earlyLeaveDeduction = roundToNearest10(evaluateRule(payrollRules['EARLY_DEDUCTION'], context));
+    }
+    if (payrollRules['SUNDAY_PENALTY']) {
+      sundayPenalty = roundToNearest10(evaluateRule(payrollRules['SUNDAY_PENALTY'], context));
+    }
+  }
+  // ----------------------------------------
+
+  // Only apply default penalty if enabled and NOT overridden
+  if (staff.sundayPenalty !== false && !(payrollRules && payrollRules['SUNDAY_PENALTY'])) {
     const sundayHalfDays = monthlyAttendance
       .filter(record => record.status === 'Half Day' && isSunday(record.date))
       .length;

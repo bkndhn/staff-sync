@@ -169,6 +169,7 @@ Deno.serve(async (req) => {
     // Insert into punch_events. Dedup on (staff_id, date, event_time).
     let inserted = 0, skipped = 0;
     const errors: string[] = [];
+    const affectedStaffDates = new Map<string, boolean>();
     for (const p of punches) {
       const d = new Date(p.timestamp);
       if (isNaN(d.getTime())) { skipped++; continue; }
@@ -228,6 +229,48 @@ Deno.serve(async (req) => {
         skipped++;
       } else {
         inserted++;
+        // Track for attendance aggregation
+        const aggKey = `${staffData.id}|${dateStr}|${staffData.name}|${staffData.location}|${staffData.tenant_id || ''}`;
+        if (!affectedStaffDates.has(aggKey)) {
+          affectedStaffDates.set(aggKey, true);
+        }
+      }
+    }
+
+    // --- Auto-Attendance Aggregation ---
+    let attendanceUpdated = 0;
+    for (const [key] of affectedStaffDates) {
+      const [staffId, date, staffName, location, tenantId] = key.split("|");
+      try {
+        const { data: allPunches } = await admin.from("punch_events")
+          .select("event_time")
+          .eq("staff_id", staffId)
+          .eq("date", date)
+          .order("event_time", { ascending: true });
+
+        if (allPunches && allPunches.length > 0) {
+          const arrTime = allPunches[0].event_time.slice(0, 5);
+          const hasTwoPunches = allPunches.length > 1;
+          const leavTime = hasTwoPunches ? allPunches[allPunches.length - 1].event_time.slice(0, 5) : null;
+          const status = hasTwoPunches ? "Present" : "Pending Full Day";
+
+          await admin.from("attendance").upsert({
+            staff_id: staffId,
+            staff_name: staffName,
+            date,
+            status,
+            attendance_value: 1.0,
+            location,
+            floor: null,
+            arrival_time: arrTime,
+            leaving_time: leavTime,
+            is_part_time: false,
+            ...(tenantId ? { tenant_id: tenantId } : {}),
+          }, { onConflict: "staff_id,date,is_part_time" });
+          attendanceUpdated++;
+        }
+      } catch (ae) {
+        console.error("Cloud-pull auto-attendance aggregation failed:", ae);
       }
     }
 
@@ -237,6 +280,7 @@ Deno.serve(async (req) => {
       fetched: punches.length,
       inserted,
       skipped,
+      attendanceUpdated,
       errors: errors.slice(0, 5),
       sample: punches.slice(0, 5),
     });

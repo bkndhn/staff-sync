@@ -126,17 +126,17 @@ Deno.serve(async (req) => {
 
     const { data: staffRows, error: staffErr } = await admin
       .from("staff")
-      .select("id, name, location, floor, device_id")
+      .select("id, name, location, floor, device_id, tenant_id")
       .in("device_id", deviceIds);
 
     if (staffErr) {
       return json({ error: "Staff lookup failed", details: staffErr.message }, 500);
     }
 
-    const staffMap = new Map<string, { id: string; name: string; location: string; floor?: string }>();
+    const staffMap = new Map<string, { id: string; name: string; location: string; floor?: string; tenant_id?: string }>();
     for (const s of staffRows ?? []) {
       if (s.device_id) staffMap.set(String(s.device_id).trim(), {
-        id: s.id, name: s.name, location: s.location, floor: s.floor,
+        id: s.id, name: s.name, location: s.location, floor: s.floor, tenant_id: s.tenant_id,
       });
     }
 
@@ -195,9 +195,10 @@ Deno.serve(async (req) => {
         kind,
         source: "device-push",
         device_label: deviceLabel,
+        tenant_id: s.tenant_id,
       });
 
-      affectedStaffDates.add(`${s.id}|${date}|${s.name}|${p.location || s.location}|${s.floor || ''}`);
+      affectedStaffDates.add(`${s.id}|${date}|${s.name}|${p.location || s.location}|${s.floor || ''}|${s.tenant_id || ''}`);
 
       if (kind === "break_in" || kind === "break_out") {
         breakOps.push({ kind, staff: s, date, time, deviceLabel });
@@ -216,7 +217,7 @@ Deno.serve(async (req) => {
     // --- Real-time Auto-Attendance Aggregation ---
     let attendanceUpdated = 0;
     for (const key of Array.from(affectedStaffDates)) {
-      const [staffId, date, staffName, location, floor] = key.split("|");
+      const [staffId, date, staffName, location, floor, tenantId] = key.split("|");
       try {
         const { data: allPunches } = await admin.from("punch_events")
           .select("event_time")
@@ -226,20 +227,23 @@ Deno.serve(async (req) => {
 
         if (allPunches && allPunches.length > 0) {
           const arrTime = allPunches[0].event_time.slice(0, 5);
-          const leavTime = allPunches.length > 1 ? allPunches[allPunches.length - 1].event_time.slice(0, 5) : "21:30";
+          const hasTwoPunches = allPunches.length > 1;
+          const leavTime = hasTwoPunches ? allPunches[allPunches.length - 1].event_time.slice(0, 5) : null;
+          const status = hasTwoPunches ? "Present" : "Pending Full Day";
 
           // Upsert into attendance table
           await admin.from("attendance").upsert({
             staff_id: staffId,
             staff_name: staffName,
             date,
-            status: "Present",
+            status,
             attendance_value: 1.0,
             location,
             floor: floor || null,
             arrival_time: arrTime,
             leaving_time: leavTime,
             is_part_time: false,
+            ...(tenantId ? { tenant_id: tenantId } : {}),
           }, { onConflict: "staff_id,date,is_part_time" });
           attendanceUpdated++;
         }
