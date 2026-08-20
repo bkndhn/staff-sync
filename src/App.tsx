@@ -113,6 +113,30 @@ function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
+  // Guided setup: auto-open for client admins that haven't finished onboarding.
+  useEffect(() => {
+    const openWizard = () => setShowOnboarding(true);
+    window.addEventListener('open-onboarding', openWizard);
+    if (user?.role === 'admin') {
+      (async () => {
+        try {
+          const { onboardingService, applyBranding } = await import('./services/onboardingService');
+          const [state, branding] = await Promise.all([
+            onboardingService.getState(),
+            onboardingService.getBranding(),
+          ]);
+          applyBranding(branding);
+          if (!state.completed) setShowOnboarding(true);
+        } catch {
+          /* non-fatal */
+        }
+      })();
+    }
+    return () => window.removeEventListener('open-onboarding', openWizard);
+  }, [user?.role]);
+
+
+
   // 🚀 Auth session restore via Supabase 🚀
   useEffect(() => {
     let mounted = true;
