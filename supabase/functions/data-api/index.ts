@@ -511,29 +511,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Plan limit enforcement (billing) ──────────────────────────────────────
-    if (body.op === "insert" && tenantId && (body.table === "locations" || body.table === "app_users")) {
-      const { data: tenantRow } = await admin.from("tenants")
-        .select("location_limit, sub_user_limit, status").eq("id", tenantId).maybeSingle();
-      if (tenantRow) {
-        const incoming = Array.isArray(body.values) ? body.values.length : 1;
-        if (body.table === "locations") {
-          const { count } = await admin.from("locations")
-            .select("id", { count: "exact", head: true }).eq("tenant_id", tenantId);
-          if ((count ?? 0) + incoming > (tenantRow.location_limit ?? 0)) {
-            return new Response(JSON.stringify({ error: `Your plan allows ${tenantRow.location_limit} branches. Upgrade to add more.` }),
-              { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-          }
-        } else {
-          const { count } = await admin.from("app_users")
-            .select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).neq("role", "super_admin");
-          if ((count ?? 0) + incoming > (tenantRow.sub_user_limit ?? 0)) {
-            return new Response(JSON.stringify({ error: `Your plan allows ${tenantRow.sub_user_limit} portal users. Upgrade to add more.` }),
-              { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-          }
-        }
-      }
-    }
+    // Plan/seat limits for locations, staff and sub-users are enforced in the
+    // "insert" case below (single source of truth).
+
 
 
     if (body.table === "app_users" && body.op === "update" && role === "admin") {
