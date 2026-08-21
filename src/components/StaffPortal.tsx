@@ -80,6 +80,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [expandedDayBreaks, setExpandedDayBreaks] = useState<string | null>(null);
   const [disbursements, setDisbursements] = useState<PayrollDisbursement[]>([]);
+  const [advanceEntries, setAdvanceEntries] = useState<any[]>([]);
   const [grievances, setGrievances] = useState<StaffGrievance[]>([]);
   const [showGrievanceForm, setShowGrievanceForm] = useState(false);
   const [grievanceForm, setGrievanceForm] = useState({ type: 'attendance' as 'attendance' | 'salary' | 'other', targetDate: '', description: '' });
@@ -204,7 +205,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   }, [staff.id]);
 
   const currentMonthAdvanceEntries = useMemo(() => 
-    advanceEntries.filter(e => e.month === selectedMonth && e.year === selectedYear),
+    advanceEntries.filter((e: any) => e.month === selectedMonth && e.year === selectedYear),
   [advanceEntries, selectedMonth, selectedYear]);
 
   const leaveBalances = useMemo(() => computeLeaveBalances(leaveRequests), [leaveRequests]);
@@ -1454,7 +1455,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                 <div className="mt-3 pt-3 border-t border-[var(--glass-border)]">
                   <p className="text-xs font-semibold text-[var(--text-muted)] mb-2 uppercase tracking-wide">Date-wise Advances</p>
                   <div className="space-y-1.5">
-                    {currentMonthAdvanceEntries.map(entry => (
+                    {currentMonthAdvanceEntries.map((entry: any) => (
                       <div key={entry.id} className="flex items-center justify-between p-2.5 rounded-lg bg-blue-500/5 border border-blue-500/10">
                         <div>
                           <span className="text-xs font-medium text-[var(--text-primary)]">
@@ -1498,8 +1499,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                       computedOldAdv = getPreviousMonthAdvance(staff.id, advances, currM, currY);
                       
                       // Auto-calculate given advance if not in advances table
-                      const monthEntries = advanceEntries.filter(e => e.month === currM && e.year === currY);
-                      computedCurAdv = monthEntries.reduce((sum, e) => sum + e.amount, 0);
+                      const monthEntries = advanceEntries.filter((e: any) => e.month === currM && e.year === currY);
+                      computedCurAdv = monthEntries.reduce((sum: number, e: any) => sum + e.amount, 0);
                     }
                     
                     past6Months.push({

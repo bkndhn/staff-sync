@@ -1,4 +1,8 @@
-import { supabase } from '../lib/supabase';
+import { supabase as supabaseTyped } from '../lib/supabase';
+
+// `payroll_rules` is not present in the generated Supabase types yet.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabase = supabaseTyped as any;
 
 export const payrollRulesService = {
   async getPayrollRules(): Promise<Record<string, string>> {
