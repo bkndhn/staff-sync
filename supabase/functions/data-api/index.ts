@@ -99,6 +99,8 @@ const ACL: Record<string, TableAcl> = {
   payroll_rules:                     { read: ["admin","manager","super_admin","statutory_admin"], write: ["admin","super_admin"] },
   // ── Tenants (self-scoped: the tenant's own PK is 'id', not 'tenant_id') ─
   tenants:                           { read: ["admin","statutory_admin","super_admin"], write: ["admin","super_admin"], tenantIdCol: "id" },
+  tenant_subscriptions:              { read: ["admin","super_admin"], write: ["super_admin"] },
+
   // ── ESS Portal ────────────────────────────────────────────────────────
   profile_change_requests:      { read: ["admin","manager","staff","super_admin"], write: ["admin","manager","staff"], staffIdCol: "staff_id" },
   attendance_regularizations:   { read: ["admin","manager","staff","super_admin"], write: ["admin","manager","staff"], locationCol: "location", staffIdCol: "staff_id" },
