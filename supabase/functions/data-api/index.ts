@@ -402,6 +402,136 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Payroll runs: maker–checker approval workflow ─────────────────────────
+    // Lifecycle: Generated → PendingApproval → Approved → Locked
+    //                                   ↘ Rejected → (regenerate) → Generated
+    // The approver must be a different user than the submitter, and must be an admin.
+    if (body.table === "payroll_runs" && body.op !== "select") {
+      const stampFields = [
+        "submitted_by", "submitted_at", "approved_by", "approved_at",
+        "rejected_by", "rejected_at", "locked_at",
+      ];
+      const values = (body.values && !Array.isArray(body.values) ? body.values : {}) as Record<string, unknown>;
+
+      if (body.op === "insert" || body.op === "upsert") {
+        // A freshly generated run always starts unapproved.
+        const rows = (Array.isArray(body.values) ? body.values : [body.values ?? {}]) as Array<Record<string, unknown>>;
+        for (const r of rows) {
+          for (const f of stampFields) delete r[f];
+          r.status = "Generated";
+        }
+        body.values = Array.isArray(body.values) ? rows : rows[0];
+      }
+
+      if (body.op === "update" || body.op === "delete") {
+        const targetId = body.filters?.find((f) => f.col === "id" && f.op === "eq")?.val;
+        if (typeof targetId !== "string") {
+          return new Response(JSON.stringify({ error: "A single payroll run must be selected" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        let runQuery = admin.from("payroll_runs")
+          .select("id, status, submitted_by, approved_by").eq("id", targetId);
+        if (tenantId) runQuery = runQuery.eq("tenant_id", tenantId);
+        const { data: runRow } = await runQuery.maybeSingle();
+        if (!runRow) {
+          return new Response(JSON.stringify({ error: "Payroll run not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        if (body.op === "delete") {
+          if (runRow.status === "Approved" || runRow.status === "Locked") {
+            return new Response(JSON.stringify({ error: "An approved or locked payroll run cannot be deleted or regenerated" }),
+              { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        } else {
+          for (const f of stampFields) delete values[f];
+          const next = String(values.status ?? "");
+          const nowIso = new Date().toISOString();
+          const actor = String(user.id);
+
+          if (next === "PendingApproval") {
+            if (!["Generated", "Rejected"].includes(runRow.status)) {
+              return new Response(JSON.stringify({ error: `Cannot submit a run in status ${runRow.status}` }),
+                { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+            values.submitted_by = actor;
+            values.submitted_at = nowIso;
+            values.rejection_reason = null;
+          } else if (next === "Approved" || next === "Rejected") {
+            if (role !== "admin") {
+              return new Response(JSON.stringify({ error: "Only an admin can approve or reject payroll" }),
+                { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+            if (runRow.status !== "PendingApproval") {
+              return new Response(JSON.stringify({ error: "Only a run pending approval can be approved or rejected" }),
+                { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+            if (runRow.submitted_by && String(runRow.submitted_by) === actor) {
+              return new Response(JSON.stringify({ error: "Maker–checker: the payroll you submitted must be reviewed by another admin" }),
+                { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+            if (next === "Approved") {
+              values.approved_by = actor;
+              values.approved_at = nowIso;
+            } else {
+              values.rejected_by = actor;
+              values.rejected_at = nowIso;
+            }
+          } else if (next === "Locked") {
+            if (role !== "admin") {
+              return new Response(JSON.stringify({ error: "Only an admin can lock payroll" }),
+                { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+            if (runRow.status !== "Approved") {
+              return new Response(JSON.stringify({ error: "Only an approved run can be locked for disbursement" }),
+                { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+            values.locked_at = nowIso;
+          } else if (runRow.status === "Approved" || runRow.status === "Locked") {
+            return new Response(JSON.stringify({ error: "An approved or locked payroll run is read-only" }),
+              { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          body.values = values;
+        }
+      }
+    }
+
+    // Snapshots follow the state of their run — never editable once approved.
+    if (body.table === "payroll_snapshots" && (body.op === "delete" || body.op === "update")) {
+      const runId = body.filters?.find((f) => f.col === "run_id" && f.op === "eq")?.val;
+      if (typeof runId === "string") {
+        const { data: parentRun } = await admin.from("payroll_runs")
+          .select("status").eq("id", runId).maybeSingle();
+        if (parentRun && ["Approved", "Locked"].includes(parentRun.status)) {
+          return new Response(JSON.stringify({ error: "Payroll for this period is approved and locked" }),
+            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+    }
+
+    // ── Plan limit enforcement (billing) ──────────────────────────────────────
+    if (body.op === "insert" && tenantId && (body.table === "locations" || body.table === "app_users")) {
+      const { data: tenantRow } = await admin.from("tenants")
+        .select("location_limit, sub_user_limit, status").eq("id", tenantId).maybeSingle();
+      if (tenantRow) {
+        const incoming = Array.isArray(body.values) ? body.values.length : 1;
+        if (body.table === "locations") {
+          const { count } = await admin.from("locations")
+            .select("id", { count: "exact", head: true }).eq("tenant_id", tenantId);
+          if ((count ?? 0) + incoming > (tenantRow.location_limit ?? 0)) {
+            return new Response(JSON.stringify({ error: `Your plan allows ${tenantRow.location_limit} branches. Upgrade to add more.` }),
+              { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        } else {
+          const { count } = await admin.from("app_users")
+            .select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).neq("role", "super_admin");
+          if ((count ?? 0) + incoming > (tenantRow.sub_user_limit ?? 0)) {
+            return new Response(JSON.stringify({ error: `Your plan allows ${tenantRow.sub_user_limit} portal users. Upgrade to add more.` }),
+              { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        }
+      }
+    }
 
 
     if (body.table === "app_users" && body.op === "update" && role === "admin") {
