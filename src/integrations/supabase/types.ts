@@ -1481,30 +1481,60 @@ export type Database = {
       }
       payroll_runs: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           generated_at: string | null
           generated_by: string | null
+          headcount: number | null
           id: string
+          locked_at: string | null
           month: number
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
           status: string
+          submitted_at: string | null
+          submitted_by: string | null
           tenant_id: string | null
+          total_net: number | null
           year: number
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           generated_at?: string | null
           generated_by?: string | null
+          headcount?: number | null
           id?: string
+          locked_at?: string | null
           month: number
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
           status: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           tenant_id?: string | null
+          total_net?: number | null
           year: number
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           generated_at?: string | null
           generated_by?: string | null
+          headcount?: number | null
           id?: string
+          locked_at?: string | null
           month?: number
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
           status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           tenant_id?: string | null
+          total_net?: number | null
           year?: number
         }
         Relationships: [
@@ -2197,6 +2227,59 @@ export type Database = {
             foreignKeyName: "statutory_portal_config_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_subscriptions: {
+        Row: {
+          amount: number
+          billing_cycle: string
+          created_at: string
+          currency: string
+          current_period_end: string | null
+          current_period_start: string
+          id: string
+          plan: string
+          status: string
+          tenant_id: string
+          trial_ends_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          billing_cycle?: string
+          created_at?: string
+          currency?: string
+          current_period_end?: string | null
+          current_period_start?: string
+          id?: string
+          plan?: string
+          status?: string
+          tenant_id: string
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_cycle?: string
+          created_at?: string
+          currency?: string
+          current_period_end?: string | null
+          current_period_start?: string
+          id?: string
+          plan?: string
+          status?: string
+          tenant_id?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },

@@ -162,14 +162,27 @@ export interface PayrollDetail {
   nonStatutoryNet?: number;
 }
 
+export type PayrollRunStatus = 'Generated' | 'PendingApproval' | 'Approved' | 'Rejected' | 'Locked';
+
 export interface PayrollRun {
   id: string;
   month: number;
   year: number;
-  status: 'Generated' | 'Locked';
+  status: PayrollRunStatus;
   generatedAt: string;
   generatedBy?: string;
+  submittedBy?: string | null;
+  submittedAt?: string | null;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
+  rejectedBy?: string | null;
+  rejectedAt?: string | null;
+  rejectionReason?: string | null;
+  lockedAt?: string | null;
+  totalNet?: number | null;
+  headcount?: number | null;
 }
+
 
 export interface PayrollSnapshot {
   id: string;
