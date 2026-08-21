@@ -968,14 +968,15 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const combinedAttendanceData: any[] = [];
 
   // Add full-time staff only
-  filteredStaff.forEach((member, index) => {
+  filteredStaff.forEach((member) => {
     const attendanceRecord = getAttendanceForDate(member.id, selectedDate);
     const displayBranch = attendanceRecord?.location || member.location;
     const displayName = attendanceRecord?.shift ? `${member.name} (${attendanceRecord.shift})` : member.name;
 
     combinedAttendanceData.push({
       id: member.id,
-      serialNo: index + 1,
+      serialNo: 0,
+      displayOrder: (member as any).displayOrder ?? null,
       employeeCode: member.employeeCode || '',
       photo: member.photo || '',
       name: displayName,
@@ -1000,14 +1001,16 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     });
   });
 
-  // Sort by designation to group rows
+  // Match the Staff page ordering exactly (display_order, then name),
+  // then number the rows so S.No is always sequential.
   combinedAttendanceData.sort((a, b) => {
-    const dA = a.designation || 'Unassigned';
-    const dB = b.designation || 'Unassigned';
-    if (dA < dB) return -1;
-    if (dA > dB) return 1;
-    return a.name.localeCompare(b.name);
+    const oA = a.displayOrder ?? Number.MAX_SAFE_INTEGER;
+    const oB = b.displayOrder ?? Number.MAX_SAFE_INTEGER;
+    if (oA !== oB) return oA - oB;
+    return (a.originalName || '').localeCompare(b.originalName || '');
   });
+  combinedAttendanceData.forEach((row, i) => { row.serialNo = i + 1; });
+
 
   // Helper to generate share text for attendance
   const generateShareText = () => {

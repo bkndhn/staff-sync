@@ -906,7 +906,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       .sort((a, b) => new Date(b.hikeDate).getTime() - new Date(a.hikeDate).getTime());
   };
 
-  const handleResetDevice = async (staffId: string, staffName: string, deviceId?: string) => {
+  const handleResetDevice = async (staffId: string, staffName: string, deviceId?: string | null) => {
     if (!await customConfirm(`Reset the device lock for ${staffName}? Their password will also be cleared — they must register from a new device and set a brand new password using their joined date (DDMMYYYY).`)) return;
     try {
       const sessionToken = await userService.getSessionToken();
