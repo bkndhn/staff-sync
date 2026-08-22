@@ -68,6 +68,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
   
   const [payrollRun, setPayrollRun] = useState<PayrollRun | null>(null);
   const [snapshots, setSnapshots] = useState<PayrollSnapshot[]>([]);
+  const [workflowBusy, setWorkflowBusy] = useState(false);
   const [generatingPayroll, setGeneratingPayroll] = useState(false);
   const [approvedLeaves, setApprovedLeaves] = useState<LeaveRequest[]>([]);
   const [payrollRules, setPayrollRules] = useState<Record<string, string>>({});
