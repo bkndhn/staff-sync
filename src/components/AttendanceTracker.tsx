@@ -1070,7 +1070,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             </div>
             {/* Mobile Export Actions */}
             <div className="flex md:hidden gap-1">
-              <button onClick={handleExportPDF} className="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded"><Download size={14} /></button>
+              <button onClick={handleExportPDF} title="Download PDF" className="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded"><Download size={14} /></button>
+              <button onClick={handleExportCSV} title="Download CSV" className="px-2 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded text-[10px] font-bold leading-none">CSV</button>
               <button onClick={handleShareAttendance} className="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded"><Share2 size={14} /></button>
               <button onClick={handleCopyAttendance} className="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded text-xs leading-none">📋</button>
             </div>
