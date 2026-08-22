@@ -299,11 +299,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     return filteredAttendance;
   };
 
-  const handleExportPDF = () => {
-    if (userRole === 'admin') {
-      exportAttendancePDF(staff, attendance, selectedDate);
-    }
-  };
 
   /** Sum working minutes for a staff member over the dates matching a predicate */
   const getPeriodWorkMinutes = (staffId: string, matches: (date: string) => boolean): number =>
