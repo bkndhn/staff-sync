@@ -831,6 +831,62 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
     }
   };
 
+  // ── Maker–checker workflow actions ───────────────────────────────────────
+  const runWorkflow = async (fn: () => Promise<PayrollRun>, successMsg: string) => {
+    setWorkflowBusy(true);
+    try {
+      const updated = await fn();
+      setPayrollRun(updated);
+      customAlert(successMsg, 'success');
+    } catch (err: any) {
+      customAlert(err.message || 'Action failed', 'error');
+    } finally {
+      setWorkflowBusy(false);
+    }
+  };
+
+  const handleSubmitForApproval = async () => {
+    if (!payrollRun) return;
+    if (blockIfInvalid('submitting payroll for approval')) return;
+    if (!await customConfirm('Submit for Approval', 'Send this payroll run to an admin for review? You will not be able to edit it while it is pending.')) return;
+    runWorkflow(() => payrollService.submitForApproval(payrollRun.id), 'Payroll submitted for approval.');
+  };
+
+  const handleApproveRun = async () => {
+    if (!payrollRun) return;
+    if (!await customConfirm('Approve Payroll', 'Approve this payroll run? It becomes read-only after approval.')) return;
+    runWorkflow(() => payrollService.approveRun(payrollRun.id), 'Payroll approved.');
+  };
+
+  const handleRejectRun = async () => {
+    if (!payrollRun) return;
+    const reason = window.prompt('Reason for rejection (sent back to the maker):');
+    if (!reason || !reason.trim()) return;
+    runWorkflow(() => payrollService.rejectRun(payrollRun.id, reason.trim()), 'Payroll sent back for corrections.');
+  };
+
+  const handleLockRun = async () => {
+    if (!payrollRun) return;
+    if (!await customConfirm('Lock & Disburse', 'Lock this payroll run permanently for disbursement? This cannot be undone.')) return;
+    runWorkflow(() => payrollService.lockRun(payrollRun.id), 'Payroll locked for disbursement.');
+  };
+
+  const runBadge = (() => {
+    switch (payrollRun?.status) {
+      case 'PendingApproval':
+        return { label: 'Pending Approval', className: 'text-amber-700 bg-amber-50 border-amber-200' };
+      case 'Approved':
+        return { label: 'Approved', className: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+      case 'Rejected':
+        return { label: 'Rejected — needs correction', className: 'text-red-700 bg-red-50 border-red-200' };
+      case 'Locked':
+        return { label: 'Locked & Disbursed', className: 'text-slate-700 bg-slate-100 border-slate-300' };
+      default:
+        return { label: 'Payroll Generated', className: 'text-green-700 bg-green-50 border-green-200' };
+    }
+  })();
+
+
   const handleDownloadSingleSlip = (detail: PayrollDetail) => {
     const staffMember = getStaffForDisplay(detail.staffId);
     if (staffMember) {
