@@ -92,6 +92,96 @@ export const sharePeriodAttendanceWhatsApp = async (title: string, rows: PeriodA
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
 };
 
+/* ------------------------------------------------------------------ */
+/* Daily attendance export (rows exactly as rendered on the page)      */
+/* ------------------------------------------------------------------ */
+
+export interface DailyAttendanceRow {
+  serialNo: number;
+  employeeCode?: string;
+  originalName?: string;
+  name: string;
+  location?: string;
+  floor?: string;
+  designation?: string;
+  shift?: string;
+  status: string;
+  isUninformed?: boolean;
+  arrivalTime?: string;
+  leavingTime?: string;
+  totalHours?: number;
+  overtimeHours?: number;
+}
+
+const statusLabel = (r: DailyAttendanceRow) =>
+  r.status === 'Absent' && r.isUninformed ? 'Absent (Uninformed)' : r.status;
+
+const dailyRecords = (rows: DailyAttendanceRow[], showEmployeeCode: boolean) =>
+  rows.map(r => {
+    const base: Record<string, any> = { 'S.No': r.serialNo };
+    if (showEmployeeCode) base['Emp Code'] = r.employeeCode || '-';
+    return {
+      ...base,
+      'Name': r.originalName || r.name,
+      'Branch': r.location || '-',
+      'Floor': r.floor || '-',
+      'Designation': r.designation || '-',
+      'Shift': r.shift || '-',
+      'Status': statusLabel(r),
+      'In Time': r.arrivalTime || '-',
+      'Out Time': r.leavingTime || '-',
+      'Total Hours': r.totalHours ? Number(r.totalHours).toFixed(2) : '-',
+      'Overtime': r.overtimeHours ? Number(r.overtimeHours).toFixed(2) : '-',
+    };
+  });
+
+const safeName = (title: string) => title.replace(/[^\w]+/g, '_');
+
+export const exportAttendanceRowsPDF = (
+  title: string,
+  rows: DailyAttendanceRow[],
+  showEmployeeCode: boolean = true
+) => {
+  const records = dailyRecords(rows, showEmployeeCode);
+  const headers = records.length
+    ? Object.keys(records[0])
+    : ['S.No', ...(showEmployeeCode ? ['Emp Code'] : []), 'Name', 'Branch', 'Floor', 'Designation', 'Shift', 'Status', 'In Time', 'Out Time', 'Total Hours', 'Overtime'];
+
+  const doc = new jsPDF('landscape');
+  doc.setFontSize(16);
+  doc.text(title, 14, 16);
+  doc.setFontSize(10);
+  doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 14, 23);
+
+  autoTable(doc, {
+    startY: 28,
+    head: [headers],
+    body: records.map(rec => headers.map(h => (rec as any)[h])),
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [37, 99, 235] },
+  });
+
+  doc.save(`${safeName(title)}.pdf`);
+};
+
+export const exportAttendanceRowsCSV = (
+  title: string,
+  rows: DailyAttendanceRow[],
+  showEmployeeCode: boolean = true
+) => {
+  const worksheet = XLSX.utils.json_to_sheet(dailyRecords(rows, showEmployeeCode));
+  const csv = XLSX.utils.sheet_to_csv(worksheet);
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${safeName(title)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
 /** Sum working minutes from arrival/leaving HH:MM strings */
 export const workingMinutes = (arrival?: string, leaving?: string): number => {
   if (!arrival || !leaving) return 0;

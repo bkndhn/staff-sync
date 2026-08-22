@@ -4,14 +4,17 @@ import { Calendar, Calendar as CalendarIcon, Download, Check, X, Filter, MapPin,
 import { EmptyState } from './ui/PageShell';
 import { isSunday } from '../utils/salaryCalculations';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, shiftService } from '../services/shiftService';
-import { exportAttendancePDF } from '../utils/exportUtils';
+import { canSeeEmployeeCode } from '../lib/roleVisibility';
 import {
   exportPeriodAttendancePDF,
   exportPeriodAttendanceExcel,
+  exportAttendanceRowsPDF,
+  exportAttendanceRowsCSV,
   sharePeriodAttendanceWhatsApp,
   workingMinutes,
   formatWorkingMinutes,
   PeriodAttendanceRow,
+  type DailyAttendanceRow,
 } from '../utils/attendancePeriodExport';
 import BulkAttendanceUpload from './BulkAttendanceUpload';
 import { attendanceService } from '../services/attendanceService';
@@ -299,11 +302,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     return filteredAttendance;
   };
 
-  const handleExportPDF = () => {
-    if (userRole === 'admin') {
-      exportAttendancePDF(staff, attendance, selectedDate);
-    }
-  };
 
   /** Sum working minutes for a staff member over the dates matching a predicate */
   const getPeriodWorkMinutes = (staffId: string, matches: (date: string) => boolean): number =>
@@ -1036,6 +1034,17 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     return text;
   };
 
+  const exportTitle = `Attendance ${new Date(selectedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+  const showEmpCode = canSeeEmployeeCode(actualRole);
+
+  const handleExportPDF = () => {
+    exportAttendanceRowsPDF(exportTitle, combinedAttendanceData as DailyAttendanceRow[], showEmpCode);
+  };
+
+  const handleExportCSV = () => {
+    exportAttendanceRowsCSV(exportTitle, combinedAttendanceData as DailyAttendanceRow[], showEmpCode);
+  };
+
   const handleShareAttendance = () => {
     const text = generateShareText();
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
@@ -1061,7 +1070,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             </div>
             {/* Mobile Export Actions */}
             <div className="flex md:hidden gap-1">
-              <button onClick={handleExportPDF} className="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded"><Download size={14} /></button>
+              <button onClick={handleExportPDF} title="Download PDF" className="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded"><Download size={14} /></button>
+              <button onClick={handleExportCSV} title="Download CSV" className="px-2 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded text-[10px] font-bold leading-none">CSV</button>
               <button onClick={handleShareAttendance} className="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded"><Share2 size={14} /></button>
               <button onClick={handleCopyAttendance} className="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded text-xs leading-none">📋</button>
             </div>
@@ -1082,7 +1092,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             </button>
             {/* Desktop Export Actions */}
             <div className="hidden md:flex gap-1 border-l border-gray-200 pl-2">
-              <button onClick={handleExportPDF} className="p-1.5 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"><Download size={14} /></button>
+              <button onClick={handleExportPDF} title="Download PDF" className="p-1.5 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"><Download size={14} /></button>
+              <button onClick={handleExportCSV} title="Download CSV" className="p-1.5 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors text-xs font-bold">CSV</button>
               <button onClick={handleShareAttendance} className="p-1.5 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors" title="Share via WhatsApp"><Share2 size={14} /></button>
               <button onClick={handleCopyAttendance} className="p-1.5 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors text-xs leading-none" title="Copy as text">📋</button>
             </div>
