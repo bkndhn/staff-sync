@@ -1092,7 +1092,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             </button>
             {/* Desktop Export Actions */}
             <div className="hidden md:flex gap-1 border-l border-gray-200 pl-2">
-              <button onClick={handleExportPDF} className="p-1.5 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"><Download size={14} /></button>
+              <button onClick={handleExportPDF} title="Download PDF" className="p-1.5 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"><Download size={14} /></button>
+              <button onClick={handleExportCSV} title="Download CSV" className="p-1.5 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors text-xs font-bold">CSV</button>
               <button onClick={handleShareAttendance} className="p-1.5 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors" title="Share via WhatsApp"><Share2 size={14} /></button>
               <button onClick={handleCopyAttendance} className="p-1.5 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors text-xs leading-none" title="Copy as text">📋</button>
             </div>
