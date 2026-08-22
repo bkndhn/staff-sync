@@ -1030,17 +1030,26 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         </div>
       </div>
 
-      {/* Payroll Status Banner */}
+      {/* Payroll Status Banner — maker–checker workflow */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-1">
           {payrollRun ? (
-            <div className="flex items-center gap-2 text-green-700 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
-              <span className="font-semibold text-sm">Payroll Generated & Locked</span>
-              <span className="text-xs opacity-75">
-                ({new Date(payrollRun.generatedAt).toLocaleDateString()})
-              </span>
-            </div>
+            <>
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-semibold ${runBadge.className}`}>
+                <span className="w-2.5 h-2.5 rounded-full bg-current opacity-70"></span>
+                <span>{runBadge.label}</span>
+                <span className="text-xs opacity-75">({new Date(payrollRun.generatedAt).toLocaleDateString()})</span>
+              </div>
+              {payrollRun.status === 'PendingApproval' && payrollRun.submittedBy && (
+                <span className="text-xs text-gray-500 pl-1">Submitted by {payrollRun.submittedBy}</span>
+              )}
+              {payrollRun.status === 'Rejected' && payrollRun.rejectionReason && (
+                <span className="text-xs text-red-600 pl-1">Reason: {payrollRun.rejectionReason}</span>
+              )}
+              {payrollRun.status === 'Approved' && payrollRun.approvedBy && (
+                <span className="text-xs text-gray-500 pl-1">Approved by {payrollRun.approvedBy}</span>
+              )}
+            </>
           ) : (
             <div className="flex items-center gap-2 text-yellow-700 bg-yellow-50 px-3 py-1.5 rounded-lg border border-yellow-200">
               <span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
@@ -1048,7 +1057,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
             </div>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {!payrollRun ? (
             <button
               onClick={handleGeneratePayroll}
@@ -1058,16 +1067,57 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
               {generatingPayroll ? 'Generating...' : 'Generate Payroll'}
             </button>
           ) : (
-            <button
-              onClick={handleRegeneratePayroll}
-              disabled={generatingPayroll}
-              className="px-4 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg text-sm font-medium transition-colors"
-            >
-              {generatingPayroll ? 'Generating...' : 'Regenerate'}
-            </button>
+            <>
+              {(payrollRun.status === 'Generated' || payrollRun.status === 'Rejected') && (
+                <>
+                  <button
+                    onClick={handleSubmitForApproval}
+                    disabled={workflowBusy}
+                    className="px-4 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    {workflowBusy ? 'Working...' : 'Submit for Approval'}
+                  </button>
+                  <button
+                    onClick={handleRegeneratePayroll}
+                    disabled={generatingPayroll}
+                    className="px-4 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    {generatingPayroll ? 'Generating...' : 'Regenerate'}
+                  </button>
+                </>
+              )}
+              {payrollRun.status === 'PendingApproval' && (
+                <>
+                  <button
+                    onClick={handleApproveRun}
+                    disabled={workflowBusy}
+                    className="px-4 py-1.5 bg-green-600 text-white hover:bg-green-700 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={handleRejectRun}
+                    disabled={workflowBusy}
+                    className="px-4 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    Reject
+                  </button>
+                </>
+              )}
+              {payrollRun.status === 'Approved' && (
+                <button
+                  onClick={handleLockRun}
+                  disabled={workflowBusy}
+                  className="px-4 py-1.5 bg-slate-800 text-white hover:bg-slate-900 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  Lock &amp; Disburse
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
+
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col md:flex-row gap-4 flex-1">
