@@ -1031,6 +1031,17 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     return text;
   };
 
+  const exportTitle = `Attendance ${new Date(selectedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+  const showEmpCode = canSeeEmployeeCode(actualRole);
+
+  const handleExportPDF = () => {
+    exportAttendanceRowsPDF(exportTitle, combinedAttendanceData as DailyAttendanceRow[], showEmpCode);
+  };
+
+  const handleExportCSV = () => {
+    exportAttendanceRowsCSV(exportTitle, combinedAttendanceData as DailyAttendanceRow[], showEmpCode);
+  };
+
   const handleShareAttendance = () => {
     const text = generateShareText();
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
