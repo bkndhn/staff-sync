@@ -133,33 +133,36 @@ export const detectPayrollAnomalies = (
   });
 
   const spikes: string[] = [];
+  const spikeLabels: string[] = [];
   const drops: string[] = [];
+  const dropLabels: string[] = [];
   details.forEach(d => {
     const past = (history.get(d.staffId) || []).filter(v => v > 0);
     if (past.length === 0) return;
     const avg = past.reduce((s, v) => s + v, 0) / past.length;
     if (avg <= 0) return;
     const current = net(d);
-    if (current > avg * 1.5) spikes.push(`${nameOf(d.staffId)} (${inr(avg)} → ${inr(current)})`);
-    else if (current > 0 && current < avg * 0.5) drops.push(`${nameOf(d.staffId)} (${inr(avg)} → ${inr(current)})`);
+    const label = `${nameOf(d.staffId)} (${inr(avg)} → ${inr(current)})`;
+    if (current > avg * 1.5) { spikes.push(d.staffId); spikeLabels.push(label); }
+    else if (current > 0 && current < avg * 0.5) { drops.push(d.staffId); dropLabels.push(label); }
   });
 
   push({
     code: 'pay_spike',
     severity: 'warning',
     title: 'Pay spike vs recent average',
-    detail: `${spikes.length} employee(s) are paid over 50% more than their recent average: ${spikes.slice(0, 5).join(', ')}${spikes.length > 5 ? '…' : ''}`,
-    staffIds: [],
+    detail: `${spikes.length} employee(s) are paid over 50% more than their recent average: ${spikeLabels.slice(0, 5).join(', ')}${spikes.length > 5 ? '…' : ''}`,
+    staffIds: spikes,
   });
-  if (spikes.length) anomalies[anomalies.length - 1].staffIds = spikes.map((_, i) => `spike-${i}`);
 
   push({
     code: 'pay_drop',
     severity: 'warning',
     title: 'Unusual pay drop vs recent average',
-    detail: `${drops.length} employee(s) are paid less than half their recent average: ${drops.slice(0, 5).join(', ')}${drops.length > 5 ? '…' : ''}`,
-    staffIds: drops.map((_, i) => `drop-${i}`),
+    detail: `${drops.length} employee(s) are paid less than half their recent average: ${dropLabels.slice(0, 5).join(', ')}${drops.length > 5 ? '…' : ''}`,
+    staffIds: drops,
   });
+
 
   // ── 4. Sanity checks ─────────────────────────────────────────────────────
   const negativeNet = details.filter(d => net(d) < 0).map(d => d.staffId);
