@@ -1186,6 +1186,15 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         </div>
       </div>
 
+      {/* Pre-run checks, variance waterfall and bank bulk-payment file */}
+      <PayrollInsightsPanel
+        details={salaryDetails}
+        staff={getBaseStaffList()}
+        month={selectedMonth}
+        year={selectedYear}
+        onReport={setAnomalyReport}
+      />
+
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col md:flex-row gap-4 flex-1">
