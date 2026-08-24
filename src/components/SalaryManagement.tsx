@@ -25,6 +25,9 @@ import { customAlert, customConfirm } from './CustomDialog';
 import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/roleVisibility';
 import { useUserPreference } from '../hooks/useUserPreference';
 import { shiftService, DEFAULT_SHIFT_WINDOWS } from '../services/shiftService';
+import PayrollInsightsPanel from './PayrollInsightsPanel';
+import type { AnomalyReport } from '../utils/payrollAnomalies';
+
 
 interface PayrollManagementProps {
   staff: Staff[];
@@ -544,6 +547,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
     (id: string) => getStaffForDisplay(id)?.name
   );
   const [showValidationDetails, setShowValidationDetails] = useState(false);
+  const [anomalyReport, setAnomalyReport] = useState<AnomalyReport | null>(null);
 
   const blockIfInvalid = (action: string): boolean => {
     if (salaryValidation.errorCount > 0) {
@@ -553,8 +557,15 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
       setShowValidationDetails(true);
       return true;
     }
+    if (anomalyReport && anomalyReport.criticalCount > 0) {
+      customAlert(
+        `${anomalyReport.criticalCount} critical payroll issue(s) detected. Resolve them in "Pre-run checks" before ${action}.`
+      );
+      return true;
+    }
     return false;
   };
+
   const totalSalaryDisbursed = salaryDetails.reduce((sum, detail) => sum + (Number(detail.netPayroll ?? detail.netSalary) || 0), 0);
   const totalPartTimeEarnings = partTimeSalaries.reduce((sum, salary) => sum + (Number(salary.totalEarnings) || 0), 0);
   const averageAttendance = salaryDetails.length > 0
@@ -1174,6 +1185,15 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
           )}
         </div>
       </div>
+
+      {/* Pre-run checks, variance waterfall and bank bulk-payment file */}
+      <PayrollInsightsPanel
+        details={salaryDetails}
+        staff={getBaseStaffList()}
+        month={selectedMonth}
+        year={selectedYear}
+        onReport={setAnomalyReport}
+      />
 
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
