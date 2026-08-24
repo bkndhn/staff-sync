@@ -544,6 +544,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
     (id: string) => getStaffForDisplay(id)?.name
   );
   const [showValidationDetails, setShowValidationDetails] = useState(false);
+  const [anomalyReport, setAnomalyReport] = useState<AnomalyReport | null>(null);
 
   const blockIfInvalid = (action: string): boolean => {
     if (salaryValidation.errorCount > 0) {
@@ -553,8 +554,15 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
       setShowValidationDetails(true);
       return true;
     }
+    if (anomalyReport && anomalyReport.criticalCount > 0) {
+      customAlert(
+        `${anomalyReport.criticalCount} critical payroll issue(s) detected. Resolve them in "Pre-run checks" before ${action}.`
+      );
+      return true;
+    }
     return false;
   };
+
   const totalSalaryDisbursed = salaryDetails.reduce((sum, detail) => sum + (Number(detail.netPayroll ?? detail.netSalary) || 0), 0);
   const totalPartTimeEarnings = partTimeSalaries.reduce((sum, salary) => sum + (Number(salary.totalEarnings) || 0), 0);
   const averageAttendance = salaryDetails.length > 0
