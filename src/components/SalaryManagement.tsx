@@ -25,6 +25,9 @@ import { customAlert, customConfirm } from './CustomDialog';
 import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/roleVisibility';
 import { useUserPreference } from '../hooks/useUserPreference';
 import { shiftService, DEFAULT_SHIFT_WINDOWS } from '../services/shiftService';
+import PayrollInsightsPanel from './PayrollInsightsPanel';
+import type { AnomalyReport } from '../utils/payrollAnomalies';
+
 
 interface PayrollManagementProps {
   staff: Staff[];
