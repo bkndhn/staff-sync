@@ -600,7 +600,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
             )}
 
             {userRole === 'admin' && (
-                <SettingsSection title="World-Class Salary Engine" subtitle="Configure dynamic formulas to override standard payroll mathematics" icon={Cpu}>
+                <SettingsSection title="Custom Payroll Formulas" subtitle="Configure dynamic formulas to override standard payroll mathematics" icon={Cpu}>
                     <PayrollRulesEngine />
                 </SettingsSection>
             )}
