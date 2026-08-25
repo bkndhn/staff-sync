@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ShieldCheck,
@@ -36,10 +36,41 @@ const BANK_FORMATS: { key: BankFormat; label: string }[] = [
   { key: 'generic', label: 'Generic NEFT' },
 ];
 
+type SectionId = 'anomalies' | 'variance' | 'bank';
+
+const Section: React.FC<{
+  id: SectionId;
+  title: string;
+  icon: React.ReactNode;
+  badge?: React.ReactNode;
+  openSection: SectionId | null;
+  onToggle: (id: SectionId) => void;
+  children: React.ReactNode;
+}> = ({ id, title, icon, badge, openSection, onToggle, children }) => (
+  <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+    <button
+      type="button"
+      onClick={() => onToggle(id)}
+      className="w-full flex items-center justify-between gap-2 px-4 py-3 hover:bg-gray-50 transition-colors"
+    >
+      <span className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+        {icon}
+        {title}
+      </span>
+      <span className="flex items-center gap-2">
+        {badge}
+        {openSection === id ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
+      </span>
+    </button>
+    {openSection === id && <div className="px-4 pb-4 pt-1 border-t border-gray-100">{children}</div>}
+  </div>
+);
+
 export const PayrollInsightsPanel: React.FC<Props> = ({ details, staff, month, year, onReport }) => {
   const [priorDetails, setPriorDetails] = useState<PayrollDetail[]>([]);
   const [loadingPrior, setLoadingPrior] = useState(true);
-  const [openSection, setOpenSection] = useState<'anomalies' | 'variance' | 'bank' | null>('anomalies');
+  const [openSection, setOpenSection] = useState<SectionId | null>('anomalies');
+  const toggleSection = (id: SectionId) => setOpenSection(prev => (prev === id ? null : id));
   const [bankFormat, setBankFormat] = useState<BankFormat>('hdfc');
   const [debitAccount, setDebitAccount] = useState('');
 
@@ -76,7 +107,21 @@ export const PayrollInsightsPanel: React.FC<Props> = ({ details, staff, month, y
     [details, priorDetails, staff],
   );
 
-  useEffect(() => { onReport?.(report); }, [report, onReport]);
+  const reportSignature = JSON.stringify({
+    ok: report.ok,
+    criticalCount: report.criticalCount,
+    warningCount: report.warningCount,
+    codes: report.anomalies.map(a => `${a.code}:${a.detail}`),
+  });
+  const lastSignatureRef = useRef<string | null>(null);
+  const onReportRef = useRef(onReport);
+  onReportRef.current = onReport;
+  useEffect(() => {
+    if (lastSignatureRef.current === reportSignature) return;
+    lastSignatureRef.current = reportSignature;
+    onReportRef.current?.(report);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportSignature]);
 
   const bankPreview = useMemo(
     () => buildBankPaymentFile(details, staff, month + 1, year, { format: bankFormat, debitAccount }),
@@ -91,31 +136,13 @@ export const PayrollInsightsPanel: React.FC<Props> = ({ details, staff, month, y
     downloadBankPaymentFile(bankPreview);
   };
 
-  const Section: React.FC<{ id: 'anomalies' | 'variance' | 'bank'; title: string; icon: React.ReactNode; badge?: React.ReactNode; children: React.ReactNode }> = ({ id, title, icon, badge, children }) => (
-    <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
-      <button
-        type="button"
-        onClick={() => setOpenSection(openSection === id ? null : id)}
-        className="w-full flex items-center justify-between gap-2 px-4 py-3 hover:bg-gray-50 transition-colors"
-      >
-        <span className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-          {icon}
-          {title}
-        </span>
-        <span className="flex items-center gap-2">
-          {badge}
-          {openSection === id ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
-        </span>
-      </button>
-      {openSection === id && <div className="px-4 pb-4 pt-1 border-t border-gray-100">{children}</div>}
-    </div>
-  );
-
   return (
     <div className="space-y-3">
       {/* Pre-run anomaly checks */}
       <Section
         id="anomalies"
+        openSection={openSection}
+        onToggle={toggleSection}
         title="Pre-run checks"
         icon={report.ok ? <ShieldCheck size={16} className="text-emerald-600" /> : <AlertTriangle size={16} className="text-red-600" />}
         badge={
@@ -146,6 +173,8 @@ export const PayrollInsightsPanel: React.FC<Props> = ({ details, staff, month, y
       {/* Variance waterfall */}
       <Section
         id="variance"
+        openSection={openSection}
+        onToggle={toggleSection}
         title="Variance vs last period"
         icon={variance.change >= 0 ? <TrendingUp size={16} className="text-indigo-600" /> : <TrendingDown size={16} className="text-indigo-600" />}
         badge={
@@ -203,6 +232,8 @@ export const PayrollInsightsPanel: React.FC<Props> = ({ details, staff, month, y
       {/* Bank bulk payment file */}
       <Section
         id="bank"
+        openSection={openSection}
+        onToggle={toggleSection}
         title="Bank bulk payment file"
         icon={<Banknote size={16} className="text-blue-600" />}
         badge={
