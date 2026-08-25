@@ -133,10 +133,19 @@ export const calculateAttendanceMetrics = (
     
     const startDate = new Date(leave.leaveDate);
     const endDate = leave.leaveEndDate ? new Date(leave.leaveEndDate) : startDate;
+
+    // Ignore malformed or reversed ranges. Invalid dates never advance, which
+    // previously allowed this loop to freeze payroll calculation indefinitely.
+    if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime()) || endDate < startDate) {
+      return;
+    }
     
     // Iterate through the date range
     const current = new Date(startDate);
-    while (current <= endDate) {
+    // The upper bound is defensive against corrupt, unreasonably large ranges.
+    const maximumLeaveRangeDays = 3660;
+    let processedDays = 0;
+    while (current <= endDate && processedDays < maximumLeaveRangeDays) {
       if (current.getMonth() === month && current.getFullYear() === year) {
         // Only count if they weren't already marked present
         const dateStr = current.toISOString().split('T')[0];
@@ -146,6 +155,7 @@ export const calculateAttendanceMetrics = (
         }
       }
       current.setDate(current.getDate() + 1);
+      processedDays += 1;
     }
   });
 
