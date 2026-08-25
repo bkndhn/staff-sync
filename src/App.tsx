@@ -1424,15 +1424,17 @@ function App() {
         if (user?.role !== 'admin' && user?.role !== 'statutory_admin') return null;
 
         return (
-          <Suspense fallback={<ComponentLoader />}>
-            <SalaryManagement
-              staff={filteredStaffData}
-              attendance={filteredAttendanceData}
-              advances={advances}
-              onUpdateAdvances={updateAdvances}
-              userRole={user?.role}
-            />
-          </Suspense>
+          <ErrorBoundary moduleName="Salary & Payroll">
+            <Suspense fallback={<ComponentLoader />}>
+              <SalaryManagement
+                staff={filteredStaffData}
+                attendance={filteredAttendanceData}
+                advances={advances}
+                onUpdateAdvances={updateAdvances}
+                userRole={user?.role}
+              />
+            </Suspense>
+          </ErrorBoundary>
         );
       case 'Announcements':
         if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'super_admin') return null;
@@ -1470,9 +1472,11 @@ function App() {
       case 'Settings':
         if (user?.role !== 'admin' && user?.role !== 'statutory_admin') return null;
         return (
-          <Suspense fallback={<ComponentLoader />}>
-            <Settings userRole={user?.role || 'manager'} currentUserEmail={user?.email} tenantId={user?.tenant_id ?? undefined} />
-          </Suspense>
+          <ErrorBoundary moduleName="Settings">
+            <Suspense fallback={<ComponentLoader />}>
+              <Settings userRole={user?.role || 'manager'} currentUserEmail={user?.email} tenantId={user?.tenant_id ?? undefined} />
+            </Suspense>
+          </ErrorBoundary>
         );
       case 'Leave Management':
         if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'statutory_admin' && user?.role !== 'supervisor' && user?.role !== 'floor_supervisor') return null;

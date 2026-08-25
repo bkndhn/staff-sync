@@ -223,7 +223,6 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
     const [hikeSaving, setHikeSaving] = useState(false);
     const [showTodayPunches, setShowTodayPunches] = useState(true);
     const [punchesSaving, setPunchesSaving] = useState(false);
-    const [backupBusy, setBackupBusy] = useState(false);
     const [qrRefresh, setQrRefresh] = useState<number>(getQRRefreshSeconds());
     // Form state
     const [formData, setFormData] = useState({
@@ -604,43 +603,6 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                     <PayrollRulesEngine />
                 </SettingsSection>
             )}
-
-            <SettingsSection title="Data & Backup" subtitle="Export a full snapshot" icon={Save}>
-            {/* Backup all data (admin only) */}
-            {userRole === 'admin' && (
-                <div className="glass-card-static p-4 rounded-xl flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                            <Save size={20} className="text-emerald-400" />
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-[var(--text-primary)] text-sm">Backup All Data (JSON)</h3>
-                            <p className="text-xs text-[var(--text-muted)]">Download a full snapshot of every table. See <code>BACKUP_AND_MIGRATION.md</code> for restore / DR.</p>
-                        </div>
-                    </div>
-                    <button
-                        disabled={backupBusy}
-                        onClick={async () => {
-                            setBackupBusy(true);
-                            try {
-                                const { exportFullBackup } = await import('../utils/backupExport');
-                                await exportFullBackup();
-                                setSuccess('Backup downloaded');
-                                setTimeout(() => setSuccess(''), 3000);
-                            } catch (err: any) {
-                                setError(err?.message || 'Backup failed');
-                                setTimeout(() => setError(''), 5000);
-                            } finally {
-                                setBackupBusy(false);
-                            }
-                        }}
-                        className="btn-premium px-4 py-2 text-xs"
-                    >
-                        {backupBusy ? 'Exporting...' : 'Download Backup'}
-                    </button>
-                </div>
-            )}
-            </SettingsSection>
 
             <SettingsSection title="Attendance & Devices" subtitle="Shifts, smart rules and kiosk" icon={Clock}>
             {/* Biometric & eSSL Integration Hub */}

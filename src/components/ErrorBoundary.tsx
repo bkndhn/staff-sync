@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertOctagon, RefreshCw, Home } from 'lucide-react';
+import { errorTracker } from '../services/errorTrackingService';
 
 interface Props {
   children: ReactNode;
@@ -23,7 +24,21 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error(`[ErrorBoundary] Caught error in ${this.props.moduleName || 'Component'}:`, error, errorInfo);
+    const moduleName = this.props.moduleName || 'Component';
+    console.error(`[ErrorBoundary] Caught error in ${moduleName}:`, error, errorInfo);
+    const errorWithComponentStack = new Error(error.message);
+    errorWithComponentStack.name = error.name;
+    errorWithComponentStack.stack = [error.stack, errorInfo.componentStack].filter(Boolean).join('\n\nReact component stack:\n');
+    void errorTracker.captureException(errorWithComponentStack, {
+      component: moduleName,
+      severity: 'error',
+    });
+  }
+
+  public componentDidUpdate(previousProps: Props) {
+    if (previousProps.moduleName !== this.props.moduleName && this.state.hasError) {
+      this.setState({ hasError: false, error: null });
+    }
   }
 
   private handleReload = () => {
@@ -53,11 +68,11 @@ export class ErrorBoundary extends Component<Props, State> {
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-lg font-bold text-white">
-              {this.props.moduleName ? `${this.props.moduleName} Module Error` : 'Rendering Interruption'}
+            <h3 className="text-lg font-bold text-[var(--text-primary)]">
+              {this.props.moduleName ? `${this.props.moduleName} could not be displayed` : 'This section could not be displayed'}
             </h3>
-            <p className="text-xs text-white/60 max-w-sm mx-auto leading-relaxed">
-              An unexpected condition prevented this component from displaying correctly. The rest of the application remains fully secure and active.
+            <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto leading-relaxed">
+              The error was logged with its stack trace. Retry this page or return to the dashboard; the rest of the app is still available.
             </p>
           </div>
 

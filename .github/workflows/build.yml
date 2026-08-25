@@ -22,7 +22,9 @@ jobs:
     - name: Install dependencies
       run: npm install --legacy-peer-deps
     
-    - name: Build
+    # Vite parses every TSX/JSX module during this step. Syntax errors such as
+    # adjacent JSX elements fail the workflow before an artifact can deploy.
+    - name: Validate JSX syntax and build
       run: npm run build
       env:
         VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
