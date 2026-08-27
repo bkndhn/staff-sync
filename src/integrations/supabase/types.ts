@@ -476,6 +476,62 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changes: Json | null
+          details: string
+          id: string
+          metadata: Json
+          performed_by: string
+          staff_id: string | null
+          staff_name: string | null
+          tenant_id: string
+          timestamp: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changes?: Json | null
+          details: string
+          id: string
+          metadata?: Json
+          performed_by: string
+          staff_id?: string | null
+          staff_name?: string | null
+          tenant_id: string
+          timestamp?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changes?: Json | null
+          details?: string
+          id?: string
+          metadata?: Json
+          performed_by?: string
+          staff_id?: string | null
+          staff_name?: string | null
+          tenant_id?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       break_events: {
         Row: {
           break_type_code: string | null
@@ -785,6 +841,65 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      error_logs: {
+        Row: {
+          actor_email: string | null
+          actor_id: string | null
+          alert_sent_at: string | null
+          browser_info: Json | null
+          component: string
+          fingerprint: string | null
+          id: string
+          message: string
+          severity: string
+          stack_trace: string | null
+          tenant_id: string
+          timestamp: string
+          url: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_id?: string | null
+          alert_sent_at?: string | null
+          browser_info?: Json | null
+          component: string
+          fingerprint?: string | null
+          id?: string
+          message: string
+          severity?: string
+          stack_trace?: string | null
+          tenant_id: string
+          timestamp?: string
+          url?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          actor_email?: string | null
+          actor_id?: string | null
+          alert_sent_at?: string | null
+          browser_info?: Json | null
+          component?: string
+          fingerprint?: string | null
+          id?: string
+          message?: string
+          severity?: string
+          stack_trace?: string | null
+          tenant_id?: string
+          timestamp?: string
+          url?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "error_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       face_embeddings: {
         Row: {
