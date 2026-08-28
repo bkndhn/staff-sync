@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { errorTracker, ErrorLog } from '../services/errorTrackingService';
 import { healthCheckService, HealthCheckResult } from '../services/healthCheckService';
-import { supabase } from '../lib/supabase';
-import { 
-  Activity, Database, Shield, Wifi, HardDrive, Clock, 
-  AlertTriangle, CheckCircle, XCircle, RefreshCw, Download, 
-  Zap, Bug, Server, Globe, Cpu, MemoryStick 
+import {
+  Activity, Clock,
+  AlertTriangle, CheckCircle, XCircle, RefreshCw,
+  Zap, Bug, ChevronDown, ChevronRight
 } from 'lucide-react';
+
+const MODULE_FILTERS = ['all', 'Settings', 'Salary & Payroll'] as const;
+type ModuleFilter = typeof MODULE_FILTERS[number];
 
 export const PlatformHealth: React.FC = () => {
   const [errors, setErrors] = useState<ErrorLog[]>([]);
@@ -14,16 +16,11 @@ export const PlatformHealth: React.FC = () => {
   const [healthChecks, setHealthChecks] = useState<HealthCheckResult[]>([]);
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
   const [lastHealthCheck, setLastHealthCheck] = useState<Date | null>(null);
-  
+  const [moduleFilter, setModuleFilter] = useState<ModuleFilter>('all');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
   const [autoRefresh, setAutoRefresh] = useState(false);
-  const [isBackingUp, setIsBackingUp] = useState(false);
-  const [backups, setBackups] = useState<any[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('backup_history') || '[]');
-    } catch {
-      return [];
-    }
-  });
+
 
   const loadErrors = async () => {
     const recent = await errorTracker.getRecentErrors(20);
