@@ -65,12 +65,32 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
 
   useEffect(() => { fetchLogs(); }, []);
 
-  const handleClear = async () => {
-    if (await customConfirm('Clear local audit trail history? Remote logs are unaffected.')) {
-      await auditLogService.clearLogs();
-      setLogs([]);
-    }
+  const exportCsv = () => {
+    const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const header = ['Timestamp', 'Action', 'Performed By', 'Staff ID', 'Staff Name', 'Details', 'Changes'];
+    const rows = filteredLogs.map(log => [
+      log.timestamp,
+      log.action,
+      log.performedBy,
+      log.staffId ?? '',
+      log.staffName ?? '',
+      log.details,
+      (log.changes || [])
+        .map(c => `${c.label || c.field}: ${formatValue(c.oldValue)} -> ${formatValue(c.newValue)}`)
+        .join(' | '),
+    ]);
+    const csv = [header, ...rows].map(r => r.map(esc).join(',')).join('\r\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit-trail-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
+
 
   const filteredLogs = logs.filter(log => {
     const matchesSearch =
