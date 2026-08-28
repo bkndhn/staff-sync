@@ -57,49 +57,10 @@ export const PlatformHealth: React.FC = () => {
     setTimeout(loadErrors, 500);
   };
 
-  const handleBackupNow = async () => {
-    setIsBackingUp(true);
-    try {
-      // Simulate backup progress
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const newBackup = {
-        id: crypto.randomUUID(),
-        date: new Date().toISOString(),
-        size: Math.floor(Math.random() * 5 + 1) + ' MB',
-        status: 'success'
-      };
-      const newBackups = [newBackup, ...backups];
-      setBackups(newBackups);
-      localStorage.setItem('backup_history', JSON.stringify(newBackups));
-    } finally {
-      setIsBackingUp(false);
-    }
-  };
+  const visibleErrors = errors.filter(
+    e => moduleFilter === 'all' || (e.component || '').includes(moduleFilter),
+  );
 
-  const downloadBackup = async () => {
-    // Basic implementation that fetches some data to export as JSON
-    try {
-      const { data: staffData } = await supabase.from('staff').select('*');
-      const backupData = {
-        timestamp: new Date().toISOString(),
-        staff: staffData || [],
-      };
-      
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `staff-sync-backup-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      console.error('Download backup failed', e);
-      alert('Failed to download backup');
-    }
-  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
