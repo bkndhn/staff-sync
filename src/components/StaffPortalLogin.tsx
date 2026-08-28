@@ -40,12 +40,15 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
     const fetchTenant = async () => {
       if (!slug) return;
       try {
-        const { data, error } = await supabase.rpc('get_tenant_by_slug', { p_slug: slug });
-        if (error || !data) {
+        const { data, error } = await supabase.functions.invoke('tenant-lookup', {
+          body: { slug },
+        });
+        if (error || !data || (data as any).error) {
           setTenant(null);
         } else {
-          setTenant(data);
+          setTenant(data as any);
         }
+
       } catch (err) {
         console.error('Error fetching tenant:', err);
       } finally {

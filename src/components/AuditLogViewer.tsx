@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AuditLog } from '../types';
 import { auditLogService } from '../services/auditLogService';
-import { Search, ShieldAlert, Clock, RefreshCw, Trash2, Filter, ChevronDown, ChevronRight, ArrowRight } from 'lucide-react';
-import { customConfirm } from './CustomDialog';
+import { Search, ShieldAlert, Clock, RefreshCw, Download, Filter, ChevronDown, ChevronRight, ArrowRight } from 'lucide-react';
+
 
 const formatValue = (v: any): string => {
   if (v === null || v === undefined || v === '') return '—';
@@ -65,12 +65,32 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
 
   useEffect(() => { fetchLogs(); }, []);
 
-  const handleClear = async () => {
-    if (await customConfirm('Clear local audit trail history? Remote logs are unaffected.')) {
-      await auditLogService.clearLogs();
-      setLogs([]);
-    }
+  const exportCsv = () => {
+    const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const header = ['Timestamp', 'Action', 'Performed By', 'Staff ID', 'Staff Name', 'Details', 'Changes'];
+    const rows = filteredLogs.map(log => [
+      log.timestamp,
+      log.action,
+      log.performedBy,
+      log.staffId ?? '',
+      log.staffName ?? '',
+      log.details,
+      (log.changes || [])
+        .map(c => `${c.label || c.field}: ${formatValue(c.oldValue)} -> ${formatValue(c.newValue)}`)
+        .join(' | '),
+    ]);
+    const csv = [header, ...rows].map(r => r.map(esc).join(',')).join('\r\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit-trail-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
+
 
   const filteredLogs = logs.filter(log => {
     const matchesSearch =
@@ -159,14 +179,17 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
               <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
               Refresh
             </button>
-            <button onClick={handleClear} style={{
-              background: '#ef4444', color: '#fff', border: 'none',
+            <button onClick={exportCsv} disabled={filteredLogs.length === 0} style={{
+              background: '#059669', color: '#fff', border: 'none',
               borderRadius: 999, padding: '8px 16px', fontSize: 12,
-              fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+              fontWeight: 600, cursor: filteredLogs.length ? 'pointer' : 'not-allowed',
+              opacity: filteredLogs.length ? 1 : 0.6,
+              display: 'flex', alignItems: 'center', gap: 6,
             }}>
-              <Trash2 size={14} />
-              Clear
+              <Download size={14} />
+              Export CSV
             </button>
+
           </div>
         </div>
 

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { errorTracker, ErrorLog } from '../services/errorTrackingService';
 import { healthCheckService, HealthCheckResult } from '../services/healthCheckService';
-import { supabase } from '../lib/supabase';
-import { 
-  Activity, Database, Shield, Wifi, HardDrive, Clock, 
-  AlertTriangle, CheckCircle, XCircle, RefreshCw, Download, 
-  Zap, Bug, Server, Globe, Cpu, MemoryStick 
+import {
+  Activity, Clock,
+  AlertTriangle, CheckCircle, XCircle, RefreshCw,
+  Zap, Bug, ChevronDown, ChevronRight
 } from 'lucide-react';
+
+const MODULE_FILTERS = ['all', 'Settings', 'Salary & Payroll'] as const;
+type ModuleFilter = typeof MODULE_FILTERS[number];
 
 export const PlatformHealth: React.FC = () => {
   const [errors, setErrors] = useState<ErrorLog[]>([]);
@@ -14,16 +16,11 @@ export const PlatformHealth: React.FC = () => {
   const [healthChecks, setHealthChecks] = useState<HealthCheckResult[]>([]);
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
   const [lastHealthCheck, setLastHealthCheck] = useState<Date | null>(null);
-  
+  const [moduleFilter, setModuleFilter] = useState<ModuleFilter>('all');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
   const [autoRefresh, setAutoRefresh] = useState(false);
-  const [isBackingUp, setIsBackingUp] = useState(false);
-  const [backups, setBackups] = useState<any[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('backup_history') || '[]');
-    } catch {
-      return [];
-    }
-  });
+
 
   const loadErrors = async () => {
     const recent = await errorTracker.getRecentErrors(20);
@@ -60,49 +57,10 @@ export const PlatformHealth: React.FC = () => {
     setTimeout(loadErrors, 500);
   };
 
-  const handleBackupNow = async () => {
-    setIsBackingUp(true);
-    try {
-      // Simulate backup progress
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const newBackup = {
-        id: crypto.randomUUID(),
-        date: new Date().toISOString(),
-        size: Math.floor(Math.random() * 5 + 1) + ' MB',
-        status: 'success'
-      };
-      const newBackups = [newBackup, ...backups];
-      setBackups(newBackups);
-      localStorage.setItem('backup_history', JSON.stringify(newBackups));
-    } finally {
-      setIsBackingUp(false);
-    }
-  };
+  const visibleErrors = errors.filter(
+    e => moduleFilter === 'all' || (e.component || '').includes(moduleFilter),
+  );
 
-  const downloadBackup = async () => {
-    // Basic implementation that fetches some data to export as JSON
-    try {
-      const { data: staffData } = await supabase.from('staff').select('*');
-      const backupData = {
-        timestamp: new Date().toISOString(),
-        staff: staffData || [],
-      };
-      
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `staff-sync-backup-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      console.error('Download backup failed', e);
-      alert('Failed to download backup');
-    }
-  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -129,13 +87,22 @@ export const PlatformHealth: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Error Tracking Panel */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col h-[500px]">
-          <div className="flex items-center justify-between mb-4">
+        <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col h-[500px]">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
             <div className="flex items-center gap-2">
               <Bug className="w-5 h-5 text-slate-600" />
-              <h2 className="text-lg font-semibold text-slate-800">Error Tracking</h2>
+              <h2 className="text-lg font-semibold text-slate-800">Runtime Error Tracking</h2>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <select
+                value={moduleFilter}
+                onChange={e => setModuleFilter(e.target.value as ModuleFilter)}
+                className="text-sm border border-slate-300 rounded-lg px-2 py-1 text-slate-700"
+              >
+                {MODULE_FILTERS.map(m => (
+                  <option key={m} value={m}>{m === 'all' ? 'All modules' : m}</option>
+                ))}
+              </select>
               <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
                 <input 
                   type="checkbox" 
@@ -176,6 +143,7 @@ export const PlatformHealth: React.FC = () => {
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-slate-500 bg-slate-50 sticky top-0">
                 <tr>
+                  <th className="px-4 py-2 font-medium w-8"></th>
                   <th className="px-4 py-2 font-medium">Timestamp</th>
                   <th className="px-4 py-2 font-medium">Severity</th>
                   <th className="px-4 py-2 font-medium">Message</th>
@@ -183,97 +151,57 @@ export const PlatformHealth: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {errors.length === 0 ? (
+                {visibleErrors.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                       No recent errors found
                     </td>
                   </tr>
                 ) : (
-                  errors.map((error, idx) => (
-                    <tr key={error.id || idx} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
-                        {new Date(error.timestamp).toLocaleTimeString()}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {getSeverityBadge(error.severity)}
-                      </td>
-                      <td className="px-4 py-3 text-slate-700 max-w-[200px] truncate" title={error.message}>
-                        {error.message}
-                      </td>
-                      <td className="px-4 py-3 text-slate-500 hidden sm:table-cell truncate max-w-[150px]">
-                        {error.component || '-'}
-                      </td>
-                    </tr>
-                  ))
+                  visibleErrors.map((error, idx) => {
+                    const key = error.id || String(idx);
+                    const isOpen = !!expanded[key];
+                    return (
+                      <React.Fragment key={key}>
+                        <tr
+                          className="hover:bg-slate-50 cursor-pointer"
+                          onClick={() => setExpanded(prev => ({ ...prev, [key]: !prev[key] }))}
+                        >
+                          <td className="px-4 py-3 text-slate-400">
+                            {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </td>
+                          <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                            {new Date(error.timestamp).toLocaleTimeString()}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {getSeverityBadge(error.severity)}
+                          </td>
+                          <td className="px-4 py-3 text-slate-700 max-w-[280px] truncate" title={error.message}>
+                            {error.message}
+                          </td>
+                          <td className="px-4 py-3 text-slate-500 hidden sm:table-cell truncate max-w-[180px]">
+                            {error.component || '-'}
+                          </td>
+                        </tr>
+                        {isOpen && (
+                          <tr className="bg-slate-50">
+                            <td colSpan={5} className="px-4 py-3">
+                              <div className="text-xs text-slate-500 mb-1">{error.url}</div>
+                              <pre className="text-xs text-slate-700 whitespace-pre-wrap max-h-48 overflow-auto">
+                                {error.stack_trace || 'No stack trace captured'}
+                              </pre>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Database Backups Panel */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col h-[500px]">
-          <div className="flex items-center gap-2 mb-6">
-            <Database className="w-5 h-5 text-slate-600" />
-            <h2 className="text-lg font-semibold text-slate-800">Database Backups</h2>
-          </div>
-          
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-6 flex items-start gap-3">
-            <Clock className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
-            <div>
-              <div className="text-sm font-medium text-blue-800">Auto-backup scheduled</div>
-              <div className="text-xs text-blue-600 mt-1">Daily at 2:00 AM IST</div>
-            </div>
-          </div>
-          
-          <div className="flex gap-2 mb-6">
-            <button 
-              onClick={handleBackupNow}
-              disabled={isBackingUp}
-              className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-70"
-            >
-              {isBackingUp ? (
-                <><RefreshCw className="w-4 h-4 animate-spin" /> Backing up...</>
-              ) : (
-                <><Server className="w-4 h-4" /> Backup Now</>
-              )}
-            </button>
-            <button 
-              onClick={downloadBackup}
-              className="flex-none flex items-center justify-center p-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 rounded-lg transition-colors"
-              title="Download JSON Backup"
-            >
-              <Download className="w-5 h-5" />
-            </button>
-          </div>
-
-          <h3 className="text-sm font-medium text-slate-700 mb-3">Recent Backups</h3>
-          <div className="flex-1 overflow-auto">
-            <div className="space-y-3">
-              {backups.length === 0 ? (
-                <div className="text-center text-sm text-slate-500 py-4">No backups found</div>
-              ) : (
-                backups.map(backup => (
-                  <div key={backup.id} className="flex items-center justify-between p-3 border border-slate-100 bg-slate-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <HardDrive className="w-4 h-4 text-slate-400" />
-                      <div>
-                        <div className="text-sm font-medium text-slate-700">
-                          {new Date(backup.date).toLocaleDateString()} {new Date(backup.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                        <div className="text-xs text-slate-500">{backup.size}</div>
-                      </div>
-                    </div>
-                    <span className="text-xs font-medium text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full">
-                      {backup.status}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* System Health Tests Panel */}
