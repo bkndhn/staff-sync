@@ -29,6 +29,10 @@ export const appSettingsService = {
   },
 
   async setSetting(key: string, value: string): Promise<boolean> {
+    // Capture the previous value so the audit trail records a before/after diff.
+    let previous: string | null = null;
+    try { previous = await this.getSetting(key); } catch { previous = null; }
+
     const { error } = await client()
       .from('app_settings')
       .upsert(
@@ -40,8 +44,22 @@ export const appSettingsService = {
       console.error('Error saving setting:', error);
       return false;
     }
+
+    if (previous !== value) {
+      const actor = currentActor();
+      void auditLogService.log({
+        action: 'settings_update',
+        staffId: '',
+        staffName: undefined,
+        details: `Setting "${key}" changed`,
+        performedBy: actor.name,
+        before: { [key]: previous },
+        after: { [key]: value },
+      }).catch(() => { /* never block a settings save on audit failure */ });
+    }
     return true;
   },
+
 
   async getDefaultHikeInterval(): Promise<number> {
     const val = await this.getSetting('default_hike_interval_months');
