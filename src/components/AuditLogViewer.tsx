@@ -179,14 +179,17 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
               <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
               Refresh
             </button>
-            <button onClick={handleClear} style={{
-              background: '#ef4444', color: '#fff', border: 'none',
+            <button onClick={exportCsv} disabled={filteredLogs.length === 0} style={{
+              background: '#059669', color: '#fff', border: 'none',
               borderRadius: 999, padding: '8px 16px', fontSize: 12,
-              fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+              fontWeight: 600, cursor: filteredLogs.length ? 'pointer' : 'not-allowed',
+              opacity: filteredLogs.length ? 1 : 0.6,
+              display: 'flex', alignItems: 'center', gap: 6,
             }}>
-              <Trash2 size={14} />
-              Clear
+              <Download size={14} />
+              Export CSV
             </button>
+
           </div>
         </div>
 
