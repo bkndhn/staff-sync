@@ -1,5 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { dataApi } from '../lib/dataApi';
+import { auditLogService } from './auditLogService';
+import { currentActor } from '../lib/currentActor';
+
 
 // ─── Phase 3 cutover flag ─────────────────────────────────────────────────
 // Flip VITE_USE_DATA_API_APP_SETTINGS=1 to route through the edge function.
