@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AuditLog } from '../types';
 import { auditLogService } from '../services/auditLogService';
-import { Search, ShieldAlert, Clock, RefreshCw, Trash2, Filter, ChevronDown, ChevronRight, ArrowRight } from 'lucide-react';
-import { customConfirm } from './CustomDialog';
+import { Search, ShieldAlert, Clock, RefreshCw, Download, Filter, ChevronDown, ChevronRight, ArrowRight } from 'lucide-react';
+
 
 const formatValue = (v: any): string => {
   if (v === null || v === undefined || v === '') return '—';
