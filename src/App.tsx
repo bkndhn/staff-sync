@@ -318,12 +318,14 @@ function App() {
 
     if (isDarkTheme) {
       document.body.classList.remove('light-theme');
+      document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');
       if (metaThemeColor) {
         metaThemeColor.setAttribute('content', '#0B1220');
       }
     } else {
       document.body.classList.add('light-theme');
+      document.documentElement.classList.remove('dark');
       localStorage.setItem('theme', 'light');
       if (metaThemeColor) {
         metaThemeColor.setAttribute('content', '#FFFFFF');
