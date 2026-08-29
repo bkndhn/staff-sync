@@ -1,5 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  // Class-based dark mode: `dark:` utilities must NOT follow the device OS
+  // setting, otherwise light-theme dialogs render faint text on phones.
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
