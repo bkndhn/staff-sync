@@ -1711,6 +1711,72 @@ export type Database = {
           },
         ]
       }
+      payslip_links: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          issued_by: string | null
+          last_viewed_at: string | null
+          month: number
+          revoked_at: string | null
+          snapshot: Json
+          staff_id: string
+          tenant_id: string | null
+          token_hash: string
+          updated_at: string
+          view_count: number
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          issued_by?: string | null
+          last_viewed_at?: string | null
+          month: number
+          revoked_at?: string | null
+          snapshot?: Json
+          staff_id: string
+          tenant_id?: string | null
+          token_hash: string
+          updated_at?: string
+          view_count?: number
+          year: number
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          issued_by?: string | null
+          last_viewed_at?: string | null
+          month?: number
+          revoked_at?: string | null
+          snapshot?: Json
+          staff_id?: string
+          tenant_id?: string | null
+          token_hash?: string
+          updated_at?: string
+          view_count?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payslip_links_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payslip_links_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       punch_events: {
         Row: {
           created_at: string
