@@ -89,15 +89,15 @@ export const CustomDialogProvider: React.FC = () => {
 
   const getIcon = () => {
     if (isDestructive) {
-      return <AlertTriangle className="text-red-400" size={24} />;
+      return <AlertTriangle className="text-red-600 dark:text-red-400" size={24} />;
     }
     if (state.type === 'confirm') {
-      return <HelpCircle className="text-indigo-400 light-theme:text-indigo-600" size={24} />;
+      return <HelpCircle className="text-indigo-600 dark:text-indigo-400" size={24} />;
     }
     if (state.message.toLowerCase().includes('success') || state.message.toLowerCase().includes('copied') || state.message.toLowerCase().includes('saved')) {
-      return <CheckCircle className="text-emerald-400 light-theme:text-emerald-600" size={24} />;
+      return <CheckCircle className="text-emerald-600 dark:text-emerald-400" size={24} />;
     }
-    return <Info className="text-blue-400 light-theme:text-blue-600" size={24} />;
+    return <Info className="text-blue-600 dark:text-blue-400" size={24} />;
   };
 
   const getTitle = () => {
