@@ -26,6 +26,8 @@ import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/ro
 import { useUserPreference } from '../hooks/useUserPreference';
 import { shiftService, DEFAULT_SHIFT_WINDOWS } from '../services/shiftService';
 import PayrollInsightsPanel from './PayrollInsightsPanel';
+import CompliancePanel from './CompliancePanel';
+import { currentActor } from '../lib/currentActor';
 import type { AnomalyReport } from '../utils/payrollAnomalies';
 
 
@@ -67,6 +69,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
   const showEmpCode = canSeeEmployeeCode(userRole);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [showCompliance, setShowCompliance] = useState(false);
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   
   const [payrollRun, setPayrollRun] = useState<PayrollRun | null>(null);
