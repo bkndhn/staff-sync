@@ -68,6 +68,7 @@ const ACL: Record<string, TableAcl> = {
   salary_hikes:                      { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin"],                     staffIdCol: "staff_id" },
   salary_manual_overrides:           { read: ["admin","super_admin"],                                                 write: ["admin"] },
   salary_disbursements:              { read: ["admin","super_admin"],                                                 write: ["admin"] },
+  payslip_links:                     { read: ["admin","super_admin"],                                                 write: ["admin"] },
   // ── Face / Biometric ────────────────────────────────────────────────────────
   face_embeddings:                   { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager","staff"],   staffIdCol: "staff_id" },
   face_registration_logs:            { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager","staff"],   staffIdCol: "staff_id" },

@@ -4,6 +4,8 @@ import SuperAdminConsole from './components/SuperAdminConsole';
 import Login from './components/Login';
 import StaffPortalLogin from './components/StaffPortalLogin';
 import ResetPassword from './components/ResetPassword';
+import PayslipView from './components/PayslipView';
+
 import Dashboard from './components/Dashboard';
 import AttendanceTracker from './components/AttendanceTracker';
 import SalaryHikeModal, { PayrollHikeModal } from './components/SalaryHikeModal';
@@ -1594,7 +1596,19 @@ function App() {
     );
   }
 
+  // Public payslip magic link — resolved before any auth gate.
+  if (window.location.pathname.startsWith('/payslip/')) {
+    const payslipToken = window.location.pathname.split('/payslip/')[1]?.split(/[/?#]/)[0] || '';
+    return (
+      <>
+        <PayslipView token={payslipToken} />
+        <CustomDialogProvider />
+      </>
+    );
+  }
+
   if (isAuthLoading) {
+
     return (
       <div className="min-h-screen bg-[#0a0a0b] flex items-center justify-center p-6">
         <div className="w-full max-w-md">
