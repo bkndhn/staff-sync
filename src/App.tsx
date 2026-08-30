@@ -1594,7 +1594,19 @@ function App() {
     );
   }
 
+  // Public payslip magic link — resolved before any auth gate.
+  if (window.location.pathname.startsWith('/payslip/')) {
+    const payslipToken = window.location.pathname.split('/payslip/')[1]?.split(/[/?#]/)[0] || '';
+    return (
+      <>
+        <PayslipView token={payslipToken} />
+        <CustomDialogProvider />
+      </>
+    );
+  }
+
   if (isAuthLoading) {
+
     return (
       <div className="min-h-screen bg-[#0a0a0b] flex items-center justify-center p-6">
         <div className="w-full max-w-md">
