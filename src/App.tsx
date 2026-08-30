@@ -4,6 +4,8 @@ import SuperAdminConsole from './components/SuperAdminConsole';
 import Login from './components/Login';
 import StaffPortalLogin from './components/StaffPortalLogin';
 import ResetPassword from './components/ResetPassword';
+import PayslipView from './components/PayslipView';
+
 import Dashboard from './components/Dashboard';
 import AttendanceTracker from './components/AttendanceTracker';
 import SalaryHikeModal, { PayrollHikeModal } from './components/SalaryHikeModal';
