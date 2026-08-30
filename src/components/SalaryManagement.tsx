@@ -1195,6 +1195,34 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         onReport={setAnomalyReport}
       />
 
+      {(userRole === 'admin' || userRole === 'super_admin' || userRole === 'statutory_admin') && (
+        <div className="border border-gray-200 rounded-xl bg-white">
+          <button
+            type="button"
+            onClick={() => setShowCompliance(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-left"
+          >
+            <span className="text-sm font-semibold text-gray-800">
+              Statutory compliance — TDS, EPFO, ESIC & payslip links
+            </span>
+            <span className="text-xs text-blue-600">{showCompliance ? 'Hide' : 'Show'}</span>
+          </button>
+          {showCompliance && (
+            <div className="px-4 pb-4">
+              <CompliancePanel
+                details={salaryDetails}
+                staff={getBaseStaffList()}
+                month={selectedMonth}
+                year={selectedYear}
+                issuedBy={currentActor().name}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+
+
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col md:flex-row gap-4 flex-1">
