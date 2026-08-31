@@ -196,10 +196,10 @@ export const payslipLinkService = {
   },
 
   /** Payslip history for the signed-in employee (session-scoped). */
-  async listForStaff(staffId: string, token?: string | null): Promise<PayslipLinkRow[]> {
+  async listForStaff(staffId: string): Promise<PayslipLinkRow[]> {
     const { data, error } = await dataApi
       .from('payslip_links')
-      .select('id, staff_id, month, year, snapshot, expires_at, revoked_at, view_count, last_viewed_at, created_at', token ? { sessionToken: token } : undefined)
+      .select('id, staff_id, month, year, snapshot, expires_at, revoked_at, view_count, last_viewed_at, created_at')
       .eq('staff_id', staffId)
       .order('id', { ascending: true });
     if (error) return [];
