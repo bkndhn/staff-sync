@@ -1711,6 +1711,42 @@ export type Database = {
           },
         ]
       }
+      payslip_access_attempts: {
+        Row: {
+          attempts: number
+          blocked_until: string | null
+          client_key: string
+          created_at: string
+          failures: number
+          id: string
+          last_seen_at: string
+          updated_at: string
+          window_start: string
+        }
+        Insert: {
+          attempts?: number
+          blocked_until?: string | null
+          client_key: string
+          created_at?: string
+          failures?: number
+          id?: string
+          last_seen_at?: string
+          updated_at?: string
+          window_start?: string
+        }
+        Update: {
+          attempts?: number
+          blocked_until?: string | null
+          client_key?: string
+          created_at?: string
+          failures?: number
+          id?: string
+          last_seen_at?: string
+          updated_at?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       payslip_links: {
         Row: {
           created_at: string
@@ -2172,6 +2208,7 @@ export type Database = {
           designation: string | null
           device_id: string | null
           display_order: number | null
+          email: string | null
           employee_code: string | null
           esi_number: string | null
           exempt_from_late_deduction: boolean | null
@@ -2219,6 +2256,7 @@ export type Database = {
           designation?: string | null
           device_id?: string | null
           display_order?: number | null
+          email?: string | null
           employee_code?: string | null
           esi_number?: string | null
           exempt_from_late_deduction?: boolean | null
@@ -2266,6 +2304,7 @@ export type Database = {
           designation?: string | null
           device_id?: string | null
           display_order?: number | null
+          email?: string | null
           employee_code?: string | null
           esi_number?: string | null
           exempt_from_late_deduction?: boolean | null

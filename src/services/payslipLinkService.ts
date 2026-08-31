@@ -86,6 +86,37 @@ export interface IssuedPayslipLink {
   expiresAt: string;
 }
 
+export interface PayslipLinkRow {
+  id: string;
+  staff_id: string;
+  month: number;
+  year: number;
+  snapshot: PayslipSnapshot;
+  expires_at: string;
+  revoked_at: string | null;
+  view_count: number | null;
+  last_viewed_at: string | null;
+  created_at: string;
+}
+
+/** A link is only usable when it is neither revoked nor past its expiry. */
+export const isLinkActive = (row: { expires_at: string; revoked_at?: string | null }): boolean =>
+  !row.revoked_at && new Date(row.expires_at).getTime() > Date.now();
+
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || 'https://nsmppwnpdxomjmgrtqka.supabase.co';
+const PUBLISHABLE_KEY =
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || '';
+
+const sessionToken = (): string | null => {
+  try {
+    const saved = localStorage.getItem('staffManagementLogin');
+    return saved ? JSON.parse(saved)?.sessionToken || null : null;
+  } catch {
+    return null;
+  }
+};
+
 export const payslipLinkService = {
   /** Issue a one-off, expiring magic link for a single payslip. */
   async issue(
@@ -93,12 +124,17 @@ export const payslipLinkService = {
     detail: PayrollDetail,
     month: number,
     year: number,
-    options: { validDays?: number; issuedBy?: string; employerName?: string } = {},
+    options: { validDays?: number; issuedBy?: string; employerName?: string; notify?: boolean } = {},
   ): Promise<IssuedPayslipLink> {
     const token = randomToken();
     const tokenHash = await sha256(token);
-    const expiresAt = new Date(Date.now() + (options.validDays ?? 30) * 86400000).toISOString();
+    const validDays = Math.min(90, Math.max(1, options.validDays ?? 30));
+    const expiresAt = new Date(Date.now() + validDays * 86400000).toISOString();
     const snapshot = buildPayslipSnapshot(member, detail, month, year, options.employerName);
+
+    // Re-issuing supersedes any earlier link for the same employee + period,
+    // so an old URL stops working the moment a new one is handed out.
+    await payslipLinkService.revokeForPeriod(member.id, month, year).catch(() => undefined);
 
     const { data, error } = await dataApi.from('payslip_links').insert({
       staff_id: member.id,
@@ -113,11 +149,13 @@ export const payslipLinkService = {
     if (error) throw error;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const row: any = Array.isArray(data) ? data[0] : data;
-    return {
-      id: row?.id || '',
-      url: `${window.location.origin}/payslip/${token}`,
-      expiresAt,
-    };
+    const url = `${window.location.origin}/payslip/${token}`;
+
+    if (options.notify !== false) {
+      payslipLinkService.notify({ staffId: member.id, month, year, url }).catch(() => undefined);
+    }
+
+    return { id: row?.id || '', url, expiresAt };
   },
 
   async revoke(id: string): Promise<void> {
@@ -128,17 +166,71 @@ export const payslipLinkService = {
     if (error) throw error;
   },
 
+  /** Revoke every still-active link for one employee and payroll period. */
+  async revokeForPeriod(staffId: string, month: number, year: number): Promise<void> {
+    const { data } = await dataApi
+      .from('payslip_links')
+      .select('id, expires_at, revoked_at')
+      .eq('staff_id', staffId)
+      .eq('month', month)
+      .eq('year', year)
+      .order('id', { ascending: true });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows = ((data as any[]) || []).filter(r => !r.revoked_at);
+    for (const row of rows) {
+      await payslipLinkService.revoke(row.id).catch(() => undefined);
+    }
+  },
+
   /** Links issued for a payroll period (admin audit view). */
   async listForPeriod(month: number, year: number) {
     const { data, error } = await dataApi
       .from('payslip_links')
-      .select('id, staff_id, expires_at, revoked_at, view_count, last_viewed_at, created_at')
+      .select('id, staff_id, month, year, expires_at, revoked_at, view_count, last_viewed_at, created_at')
       .eq('month', month)
       .eq('year', year)
       .order('id', { ascending: true });
     if (error) return [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return ((data as any[]) || []);
+  },
+
+  /** Payslip history for the signed-in employee (session-scoped). */
+  async listForStaff(staffId: string): Promise<PayslipLinkRow[]> {
+    const { data, error } = await dataApi
+      .from('payslip_links')
+      .select('id, staff_id, month, year, snapshot, expires_at, revoked_at, view_count, last_viewed_at, created_at')
+      .eq('staff_id', staffId)
+      .order('id', { ascending: true });
+    if (error) return [];
+    return ((data as PayslipLinkRow[]) || []);
+  },
+
+  /** Notify an employee that a payslip or compliance document is ready. */
+  async notify(input: {
+    staffId: string;
+    month: number;
+    year: number;
+    url?: string;
+    kind?: 'payslip' | 'compliance';
+    documentName?: string;
+  }): Promise<boolean> {
+    const token = sessionToken();
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/notify-payslip`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: PUBLISHABLE_KEY,
+          ...(token ? { 'x-session-token': token } : {}),
+          ...(token && token.startsWith('eyJ') ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ kind: 'payslip', ...input }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
   },
 };
 
@@ -149,11 +241,12 @@ export const fetchPayslipByToken = async (token: string): Promise<PayslipSnapsho
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+      apikey: PUBLISHABLE_KEY,
     },
     body: JSON.stringify({ token }),
   });
   const body = await res.json().catch(() => ({}));
+  if (res.status === 429) throw new Error(body?.error || 'Too many attempts. Please try again later.');
   if (!res.ok) throw new Error(body?.error || 'This payslip link could not be opened.');
   return body.snapshot as PayslipSnapshot;
 };
