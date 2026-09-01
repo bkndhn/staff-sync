@@ -11,6 +11,7 @@ import {
   type ComplianceFile,
 } from '../utils/complianceExports';
 import { computeRunTds } from '../utils/tdsCalculations';
+import { validateComplianceExports, type CheckStatus } from '../utils/complianceValidation';
 import { payslipLinkService } from '../services/payslipLinkService';
 import { customAlert } from './CustomDialog';
 
@@ -22,6 +23,15 @@ interface Props {
   employerName?: string;
   issuedBy?: string;
 }
+
+const statusChip: Record<CheckStatus, string> = {
+  pass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  warn: 'bg-amber-50 text-amber-700 border border-amber-200',
+  fail: 'bg-rose-50 text-rose-700 border border-rose-200',
+};
+const statusDot: Record<CheckStatus, string> = {
+  pass: 'bg-emerald-500', warn: 'bg-amber-500', fail: 'bg-rose-500',
+};
 
 const inr = (v: number) => `₹${Math.round(v).toLocaleString('en-IN')}`;
 
@@ -71,6 +81,11 @@ export const CompliancePanel: React.FC<Props> = ({ details, staff, month, year, 
   const register = useMemo(() => buildTdsRegister(details, staff, month, year), [details, staff, month, year]);
   const tdsRows = useMemo(() => computeRunTds(details, staff, month, year), [details, staff, month, year]);
 
+  const validation = useMemo(
+    () => validateComplianceExports({ details, staff, month, year, files: { epfo, esic, form24q, register } }),
+    [details, staff, month, year, epfo, esic, form24q, register],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return tdsRows;
@@ -109,6 +124,26 @@ export const CompliancePanel: React.FC<Props> = ({ details, staff, month, year, 
         <Card icon={<HeartPulse size={16} className="text-rose-600" />} title="ESIC return" subtitle="Monthly contribution upload (CSV)" file={esic} />
         <Card icon={<Receipt size={16} className="text-emerald-600" />} title="Form 24Q" subtitle="Quarterly TDS statement, Annexure I" file={form24q} />
         <Card icon={<FileText size={16} className="text-blue-600" />} title="TDS register" subtitle="Internal computation audit copy" file={register} />
+      </div>
+
+      <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+          <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${statusChip[validation.status]}`}>
+            {validation.status === 'pass' ? 'All checks passed' : validation.status === 'warn' ? 'Rounding differences' : 'Mismatch found'}
+          </span>
+          <h3 className="text-sm font-semibold text-gray-800">Export validation</h3>
+        </div>
+        <ul className="divide-y divide-gray-100">
+          {validation.checks.map(c => (
+            <li key={c.id} className="px-4 py-2 flex items-start gap-2">
+              <span className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${statusDot[c.status]}`} />
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-gray-800">{c.label}</div>
+                <div className="text-[11px] text-gray-500">{c.detail}</div>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">

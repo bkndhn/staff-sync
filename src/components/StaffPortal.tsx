@@ -34,13 +34,14 @@ import { resolveActiveRule, calculateAttendanceStatus } from '../utils/attendanc
 import BreakControls from './BreakControls';
 import { breakEventService } from '../services/breakService';
 import { BreakEvent } from '../types';
-import { Coffee, X, Megaphone } from 'lucide-react';
+import { Coffee, X, Megaphone, Receipt } from 'lucide-react';
 import TenantStatusBanner from './TenantStatusBanner';
 import { announcementService, Announcement } from '../services/announcementService';
 import StaffLoanSection from './StaffLoanSection';
 import { ProfileEditModal } from './portal/ProfileEditModal';
 import { AttendanceRegularizationModal } from './portal/AttendanceRegularizationModal';
 import { DocumentsTab } from './portal/DocumentsTab';
+import { PayslipsTab } from './portal/PayslipsTab';
 import { NotificationPanel } from './portal/NotificationPanel';
 import { localDateKey, localTimeKey } from '../lib/localDate';
 import { serverNow, syncServerTime } from '../lib/serverTime';
@@ -55,7 +56,7 @@ interface StaffPortalProps {
 }
 
 const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHikes, advances, allStaff }) => {
-  const [activeSection, setActiveSection] = useState<'overview' | 'attendance' | 'yearly' | 'salary' | 'hikes' | 'leave' | 'face' | 'grievances' | 'disbursements' | 'loans' | 'documents'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'attendance' | 'yearly' | 'salary' | 'hikes' | 'leave' | 'face' | 'grievances' | 'disbursements' | 'loans' | 'documents' | 'payslips'>('overview');
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [showRegularization, setShowRegularization] = useState(false);
   const [regularizationDate, setRegularizationDate] = useState('');
@@ -702,6 +703,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     { id: 'loans', label: 'Loans', icon: CreditCard },
     { id: 'grievances', label: 'Issues', icon: AlertTriangle },
     { id: 'disbursements', label: 'Payroll Inbox', icon: CreditCard },
+    { id: 'payslips', label: 'Payslips', icon: Receipt },
     { id: 'documents', label: 'Documents', icon: FileText },
     { id: 'face', label: 'Face Registration', icon: Camera }
   ];
@@ -1963,6 +1965,11 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
             )}
           </div>
         </div>
+      )}
+
+      {/* PAYSLIPS */}
+      {activeSection === 'payslips' && (
+        <PayslipsTab staffId={staff.id || ''} />
       )}
 
       {/* DOCUMENTS */}
