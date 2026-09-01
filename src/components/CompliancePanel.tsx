@@ -71,6 +71,11 @@ export const CompliancePanel: React.FC<Props> = ({ details, staff, month, year, 
   const register = useMemo(() => buildTdsRegister(details, staff, month, year), [details, staff, month, year]);
   const tdsRows = useMemo(() => computeRunTds(details, staff, month, year), [details, staff, month, year]);
 
+  const validation = useMemo(
+    () => validateComplianceExports({ details, staff, month, year, files: { epfo, esic, form24q, register } }),
+    [details, staff, month, year, epfo, esic, form24q, register],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return tdsRows;
