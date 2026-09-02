@@ -556,6 +556,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
     );
   };
 
+  void tdsPolicyVersion; // recomputed whenever the client's TDS policy loads/changes
   const salaryDetails = calculateSalaryDetails();
   const partTimeSalaries = calculatePartTimeSalaries();
   const salaryValidation = validateSalaryBatch(
