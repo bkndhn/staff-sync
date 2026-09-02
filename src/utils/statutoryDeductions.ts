@@ -55,16 +55,82 @@ export const computeDeductionAmount = (
   return Math.max(0, Math.round((baseValue * pct) / 100));
 };
 
+/**
+ * Organisation-wide TDS policy. Each client decides whether income tax is
+ * deducted at source at all, and whether it follows the statutory slabs
+ * (real Income Tax Act computation) or a flat percentage of gross.
+ */
+export interface TdsPolicy {
+  enabled: boolean;
+  mode: 'slab' | 'flat';
+}
+
+export const DEFAULT_TDS_POLICY: TdsPolicy = { enabled: false, mode: 'slab' };
+
+let runtimeTdsPolicy: TdsPolicy = { ...DEFAULT_TDS_POLICY };
+
+/** Called once after settings load so every payroll calculation uses the same policy. */
+export const setRuntimeTdsPolicy = (policy: Partial<TdsPolicy>) => {
+  runtimeTdsPolicy = { ...DEFAULT_TDS_POLICY, ...runtimeTdsPolicy, ...policy };
+};
+export const getRuntimeTdsPolicy = (): TdsPolicy => runtimeTdsPolicy;
+
+export interface BreakdownContext {
+  /** 0-indexed payroll month; defaults to the current month. */
+  month?: number;
+  year?: number;
+  /** Override the org-wide policy (used by previews and tests). */
+  policy?: TdsPolicy;
+}
+
+/** Monthly TDS from the real income-tax slabs for this employee. */
+const slabMonthlyTds = (
+  staff: Staff,
+  bases: { basic: number; hra: number; incentive: number; gross: number },
+  pfAmount: number,
+  ctx?: BreakdownContext,
+): number => {
+  const now = new Date();
+  const month = ctx?.month ?? now.getMonth();
+  const year = ctx?.year ?? now.getFullYear();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const profile = ((staff as any).taxProfile || {}) as {
+    regime?: string; declaredInvestments?: number; tdsPaidTillDate?: number;
+  };
+  return computeTds({
+    monthlyGross: bases.gross,
+    month,
+    year,
+    regime: profile.regime === 'old' ? 'old' : 'new',
+    declaredInvestments: Number(profile.declaredInvestments) || 0,
+    annualPf: pfAmount * 12,
+    tdsPaidTillDate: Number(profile.tdsPaidTillDate) || 0,
+  }).monthlyTds;
+};
+
 /** Compute every active statutory deduction for a staff member. */
 export const computeStatutoryBreakdown = (
   staff: Staff,
-  bases: { basic: number; hra: number; incentive: number; gross: number }
+  bases: { basic: number; hra: number; incentive: number; gross: number },
+  ctx?: BreakdownContext
 ): Array<{ key: string; label: string; amount: number; cfg: StatutoryDeduction }> => {
   const map = staff.statutoryDeductions || {};
+  const policy = ctx?.policy ?? runtimeTdsPolicy;
+  const pfCfg = map['pf'];
+  const pfAmount = pfCfg?.enabled ? computeDeductionAmount('pf', pfCfg, bases) : 0;
+
   const out: Array<{ key: string; label: string; amount: number; cfg: StatutoryDeduction }> = [];
   Object.entries(map).forEach(([key, cfg]) => {
     if (!cfg || !cfg.enabled) return;
-    const amount = computeDeductionAmount(key, cfg, bases);
+    let amount: number;
+    if (key === 'tds') {
+      if (!policy.enabled) return;
+      amount = policy.mode === 'slab'
+        ? slabMonthlyTds(staff, bases, pfAmount, ctx)
+        : computeDeductionAmount(key, cfg, bases);
+    } else {
+      amount = computeDeductionAmount(key, cfg, bases);
+    }
     if (amount <= 0) return;
     out.push({ key, label: getDeductionLabel(key, cfg), amount, cfg });
   });
@@ -73,10 +139,12 @@ export const computeStatutoryBreakdown = (
 
 export const sumStatutoryDeductions = (
   staff: Staff,
-  bases: { basic: number; hra: number; incentive: number; gross: number }
+  bases: { basic: number; hra: number; incentive: number; gross: number },
+  ctx?: BreakdownContext
 ): number => {
-  return computeStatutoryBreakdown(staff, bases).reduce((s, d) => s + d.amount, 0);
+  return computeStatutoryBreakdown(staff, bases, ctx).reduce((s, d) => s + d.amount, 0);
 };
+
 
 /** Helper for a fresh default config when user enables a built-in row. */
 export const defaultConfigFor = (key: string): StatutoryDeduction => {
