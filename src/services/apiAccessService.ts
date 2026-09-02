@@ -1,4 +1,5 @@
 import { dataApi } from '../lib/dataApi';
+import { supabase } from '../lib/supabase';
 
 export interface ApiKeyRow {
   id: string;
@@ -57,13 +58,9 @@ const sha256 = async (value: string): Promise<string> => {
   return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
-const sessionToken = (): string | null => {
-  try {
-    const saved = localStorage.getItem('staffManagementLogin');
-    return saved ? JSON.parse(saved)?.sessionToken || null : null;
-  } catch {
-    return null;
-  }
+const sessionToken = async (): Promise<string | null> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
 };
 
 export const apiAccessService = {
@@ -135,12 +132,12 @@ export const apiAccessService = {
 
   /** Fire an event to every subscribed endpoint (also used by the "Send test" button). */
   async dispatch(event: string, payload: Record<string, unknown>): Promise<{ delivered: number }> {
-    const token = sessionToken();
+    const token = await sessionToken();
     const res = await fetch(`${SUPABASE_URL}/functions/v1/webhook-dispatch`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { 'x-session-token': token } : {}),
+        ...(token ? { 'x-session-token': token, Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ event, payload }),
     });
