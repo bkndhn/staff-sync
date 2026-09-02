@@ -1,4 +1,5 @@
 import { appSettingsService } from './appSettingsService';
+import { DEFAULT_TDS_POLICY, setRuntimeTdsPolicy, type TdsPolicy } from '../utils/statutoryDeductions';
 
 export interface PartTimeRates {
     weekdayRate: number;
@@ -8,7 +9,8 @@ export interface PartTimeRates {
 const STORAGE_KEYS = {
     PART_TIME_RATES: 'staff_management_part_time_rates',
     REQUIRE_GEOFENCE: 'staff_management_require_geofence',
-    PUNCTUALITY_POLICY: 'staff_management_punctuality_policy'
+    PUNCTUALITY_POLICY: 'staff_management_punctuality_policy',
+    TDS_POLICY: 'staff_management_tds_policy'
 };
 
 export interface PunctualityPolicySetting {
