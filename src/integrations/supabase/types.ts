@@ -251,6 +251,56 @@ export type Database = {
           },
         ]
       }
+      api_keys: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          revoked_at: string | null
+          scopes: string[]
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          revoked_at?: string | null
+          scopes?: string[]
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          scopes?: string[]
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_sessions: {
         Row: {
           created_at: string
@@ -2591,6 +2641,110 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      webhook_deliveries: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          endpoint_id: string | null
+          error: string | null
+          event: string
+          id: string
+          ok: boolean
+          payload: Json
+          status_code: number | null
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          endpoint_id?: string | null
+          error?: string | null
+          event: string
+          id?: string
+          ok?: boolean
+          payload?: Json
+          status_code?: number | null
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          endpoint_id?: string | null
+          error?: string | null
+          event?: string
+          id?: string
+          ok?: boolean
+          payload?: Json
+          status_code?: number | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_deliveries_endpoint_id_fkey"
+            columns: ["endpoint_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_endpoints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_deliveries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhook_endpoints: {
+        Row: {
+          created_at: string
+          description: string | null
+          events: string[]
+          failure_count: number
+          id: string
+          is_active: boolean
+          last_delivery_at: string | null
+          secret: string
+          tenant_id: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          events?: string[]
+          failure_count?: number
+          id?: string
+          is_active?: boolean
+          last_delivery_at?: string | null
+          secret: string
+          tenant_id?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          events?: string[]
+          failure_count?: number
+          id?: string
+          is_active?: boolean
+          last_delivery_at?: string | null
+          secret?: string
+          tenant_id?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_endpoints_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workflow_configs: {
         Row: {
