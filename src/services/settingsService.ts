@@ -63,6 +63,32 @@ export const settingsService = {
 
     async setPunctualityPolicySetting(policy: PunctualityPolicySetting): Promise<void> {
         await appSettingsService.setSetting(STORAGE_KEYS.PUNCTUALITY_POLICY, JSON.stringify(policy));
+    },
+
+    /**
+     * Income-tax (TDS) policy — each client decides whether TDS is deducted at
+     * all and whether it follows the statutory slabs or a flat percentage.
+     */
+    async getTdsPolicy(): Promise<TdsPolicy> {
+        const stored = await appSettingsService.getSetting(STORAGE_KEYS.TDS_POLICY);
+        if (!stored) return { ...DEFAULT_TDS_POLICY };
+        try {
+            return { ...DEFAULT_TDS_POLICY, ...JSON.parse(stored) };
+        } catch {
+            return { ...DEFAULT_TDS_POLICY };
+        }
+    },
+
+    async setTdsPolicy(policy: TdsPolicy): Promise<void> {
+        await appSettingsService.setSetting(STORAGE_KEYS.TDS_POLICY, JSON.stringify(policy));
+        setRuntimeTdsPolicy(policy);
+    },
+
+    /** Load the saved policy into the shared payroll runtime. Safe to call repeatedly. */
+    async primeTdsPolicy(): Promise<TdsPolicy> {
+        const policy = await this.getTdsPolicy();
+        setRuntimeTdsPolicy(policy);
+        return policy;
     }
 };
 
