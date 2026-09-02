@@ -1,5 +1,6 @@
 import { Staff, StatutoryDeduction, DeductionBase } from '../types';
 import { roundToNearest10 } from './salaryCalculations';
+import { computeTds } from './tdsCalculations';
 
 export interface StatutoryDeductionDefinition {
   key: string;
