@@ -492,7 +492,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         hra: resultDetail.hraEarned,
         incentive: resultDetail.incentiveEarned,
         gross: resultDetail.grossPayroll ?? resultDetail.grossSalary ?? 0,
-      });
+      }, { month: selectedMonth, year: selectedYear });
       const statutoryTotal = breakdown.reduce((s, b) => s + b.amount, 0);
       const netBase = resultDetail.netPayroll ?? resultDetail.netSalary ?? 0;
       if (statutoryTotal > 0) {
