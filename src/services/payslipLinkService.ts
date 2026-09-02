@@ -1,4 +1,5 @@
 import { dataApi } from '../lib/dataApi';
+import { apiAccessService } from './apiAccessService';
 import { PayrollDetail, Staff } from '../types';
 
 /** Payload embedded in a magic link — a frozen copy of the payslip. */
@@ -154,6 +155,10 @@ export const payslipLinkService = {
     if (options.notify !== false) {
       payslipLinkService.notify({ staffId: member.id, month, year, url }).catch(() => undefined);
     }
+
+    apiAccessService.dispatch('payslip.issued', {
+      payslip_link_id: row?.id || null, staff_id: member.id, month, year, expires_at: expiresAt,
+    }).catch(() => undefined);
 
     return { id: row?.id || '', url, expiresAt };
   },

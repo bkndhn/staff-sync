@@ -1,4 +1,5 @@
 import { dataApi } from '../lib/dataApi';
+import { apiAccessService } from './apiAccessService';
 import { PayrollRun, PayrollSnapshot, Staff, PayrollDetail } from '../types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -152,6 +153,11 @@ export const payrollService = {
       }
     }
 
+    // Notify integrated systems (best effort — never blocks payroll).
+    apiAccessService.dispatch('payroll.run.generated', {
+      run_id: runId, month, year, headcount: salaryDetails.length, total_net: totalNet,
+    }).catch(() => undefined);
+
     return mapRun(runRow);
   },
 
@@ -202,8 +208,10 @@ export const payrollService = {
   },
 
   /** Checker (a different admin) approves the run. */
-  approveRun(runId: string) {
-    return this.updateRunStatus(runId, 'Approved');
+  async approveRun(runId: string) {
+    const run = await this.updateRunStatus(runId, 'Approved');
+    apiAccessService.dispatch('payroll.run.approved', { run_id: runId }).catch(() => undefined);
+    return run;
   },
 
   /** Checker sends the run back with a reason. */
