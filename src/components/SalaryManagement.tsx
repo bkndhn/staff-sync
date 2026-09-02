@@ -15,6 +15,7 @@ import { salaryCategoryService, type PayrollCategory } from '../services/salaryC
 import { salaryOverrideService } from '../services/salaryOverrideService';
 import { advanceEntryService, AdvanceEntry } from '../services/advanceEntryService';
 import { computeStatutoryBreakdown } from '../utils/statutoryDeductions';
+import { settingsService } from '../services/settingsService';
 import { validateSalaryBatch, reconcileSalary, type SalaryIssue } from '../utils/salaryValidation';
 import { appSettingsService } from '../services/appSettingsService';
 import { payrollService } from '../services/payrollService';
@@ -79,6 +80,18 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
   const [approvedLeaves, setApprovedLeaves] = useState<LeaveRequest[]>([]);
   const [payrollRules, setPayrollRules] = useState<Record<string, string>>({});
   const [globalShiftWindows, setGlobalShiftWindows] = useState<any>(DEFAULT_SHIFT_WINDOWS);
+
+  const [tdsPolicyVersion, setTdsPolicyVersion] = useState(0);
+
+  // Load the client's TDS policy into the shared payroll runtime before any
+  // salary line is computed, then nudge a re-render so totals reflect it.
+  useEffect(() => {
+    let cancelled = false;
+    settingsService.primeTdsPolicy()
+      .then(() => { if (!cancelled) setTdsPolicyVersion(v => v + 1); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -492,7 +505,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         hra: resultDetail.hraEarned,
         incentive: resultDetail.incentiveEarned,
         gross: resultDetail.grossPayroll ?? resultDetail.grossSalary ?? 0,
-      });
+      }, { month: selectedMonth, year: selectedYear });
       const statutoryTotal = breakdown.reduce((s, b) => s + b.amount, 0);
       const netBase = resultDetail.netPayroll ?? resultDetail.netSalary ?? 0;
       if (statutoryTotal > 0) {
@@ -543,6 +556,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
     );
   };
 
+  void tdsPolicyVersion; // recomputed whenever the client's TDS policy loads/changes
   const salaryDetails = calculateSalaryDetails();
   const partTimeSalaries = calculatePartTimeSalaries();
   const salaryValidation = validateSalaryBatch(
