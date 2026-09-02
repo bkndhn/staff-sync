@@ -11,6 +11,8 @@ import AttendanceRulesPanel from './AttendanceRulesPanel';
 import DeviceIntegration from './DeviceIntegration';
 import PayrollOverridesPanel from './SalaryOverridesPanel';
 import PunctualityPolicyPanel from './PunctualityPolicyPanel';
+import TdsSettingsPanel from './TdsSettingsPanel';
+import ApiAccessPanel from './ApiAccessPanel';
 const SalaryOverridesPanel = PayrollOverridesPanel;
 import StatutoryPortalSettingsPanel from './StatutoryPortalSettingsPanel';
 import StatutoryCredentialsPanel from './StatutoryCredentialsPanel';
@@ -665,7 +667,27 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
               </div>
               <PunctualityPolicyPanel />
             </div>
+
+            {/* Income tax (TDS) policy — per client */}
+            <div className="glass-card-static p-4 rounded-xl space-y-3 mt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                  <Receipt size={20} className="text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)] text-sm">Income Tax (TDS)</h3>
+                  <p className="text-xs text-[var(--text-muted)]">Turn TDS deduction on or off for your organisation and choose slab-based or flat computation.</p>
+                </div>
+              </div>
+              <TdsSettingsPanel />
+            </div>
             </SettingsSection>
+
+            {userRole === 'admin' && (
+                <SettingsSection title="API & Webhooks" subtitle="Integrate payroll and compliance data with your own systems" icon={Plug}>
+                    <ApiAccessPanel />
+                </SettingsSection>
+            )}
 
 
             <div className="flex flex-col sm:flex-row gap-3">
