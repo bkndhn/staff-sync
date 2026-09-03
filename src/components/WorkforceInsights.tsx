@@ -470,7 +470,7 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
           hra: finalDetail.hraEarned,
           incentive: finalDetail.incentiveEarned,
           gross: finalDetail.grossSalary
-        });
+        }, { month, year });
         const statutoryTotal = breakdown.reduce((sum, b) => sum + b.amount, 0);
         const finalNetPayroll = Math.max(0, roundToNearest10(finalDetail.netPayroll - statutoryTotal));
         
@@ -552,7 +552,7 @@ const WorkforceInsights: React.FC<WorkforceInsightsProps> = ({
         hra: finalDetail.hraEarned,
         incentive: finalDetail.incentiveEarned,
         gross: finalDetail.grossPayroll
-      });
+      }, { month, year });
       const statutoryTotal = breakdown.reduce((acc, curr) => acc + curr.amount, 0);
       const finalNet = Math.max(0, roundToNearest10(finalDetail.netPayroll - statutoryTotal));
       
