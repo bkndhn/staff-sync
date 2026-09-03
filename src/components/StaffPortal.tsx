@@ -532,12 +532,14 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         };
       }
   
-      const breakdown = await import('../utils/statutoryDeductions').then(m => m.computeStatutoryBreakdown(staff, {
+      const statutoryMod = await import('../utils/statutoryDeductions');
+      await (await import('../services/settingsService')).settingsService.primeTdsPolicy().catch(() => undefined);
+      const breakdown = statutoryMod.computeStatutoryBreakdown(staff, {
         basic: result.basicEarned,
         hra: result.hraEarned,
         incentive: result.incentiveEarned,
         gross: result.grossPayroll
-      }));
+      }, { month: selectedMonth, year: selectedYear });
       const statutoryTotal = breakdown.reduce((s, b) => s + b.amount, 0);
       result.statutoryTotal = statutoryTotal;
       result.statutoryBreakdown = breakdown;
