@@ -1,5 +1,6 @@
 import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
+import { notificationAlertsService } from './notificationAlertsService';
 
 export interface PayrollDisbursement {
   id: string;
