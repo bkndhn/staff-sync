@@ -9,3 +9,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.webhook-dispatch]
 verify_jwt = false
+[functions.notifications]
+verify_jwt = false
