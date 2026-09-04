@@ -1,5 +1,6 @@
 import { dataApi } from '../lib/dataApi';
 import { supabase } from '../lib/supabase';
+import { notificationAlertsService } from './notificationAlertsService';
 
 export interface PayrollDisbursement {
   id: string;
@@ -74,6 +75,24 @@ export const salaryDisbursementService = {
       });
     } catch (err) {
       console.warn('Failed to send push notification', err);
+    }
+
+    return true;
+  },
+
+  /**
+   * Broadcast a salary-credit notification to every active staff member of the
+   * tenant. Called once after the admin finishes disbursing a payroll month;
+   * each notification is also stored so staff can see it later in their portal
+   * even when the push was missed.
+   */
+  async broadcastSalaryCredit(monthYear: string, message?: string): Promise<boolean> {
+    try {
+      await notificationAlertsService.broadcastSalaryCredit({ monthYear, message });
+      return true;
+    } catch (err) {
+      console.warn('Failed to broadcast salary credit notification', err);
+      return false;
     }
 
     return true;

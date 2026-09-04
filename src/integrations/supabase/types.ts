@@ -1452,6 +1452,112 @@ export type Database = {
           },
         ]
       }
+      notification_log: {
+        Row: {
+          action_url: string | null
+          app_user_id: string | null
+          audience: string
+          body: string | null
+          category: string
+          created_at: string
+          error: string | null
+          id: string
+          metadata: Json
+          push_count: number
+          staff_id: string | null
+          status: string
+          tenant_id: string | null
+          title: string
+        }
+        Insert: {
+          action_url?: string | null
+          app_user_id?: string | null
+          audience?: string
+          body?: string | null
+          category: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          metadata?: Json
+          push_count?: number
+          staff_id?: string | null
+          status?: string
+          tenant_id?: string | null
+          title: string
+        }
+        Update: {
+          action_url?: string | null
+          app_user_id?: string | null
+          audience?: string
+          body?: string | null
+          category?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          metadata?: Json
+          push_count?: number
+          staff_id?: string | null
+          status?: string
+          tenant_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          daily_attendance_enabled: boolean
+          daily_attendance_time: string
+          id: string
+          last_daily_sent_date: string | null
+          salary_credit_enabled: boolean
+          tenant_id: string
+          timezone: string
+          uninformed_leave_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          daily_attendance_enabled?: boolean
+          daily_attendance_time?: string
+          id?: string
+          last_daily_sent_date?: string | null
+          salary_credit_enabled?: boolean
+          tenant_id: string
+          timezone?: string
+          uninformed_leave_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          daily_attendance_enabled?: boolean
+          daily_attendance_time?: string
+          id?: string
+          last_daily_sent_date?: string | null
+          salary_credit_enabled?: boolean
+          tenant_id?: string
+          timezone?: string
+          uninformed_leave_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       old_staff_records: {
         Row: {
           address: string | null
@@ -2457,6 +2563,56 @@ export type Database = {
           },
           {
             foreignKeyName: "staff_grievances_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_notifications: {
+        Row: {
+          action_url: string | null
+          app_user_id: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string | null
+          staff_id: string | null
+          tab_id: string | null
+          tenant_id: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          action_url?: string | null
+          app_user_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          staff_id?: string | null
+          tab_id?: string | null
+          tenant_id?: string | null
+          title: string
+          type?: string
+        }
+        Update: {
+          action_url?: string | null
+          app_user_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          staff_id?: string | null
+          tab_id?: string | null
+          tenant_id?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_notifications_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"

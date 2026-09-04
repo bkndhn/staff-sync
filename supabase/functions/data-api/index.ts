@@ -114,6 +114,10 @@ const ACL: Record<string, TableAcl> = {
   api_keys:                     { read: ["admin","super_admin"], write: ["admin","super_admin"] },
   webhook_endpoints:            { read: ["admin","super_admin"], write: ["admin","super_admin"] },
   webhook_deliveries:           { read: ["admin","super_admin"], write: ["admin","super_admin"] },
+
+  // ── Notification alerts ───────────────────────────────────────────────
+  notification_preferences:     { read: ["admin","manager","super_admin"], write: ["admin","manager","super_admin"] },
+  notification_log:             { read: ["admin","manager","super_admin"], write: ["admin","super_admin"] },
 };
 
 

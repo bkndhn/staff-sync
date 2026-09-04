@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode, ChevronDown, Cpu, Globe, Layers, Receipt, Plug } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode, ChevronDown, Cpu, Globe, Layers, Receipt, Plug, Bell } from 'lucide-react';
 import { userService, AppUser, CreateUserInput, UpdateUserInput } from '../services/userService';
 import { locationService, Branch, type Location } from '../services/locationService';
 import { staffService } from '../services/staffService';
@@ -13,6 +13,7 @@ import PayrollOverridesPanel from './SalaryOverridesPanel';
 import PunctualityPolicyPanel from './PunctualityPolicyPanel';
 import TdsSettingsPanel from './TdsSettingsPanel';
 import ApiAccessPanel from './ApiAccessPanel';
+import NotificationSettingsPanel from './NotificationSettingsPanel';
 const SalaryOverridesPanel = PayrollOverridesPanel;
 import StatutoryPortalSettingsPanel from './StatutoryPortalSettingsPanel';
 import StatutoryCredentialsPanel from './StatutoryCredentialsPanel';
@@ -680,6 +681,20 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                 </div>
               </div>
               <TdsSettingsPanel />
+            </div>
+
+            {/* Notification alerts — per client */}
+            <div className="glass-card-static p-4 rounded-xl space-y-3 mt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <Bell size={20} className="text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)] text-sm">Push Notifications</h3>
+                  <p className="text-xs text-[var(--text-muted)]">Daily attendance summary time, uninformed absence alerts and salary credit broadcasts.</p>
+                </div>
+              </div>
+              <NotificationSettingsPanel />
             </div>
             </SettingsSection>
 
