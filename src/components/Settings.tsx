@@ -13,6 +13,7 @@ import PayrollOverridesPanel from './SalaryOverridesPanel';
 import PunctualityPolicyPanel from './PunctualityPolicyPanel';
 import TdsSettingsPanel from './TdsSettingsPanel';
 import ApiAccessPanel from './ApiAccessPanel';
+import NotificationSettingsPanel from './NotificationSettingsPanel';
 const SalaryOverridesPanel = PayrollOverridesPanel;
 import StatutoryPortalSettingsPanel from './StatutoryPortalSettingsPanel';
 import StatutoryCredentialsPanel from './StatutoryCredentialsPanel';
