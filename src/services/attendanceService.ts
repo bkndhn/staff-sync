@@ -153,7 +153,9 @@ export const attendanceService = {
         .select();
 
       if (error) throw error;
+      attendanceRecords.forEach(alertUninformed);
       return data.map((d: any) => this.mapFromDatabase(d));
+
     } catch (error) {
       console.error('[AttendanceService] Bulk remote upsert failed. Enqueuing locally:', error);
       const localResults: Attendance[] = [];
