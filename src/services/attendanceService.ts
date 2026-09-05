@@ -4,6 +4,19 @@ import { Attendance } from '../types';
 import type { DatabaseAttendance } from '../lib/supabase';
 import { isSunday } from '../utils/salaryCalculations';
 import { offlineSyncService } from './offlineSyncService';
+import { notificationAlertsService } from './notificationAlertsService';
+
+/** Fire-and-forget alert to admins when a staff member is marked uninformed absent */
+const alertUninformed = (rec: Partial<Attendance>) => {
+  if (!rec?.isUninformed || !rec.date) return;
+  void notificationAlertsService.notifyUninformedLeave({
+    staffName: rec.staffName,
+    location: rec.location,
+    floor: rec.floor,
+    date: rec.date,
+  });
+};
+
 
 export const attendanceService = {
   async getAll(): Promise<Attendance[]> {
