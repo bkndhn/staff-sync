@@ -227,11 +227,13 @@ Deno.serve(async (req) => {
 
     if (action === "run_scheduler") {
       const secret = req.headers.get("x-cron-secret");
-      if (!secret || secret !== Deno.env.get("NOTIFY_CRON_SECRET")) {
+      const allowed = [Deno.env.get("NOTIFY_SCHEDULER_KEY"), Deno.env.get("NOTIFY_CRON_SECRET")].filter(Boolean);
+      if (!secret || !allowed.includes(secret)) {
         return json({ error: "Unauthorized" }, 401);
       }
       return json({ success: true, results: await runScheduler() });
     }
+
 
     const caller = await getCaller(req);
     if (!caller?.is_active || !["admin", "manager", "supervisor", "floor_supervisor"].includes(caller.role)) {

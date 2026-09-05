@@ -4,6 +4,19 @@ import { Attendance } from '../types';
 import type { DatabaseAttendance } from '../lib/supabase';
 import { isSunday } from '../utils/salaryCalculations';
 import { offlineSyncService } from './offlineSyncService';
+import { notificationAlertsService } from './notificationAlertsService';
+
+/** Fire-and-forget alert to admins when a staff member is marked uninformed absent */
+const alertUninformed = (rec: Partial<Attendance>) => {
+  if (!rec?.isUninformed || !rec.date) return;
+  void notificationAlertsService.notifyUninformedLeave({
+    staffName: rec.staffName,
+    location: rec.location,
+    floor: rec.floor,
+    date: rec.date,
+  });
+};
+
 
 export const attendanceService = {
   async getAll(): Promise<Attendance[]> {
@@ -80,7 +93,9 @@ export const attendanceService = {
         });
       }, 1000);
 
+      alertUninformed(attendance);
       return this.mapFromDatabase(data as any);
+
     } catch (error) {
       console.error('[AttendanceService] Remote upsert failed. Enqueuing locally as fallback:', error);
       const queued = await offlineSyncService.enqueuePunch(attendance);
@@ -138,7 +153,9 @@ export const attendanceService = {
         .select();
 
       if (error) throw error;
+      attendanceRecords.forEach(alertUninformed);
       return data.map((d: any) => this.mapFromDatabase(d));
+
     } catch (error) {
       console.error('[AttendanceService] Bulk remote upsert failed. Enqueuing locally:', error);
       const localResults: Attendance[] = [];
