@@ -93,7 +93,9 @@ export const attendanceService = {
         });
       }, 1000);
 
+      alertUninformed(attendance);
       return this.mapFromDatabase(data as any);
+
     } catch (error) {
       console.error('[AttendanceService] Remote upsert failed. Enqueuing locally as fallback:', error);
       const queued = await offlineSyncService.enqueuePunch(attendance);
