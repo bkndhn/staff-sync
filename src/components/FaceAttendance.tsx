@@ -317,12 +317,12 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     setCameraOn(false);
   }, []);
 
-  // Auto-start camera as soon as models + embeddings are ready
+  // Auto-start camera as soon as models are ready (always-on like Aadhaar app)
   useEffect(() => {
-    if (ready && !loadingEmbeddings && scopedEmbeddings.length > 0 && !cameraOn && !cameraError) {
+    if (ready && !loadingEmbeddings && !cameraOn && !cameraError) {
       startCamera();
     }
-  }, [ready, loadingEmbeddings, scopedEmbeddings.length, cameraOn, cameraError, startCamera]);
+  }, [ready, loadingEmbeddings, cameraOn, cameraError, startCamera]);
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
@@ -632,21 +632,37 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           {viewMode === 'camera' ? (
             <>
               <video ref={videoRef} onTouchEnd={isMobile ? onVideoDoubleTap : undefined} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
-              {/* Premium scanning overlay — face guide + scan line */}
+              {/* Aadhaar-style circular face guide — always visible when camera is on */}
               {cameraOn && (
-                <div className="absolute inset-0 z-10 pointer-events-none">
-                  {/* Face oval guide */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-44 h-56 md:w-56 md:h-72 border-2 border-dashed border-white/20 rounded-[50%] animate-pulse" />
+                <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
+                  {/* Darkened edges — focus attention to center circle */}
+                  <div className="absolute inset-0 bg-black/30" style={{
+                    maskImage: 'radial-gradient(ellipse 140px 170px at center, transparent 95%, black 100%)',
+                    WebkitMaskImage: 'radial-gradient(ellipse 140px 170px at center, transparent 95%, black 100%)',
+                  }} />
+                  {/* Main circle guide */}
+                  <div className="relative">
+                    <div className={`w-[220px] h-[270px] md:w-[280px] md:h-[340px] rounded-[50%] border-[3px] transition-colors duration-300 ${
+                      lastMatch?.status === 'ok' ? 'border-emerald-400 shadow-[0_0_30px_rgba(52,211,153,0.4)]' :
+                      lastMatch?.status === 'matching' || lastMatch?.status === 'live-check' ? 'border-indigo-400 shadow-[0_0_30px_rgba(129,140,248,0.4)]' :
+                      lastMatch?.status === 'blink-please' ? 'border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.4)]' :
+                      lastMatch?.status === 'spoof' || lastMatch?.status === 'wrong-loc' ? 'border-red-400 shadow-[0_0_30px_rgba(248,113,113,0.4)]' :
+                      'border-white/40'
+                    }`} />
+                    {/* Scanning arc animation */}
+                    <div className="absolute inset-0 rounded-[50%] border-[3px] border-transparent border-t-indigo-400/80 animate-spin" style={{ animationDuration: '2s' }} />
                   </div>
-                  {/* Corner brackets */}
-                  <div className="absolute top-[15%] left-[20%] w-8 h-8 border-t-2 border-l-2 border-indigo-400/60 rounded-tl-lg" />
-                  <div className="absolute top-[15%] right-[20%] w-8 h-8 border-t-2 border-r-2 border-indigo-400/60 rounded-tr-lg" />
-                  <div className="absolute bottom-[15%] left-[20%] w-8 h-8 border-b-2 border-l-2 border-indigo-400/60 rounded-bl-lg" />
-                  <div className="absolute bottom-[15%] right-[20%] w-8 h-8 border-b-2 border-r-2 border-indigo-400/60 rounded-br-lg" />
-                  {/* Animated scan line */}
-                  <div className="absolute left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-transparent via-indigo-400/80 to-transparent animate-[scan_2.5s_ease-in-out_infinite]" 
-                    style={{ animation: 'scan 2.5s ease-in-out infinite' }} />
+                  {/* Status text below circle */}
+                  <div className="absolute bottom-[12%] md:bottom-[15%] left-0 right-0 text-center">
+                    <p className="text-xs md:text-sm font-medium text-white/80 bg-black/40 backdrop-blur-sm inline-block px-4 py-1.5 rounded-full">
+                      {lastMatch?.status === 'ok' ? '✓ Verified' :
+                       lastMatch?.status === 'matching' ? 'Verifying...' :
+                       lastMatch?.status === 'blink-please' ? 'Please blink' :
+                       lastMatch?.status === 'spoof' ? 'Spoof detected' :
+                       scopedEmbeddings.length === 0 ? 'No staff enrolled — enroll faces first' :
+                       'Position your face in the circle'}
+                    </p>
+                  </div>
                 </div>
               )}
               {!cameraOn && (
@@ -724,9 +740,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           )}
         </div>
 
-        {/* Floating Controls Overlay */}
+        {/* Floating Controls Overlay — desktop only (mobile has its own CTA) */}
         {viewMode === 'camera' && (
-          <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end gap-2">
+          <div className="absolute bottom-4 right-4 z-30 hidden md:flex flex-col items-end gap-2">
             {error && (
               <div className="p-3 rounded-xl bg-red-500/90 backdrop-blur border border-red-400/50 text-white text-sm flex items-center gap-2 shadow-xl max-w-sm">
                 <AlertTriangle size={16} />
@@ -785,7 +801,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
               {!cameraOn ? (
                 <button
                   onClick={startCamera}
-                  disabled={!ready || scopedEmbeddings.length === 0}
+                  disabled={!ready}
                   className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold flex items-center gap-2 shadow-xl"
                 >
                   <Camera size={16} /> Start Camera
@@ -807,7 +823,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             {!cameraOn ? (
               <button
                 onClick={() => { haptics.tap(); startCamera(); }}
-                disabled={!ready || scopedEmbeddings.length === 0}
+                disabled={!ready}
                 className="px-6 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold flex items-center gap-2 shadow-2xl text-sm"
               >
                 <Camera size={16} /> Start Camera
