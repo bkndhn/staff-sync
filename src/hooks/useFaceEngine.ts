@@ -35,6 +35,11 @@ const ensureModelsLoaded = async (): Promise<void> => {
 
   if (!modelsLoadingPromise) {
     modelsLoadingPromise = (async () => {
+      try {
+        await faceapi.tf.setBackend('webgl');
+        await faceapi.tf.ready();
+      } catch { /* ignore and fallback to whatever */ }
+      
       await Promise.all([
         // TinyFaceDetector — significantly lighter and won't crash mobile WebGL, optimized with high inputSize
         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -102,31 +107,10 @@ export const useFaceEngine = (autoLoad = true) => {
     const endDetect = perfStart('face.detect');
     const dev = getDeviceProfile();
 
-    // Downscale the input frame on low-end/mobile — dramatically faster with negligible
-    // accuracy loss at kiosk range. Skip when input is already small enough.
+    // The face-api.js library automatically resizes the input to match `options.inputSize`.
+    // Manual 2D canvas drawImage here actually adds CPU overhead and slows down mobile devices.
     let source: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement = input;
     let scale = 1;
-    try {
-      const srcW = (input as HTMLVideoElement).videoWidth
-        || (input as HTMLImageElement).naturalWidth
-        || (input as HTMLCanvasElement).width
-        || 0;
-      const srcH = (input as HTMLVideoElement).videoHeight
-        || (input as HTMLImageElement).naturalHeight
-        || (input as HTMLCanvasElement).height
-        || 0;
-      if (srcW > dev.detectionMaxWidth && srcW > 0 && srcH > 0) {
-        scale = dev.detectionMaxWidth / srcW;
-        const c = document.createElement('canvas');
-        c.width = Math.round(srcW * scale);
-        c.height = Math.round(srcH * scale);
-        const ctx = c.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(input as any, 0, 0, c.width, c.height);
-          source = c;
-        }
-      }
-    } catch { /* fall back to original */ }
 
     const options = new faceapi.TinyFaceDetectorOptions({
       inputSize: dev.detectorInputSize,

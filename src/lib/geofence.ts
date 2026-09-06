@@ -6,6 +6,9 @@
  * kiosk, future native app) enforces exactly the same rules.
  */
 
+import { Geolocation } from '@capacitor/geolocation';
+import { Capacitor } from '@capacitor/core';
+
 export interface GeoPoint {
   latitude: number;
   longitude: number;
@@ -45,6 +48,23 @@ export function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2:
  * Returns null when permission is usable, or a failure result to show the user.
  */
 export async function ensureLocationPermission(): Promise<GeofenceResult | null> {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      let status = await Geolocation.checkPermissions();
+      if (status.location !== 'granted') {
+        status = await Geolocation.requestPermissions();
+        if (status.location !== 'granted') {
+          return {
+            ok: false,
+            title: 'Location Permission Denied',
+            subtitle: 'Enable location access in your device settings to punch attendance.',
+          };
+        }
+      }
+    } catch { /* proceed to fallback */ }
+    return null;
+  }
+
   if (!('geolocation' in navigator)) {
     return {
       ok: false,
@@ -71,7 +91,29 @@ export async function ensureLocationPermission(): Promise<GeofenceResult | null>
 /** Acquire a fresh, non-cached GPS fix. Never reuses a cached position. */
 export function acquirePosition(timeout = 10000): Promise<{ pos: GeolocationPosition; timeToFix: number }> {
   const started = Date.now();
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout, maximumAge: 0 });
+        const result = {
+          coords: {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            altitude: pos.coords.altitude,
+            altitudeAccuracy: pos.coords.altitudeAccuracy,
+            heading: pos.coords.heading,
+            speed: pos.coords.speed,
+          },
+          timestamp: pos.timestamp,
+        } as unknown as GeolocationPosition;
+        resolve({ pos: result, timeToFix: Date.now() - started });
+      } catch (err: any) {
+        reject(new Error(err.message || 'Unable to read GPS location.'));
+      }
+      return;
+    }
+
     if (!('geolocation' in navigator)) {
       reject(new Error('Location services are not available on this device.'));
       return;

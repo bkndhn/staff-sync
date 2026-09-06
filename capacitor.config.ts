@@ -9,9 +9,9 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
   },
   server: {
-    // During development, point to local dev server (remove for production APK)
-    // url: 'http://192.168.1.x:8080',
-    // cleartext: true,
+    // Live Reload Config (Development Only)
+    url: 'http://192.168.1.7:8080',
+    cleartext: true,
     androidScheme: 'https',
   },
   plugins: {
