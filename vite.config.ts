@@ -5,8 +5,8 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  // CRITICAL for Capacitor: assets must load from relative paths inside APK
-  base: './',
+  // Use root base path for Vercel web hosting to fix blank page errors.
+  base: '/',
   server: {
     host: "::",
     port: 8080,
