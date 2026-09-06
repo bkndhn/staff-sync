@@ -961,7 +961,9 @@ export type Database = {
           id: string
           image_path: string | null
           is_approved: boolean
+          model_version: string
           notes: string | null
+          quality_metrics: Json
           quality_score: number | null
           staff_id: string
           staff_name: string | null
@@ -977,7 +979,9 @@ export type Database = {
           id?: string
           image_path?: string | null
           is_approved?: boolean
+          model_version?: string
           notes?: string | null
+          quality_metrics?: Json
           quality_score?: number | null
           staff_id: string
           staff_name?: string | null
@@ -993,7 +997,9 @@ export type Database = {
           id?: string
           image_path?: string | null
           is_approved?: boolean
+          model_version?: string
           notes?: string | null
+          quality_metrics?: Json
           quality_score?: number | null
           staff_id?: string
           staff_name?: string | null
@@ -2613,6 +2619,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "staff_notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statutory_policies: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          esi: Json
+          id: string
+          lwf: Json
+          notes: string | null
+          pf: Json
+          pt: Json
+          tds: Json
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          esi?: Json
+          id?: string
+          lwf?: Json
+          notes?: string | null
+          pf?: Json
+          pt?: Json
+          tds?: Json
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          esi?: Json
+          id?: string
+          lwf?: Json
+          notes?: string | null
+          pf?: Json
+          pt?: Json
+          tds?: Json
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statutory_policies_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
