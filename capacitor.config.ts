@@ -9,10 +9,9 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
   },
   server: {
-    // Live Reload Config (Development Only)
-    url: 'http://192.168.1.7:8080',
+    // Points to the live production deployment
+    url: 'https://staff-managment-system.vercel.app',
     cleartext: true,
-    androidScheme: 'https',
   },
   plugins: {
     Camera: {
