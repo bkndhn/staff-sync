@@ -546,27 +546,28 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
   return (
     <div className={`flex flex-col lg:flex-row gap-3 md:gap-4 w-full min-h-[calc(100vh-80px)] py-2 md:py-4 max-w-[1920px] mx-auto px-2 md:px-0 ${isMobile ? 'face-mobile-shell' : ''}`}>
-      {isMobile && viewMode === 'camera' && (
-        <div className="face-mobile-tabs">
-          <button data-active={mobileTab === 'camera'} onClick={() => setMobileTab('camera')}>
-            <Camera size={14} /> Live
-          </button>
-          <button data-active={mobileTab === 'recent'} onClick={() => setMobileTab('recent')}>
-            <Activity size={14} /> Recent
-          </button>
-          {userRole === 'admin' && (
-            <button data-active={mobileTab === 'admin'} onClick={() => setMobileTab('admin')}>
-              <ShieldCheck size={14} /> Admin
-            </button>
-          )}
-        </div>
-      )}
 
       <PerfOverlay />
       {/* ── Left Side: Full Height Camera Feed ── */}
       <div className="face-camera-panel flex-1 h-[65vh] min-h-[300px] md:h-auto md:min-h-[600px] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
-        {/* HUD Overlay — responsive: compact on mobile, full on desktop */}
-        <div className="absolute top-0 left-0 right-0 z-30 p-3 md:p-6 bg-gradient-to-b from-black/80 via-black/40 to-transparent flex items-start justify-between gap-2 md:gap-3 flex-wrap pointer-events-none">
+        {/* Mobile tabs — inside camera panel so position:absolute works */}
+        {isMobile && viewMode === 'camera' && (
+          <div className="face-mobile-tabs">
+            <button data-active={mobileTab === 'camera'} onClick={() => setMobileTab('camera')}>
+              <Camera size={14} /> Live
+            </button>
+            <button data-active={mobileTab === 'recent'} onClick={() => setMobileTab('recent')}>
+              <Activity size={14} /> Recent
+            </button>
+            {userRole === 'admin' && (
+              <button data-active={mobileTab === 'admin'} onClick={() => setMobileTab('admin')}>
+                <ShieldCheck size={14} /> Admin
+              </button>
+            )}
+          </div>
+        )}
+        {/* HUD Overlay — hidden on mobile (tabs serve the purpose), shown on desktop */}
+        <div className="absolute top-0 left-0 right-0 z-30 p-3 md:p-6 bg-gradient-to-b from-black/80 via-black/40 to-transparent flex items-start justify-between gap-2 md:gap-3 flex-wrap pointer-events-none hidden md:flex">
           <div className="min-w-0">
             {viewMode === 'camera' && (
               <>
@@ -800,38 +801,37 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             </div>
           </div>
         )}
+        {/* Mobile sticky CTA — inside camera panel for proper positioning */}
+        {isMobile && viewMode === 'camera' && (
+          <div className="face-mobile-cta">
+            {!cameraOn ? (
+              <button
+                onClick={() => { haptics.tap(); startCamera(); }}
+                disabled={!ready || scopedEmbeddings.length === 0}
+                className="px-6 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold flex items-center gap-2 shadow-2xl text-sm"
+              >
+                <Camera size={16} /> Start Camera
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => { haptics.tap(); flipCamera(); }}
+                  className="px-4 py-3 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white font-semibold flex items-center gap-2 shadow-2xl text-sm"
+                  aria-label="Flip camera"
+                >
+                  <RefreshCw size={16} />
+                </button>
+                <button
+                  onClick={() => { haptics.tap(); stopCamera(); }}
+                  className="px-6 py-3 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white font-semibold flex items-center gap-2 shadow-2xl text-sm"
+                >
+                  <XCircle size={16} /> Stop
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
-
-      {/* Mobile sticky CTA — thumb-reachable primary action */}
-      {isMobile && viewMode === 'camera' && (
-        <div className="face-mobile-cta">
-          {!cameraOn ? (
-            <button
-              onClick={() => { haptics.tap(); startCamera(); }}
-              disabled={!ready || scopedEmbeddings.length === 0}
-              className="px-6 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold flex items-center gap-2 shadow-2xl text-sm"
-            >
-              <Camera size={16} /> Start Camera
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={() => { haptics.tap(); flipCamera(); }}
-                className="px-4 py-3 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white font-semibold flex items-center gap-2 shadow-2xl text-sm"
-                aria-label="Flip camera"
-              >
-                <RefreshCw size={16} />
-              </button>
-              <button
-                onClick={() => { haptics.tap(); stopCamera(); }}
-                className="px-6 py-3 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white font-semibold flex items-center gap-2 shadow-2xl text-sm"
-              >
-                <XCircle size={16} /> Stop
-              </button>
-            </>
-          )}
-        </div>
-      )}
 
       {/* ── Right Side: Logs & Overrides Sidebar (desktop) / Bottom Sheet (mobile) ── */}
       <div

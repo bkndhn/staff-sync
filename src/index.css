@@ -2538,21 +2538,22 @@ body.light-theme button[class*="text-emerald"] svg {
 
 @media (max-width: 767px) {
   .face-mobile-shell {
-    position: fixed;
-    inset: 0;
-    z-index: 40;
+    /* Flow within normal page layout — NOT position:fixed */
+    /* Navigation top bar (~56px) and bottom nav (~72px) are handled by App.tsx padding */
+    position: relative;
     display: flex;
     flex-direction: column;
-    min-height: 100dvh;
-    max-height: 100dvh;
+    min-height: calc(100vh - 130px);
     padding: 0 !important;
-    margin: 0 !important;
+    margin: -8px -8px 0 !important; /* bleed to edges */
     background: #000;
     overflow: hidden;
+    border-radius: 0 !important;
   }
   .face-mobile-shell .face-camera-panel {
     flex: 1 1 auto;
     min-height: 0 !important;
+    height: auto !important;
     border-radius: 0 !important;
     border: 0 !important;
   }
@@ -2566,11 +2567,11 @@ body.light-theme button[class*="text-emerald"] svg {
 
   /* Bottom sheet — collapsible native <details> */
   .face-mobile-sheet {
-    position: fixed;
+    position: sticky;
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 55;
+    z-index: 35;
     background: linear-gradient(180deg, rgba(11,18,32,0.92) 0%, rgba(11,18,32,0.98) 100%);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
@@ -2613,13 +2614,13 @@ body.light-theme button[class*="text-emerald"] svg {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Sticky primary CTA above the sheet */
+  /* Sticky primary CTA — positioned inside the camera panel flow */
   .face-mobile-cta {
-    position: fixed;
+    position: absolute;
     left: 12px;
     right: 12px;
-    bottom: calc(72px + env(safe-area-inset-bottom, 0));
-    z-index: 60;
+    bottom: 16px;
+    z-index: 30;
     display: flex;
     gap: 8px;
     justify-content: center;
@@ -2627,13 +2628,13 @@ body.light-theme button[class*="text-emerald"] svg {
   }
   .face-mobile-cta > * { pointer-events: auto; }
 
-  /* Segmented tab strip (swipeable snap scroll) */
+  /* Segmented tab strip — inside camera panel, not fixed to viewport */
   .face-mobile-tabs {
-    position: fixed;
-    top: calc(env(safe-area-inset-top, 0) + 8px);
+    position: absolute;
+    top: 8px;
     left: 12px;
     right: 12px;
-    z-index: 45;
+    z-index: 35;
     display: flex;
     gap: 4px;
     padding: 4px;
@@ -2671,17 +2672,16 @@ body.light-theme button[class*="text-emerald"] svg {
 
   /* Push status HUD below the tab strip */
   .face-mobile-shell .face-camera-hud {
-    top: calc(env(safe-area-inset-top, 0) + 64px) !important;
+    top: 56px !important;
   }
 }
 
 @media (max-width: 767px) {
   .face-mobile-sheet-wrap {
-    position: fixed;
+    position: relative;
     left: 0;
     right: 0;
-    bottom: 0;
-    z-index: 55;
+    z-index: 35;
     background: linear-gradient(180deg, rgba(11,18,32,0.94) 0%, rgba(11,18,32,0.99) 100%);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
