@@ -130,7 +130,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gradient-to-r from-sky-400/10 to-blue-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
 
       <div className="max-w-md w-full relative z-10 space-y-4">
-        <div className="glass-card-static p-8 md:p-10">
+        <div className="glass-card-static p-5 md:p-10">
           {/* Header */}
           <div className="text-center mb-6">
             <div className="w-20 h-20 mx-auto mb-6 relative">

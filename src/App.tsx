@@ -1667,7 +1667,7 @@ function App() {
 
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overflow-x-hidden">
       <Navigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -1679,9 +1679,9 @@ function App() {
         onStatutoryScopeChange={setStatutoryScope}
       />
       <main
-        className="w-full md:w-[calc(100%-var(--sidebar-w,232px))] md:ml-[var(--sidebar-w,232px)] px-2 sm:px-4 lg:px-6 flex-1 pb-24 md:pb-8 md:pt-20 transition-all duration-200 box-border min-w-0 max-w-full"
+        className="w-full md:w-[calc(100%-var(--sidebar-w,232px))] md:ml-[var(--sidebar-w,232px)] px-2 sm:px-4 lg:px-6 flex-1 pb-24 md:pb-8 md:pt-20 transition-all duration-200 box-border min-w-0 max-w-full overflow-x-hidden"
       >
-        <div className="w-full max-w-full mx-auto min-w-0">
+        <div className="w-full max-w-full mx-auto min-w-0 overflow-x-hidden">
           <TenantStatusBanner tenant={user.tenant} role={user.role} className="mb-4" />
 
           <ErrorBoundary moduleName={activeTab}>

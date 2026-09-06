@@ -305,7 +305,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         </p>
 
         {/* Camera preview */}
-        <div className="relative w-full h-[40vh] min-h-[300px] md:h-[60vh] lg:h-[70vh] max-h-[600px] bg-black rounded-2xl overflow-hidden border border-[var(--glass-border)] shadow-2xl">
+        <div className="relative w-full h-[35vh] min-h-[220px] md:h-[60vh] lg:h-[70vh] max-h-[600px] bg-black rounded-2xl overflow-hidden border border-[var(--glass-border)] shadow-2xl">
           <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
           <canvas ref={canvasRef} className="hidden" />
           {!cameraOn && (

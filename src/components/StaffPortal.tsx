@@ -713,7 +713,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   const isWideTab = activeSection === 'attendance' || activeSection === 'yearly';
 
   return (
-    <div className={`p-2 md:p-6 pb-24 md:pb-6 space-y-4 ${isWideTab ? 'w-full' : 'max-w-4xl mx-auto'}`}>
+    <div className={`p-2 md:p-6 pb-4 md:pb-6 space-y-4 overflow-x-hidden ${isWideTab ? 'w-full' : 'max-w-4xl mx-auto'}`}>
       <div className="flex items-center justify-between mb-2">
         <TenantStatusBanner tenant={(staff as any).tenant} role="staff" />
         <NotificationPanel
@@ -761,7 +761,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                 }`}
               >
                 <s.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-                <span className="text-[9px] font-semibold leading-tight text-center whitespace-nowrap">{s.label}</span>
+                <span className="text-[10px] font-semibold leading-tight text-center whitespace-nowrap">{s.label}</span>
               </button>
             );
           })}
@@ -800,41 +800,43 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         <div className="space-y-4">
           {/* Profile Card */}
           <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-6 rounded-2xl shadow-[var(--shadow-soft)]">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-indigo-500/25">
-                {staff.name.charAt(0)}
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-[var(--text-primary)]">{staff.name}</h2>
-                <p className="text-sm text-[var(--text-muted)]">
-                  {staff.employeeCode && (
-                    <span className="font-mono text-indigo-400 mr-2">#{staff.employeeCode}</span>
-                  )}
-                  {staff.type === 'full-time' ? 'Full-Time' : 'Flex'} Staff
-                </p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl sm:text-2xl font-bold shadow-lg shadow-indigo-500/25 flex-shrink-0">
+                  {staff.name.charAt(0)}
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">{staff.name}</h2>
+                  <p className="text-xs sm:text-sm text-[var(--text-muted)]">
+                    {staff.employeeCode && (
+                      <span className="font-mono text-indigo-400 mr-2">#{staff.employeeCode}</span>
+                    )}
+                    {staff.type === 'full-time' ? 'Full-Time' : 'Flex'} Staff
+                  </p>
+                </div>
               </div>
               {!isLeftStaff && (
-                <div className="ml-auto flex items-center gap-2">
+                <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
                   <button
                     onClick={() => setShowProfileEdit(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 transition-colors"
                   >
                     <Edit3 size={14} />
-                    Edit Profile
+                    Edit
                   </button>
                   {/* Push Notifications Enable */}
                   {pushSupported && pushStatus !== 'granted' && pushStatus !== 'denied' && (
                     <button
                       onClick={handleSubscribePush}
-                      className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-500/30 transition-colors"
+                      className="flex items-center gap-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-500/30 transition-colors"
                     >
                       <AlertTriangle size={14} />
-                      Enable Alerts
+                      Alerts
                     </button>
                   )}
                   <button
                     onClick={() => setShowQRScanner(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
                   >
                     <QrCode size={14} />
                     Scan QR
