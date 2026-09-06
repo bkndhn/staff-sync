@@ -564,66 +564,63 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
 
       <PerfOverlay />
       {/* ── Left Side: Full Height Camera Feed ── */}
-      <div className="face-camera-panel flex-1 h-[55vh] min-h-[350px] md:h-auto md:min-h-[600px] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
-        {/* HUD Overlay */}
-        <div className="absolute top-0 left-0 right-0 z-30 p-4 md:p-6 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between gap-3 flex-wrap pointer-events-none">
-          <div>
+      <div className="face-camera-panel flex-1 h-[65vh] min-h-[300px] md:h-auto md:min-h-[600px] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
+        {/* HUD Overlay — responsive: compact on mobile, full on desktop */}
+        <div className="absolute top-0 left-0 right-0 z-30 p-3 md:p-6 bg-gradient-to-b from-black/80 via-black/40 to-transparent flex items-start justify-between gap-2 md:gap-3 flex-wrap pointer-events-none">
+          <div className="min-w-0">
             {viewMode === 'camera' && (
               <>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2 pointer-events-auto">
-                  <ScanFace size={22} className="text-indigo-400" /> Face Attendance · Long-Range Kiosk
+                <h2 className="text-sm md:text-xl font-bold text-white flex items-center gap-2 pointer-events-auto">
+                  <ScanFace size={18} className="text-indigo-400 flex-shrink-0" />
+                  <span className="truncate">Face Punch</span>
+                  <span className="hidden md:inline truncate"> · Long-Range Kiosk</span>
                 </h2>
-                <p className="text-xs text-white/70 mt-1 max-w-md">
-                  Stand up to 10m away. Always-on recognition with liveness check. First match = IN, then auto-toggles IN↔OUT every {TOGGLE_MIN_SECONDS/60} min.
+                <p className="hidden md:block text-xs text-white/70 mt-1 max-w-md">
+                  Stand up to 10m away. Always-on recognition with liveness check.
                 </p>
               </>
             )}
           </div>
-          <div className="flex flex-wrap gap-2 pointer-events-auto">
-            {/* Massive Toggle Buttons for Admin to switch between Face/QR easily */}
-            <div className="bg-black/40 backdrop-blur-md rounded-2xl border border-white/20 p-1.5 flex shadow-2xl gap-1">
+          <div className="flex flex-wrap gap-1.5 md:gap-2 pointer-events-auto items-center">
+            {/* Toggle: Face / QR */}
+            <div className="bg-black/40 backdrop-blur-md rounded-xl md:rounded-2xl border border-white/20 p-1 flex shadow-2xl gap-0.5 md:gap-1">
               <button
                 onClick={() => setViewMode('camera')}
-                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${
-                  viewMode === 'camera' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] scale-105 z-10' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
+                className={`px-3 md:px-6 py-2 md:py-3 rounded-lg md:rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 md:gap-2 transition-all ${
+                  viewMode === 'camera' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
                 }`}
               >
-                <Camera size={18} /> Face Scanner
+                <Camera size={14} /> <span className="hidden sm:inline">Face</span>
               </button>
               <button
                 onClick={() => { setViewMode('qr'); stopCamera(); }}
-                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${
-                  viewMode === 'qr' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)] scale-105 z-10' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
+                className={`px-3 md:px-6 py-2 md:py-3 rounded-lg md:rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 md:gap-2 transition-all ${
+                  viewMode === 'qr' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
                 }`}
               >
-                <QrCode size={18} /> Show QR to Staff
+                <QrCode size={14} /> <span className="hidden sm:inline">QR</span>
               </button>
             </div>
             
             {userRole === 'admin' && (
-              <div className="bg-black/40 backdrop-blur-md rounded-2xl border border-white/20 p-1.5 flex shadow-2xl items-center px-4">
-                <select
-                  value={selectedLocation}
-                  onChange={e => setSelectedLocation(e.target.value)}
-                  className="bg-[var(--bg-card)] text-[var(--text-primary)] border border-[var(--glass-border)] font-bold outline-none text-sm cursor-pointer px-3 py-1.5 rounded-xl appearance-none"
-                >
-                  {availableLocations.map(loc => (
-                    <option key={loc} value={loc}>{loc}</option>
-                  ))}
-                  {availableLocations.length === 0 && <option value="Main Branch">Main Branch</option>}
-                </select>
-              </div>
+              <select
+                value={selectedLocation}
+                onChange={e => setSelectedLocation(e.target.value)}
+                className="bg-black/40 backdrop-blur-md text-white border border-white/20 font-bold outline-none text-xs md:text-sm cursor-pointer px-2 md:px-3 py-2 md:py-2.5 rounded-xl appearance-none max-w-[120px] md:max-w-none"
+              >
+                {availableLocations.map(loc => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
+                {availableLocations.length === 0 && <option value="Main Branch">Main Branch</option>}
+              </select>
             )}
 
-            <div className="hidden xl:flex items-center gap-2 ml-4">
+            <div className="hidden xl:flex items-center gap-2 ml-2">
               <span className="text-xs px-3 py-1.5 rounded-full bg-black/50 border border-white/20 text-white">
                 {enrolledCount}/{totalActive} enrolled
               </span>
               <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center gap-1">
-                <Activity size={12} /> Liveness v2
-              </span>
-              <span className="text-xs px-3 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 flex items-center gap-1">
-                <Zap size={12} /> Cosine match
+                <Zap size={12} /> MediaPipe AI
               </span>
             </div>
           </div>
@@ -634,6 +631,23 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           {viewMode === 'camera' ? (
             <>
               <video ref={videoRef} onTouchEnd={isMobile ? onVideoDoubleTap : undefined} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
+              {/* Premium scanning overlay — face guide + scan line */}
+              {cameraOn && (
+                <div className="absolute inset-0 z-10 pointer-events-none">
+                  {/* Face oval guide */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-44 h-56 md:w-56 md:h-72 border-2 border-dashed border-white/20 rounded-[50%] animate-pulse" />
+                  </div>
+                  {/* Corner brackets */}
+                  <div className="absolute top-[15%] left-[20%] w-8 h-8 border-t-2 border-l-2 border-indigo-400/60 rounded-tl-lg" />
+                  <div className="absolute top-[15%] right-[20%] w-8 h-8 border-t-2 border-r-2 border-indigo-400/60 rounded-tr-lg" />
+                  <div className="absolute bottom-[15%] left-[20%] w-8 h-8 border-b-2 border-l-2 border-indigo-400/60 rounded-bl-lg" />
+                  <div className="absolute bottom-[15%] right-[20%] w-8 h-8 border-b-2 border-r-2 border-indigo-400/60 rounded-br-lg" />
+                  {/* Animated scan line */}
+                  <div className="absolute left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-transparent via-indigo-400/80 to-transparent animate-[scan_2.5s_ease-in-out_infinite]" 
+                    style={{ animation: 'scan 2.5s ease-in-out infinite' }} />
+                </div>
+              )}
               {!cameraOn && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] text-sm z-10 bg-black/80 p-4 text-center">
                   {cameraError ? (
@@ -688,11 +702,16 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                 </div>
               )}
               {cameraOn && lastMatch && (
-                <div className="absolute bottom-8 left-0 right-0 flex justify-center z-20 pointer-events-none">
-                  <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-black/60 backdrop-blur border border-white/10 shadow-2xl scale-125">
+                <div className="absolute bottom-6 md:bottom-8 left-2 right-2 md:left-0 md:right-0 flex justify-center z-20 pointer-events-none animate-in fade-in slide-in-from-bottom-4 duration-300">
+                  <div className={`flex items-center gap-2 md:gap-3 px-4 md:px-5 py-2.5 md:py-3 rounded-2xl backdrop-blur-xl border shadow-2xl max-w-[95vw] md:max-w-md ${
+                    lastMatch.status === 'ok' ? 'bg-emerald-950/80 border-emerald-500/40 shadow-emerald-500/20' :
+                    lastMatch.status === 'matching' || lastMatch.status === 'live-check' ? 'bg-indigo-950/80 border-indigo-500/40 shadow-indigo-500/20' :
+                    lastMatch.status === 'blink-please' ? 'bg-amber-950/80 border-amber-500/40 shadow-amber-500/20' :
+                    'bg-red-950/80 border-red-500/40 shadow-red-500/20'
+                  }`}>
                     {statusBadge(lastMatch.status)}
-                    <span className="text-base font-bold text-white tracking-wide">{lastMatch.name}</span>
-                    <span className="text-xs font-mono text-white/50 bg-black/40 px-2 py-1 rounded">d {lastMatch.distance.toFixed(2)}</span>
+                    <span className="text-sm md:text-base font-bold text-white tracking-wide truncate">{lastMatch.name}</span>
+                    <span className="text-[10px] md:text-xs font-mono text-white/40 bg-black/30 px-1.5 py-0.5 rounded flex-shrink-0">{lastMatch.distance.toFixed(2)}</span>
                   </div>
                 </div>
               )}
