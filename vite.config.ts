@@ -40,14 +40,15 @@ export default defineConfig(({ mode }) => ({
         warn(warning);
       },
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'supabase': ['@supabase/supabase-js'],
-          'pdf': ['jspdf', 'jspdf-autotable'],
-          'xlsx': ['xlsx'],
-          'onnx': ['onnxruntime-web'],
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('onnxruntime-web')) return 'onnx';
+          if (id.includes('xlsx')) return 'xlsx';
+          if (id.includes('jspdf')) return 'pdf';
+          return undefined;
         },
       },
+
     },
   },
   assetsInclude: ['**/*.wasm', '**/*.onnx'],

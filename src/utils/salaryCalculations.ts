@@ -2,6 +2,7 @@ import { Staff, Attendance, AdvanceDeduction, PartTimeSalaryDetail, WeeklySalary
 import { AdvanceEntry } from '../services/advanceEntryService';
 import { PartTimeRates, DEFAULT_PART_TIME_RATES } from '../services/settingsService';
 import { DEFAULT_SHIFT_WINDOWS, parseHHMM, minutesBetween } from '../services/shiftService';
+import { roundToNearest10 } from './rounding';
 
 /**
  * Global punctuality-deduction policy.
@@ -27,11 +28,8 @@ export const setPunctualityPolicy = (policy: Partial<PunctualityPolicy>): void =
 
 export const getPunctualityPolicy = (): PunctualityPolicy => punctualityPolicy;
 
-// Round to nearest 10 with NaN / null / undefined safety
-export const roundToNearest10 = (value: number): number => {
-  if (value === null || value === undefined || isNaN(value) || !isFinite(value)) return 0;
-  return Math.round(value / 10) * 10;
-};
+// Round to nearest 10 — shared implementation (see ./rounding)
+export { roundToNearest10 };
 
 // Check if date is Sunday
 export const isSunday = (dateString: string): boolean => {

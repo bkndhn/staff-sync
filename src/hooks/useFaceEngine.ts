@@ -36,9 +36,11 @@ const ensureModelsLoaded = async (): Promise<void> => {
   if (!modelsLoadingPromise) {
     modelsLoadingPromise = (async () => {
       try {
-        await faceapi.tf.setBackend('webgl');
-        await faceapi.tf.ready();
+        const tf = (faceapi as unknown as { tf: { setBackend: (b: string) => Promise<unknown>; ready: () => Promise<unknown> } }).tf;
+        await tf.setBackend('webgl');
+        await tf.ready();
       } catch { /* ignore and fallback to whatever */ }
+
       
       await Promise.all([
         // TinyFaceDetector — significantly lighter and won't crash mobile WebGL, optimized with high inputSize
