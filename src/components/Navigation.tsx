@@ -79,7 +79,9 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Flex Staff' as NavigationTab, label: 'Flex', icon: Clock },
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
         { id: 'Loan Requests' as NavigationTab, label: 'Loans', icon: IndianRupee },
+        { id: 'Face Attendance' as NavigationTab, label: 'Face Punch', icon: ScanFace },
         { id: 'Old Staff Records' as NavigationTab, label: 'Archive', icon: Archive },
+        { id: 'Action Center' as NavigationTab, label: 'Action Center', icon: AlertTriangle },
         { id: 'Audit Log' as NavigationTab, label: 'Audit Log', icon: ShieldAlert },
         { id: 'Announcements' as NavigationTab, label: 'Announcements', icon: Megaphone },
         { id: 'Settings' as NavigationTab, label: 'Settings', icon: SettingsIcon },
@@ -115,6 +117,7 @@ const Navigation: React.FC<NavigationProps> = ({
       { id: 'Flex Staff' as NavigationTab, label: 'Flex', icon: Clock },
       { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
       { id: 'Loan Requests' as NavigationTab, label: 'Loans', icon: IndianRupee },
+      { id: 'Face Attendance' as NavigationTab, label: 'Face Punch', icon: ScanFace },
       { id: 'Announcements' as NavigationTab, label: 'Announcements', icon: Megaphone },
       { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
     ];

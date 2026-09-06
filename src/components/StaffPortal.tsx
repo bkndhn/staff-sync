@@ -832,7 +832,13 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                       Enable Alerts
                     </button>
                   )}
-                  {/* QR Scanner button temporarily hidden */}
+                  <button
+                    onClick={() => setShowQRScanner(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+                  >
+                    <QrCode size={14} />
+                    Scan QR
+                  </button>
                 </div>
               )}
             </div>
@@ -1983,9 +1989,32 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         />
       )}
 
-      {/* FACE ID Temporarily Hidden */}
-      
-      {/* QR Scanner Modal Temporarily Hidden */}
+      {/* FACE REGISTRATION */}
+      {activeSection === 'face' && (
+        <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-2xl overflow-hidden shadow-[var(--shadow-soft)] p-4">
+          <FaceRegistration
+            staff={staff}
+            isAdmin={false}
+            capturedBy={staff.name}
+          />
+        </div>
+      )}
+
+      {/* QR Scanner Modal */}
+      {showQRScanner && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-card)] rounded-2xl w-full max-w-md overflow-hidden border border-[var(--glass-border)] shadow-2xl">
+            <QRAttendanceScanner
+              staffLocation={staff.location || ''}
+              onScanSuccess={async (payload: any) => {
+                const res = await handleQRScanSuccess({ ...payload, kind: payload.kind || 'in' });
+                return res;
+              }}
+              onClose={() => setShowQRScanner(false)}
+            />
+          </div>
+        </div>
+      )}
 
       <ProfileEditModal
         isOpen={showProfileEdit}
