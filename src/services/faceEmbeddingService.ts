@@ -8,6 +8,9 @@ export interface FaceEmbedding {
   angleLabel: string;
   descriptor: number[];
   descriptorDim: number;
+  /** Which model produced this faceprint — only compare within the same version. */
+  modelVersion: string;
+  qualityMetrics?: Record<string, unknown>;
   imagePath?: string;
   qualityScore?: number;
   isApproved: boolean;
@@ -17,6 +20,8 @@ export interface FaceEmbedding {
   updatedAt: string;
 }
 
+export const LEGACY_FACE_MODEL_VERSION = 'faceapi-resnet34-128';
+
 const fromDb = (d: any): FaceEmbedding => ({
   id: d.id,
   staffId: d.staff_id,
@@ -24,6 +29,8 @@ const fromDb = (d: any): FaceEmbedding => ({
   angleLabel: d.angle_label,
   descriptor: Array.isArray(d.descriptor) ? d.descriptor : [],
   descriptorDim: d.descriptor_dim ?? 0,
+  modelVersion: d.model_version || LEGACY_FACE_MODEL_VERSION,
+  qualityMetrics: d.quality_metrics ?? undefined,
   imagePath: d.image_path ?? undefined,
   qualityScore: d.quality_score ?? undefined,
   isApproved: !!d.is_approved,
@@ -32,6 +39,7 @@ const fromDb = (d: any): FaceEmbedding => ({
   createdAt: d.created_at,
   updatedAt: d.updated_at,
 });
+
 
 export const faceEmbeddingService = {
   async getByStaff(staffId: string): Promise<FaceEmbedding[]> {
