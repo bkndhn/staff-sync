@@ -154,4 +154,3 @@ export const findBestMatch = (
   return { staffId: bestId, distance: bestDist, confidence, margin };
 };
 
-};
