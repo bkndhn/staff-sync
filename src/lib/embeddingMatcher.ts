@@ -19,7 +19,9 @@ export interface StaffEmbedding {
   centroid: Float32Array;     // averaged of all enrollments
   numSamples: number;
   lastUpdated: number;
+  modelVersion?: string;
 }
+
 
 /** Cosine distance: 0 = identical, 1 = orthogonal, 2 = opposite */
 export const cosineDistance = (a: Float32Array | number[], b: Float32Array | number[]): number => {
@@ -70,18 +72,26 @@ export interface MatchResult {
   staffId: string | null;
   distance: number;   // cosine distance
   confidence: number; // 1 - distance, 0..1
+  /** Gap between the best and second-best candidate. Small gap = ambiguous. */
+  margin: number;
+  /** Best candidate was close enough but too ambiguous to punch automatically. */
+  ambiguous?: boolean;
 }
 
 /**
- * Build centroid index from flat embedding array.
+ * Build centroid index from a flat embedding array.
  * Groups by staffId, averages all descriptors per staff.
+ * Faceprints from different models are NOT comparable, so pass
+ * `modelVersion` to keep the index to a single model generation.
  */
 export const buildCentroidIndex = (
-  embeddings: { staffId: string; descriptor: number[] }[],
+  embeddings: { staffId: string; descriptor: number[]; modelVersion?: string }[],
+  modelVersion?: string,
 ): Map<string, StaffEmbedding> => {
   const groups = new Map<string, number[][]>();
   for (const e of embeddings) {
     if (!e.descriptor || e.descriptor.length === 0) continue;
+    if (modelVersion && (e.modelVersion || '') !== modelVersion) continue;
     if (!groups.has(e.staffId)) groups.set(e.staffId, []);
     groups.get(e.staffId)!.push(e.descriptor);
   }
@@ -93,36 +103,54 @@ export const buildCentroidIndex = (
       centroid: computeCentroid(descs),
       numSamples: descs.length,
       lastUpdated: Date.now(),
+      modelVersion,
     });
   }
   return index;
 };
 
 /**
- * Find best matching staff for a live embedding.
- * Uses cosine distance against centroids.
- * COSINE_THRESHOLD: 0.30 = strict, 0.40 = relaxed
+ * Find the best matching staff for a live embedding.
+ *
+ * Two gates instead of one fixed cut-off:
+ *  1. absolute: best distance must be under `threshold`
+ *  2. relative: the best candidate must beat the runner-up by `minMargin`,
+ *     otherwise the match is ambiguous and the caller should ask for
+ *     confirmation rather than silently punching the wrong person.
  */
 export const findBestMatch = (
   liveDescriptor: Float32Array | number[],
   index: Map<string, StaffEmbedding>,
   threshold: number = 0.38,
+  minMargin: number = 0.06,
 ): MatchResult => {
   let bestId: string | null = null;
   let bestDist = Infinity;
+  let secondDist = Infinity;
 
   for (const [staffId, entry] of index) {
     if (entry.centroid.length === 0) continue;
     const dist = cosineDistance(liveDescriptor, entry.centroid);
     if (dist < bestDist) {
+      secondDist = bestDist;
       bestDist = dist;
       bestId = staffId;
+    } else if (dist < secondDist) {
+      secondDist = dist;
     }
   }
 
+  const margin = Number.isFinite(secondDist) ? secondDist - bestDist : Infinity;
+  const confidence = 1 - bestDist;
+
   if (bestDist >= threshold) {
-    return { staffId: null, distance: bestDist, confidence: 1 - bestDist };
+    return { staffId: null, distance: bestDist, confidence, margin };
   }
 
-  return { staffId: bestId, distance: bestDist, confidence: 1 - bestDist };
+  if (index.size > 1 && margin < minMargin) {
+    return { staffId: null, distance: bestDist, confidence, margin, ambiguous: true };
+  }
+
+  return { staffId: bestId, distance: bestDist, confidence, margin };
 };
+

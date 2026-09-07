@@ -72,7 +72,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const [mobileTab, setMobileTab] = useState<'camera' | 'recent' | 'admin'>('camera');
 
   // Centroid index — rebuilt when embeddings change (cosine similarity matcher)
-  const centroidIndexRef = useRef<Map<string, StaffEmbedding>>(new Map());
+  // One centroid index per faceprint model version — embeddings from different
+  // models are not comparable, so we keep them in separate indexes.
+  const centroidIndexRef = useRef<Map<string, Map<string, StaffEmbedding>>>(new Map());
   // Per-candidate liveness state (new multi-layer engine)
   const livenessRef = useRef<{ staffId: string | null; state: LivenessState }>({
     staffId: null,
@@ -146,7 +148,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   // Computes centroid (averaged embedding) per staff for cosine matching
   useEffect(() => {
     if (allEmbeddings.length === 0) { centroidIndexRef.current = new Map(); return; }
-    centroidIndexRef.current = buildCentroidIndex(allEmbeddings);
+    const versions = new Set(allEmbeddings.map(e => (e as { modelVersion?: string }).modelVersion || 'faceapi-resnet34-128'));
+    const byVersion = new Map<string, Map<string, StaffEmbedding>>();
+    for (const v of versions) byVersion.set(v, buildCentroidIndex(allEmbeddings, v));
+    centroidIndexRef.current = byVersion;
   }, [allEmbeddings]);
 
   // ---- Helpers --------------------------------------------------------------
@@ -327,9 +332,12 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   useEffect(() => () => stopCamera(), [stopCamera]);
 
   // ---- Match search via cosine centroid index ------------------------------
-  const findBestMatch = useCallback((descriptor: Float32Array) => {
-    const result = findCosineMatch(descriptor, centroidIndexRef.current, COSINE_THRESHOLD);
-    return { staffId: result.staffId, distance: result.distance };
+  const findBestMatch = useCallback((descriptor: Float32Array, modelVersion: string) => {
+    const index = centroidIndexRef.current.get(modelVersion) || new Map<string, StaffEmbedding>();
+    // ArcFace embeddings are far more separable, so we can be stricter there.
+    const threshold = modelVersion.startsWith('arcface') ? Math.min(COSINE_THRESHOLD, 0.34) : COSINE_THRESHOLD;
+    const result = findCosineMatch(descriptor, index, threshold);
+    return { staffId: result.staffId, distance: result.distance, ambiguous: !!result.ambiguous };
   }, []);
 
   // ---- Smart multi-punch toggle --------------------------------------------
@@ -457,11 +465,11 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           } else {
             const endMatch = perfStart('face.match');
             const desc32 = new Float32Array(r.descriptor);
-            const { staffId, distance } = findBestMatch(desc32);
+            const { staffId, distance, ambiguous } = findBestMatch(desc32, r.modelVersion);
             endMatch();
 
             if (!staffId) {
-              setLastMatch({ name: 'Unknown face', distance, ts: Date.now(), status: 'unknown' });
+              setLastMatch({ name: ambiguous ? 'Not sure — move closer' : 'Unknown face', distance, ts: Date.now(), status: 'unknown' });
               resetLiveness();
             } else if (!allowedStaffIds.has(staffId)) {
               const wrongStaff = allEmbeddings.find(e => e.staffId === staffId);
