@@ -73,11 +73,18 @@ const warmUpModels = async (): Promise<void> => {
 };
 
 export interface DetectionResult {
+  /** Faceprint used for matching. 512-d when ArcFace is available, else legacy 128-d. */
   descriptor: number[];
+  /** Which model produced `descriptor` — embeddings are only comparable within a version. */
+  modelVersion: string;
+  /** Legacy 128-d face-api descriptor, kept so old enrolments still match during rollout. */
+  legacyDescriptor?: number[];
   qualityScore: number;
   faceCount: number;
   box: { x: number; y: number; width: number; height: number };
   landmarks?: faceapi.FaceLandmarks68;
+  /** True when the crop was straightened with 5-point alignment before embedding. */
+  aligned?: boolean;
 }
 
 export const useFaceEngine = (autoLoad = true) => {
@@ -96,7 +103,10 @@ export const useFaceEngine = (autoLoad = true) => {
       preloadDetector(),
       // Pre-load MediaPipe (Google AI 2025) in parallel — 10x faster detection
       initMediaPipe().catch(() => {}),
+      // Pre-load the ArcFace 512-d embedder (non-blocking — falls back to face-api)
+      initArcFace().catch(() => null),
     ])
+
       .then(() => warmUpModels())
       .then(() => { if (mountedRef.current) { setReady(true); setError(null); } })
       .catch((e) => { if (mountedRef.current) setError(e?.message || 'Failed to load face models'); })
