@@ -143,7 +143,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
       }
 
       // Cosine duplicate deduplication against own existing samples
-      const sameAngleDupes = samples.filter(s => s.angleLabel === activeAngle);
+      const sameAngleDupes = samples.filter(s => s.angleLabel === activeAngle && s.modelVersion === result.modelVersion);
       for (const s of sameAngleDupes) {
         const d = cosineDistance(result.descriptor, s.descriptor);
         if (d < DUP_THRESHOLD_COSINE) {
@@ -166,6 +166,8 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         staffName: staff.name,
         angleLabel: activeAngle,
         descriptor: result.descriptor,
+        modelVersion: result.modelVersion,
+        qualityMetrics: { aligned: !!result.aligned, faceCount: result.faceCount, detectScore: result.qualityScore },
         qualityScore: result.qualityScore,
         imageBlob: blob || undefined,
         capturedBy,
@@ -210,6 +212,8 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         staffName: staff.name,
         angleLabel: activeAngle,
         descriptor: result.descriptor,
+        modelVersion: result.modelVersion,
+        qualityMetrics: { aligned: !!result.aligned, faceCount: result.faceCount, detectScore: result.qualityScore, source: 'upload' },
         qualityScore: result.qualityScore,
         imageBlob: file,
         capturedBy,
