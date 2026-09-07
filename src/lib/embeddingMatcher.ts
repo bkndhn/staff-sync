@@ -19,7 +19,9 @@ export interface StaffEmbedding {
   centroid: Float32Array;     // averaged of all enrollments
   numSamples: number;
   lastUpdated: number;
+  modelVersion?: string;
 }
+
 
 /** Cosine distance: 0 = identical, 1 = orthogonal, 2 = opposite */
 export const cosineDistance = (a: Float32Array | number[], b: Float32Array | number[]): number => {
