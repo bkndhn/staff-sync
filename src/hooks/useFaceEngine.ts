@@ -115,93 +115,124 @@ export const useFaceEngine = (autoLoad = true) => {
   }, [autoLoad]);
 
   /**
-   * Detect the largest/best face in a video/image element.
+   * Detect the best face and produce a faceprint.
    *
-   * HYBRID APPROACH (PagarBook-level speed):
-   * 1. MediaPipe detects face in ~15ms (10x faster than face-api)
-   * 2. face-api extracts 128-dim descriptor for recognition
-   *
-   * Falls back to pure face-api if MediaPipe unavailable.
+   * Pipeline (2026):
+   *   MediaPipe detect (~15ms) -> 5-point alignment -> ArcFace 512-d embed
+   * There is no second detection pass: face-api only runs when ArcFace is
+   * unavailable, or when a legacy 128-d descriptor is explicitly requested
+   * (enrolment during the rollout window).
    */
   const detect = async (
     input: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
-    opts?: { scoreThreshold?: number; withLandmarks?: boolean },
+    opts?: { scoreThreshold?: number; withLandmarks?: boolean; withLegacy?: boolean },
   ): Promise<DetectionResult | null> => {
-    await ensureModelsLoaded();
     const endDetect = perfStart('face.detect');
     const dev = getDeviceProfile();
 
-    // ── Try MediaPipe first (Google AI 2025 — blazing fast) ──
+    const runFaceApi = async (source: typeof input, scoreThreshold: number) => {
+      await ensureModelsLoaded();
+      const options = new faceapi.TinyFaceDetectorOptions({
+        inputSize: dev.detectorInputSize,
+        scoreThreshold,
+      });
+      const results = await faceapi
+        .detectAllFaces(source, options)
+        .withFaceLandmarks()
+        .withFaceDescriptors();
+      if (!results || results.length === 0) return null;
+      const best = results.reduce((a, b) => (a.detection.box.area > b.detection.box.area ? a : b));
+      return { best, count: results.length };
+    };
+
+    // ── Primary path: MediaPipe detection + ArcFace embedding ──
     if (isMediaPipeReady() && input instanceof HTMLVideoElement) {
       try {
-        const mpResult = detectFaceMediaPipe(input);
-        if (mpResult && mpResult.score > (opts?.scoreThreshold ?? 0.5)) {
-          // MediaPipe found a face — now extract descriptor via face-api
-          // (face-api gives us the 128-dim embedding for recognition)
-          const options = new faceapi.TinyFaceDetectorOptions({
-            inputSize: dev.detectorInputSize,
-            scoreThreshold: 0.2, // Lower threshold since we already know face exists
-          });
+        const mp = detectFaceMediaPipe(input);
+        if (mp && mp.score > (opts?.scoreThreshold ?? 0.5)) {
+          const vw = input.videoWidth || input.clientWidth;
+          const vh = input.videoHeight || input.clientHeight;
+          const points = fivePointsFromMediaPipe(mp.landmarks, vw, vh);
+          const crop = points ? alignFace(input, points) : cropFaceBox(input, mp.box);
+          const embedding = crop && isArcFaceReady() ? await embedAlignedFace(crop) : null;
 
-          const results = await faceapi
-            .detectAllFaces(input, options)
-            .withFaceLandmarks()
-            .withFaceDescriptors();
-
-          endDetect();
-          if (!results || results.length === 0) {
-            // MediaPipe found it but face-api couldn't — return detection without descriptor
-            return null;
+          if (embedding) {
+            let legacyDescriptor: number[] | undefined;
+            if (opts?.withLegacy) {
+              const legacy = await runFaceApi(input, 0.2);
+              if (legacy) legacyDescriptor = Array.from(legacy.best.descriptor);
+            }
+            endDetect();
+            return {
+              descriptor: Array.from(embedding),
+              modelVersion: ARCFACE_MODEL_VERSION,
+              legacyDescriptor,
+              qualityScore: mp.score,
+              faceCount: mp.faceCount,
+              box: mp.box,
+              aligned: !!points,
+              landmarks:
+                opts?.withLandmarks === false
+                  ? undefined
+                  : (mediaPipeLandmarkShim(mp.landmarks, vw, vh) as unknown as faceapi.FaceLandmarks68 | undefined),
+            };
           }
 
-          const best = results.reduce((a, b) =>
-            a.detection.box.area > b.detection.box.area ? a : b
-          );
-
+          // ArcFace unavailable — legacy face-api descriptor keeps attendance working.
+          const legacy = await runFaceApi(input, 0.2);
+          endDetect();
+          if (!legacy) return null;
           return {
-            descriptor: Array.from(best.descriptor),
-            qualityScore: mpResult.score, // Use MediaPipe's higher-quality score
-            faceCount: mpResult.faceCount,
-            box: mpResult.box, // Use MediaPipe's more accurate box
-            landmarks: opts?.withLandmarks === false ? undefined : best.landmarks,
+            descriptor: Array.from(legacy.best.descriptor),
+            modelVersion: LEGACY_MODEL_VERSION,
+            legacyDescriptor: Array.from(legacy.best.descriptor),
+            qualityScore: mp.score,
+            faceCount: mp.faceCount,
+            box: mp.box,
+            aligned: false,
+            landmarks: opts?.withLandmarks === false ? undefined : legacy.best.landmarks,
           };
         }
-        // MediaPipe didn't find a face — fall through to face-api
+        // MediaPipe found nothing — fall through to face-api
       } catch {
         // MediaPipe error — fall through to face-api
       }
     }
 
-    // ── Fallback: pure face-api detection ──
-    const source: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement = input;
+    // ── Fallback path: face-api detection (+ ArcFace embed when possible) ──
+    const legacy = await runFaceApi(input, opts?.scoreThreshold ?? 0.35);
+    if (!legacy) { endDetect(); return null; }
+    const { best, count } = legacy;
+    const box = best.detection.box;
+    const boxPlain = { x: box.x, y: box.y, width: box.width, height: box.height };
 
-    const options = new faceapi.TinyFaceDetectorOptions({
-      inputSize: dev.detectorInputSize,
-      scoreThreshold: opts?.scoreThreshold ?? 0.35,
-    });
-
-    const results = await faceapi
-      .detectAllFaces(source, options)
-      .withFaceLandmarks()
-      .withFaceDescriptors();
+    let descriptor = Array.from(best.descriptor);
+    let modelVersion = LEGACY_MODEL_VERSION;
+    let aligned = false;
+    if (isArcFaceReady()) {
+      const points = fivePointsFrom68(best.landmarks?.positions);
+      const crop = points ? alignFace(input, points) : cropFaceBox(input, boxPlain);
+      const embedding = crop ? await embedAlignedFace(crop) : null;
+      if (embedding) {
+        descriptor = Array.from(embedding);
+        modelVersion = ARCFACE_MODEL_VERSION;
+        aligned = !!points;
+      }
+    }
 
     endDetect();
-    if (!results || results.length === 0) return null;
-
-    // Pick face with largest area (closest to camera)
-    const best = results.reduce((a, b) =>
-      a.detection.box.area > b.detection.box.area ? a : b
-    );
-
-    const box = best.detection.box;
     return {
-      descriptor: Array.from(best.descriptor),
+      descriptor,
+      modelVersion,
+      legacyDescriptor: Array.from(best.descriptor),
       qualityScore: best.detection.score,
-      faceCount: results.length,
-      box: { x: box.x, y: box.y, width: box.width, height: box.height },
+      faceCount: count,
+      box: boxPlain,
+      aligned,
       landmarks: opts?.withLandmarks === false ? undefined : best.landmarks,
     };
   };
+
 
   return { ready, loading, error, detect };
 };
