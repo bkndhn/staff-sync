@@ -77,6 +77,8 @@ export const faceEmbeddingService = {
     staffName?: string;
     angleLabel: string;
     descriptor: number[];
+    modelVersion?: string;
+    qualityMetrics?: Record<string, unknown>;
     qualityScore?: number;
     imageBlob?: Blob;
     capturedBy?: string;
@@ -104,12 +106,15 @@ export const faceEmbeddingService = {
         angle_label: input.angleLabel,
         descriptor: input.descriptor,
         descriptor_dim: input.descriptor.length,
+        model_version: input.modelVersion || LEGACY_FACE_MODEL_VERSION,
+        quality_metrics: input.qualityMetrics ?? {},
         image_path: imagePath,
         quality_score: input.qualityScore,
         captured_by: input.capturedBy,
         notes: input.notes,
         is_approved: true,
       }])
+
       .select()
       .single();
     if (error) throw error;
