@@ -19,6 +19,11 @@ import { preloadDetector } from '../lib/onnxFaceDetector';
 import { initMediaPipe, detectFaceMediaPipe, isMediaPipeReady, computeEAR as mpComputeEAR } from '../lib/mediapipeFaceEngine';
 import { getDeviceProfile } from '../lib/deviceProfile';
 import { perfStart } from '../lib/perfProfiler';
+import { initArcFace, isArcFaceReady, embedAlignedFace, ARCFACE_MODEL_VERSION } from '../lib/arcfaceEngine';
+import { alignFace, cropFaceBox, fivePointsFromMediaPipe, fivePointsFrom68 } from '../lib/faceAlign';
+
+export const LEGACY_MODEL_VERSION = 'faceapi-128';
+
 
 const MODEL_URL = '/models';
 const MODEL_URL_V2 = '/models-v2';
