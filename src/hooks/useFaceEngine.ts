@@ -87,6 +87,25 @@ export interface DetectionResult {
   aligned?: boolean;
 }
 
+/** Adapts MediaPipe's 468 normalised points to the getLeftEye/getRightEye shape the liveness engine expects. */
+const MP_LEFT_EYE = [33, 160, 158, 133, 153, 144];
+const MP_RIGHT_EYE = [362, 385, 387, 263, 373, 380];
+const mediaPipeLandmarkShim = (
+  landmarks: Array<{ x: number; y: number; z: number }> | null,
+  width: number,
+  height: number,
+) => {
+  if (!landmarks || landmarks.length < 468 || !width || !height) return undefined;
+  const pick = (idx: number[]) => idx.map(i => ({ x: landmarks[i].x * width, y: landmarks[i].y * height }));
+  return {
+    positions: landmarks.map(p => ({ x: p.x * width, y: p.y * height })),
+    getLeftEye: () => pick(MP_LEFT_EYE),
+    getRightEye: () => pick(MP_RIGHT_EYE),
+  };
+};
+
+
+
 export const useFaceEngine = (autoLoad = true) => {
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
