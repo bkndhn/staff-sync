@@ -22,6 +22,8 @@ import PerfOverlay from './ui/PerfOverlay';
 import { perfStart, perfRecord } from '../lib/perfProfiler';
 import { getDeviceProfile } from '../lib/deviceProfile';
 import { useIsMobile, useHaptics, useDoubleTap } from './face/mobileFace';
+import FaceMigrationPanel from './face/FaceMigrationPanel';
+import FaceAccuracyReport from './face/FaceAccuracyReport';
 import { localDateKey } from '../lib/localDate';
 import { serverNow, syncServerTime } from '../lib/serverTime';
 
