@@ -916,6 +916,14 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           )}
         </div>
 
+        {/* Faceprint upgrade + accuracy report */}
+        {userRole === 'admin' && (
+          <>
+            <FaceMigrationPanel staff={staff} capturedBy="admin" />
+            <FaceAccuracyReport staff={staff} />
+          </>
+        )}
+
         {/* Admin override panel */}
         {userRole === 'admin' && (
           <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] p-4 md:p-6 flex-1 flex flex-col min-h-[40vh]">
