@@ -11,7 +11,7 @@ import AttendanceRulesPanel from './AttendanceRulesPanel';
 import DeviceIntegration from './DeviceIntegration';
 import PayrollOverridesPanel from './SalaryOverridesPanel';
 import PunctualityPolicyPanel from './PunctualityPolicyPanel';
-import TdsSettingsPanel from './TdsSettingsPanel';
+import StatutorySettingsPanel from './StatutorySettingsPanel';
 import ApiAccessPanel from './ApiAccessPanel';
 import NotificationSettingsPanel from './NotificationSettingsPanel';
 const SalaryOverridesPanel = PayrollOverridesPanel;
@@ -680,7 +680,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                   <p className="text-xs text-[var(--text-muted)]">Turn TDS deduction on or off for your organisation and choose slab-based or flat computation.</p>
                 </div>
               </div>
-              <TdsSettingsPanel />
+              <StatutorySettingsPanel />
             </div>
 
             {/* Notification alerts — per client */}
