@@ -87,11 +87,17 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
   // salary line is computed, then nudge a re-render so totals reflect it.
   useEffect(() => {
     let cancelled = false;
-    settingsService.primeTdsPolicy()
+    Promise.all([
+      settingsService.primeTdsPolicy().catch(() => undefined),
+      import('../services/statutoryPolicyService')
+        .then(m => m.statutoryPolicyService.primeFromDb())
+        .catch(() => undefined),
+    ])
       .then(() => { if (!cancelled) setTdsPolicyVersion(v => v + 1); })
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, []);
+
 
   useEffect(() => {
     const loadData = async () => {
