@@ -181,8 +181,23 @@ export const computeStatutoryBreakdown = (
     if (amount <= 0) return;
     out.push({ key, label: getDeductionLabel(key, cfg), amount, cfg });
   });
+
+  // Labour Welfare Fund — org-wide, charged only in the configured months.
+  const lwf = runtimeOrgPolicy.lwf;
+  if (lwf.enabled && lwf.employeeAmount > 0) {
+    const month = ctx?.month ?? new Date().getMonth();
+    if (lwf.months.includes(month) && !map['lwf']) {
+      out.push({
+        key: 'lwf',
+        label: 'LWF',
+        amount: Math.round(lwf.employeeAmount),
+        cfg: { enabled: true, percentage: 0, base: 'fixed', fixedAmount: lwf.employeeAmount },
+      });
+    }
+  }
   return out;
 };
+
 
 export const sumStatutoryDeductions = (
   staff: Staff,
