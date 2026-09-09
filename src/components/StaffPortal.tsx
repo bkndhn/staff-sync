@@ -534,6 +534,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   
       const statutoryMod = await import('../utils/statutoryDeductions');
       await (await import('../services/settingsService')).settingsService.primeTdsPolicy().catch(() => undefined);
+      await (await import('../services/statutoryPolicyService')).statutoryPolicyService.primeFromDb().catch(() => undefined);
       const breakdown = statutoryMod.computeStatutoryBreakdown(staff, {
         basic: result.basicEarned,
         hra: result.hraEarned,

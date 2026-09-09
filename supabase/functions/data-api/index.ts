@@ -87,6 +87,7 @@ const ACL: Record<string, TableAcl> = {
   location_shift_config:             { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   location_designation_shift_config: { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   statutory_portal_config:           { read: ["admin","manager","staff","statutory_admin","super_admin"],              write: ["admin"] },
+  statutory_policies:                { read: ["admin","manager","staff","statutory_admin","super_admin"],              write: ["admin"] },
   shift_rosters:                     { read: ["admin","manager","supervisor","floor_supervisor","super_admin"],                           write: ["admin","manager"], locationCol: "location", staffIdCol: "staff_id" },
   workflow_configs:                  { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   staff_grievances:                  { read: ["admin","manager","staff","super_admin"],                                 write: ["admin","manager","staff"], staffIdCol: "staff_id" },
