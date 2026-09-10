@@ -5,18 +5,27 @@ import {
   type OrgStatutoryPolicy,
 } from '../utils/statutoryDeductions';
 import { DEFAULT_TDS_POLICY, setRuntimeTdsPolicy, type TdsPolicy } from '../utils/statutoryDeductions';
+import { DEFAULT_LEAVE_POLICY, setRuntimeLeavePolicy, type OrgLeavePolicy } from '../lib/leavePolicy';
 
 export interface StatutoryPolicyRecord extends OrgStatutoryPolicy {
   id?: string;
   effectiveFrom: string; // yyyy-mm-dd
   tds: TdsPolicy;
+  leave: OrgLeavePolicy;
   notes?: string;
 }
+
+const cloneLeave = (): OrgLeavePolicy => ({
+  ...DEFAULT_LEAVE_POLICY,
+  entitlements: { ...DEFAULT_LEAVE_POLICY.entitlements },
+  advanceNoticeDays: { ...DEFAULT_LEAVE_POLICY.advanceNoticeDays },
+});
 
 export const DEFAULT_STATUTORY_POLICY_RECORD: StatutoryPolicyRecord = {
   ...DEFAULT_ORG_STATUTORY_POLICY,
   effectiveFrom: new Date().toISOString().slice(0, 10),
   tds: { ...DEFAULT_TDS_POLICY },
+  leave: cloneLeave(),
 };
 
 const merge = (row: any): StatutoryPolicyRecord => ({
@@ -28,6 +37,12 @@ const merge = (row: any): StatutoryPolicyRecord => ({
   pt: { ...DEFAULT_ORG_STATUTORY_POLICY.pt, ...(row?.pt || {}) },
   lwf: { ...DEFAULT_ORG_STATUTORY_POLICY.lwf, ...(row?.lwf || {}) },
   tds: { ...DEFAULT_TDS_POLICY, ...(row?.tds || {}) },
+  leave: {
+    ...cloneLeave(),
+    ...(row?.leave || {}),
+    entitlements: { ...DEFAULT_LEAVE_POLICY.entitlements, ...(row?.leave?.entitlements || {}) },
+    advanceNoticeDays: { ...DEFAULT_LEAVE_POLICY.advanceNoticeDays, ...(row?.leave?.advanceNoticeDays || {}) },
+  },
 });
 
 export const statutoryPolicyService = {
