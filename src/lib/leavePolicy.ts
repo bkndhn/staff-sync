@@ -2,15 +2,6 @@ import type { LeaveRequest } from '../services/leaveService';
 
 export type LeaveType = 'casual' | 'sick' | 'personal' | 'emergency' | 'other';
 
-/** Annual entitlement (days) per leave type. */
-export const LEAVE_ENTITLEMENTS: Record<LeaveType, number> = {
-  casual: 12,
-  sick: 8,
-  personal: 4,
-  emergency: 3,
-  other: 0,
-};
-
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   casual: 'Casual Leave',
   sick: 'Sick Leave',
@@ -19,13 +10,43 @@ export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   other: 'Other',
 };
 
-/** Max consecutive days allowed in a single request. */
-export const MAX_CONSECUTIVE_DAYS = 15;
-/** Casual/personal leave should be applied at least this many days in advance. */
-export const ADVANCE_NOTICE_DAYS: Partial<Record<LeaveType, number>> = {
-  casual: 1,
-  personal: 1,
+/** Per-client leave rules. Every client can set their own numbers. */
+export interface OrgLeavePolicy {
+  /** Annual entitlement (days) per leave type. */
+  entitlements: Record<LeaveType, number>;
+  /** Max consecutive days allowed in a single request. */
+  maxConsecutiveDays: number;
+  /** Minimum advance notice (days) per leave type. */
+  advanceNoticeDays: Partial<Record<LeaveType, number>>;
+  /** Allow sick/emergency leave to be applied for past dates. */
+  allowBackdatedSickEmergency: boolean;
+}
+
+export const DEFAULT_LEAVE_POLICY: OrgLeavePolicy = {
+  entitlements: { casual: 12, sick: 8, personal: 4, emergency: 3, other: 0 },
+  maxConsecutiveDays: 15,
+  advanceNoticeDays: { casual: 1, personal: 1 },
+  allowBackdatedSickEmergency: true,
 };
+
+let runtimeLeavePolicy: OrgLeavePolicy = {
+  ...DEFAULT_LEAVE_POLICY,
+  entitlements: { ...DEFAULT_LEAVE_POLICY.entitlements },
+  advanceNoticeDays: { ...DEFAULT_LEAVE_POLICY.advanceNoticeDays },
+};
+
+export const setRuntimeLeavePolicy = (policy: Partial<OrgLeavePolicy>) => {
+  runtimeLeavePolicy = {
+    ...runtimeLeavePolicy,
+    ...policy,
+    entitlements: { ...runtimeLeavePolicy.entitlements, ...(policy.entitlements || {}) },
+    advanceNoticeDays: { ...runtimeLeavePolicy.advanceNoticeDays, ...(policy.advanceNoticeDays || {}) },
+  };
+};
+export const getRuntimeLeavePolicy = (): OrgLeavePolicy => runtimeLeavePolicy;
+
+/** Annual entitlement (days) per leave type, as configured by this client. */
+export const getLeaveEntitlements = (): Record<LeaveType, number> => runtimeLeavePolicy.entitlements;
 
 const MS_DAY = 24 * 60 * 60 * 1000;
 
