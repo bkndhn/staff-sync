@@ -51,7 +51,7 @@ export const statutoryPolicyService = {
     try {
       const { data } = await dataApi
         .from('statutory_policies')
-        .select('id, effective_from, pf, esi, pt, lwf, tds, notes')
+        .select('id, effective_from, pf, esi, pt, lwf, tds, leave, notes')
         .order('effective_from', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -59,7 +59,7 @@ export const statutoryPolicyService = {
     } catch (err) {
       console.warn('statutoryPolicyService.load failed, using defaults', err);
     }
-    return { ...DEFAULT_STATUTORY_POLICY_RECORD };
+    return { ...DEFAULT_STATUTORY_POLICY_RECORD, leave: cloneLeave() };
   },
 
   async save(policy: StatutoryPolicyRecord): Promise<StatutoryPolicyRecord> {
@@ -70,6 +70,7 @@ export const statutoryPolicyService = {
       pt: policy.pt,
       lwf: policy.lwf,
       tds: policy.tds,
+      leave: policy.leave,
       notes: policy.notes ?? null,
     };
     if (policy.id) {
@@ -85,6 +86,7 @@ export const statutoryPolicyService = {
   prime(policy: StatutoryPolicyRecord) {
     setRuntimeStatutoryPolicy({ pf: policy.pf, esi: policy.esi, pt: policy.pt, lwf: policy.lwf });
     setRuntimeTdsPolicy(policy.tds);
+    setRuntimeLeavePolicy(policy.leave || {});
   },
 
   /** Load from the database and push into the shared payroll runtime. */
