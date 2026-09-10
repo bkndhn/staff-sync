@@ -85,7 +85,7 @@ export const computeLeaveBalances = (requests: LeaveRequest[], year = new Date()
       if (r.status === 'approved') used += days;
       else if (r.status === 'pending' || r.status === 'postponed') pending += days;
     });
-    const entitled = LEAVE_ENTITLEMENTS[type];
+    const entitled = entitlements[type] ?? 0;
     return { type, entitled, used, pending, remaining: Math.max(0, entitled - used - pending) };
   });
 };
