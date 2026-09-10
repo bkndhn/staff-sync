@@ -120,7 +120,8 @@ export const validateLeaveRequest = (
 
   const days = countDays(draft.leaveDate, draft.leaveEndDate);
   if (draft.leaveDate && draft.leaveEndDate && days === 0) errors.push('End date must be on or after the start date.');
-  if (days > MAX_CONSECUTIVE_DAYS) errors.push(`A single request cannot exceed ${MAX_CONSECUTIVE_DAYS} days.`);
+  const maxDays = runtimeLeavePolicy.maxConsecutiveDays;
+  if (maxDays > 0 && days > maxDays) errors.push(`A single request cannot exceed ${maxDays} days.`);
 
   if (draft.leaveDate) {
     const start = parseDate(draft.leaveDate);
