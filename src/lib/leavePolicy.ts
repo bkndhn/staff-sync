@@ -73,7 +73,8 @@ export interface LeaveBalance {
 
 /** Compute balances for a year from the staff's own request history. */
 export const computeLeaveBalances = (requests: LeaveRequest[], year = new Date().getFullYear()): LeaveBalance[] => {
-  const types = Object.keys(LEAVE_ENTITLEMENTS) as LeaveType[];
+  const entitlements = getLeaveEntitlements();
+  const types = Object.keys(entitlements) as LeaveType[];
   return types.map(type => {
     let used = 0;
     let pending = 0;
