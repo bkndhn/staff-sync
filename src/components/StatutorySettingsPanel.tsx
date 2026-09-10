@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Receipt, Loader2, Check, ShieldCheck, Landmark, HeartPulse, Building2 } from 'lucide-react';
+import { Receipt, Loader2, Check, ShieldCheck, Landmark, HeartPulse, Building2, CalendarDays } from 'lucide-react';
+import { LEAVE_TYPE_LABELS, type LeaveType } from '../lib/leavePolicy';
 import {
   statutoryPolicyService,
   DEFAULT_STATUTORY_POLICY_RECORD,
