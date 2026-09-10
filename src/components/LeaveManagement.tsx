@@ -66,6 +66,13 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
     }
   };
 
+  // Load this client's own leave rules (entitlements, notice periods) once.
+  useEffect(() => {
+    import('../services/statutoryPolicyService')
+      .then(m => m.statutoryPolicyService.primeFromDb())
+      .catch(() => undefined);
+  }, []);
+
   useEffect(() => { loadLeaves(); }, [userRole, userLocation]);
 
   useEffect(() => {
