@@ -5,18 +5,27 @@ import {
   type OrgStatutoryPolicy,
 } from '../utils/statutoryDeductions';
 import { DEFAULT_TDS_POLICY, setRuntimeTdsPolicy, type TdsPolicy } from '../utils/statutoryDeductions';
+import { DEFAULT_LEAVE_POLICY, setRuntimeLeavePolicy, type OrgLeavePolicy } from '../lib/leavePolicy';
 
 export interface StatutoryPolicyRecord extends OrgStatutoryPolicy {
   id?: string;
   effectiveFrom: string; // yyyy-mm-dd
   tds: TdsPolicy;
+  leave: OrgLeavePolicy;
   notes?: string;
 }
+
+const cloneLeave = (): OrgLeavePolicy => ({
+  ...DEFAULT_LEAVE_POLICY,
+  entitlements: { ...DEFAULT_LEAVE_POLICY.entitlements },
+  advanceNoticeDays: { ...DEFAULT_LEAVE_POLICY.advanceNoticeDays },
+});
 
 export const DEFAULT_STATUTORY_POLICY_RECORD: StatutoryPolicyRecord = {
   ...DEFAULT_ORG_STATUTORY_POLICY,
   effectiveFrom: new Date().toISOString().slice(0, 10),
   tds: { ...DEFAULT_TDS_POLICY },
+  leave: cloneLeave(),
 };
 
 const merge = (row: any): StatutoryPolicyRecord => ({
@@ -28,6 +37,12 @@ const merge = (row: any): StatutoryPolicyRecord => ({
   pt: { ...DEFAULT_ORG_STATUTORY_POLICY.pt, ...(row?.pt || {}) },
   lwf: { ...DEFAULT_ORG_STATUTORY_POLICY.lwf, ...(row?.lwf || {}) },
   tds: { ...DEFAULT_TDS_POLICY, ...(row?.tds || {}) },
+  leave: {
+    ...cloneLeave(),
+    ...(row?.leave || {}),
+    entitlements: { ...DEFAULT_LEAVE_POLICY.entitlements, ...(row?.leave?.entitlements || {}) },
+    advanceNoticeDays: { ...DEFAULT_LEAVE_POLICY.advanceNoticeDays, ...(row?.leave?.advanceNoticeDays || {}) },
+  },
 });
 
 export const statutoryPolicyService = {
@@ -36,7 +51,7 @@ export const statutoryPolicyService = {
     try {
       const { data } = await dataApi
         .from('statutory_policies')
-        .select('id, effective_from, pf, esi, pt, lwf, tds, notes')
+        .select('id, effective_from, pf, esi, pt, lwf, tds, leave, notes')
         .order('effective_from', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -44,7 +59,7 @@ export const statutoryPolicyService = {
     } catch (err) {
       console.warn('statutoryPolicyService.load failed, using defaults', err);
     }
-    return { ...DEFAULT_STATUTORY_POLICY_RECORD };
+    return { ...DEFAULT_STATUTORY_POLICY_RECORD, leave: cloneLeave() };
   },
 
   async save(policy: StatutoryPolicyRecord): Promise<StatutoryPolicyRecord> {
@@ -55,6 +70,7 @@ export const statutoryPolicyService = {
       pt: policy.pt,
       lwf: policy.lwf,
       tds: policy.tds,
+      leave: policy.leave,
       notes: policy.notes ?? null,
     };
     if (policy.id) {
@@ -70,6 +86,7 @@ export const statutoryPolicyService = {
   prime(policy: StatutoryPolicyRecord) {
     setRuntimeStatutoryPolicy({ pf: policy.pf, esi: policy.esi, pt: policy.pt, lwf: policy.lwf });
     setRuntimeTdsPolicy(policy.tds);
+    setRuntimeLeavePolicy(policy.leave || {});
   },
 
   /** Load from the database and push into the shared payroll runtime. */

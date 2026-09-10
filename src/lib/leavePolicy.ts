@@ -2,15 +2,6 @@ import type { LeaveRequest } from '../services/leaveService';
 
 export type LeaveType = 'casual' | 'sick' | 'personal' | 'emergency' | 'other';
 
-/** Annual entitlement (days) per leave type. */
-export const LEAVE_ENTITLEMENTS: Record<LeaveType, number> = {
-  casual: 12,
-  sick: 8,
-  personal: 4,
-  emergency: 3,
-  other: 0,
-};
-
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   casual: 'Casual Leave',
   sick: 'Sick Leave',
@@ -19,13 +10,43 @@ export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   other: 'Other',
 };
 
-/** Max consecutive days allowed in a single request. */
-export const MAX_CONSECUTIVE_DAYS = 15;
-/** Casual/personal leave should be applied at least this many days in advance. */
-export const ADVANCE_NOTICE_DAYS: Partial<Record<LeaveType, number>> = {
-  casual: 1,
-  personal: 1,
+/** Per-client leave rules. Every client can set their own numbers. */
+export interface OrgLeavePolicy {
+  /** Annual entitlement (days) per leave type. */
+  entitlements: Record<LeaveType, number>;
+  /** Max consecutive days allowed in a single request. */
+  maxConsecutiveDays: number;
+  /** Minimum advance notice (days) per leave type. */
+  advanceNoticeDays: Partial<Record<LeaveType, number>>;
+  /** Allow sick/emergency leave to be applied for past dates. */
+  allowBackdatedSickEmergency: boolean;
+}
+
+export const DEFAULT_LEAVE_POLICY: OrgLeavePolicy = {
+  entitlements: { casual: 12, sick: 8, personal: 4, emergency: 3, other: 0 },
+  maxConsecutiveDays: 15,
+  advanceNoticeDays: { casual: 1, personal: 1 },
+  allowBackdatedSickEmergency: true,
 };
+
+let runtimeLeavePolicy: OrgLeavePolicy = {
+  ...DEFAULT_LEAVE_POLICY,
+  entitlements: { ...DEFAULT_LEAVE_POLICY.entitlements },
+  advanceNoticeDays: { ...DEFAULT_LEAVE_POLICY.advanceNoticeDays },
+};
+
+export const setRuntimeLeavePolicy = (policy: Partial<OrgLeavePolicy>) => {
+  runtimeLeavePolicy = {
+    ...runtimeLeavePolicy,
+    ...policy,
+    entitlements: { ...runtimeLeavePolicy.entitlements, ...(policy.entitlements || {}) },
+    advanceNoticeDays: { ...runtimeLeavePolicy.advanceNoticeDays, ...(policy.advanceNoticeDays || {}) },
+  };
+};
+export const getRuntimeLeavePolicy = (): OrgLeavePolicy => runtimeLeavePolicy;
+
+/** Annual entitlement (days) per leave type, as configured by this client. */
+export const getLeaveEntitlements = (): Record<LeaveType, number> => runtimeLeavePolicy.entitlements;
 
 const MS_DAY = 24 * 60 * 60 * 1000;
 
@@ -52,7 +73,8 @@ export interface LeaveBalance {
 
 /** Compute balances for a year from the staff's own request history. */
 export const computeLeaveBalances = (requests: LeaveRequest[], year = new Date().getFullYear()): LeaveBalance[] => {
-  const types = Object.keys(LEAVE_ENTITLEMENTS) as LeaveType[];
+  const entitlements = getLeaveEntitlements();
+  const types = Object.keys(entitlements) as LeaveType[];
   return types.map(type => {
     let used = 0;
     let pending = 0;
@@ -63,7 +85,7 @@ export const computeLeaveBalances = (requests: LeaveRequest[], year = new Date()
       if (r.status === 'approved') used += days;
       else if (r.status === 'pending' || r.status === 'postponed') pending += days;
     });
-    const entitled = LEAVE_ENTITLEMENTS[type];
+    const entitled = entitlements[type] ?? 0;
     return { type, entitled, used, pending, remaining: Math.max(0, entitled - used - pending) };
   });
 };
@@ -98,19 +120,23 @@ export const validateLeaveRequest = (
 
   const days = countDays(draft.leaveDate, draft.leaveEndDate);
   if (draft.leaveDate && draft.leaveEndDate && days === 0) errors.push('End date must be on or after the start date.');
-  if (days > MAX_CONSECUTIVE_DAYS) errors.push(`A single request cannot exceed ${MAX_CONSECUTIVE_DAYS} days.`);
+  const maxDays = runtimeLeavePolicy.maxConsecutiveDays;
+  if (maxDays > 0 && days > maxDays) errors.push(`A single request cannot exceed ${maxDays} days.`);
 
   if (draft.leaveDate) {
     const start = parseDate(draft.leaveDate);
     const diffDays = Math.round((start.getTime() - today.getTime()) / MS_DAY);
     if (diffDays < 0) {
-      if (draft.leaveType === 'sick' || draft.leaveType === 'emergency') {
+      const backdatable =
+        runtimeLeavePolicy.allowBackdatedSickEmergency &&
+        (draft.leaveType === 'sick' || draft.leaveType === 'emergency');
+      if (backdatable) {
         warnings.push('This is a back-dated request and will need manager justification.');
       } else {
         errors.push('Past dates are only allowed for sick or emergency leave.');
       }
     }
-    const notice = ADVANCE_NOTICE_DAYS[draft.leaveType];
+    const notice = runtimeLeavePolicy.advanceNoticeDays[draft.leaveType];
     if (notice !== undefined && diffDays >= 0 && diffDays < notice) {
       warnings.push(`${LEAVE_TYPE_LABELS[draft.leaveType]} normally needs ${notice} day(s) advance notice.`);
     }

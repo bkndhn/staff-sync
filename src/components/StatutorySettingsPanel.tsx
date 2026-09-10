@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Receipt, Loader2, Check, ShieldCheck, Landmark, HeartPulse, Building2 } from 'lucide-react';
+import { Receipt, Loader2, Check, ShieldCheck, Landmark, HeartPulse, Building2, CalendarDays } from 'lucide-react';
+import { LEAVE_TYPE_LABELS, type LeaveType } from '../lib/leavePolicy';
 import {
   statutoryPolicyService,
   DEFAULT_STATUTORY_POLICY_RECORD,
@@ -199,6 +200,60 @@ export const StatutorySettingsPanel: React.FC = () => {
           ))}
         </div>
       </Section>
+
+      <div className="p-3 rounded-lg bg-[var(--bg-card)] border border-[var(--glass-border)] space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+            <CalendarDays size={14} className="text-blue-500" /> Leave rules
+          </h3>
+          <p className="text-[11px] text-[var(--text-muted)] mt-1">
+            Yearly leave days for each type, plus how far ahead staff must apply. Used on the staff portal and in approvals.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(LEAVE_TYPE_LABELS) as LeaveType[]).map(type => (
+            <NumberField
+              key={type}
+              label={`${LEAVE_TYPE_LABELS[type]} (days/yr)`}
+              value={policy.leave.entitlements[type] ?? 0}
+              onChange={v =>
+                patch({ leave: { ...policy.leave, entitlements: { ...policy.leave.entitlements, [type]: v } } })
+              }
+            />
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <NumberField
+            label="Max days in one request"
+            value={policy.leave.maxConsecutiveDays}
+            onChange={v => patch({ leave: { ...policy.leave, maxConsecutiveDays: v } })}
+          />
+          <NumberField
+            label="Casual leave notice (days)"
+            value={policy.leave.advanceNoticeDays.casual ?? 0}
+            onChange={v =>
+              patch({ leave: { ...policy.leave, advanceNoticeDays: { ...policy.leave.advanceNoticeDays, casual: v } } })
+            }
+          />
+          <NumberField
+            label="Personal leave notice (days)"
+            value={policy.leave.advanceNoticeDays.personal ?? 0}
+            onChange={v =>
+              patch({ leave: { ...policy.leave, advanceNoticeDays: { ...policy.leave.advanceNoticeDays, personal: v } } })
+            }
+          />
+          <label className="flex items-center gap-2 text-[11px] text-[var(--text-primary)] self-end pb-1">
+            <input
+              type="checkbox"
+              checked={policy.leave.allowBackdatedSickEmergency}
+              onChange={() =>
+                patch({ leave: { ...policy.leave, allowBackdatedSickEmergency: !policy.leave.allowBackdatedSickEmergency } })
+              }
+            />
+            Allow past-dated sick / emergency leave
+          </label>
+        </div>
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <label className="text-[11px] text-[var(--text-muted)]">

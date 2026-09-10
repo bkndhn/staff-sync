@@ -2633,6 +2633,7 @@ export type Database = {
           effective_from: string
           esi: Json
           id: string
+          leave: Json
           lwf: Json
           notes: string | null
           pf: Json
@@ -2647,6 +2648,7 @@ export type Database = {
           effective_from?: string
           esi?: Json
           id?: string
+          leave?: Json
           lwf?: Json
           notes?: string | null
           pf?: Json
@@ -2661,6 +2663,7 @@ export type Database = {
           effective_from?: string
           esi?: Json
           id?: string
+          leave?: Json
           lwf?: Json
           notes?: string | null
           pf?: Json
