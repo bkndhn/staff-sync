@@ -127,13 +127,16 @@ export const validateLeaveRequest = (
     const start = parseDate(draft.leaveDate);
     const diffDays = Math.round((start.getTime() - today.getTime()) / MS_DAY);
     if (diffDays < 0) {
-      if (draft.leaveType === 'sick' || draft.leaveType === 'emergency') {
+      const backdatable =
+        runtimeLeavePolicy.allowBackdatedSickEmergency &&
+        (draft.leaveType === 'sick' || draft.leaveType === 'emergency');
+      if (backdatable) {
         warnings.push('This is a back-dated request and will need manager justification.');
       } else {
         errors.push('Past dates are only allowed for sick or emergency leave.');
       }
     }
-    const notice = ADVANCE_NOTICE_DAYS[draft.leaveType];
+    const notice = runtimeLeavePolicy.advanceNoticeDays[draft.leaveType];
     if (notice !== undefined && diffDays >= 0 && diffDays < notice) {
       warnings.push(`${LEAVE_TYPE_LABELS[draft.leaveType]} normally needs ${notice} day(s) advance notice.`);
     }
