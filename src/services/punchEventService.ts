@@ -119,6 +119,25 @@ export const punchEventService = {
     return merged.sort((a, b) => a.eventTime.localeCompare(b.eventTime));
   },
 
+  async listByStaffId(staffId: string, limit = 100): Promise<PunchEvent[]> {
+    const { data, error } = await dataApi
+      .from('punch_events')
+      .select('*')
+      .eq('staff_id', staffId)
+      .order('date', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching staff punch events:', error);
+      return [];
+    }
+
+    const events: PunchEvent[] = (data || []).map(fromDb);
+    return events.sort((a: PunchEvent, b: PunchEvent) =>
+      `${b.date}T${b.eventTime}`.localeCompare(`${a.date}T${a.eventTime}`)
+    );
+  },
+
   /** First IN, last OUT, total minutes worked for a staff on a date. */
   summarize(events: PunchEvent[]): { firstIn?: string; lastOut?: string; minutes: number; count: number } {
     if (events.length === 0) return { minutes: 0, count: 0 };
