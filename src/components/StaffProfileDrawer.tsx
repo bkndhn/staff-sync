@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Edit2, Calendar, Phone, CreditCard, Shield, TrendingUp, Layers, DollarSign } from 'lucide-react';
+import { X, Edit2, Phone, CreditCard, Shield, TrendingUp, Layers, DollarSign, Activity } from 'lucide-react';
 import { Staff, PayrollHike, CustomFieldDefinition } from '../types';
 import { calculateExperience } from '../utils/salaryCalculations';
+import { StaffActivityLog } from './StaffActivityLog';
 
 interface StaffProfileDrawerProps {
   staff: Staff | null;
@@ -24,7 +25,7 @@ export const StaffProfileDrawer: React.FC<StaffProfileDrawerProps> = ({
   getLocationColor,
   calculateMemberTotalPayroll
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'payroll' | 'history' | 'custom'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'payroll' | 'activity' | 'history' | 'custom'>('overview');
 
   if (!isOpen || !staff) return null;
 
@@ -115,7 +116,7 @@ export const StaffProfileDrawer: React.FC<StaffProfileDrawerProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-[var(--glass-border)] bg-white/5 px-6">
+        <div className="flex border-b border-[var(--glass-border)] bg-white/5 px-3 sm:px-6 overflow-x-auto">
           <button
             onClick={() => setActiveTab('overview')}
             className={`py-3 px-4 text-xs font-semibold transition-colors border-b-2 ${
@@ -137,8 +138,18 @@ export const StaffProfileDrawer: React.FC<StaffProfileDrawerProps> = ({
             Payroll & Banking
           </button>
           <button
+            onClick={() => setActiveTab('activity')}
+            className={`py-3 px-4 text-xs font-semibold transition-colors border-b-2 shrink-0 flex items-center gap-1.5 ${
+              activeTab === 'activity'
+                ? 'border-indigo-500 text-indigo-400'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            <Activity size={14} /> Activity
+          </button>
+          <button
             onClick={() => setActiveTab('history')}
-            className={`py-3 px-4 text-xs font-semibold transition-colors border-b-2 ${
+            className={`py-3 px-4 text-xs font-semibold transition-colors border-b-2 shrink-0 ${
               activeTab === 'history'
                 ? 'border-indigo-500 text-indigo-400'
                 : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
@@ -148,7 +159,7 @@ export const StaffProfileDrawer: React.FC<StaffProfileDrawerProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('custom')}
-            className={`py-3 px-4 text-xs font-semibold transition-colors border-b-2 ${
+            className={`py-3 px-4 text-xs font-semibold transition-colors border-b-2 shrink-0 ${
               activeTab === 'custom'
                 ? 'border-indigo-500 text-indigo-400'
                 : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
@@ -272,6 +283,8 @@ export const StaffProfileDrawer: React.FC<StaffProfileDrawerProps> = ({
               </div>
             </div>
           )}
+
+          {activeTab === 'activity' && <StaffActivityLog staffId={staff.id} />}
 
           {/* TAB 3: TIMELINE & HISTORY */}
           {activeTab === 'history' && (
