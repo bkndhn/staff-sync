@@ -132,9 +132,10 @@ export const punchEventService = {
       return [];
     }
 
-    return (data || [])
-      .map(fromDb)
-      .sort((a, b) => `${b.date}T${b.eventTime}`.localeCompare(`${a.date}T${a.eventTime}`));
+    const events: PunchEvent[] = (data || []).map(fromDb);
+    return events.sort((a: PunchEvent, b: PunchEvent) =>
+      `${b.date}T${b.eventTime}`.localeCompare(`${a.date}T${a.eventTime}`)
+    );
   },
 
   /** First IN, last OUT, total minutes worked for a staff on a date. */
