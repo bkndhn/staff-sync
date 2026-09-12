@@ -1,0 +1,1 @@
+ALTER TABLE public.staff DROP CONSTRAINT IF EXISTS staff_location_check;
