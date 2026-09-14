@@ -530,27 +530,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
       }
 
       // Apply statutory deductions (ESI / PF / PT / TDS / Custom) — subtract from net
-      const breakdown = computeStatutoryBreakdown(member, {
-        basic: resultDetail.basicEarned,
-        hra: resultDetail.hraEarned,
-        incentive: resultDetail.incentiveEarned,
-        gross: resultDetail.grossPayroll ?? resultDetail.grossSalary ?? 0,
-      }, { month: selectedMonth, year: selectedYear });
-      const statutoryTotal = breakdown.reduce((s, b) => s + b.amount, 0);
-      const netBase = resultDetail.netPayroll ?? resultDetail.netSalary ?? 0;
-      if (statutoryTotal > 0) {
-        resultDetail = {
-          ...resultDetail,
-          statutoryTotal,
-          statutoryBreakdown: breakdown.map(b => ({ key: b.key, label: b.label, amount: b.amount })),
-          nonStatutoryNet: netBase,
-          netPayroll: Math.max(0, roundToNearest10(netBase - statutoryTotal)),
-          netSalary: Math.max(0, roundToNearest10(netBase - statutoryTotal)),
-        };
-      } else {
-        resultDetail = { ...resultDetail, statutoryTotal: 0, statutoryBreakdown: [], nonStatutoryNet: netBase };
-      }
-      return resultDetail;
+      return applyStatutoryToDetail(member, resultDetail);
     });
   };
 
