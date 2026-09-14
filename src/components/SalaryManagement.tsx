@@ -855,7 +855,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
         const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
         const memberAdvanceEntries = advanceEntries[member.id] || [];
-        return calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides[member.id], scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules);
+        return applyStatutoryToDetail(member, calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides[member.id], scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules));
       });
 
       const run = await payrollService.regeneratePayroll(selectedMonth, selectedYear, activeStaff, fullDetails, 'System');
