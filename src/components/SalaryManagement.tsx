@@ -444,7 +444,31 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
   }, [selectedMonth, selectedYear]);
 
 
+  /** Apply the employee's statutory deductions (PF/ESI/PT/TDS/LWF) to a computed payroll row. */
+  const applyStatutoryToDetail = (member: Staff, detail: PayrollDetail): PayrollDetail => {
+    const breakdown = computeStatutoryBreakdown(member, {
+      basic: detail.basicEarned,
+      hra: detail.hraEarned,
+      incentive: detail.incentiveEarned,
+      gross: detail.grossPayroll ?? detail.grossSalary ?? 0,
+    }, { month: selectedMonth, year: selectedYear });
+    const statutoryTotal = breakdown.reduce((s, b) => s + b.amount, 0);
+    const netBase = detail.netPayroll ?? detail.netSalary ?? 0;
+    if (statutoryTotal <= 0) {
+      return { ...detail, statutoryTotal: 0, statutoryBreakdown: [], nonStatutoryNet: netBase };
+    }
+    return {
+      ...detail,
+      statutoryTotal,
+      statutoryBreakdown: breakdown.map(b => ({ key: b.key, label: b.label, amount: b.amount })),
+      nonStatutoryNet: netBase,
+      netPayroll: Math.max(0, roundToNearest10(netBase - statutoryTotal)),
+      netSalary: Math.max(0, roundToNearest10(netBase - statutoryTotal)),
+    };
+  };
+
   const calculateSalaryDetails = (): PayrollDetail[] => {
+
     if (payrollRun && snapshots.length > 0) {
       return snapshots
         .filter(s => filteredStaff.some(fs => fs.id === s.staffId))
