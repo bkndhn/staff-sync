@@ -444,7 +444,31 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
   }, [selectedMonth, selectedYear]);
 
 
+  /** Apply the employee's statutory deductions (PF/ESI/PT/TDS/LWF) to a computed payroll row. */
+  const applyStatutoryToDetail = (member: Staff, detail: PayrollDetail): PayrollDetail => {
+    const breakdown = computeStatutoryBreakdown(member, {
+      basic: detail.basicEarned,
+      hra: detail.hraEarned,
+      incentive: detail.incentiveEarned,
+      gross: detail.grossPayroll ?? detail.grossSalary ?? 0,
+    }, { month: selectedMonth, year: selectedYear });
+    const statutoryTotal = breakdown.reduce((s, b) => s + b.amount, 0);
+    const netBase = detail.netPayroll ?? detail.netSalary ?? 0;
+    if (statutoryTotal <= 0) {
+      return { ...detail, statutoryTotal: 0, statutoryBreakdown: [], nonStatutoryNet: netBase };
+    }
+    return {
+      ...detail,
+      statutoryTotal,
+      statutoryBreakdown: breakdown.map(b => ({ key: b.key, label: b.label, amount: b.amount })),
+      nonStatutoryNet: netBase,
+      netPayroll: Math.max(0, roundToNearest10(netBase - statutoryTotal)),
+      netSalary: Math.max(0, roundToNearest10(netBase - statutoryTotal)),
+    };
+  };
+
   const calculateSalaryDetails = (): PayrollDetail[] => {
+
     if (payrollRun && snapshots.length > 0) {
       return snapshots
         .filter(s => filteredStaff.some(fs => fs.id === s.staffId))
@@ -506,27 +530,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
       }
 
       // Apply statutory deductions (ESI / PF / PT / TDS / Custom) — subtract from net
-      const breakdown = computeStatutoryBreakdown(member, {
-        basic: resultDetail.basicEarned,
-        hra: resultDetail.hraEarned,
-        incentive: resultDetail.incentiveEarned,
-        gross: resultDetail.grossPayroll ?? resultDetail.grossSalary ?? 0,
-      }, { month: selectedMonth, year: selectedYear });
-      const statutoryTotal = breakdown.reduce((s, b) => s + b.amount, 0);
-      const netBase = resultDetail.netPayroll ?? resultDetail.netSalary ?? 0;
-      if (statutoryTotal > 0) {
-        resultDetail = {
-          ...resultDetail,
-          statutoryTotal,
-          statutoryBreakdown: breakdown.map(b => ({ key: b.key, label: b.label, amount: b.amount })),
-          nonStatutoryNet: netBase,
-          netPayroll: Math.max(0, roundToNearest10(netBase - statutoryTotal)),
-          netSalary: Math.max(0, roundToNearest10(netBase - statutoryTotal)),
-        };
-      } else {
-        resultDetail = { ...resultDetail, statutoryTotal: 0, statutoryBreakdown: [], nonStatutoryNet: netBase };
-      }
-      return resultDetail;
+      return applyStatutoryToDetail(member, resultDetail);
     });
   };
 
@@ -828,7 +832,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
         const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
         const memberAdvanceEntries = advanceEntries[member.id] || [];
-        return calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides[member.id], scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules);
+        return applyStatutoryToDetail(member, calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides[member.id], scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules));
       });
 
       const run = await payrollService.generatePayroll(selectedMonth, selectedYear, activeStaff, fullDetails, 'System');
@@ -851,7 +855,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
         const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
         const memberAdvanceEntries = advanceEntries[member.id] || [];
-        return calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides[member.id], scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules);
+        return applyStatutoryToDetail(member, calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides[member.id], scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules));
       });
 
       const run = await payrollService.regeneratePayroll(selectedMonth, selectedYear, activeStaff, fullDetails, 'System');
