@@ -1,23 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resolveCaller, requireRole } from "../_shared/caller.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
 };
 
-async function validateSession(supabase: ReturnType<typeof createClient>, token: string | null) {
-  if (!token) return { ok: false, error: "Missing session token" };
-  const { data, error } = await supabase
-    .from("app_sessions")
-    .select("user_id, role, expires_at, is_valid")
-    .eq("token", token)
-    .eq("is_valid", true)
-    .maybeSingle();
-  if (error || !data) return { ok: false, error: "Invalid session" };
-  if (new Date(data.expires_at as string).getTime() < Date.now()) return { ok: false, error: "Session expired" };
-  if (!["admin", "manager", "super_admin"].includes(data.role as string)) return { ok: false, error: "Not authorized" };
-  return { ok: true, role: data.role as string };
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
