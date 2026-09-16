@@ -155,14 +155,23 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    // Lightweight auth: any valid Supabase user JWT (anon role is fine —
-    // signed-in admins call this from the UI).
-    const authHeader = req.headers.get("Authorization") ?? "";
-    if (!authHeader.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+    // Auth: a verified admin/manager session is required — the token is
+    // validated against Supabase Auth (or app_sessions) and mapped to app_users.
+    const auth = await resolveCaller(admin, req);
+    if (!auth.ok || !auth.caller) return json({ error: auth.error ?? "Unauthorized" }, auth.status ?? 401);
+    const roleCheck = requireRole(auth.caller, ["admin", "manager", "super_admin"]);
+    if (!roleCheck.ok) return json({ error: roleCheck.error }, roleCheck.status ?? 403);
+
+    const callerTenantId = auth.caller.tenant_id;
+    if (!callerTenantId && auth.caller.role !== "super_admin") {
+      return json({ error: "No tenant associated with this account" }, 403);
+    }
 
     const body = (await req.json().catch(() => ({}))) as PullBody;
     const provider = (body.provider || "").toLowerCase();
     if (!body.serverUrl || !body.apiKey) return json({ error: "serverUrl and apiKey are required" }, 400);
+    const urlError = validateServerUrl(body.serverUrl);
+    if (urlError) return json({ error: urlError }, 400);
     if (!["essl", "zkbiotime", "realtime"].includes(provider)) {
       return json({ error: `Unsupported provider: ${body.provider}` }, 400);
     }
