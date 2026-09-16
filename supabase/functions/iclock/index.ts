@@ -3,6 +3,8 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+// Shared device secret — same token used by the device-push endpoint.
+const PUSH_TOKEN = Deno.env.get("DEVICE_PUSH_TOKEN") ?? "";
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
   auth: { persistSession: false, autoRefreshToken: false },
