@@ -57,6 +57,24 @@ function normalizeKind(raw: any): NormalizedPunch["kind"] {
   return "unknown";
 }
 
+// Block SSRF: only allow public https endpoints.
+function validateServerUrl(raw: string): string | null {
+  let u: URL;
+  try { u = new URL(raw); } catch { return "serverUrl must be a valid URL"; }
+  if (u.protocol !== "https:") return "serverUrl must use https";
+  const host = u.hostname.toLowerCase();
+  if (
+    host === "localhost" || host.endsWith(".localhost") || host === "[::1]" ||
+    host === "0.0.0.0" || host.endsWith(".internal") || host.endsWith(".local") ||
+    /^127\./.test(host) || /^10\./.test(host) || /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) || /^169\.254\./.test(host) ||
+    /^(fc|fd|fe80)/.test(host)
+  ) {
+    return "serverUrl must point to a public host";
+  }
+  return null;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
