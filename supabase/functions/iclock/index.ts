@@ -3,6 +3,8 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+// Shared device secret — same token used by the device-push endpoint.
+const PUSH_TOKEN = Deno.env.get("DEVICE_PUSH_TOKEN") ?? "";
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -15,6 +17,18 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
+
+    // --- Auth: shared device secret, same as device-push ---
+    if (!PUSH_TOKEN) {
+      return new Response("Device token not configured on server", { status: 500 });
+    }
+    const headerToken = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "")
+      ?? req.headers.get("x-device-token") ?? "";
+    const queryToken = url.searchParams.get("token") ?? "";
+    if (headerToken !== PUSH_TOKEN && queryToken !== PUSH_TOKEN) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
     const sn = url.searchParams.get("SN");
     if (!sn) {
       return new Response("Missing SN", { status: 400 });
