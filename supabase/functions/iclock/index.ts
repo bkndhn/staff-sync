@@ -17,6 +17,18 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
+
+    // --- Auth: shared device secret, same as device-push ---
+    if (!PUSH_TOKEN) {
+      return new Response("Device token not configured on server", { status: 500 });
+    }
+    const headerToken = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "")
+      ?? req.headers.get("x-device-token") ?? "";
+    const queryToken = url.searchParams.get("token") ?? "";
+    if (headerToken !== PUSH_TOKEN && queryToken !== PUSH_TOKEN) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
     const sn = url.searchParams.get("SN");
     if (!sn) {
       return new Response("Missing SN", { status: 400 });
