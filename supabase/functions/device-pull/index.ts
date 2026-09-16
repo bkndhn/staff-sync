@@ -206,13 +206,14 @@ Deno.serve(async (req) => {
       const timeStr = iso.split('T')[1].substring(0, 8);
       const dTime = d.getTime();
 
-      // Resolve deviceId to staff record
-      const { data: staffData, error: staffErr } = await admin
+      // Resolve deviceId to staff record — scoped to the caller's tenant so a
+      // caller can never write punches for another client's staff.
+      let staffQuery = admin
         .from("staff")
         .select("id, name, location, tenant_id")
-        .eq("device_id", p.deviceId)
-        .limit(1)
-        .maybeSingle();
+        .eq("device_id", p.deviceId);
+      if (callerTenantId) staffQuery = staffQuery.eq("tenant_id", callerTenantId);
+      const { data: staffData, error: staffErr } = await staffQuery.limit(1).maybeSingle();
 
       if (staffErr || !staffData) {
         errors.push(`Unmapped device_id: ${p.deviceId}`);
