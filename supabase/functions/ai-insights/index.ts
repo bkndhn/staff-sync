@@ -18,18 +18,27 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const sessionCheck = await validateSession(supabase, req.headers.get("x-session-token"));
-    if (!sessionCheck.ok) {
-      return new Response(JSON.stringify({ error: sessionCheck.error }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const auth = await resolveCaller(supabase, req);
+    if (!auth.ok || !auth.caller) {
+      return new Response(JSON.stringify({ error: auth.error ?? "Unauthorized" }),
+        { status: auth.status ?? 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const roleCheck = requireRole(auth.caller, ["admin", "manager", "super_admin"]);
+    if (!roleCheck.ok) {
+      return new Response(JSON.stringify({ error: roleCheck.error }),
+        { status: roleCheck.status ?? 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Parse request
     const body = await req.json().catch(() => ({}));
-    const tenantId = body.tenantId;
+    // Tenant is derived from the caller — never trusted from the request body.
+    // Only super admins may target another tenant explicitly.
+    const tenantId = auth.caller.role === "super_admin"
+      ? (body.tenantId || auth.caller.tenant_id)
+      : auth.caller.tenant_id;
 
     if (!tenantId) {
-      return new Response(JSON.stringify({ error: 'tenantId is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'No tenant associated with this account' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // 1. Fetch data for analysis
