@@ -180,6 +180,25 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         return;
       }
 
+      // Anti-spoofing gate — a printed photo, a phone screen or a still image
+      // can never satisfy blink + motion + skin-texture checks together.
+      if (liveness?.reason === 'spoof') {
+        setMessage({ kind: 'err', text: 'Spoof detected — a photo or screen was shown to the camera. Use the real person.' });
+        resetChallenge();
+        return;
+      }
+      if (!livenessOk) {
+        setMessage({
+          kind: 'warn',
+          text: !blinkDone
+            ? 'Please blink once while looking at the camera.'
+            : !motionDone
+              ? 'Please move your head slightly so we can confirm you are live.'
+              : 'Still confirming a live person — hold steady for a moment.',
+        });
+        return;
+      }
+
       // Cosine duplicate deduplication against own existing samples
       const sameAngleDupes = samples.filter(s => s.angleLabel === activeAngle && s.modelVersion === result.modelVersion);
       for (const s of sameAngleDupes) {
