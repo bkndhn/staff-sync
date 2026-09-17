@@ -4,6 +4,13 @@ import { Staff } from '../types';
 import { useFaceEngine } from '../hooks/useFaceEngine';
 import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
 import { cosineDistance, computeCentroid } from '../lib/embeddingMatcher';
+import {
+  createLivenessState,
+  updateLiveness,
+  evaluateLiveness,
+  type LivenessState,
+  type LivenessResult,
+} from '../lib/livenessEngine';
 import { db } from '../lib/db';
 import { customConfirm } from './CustomDialog';
 
@@ -40,6 +47,20 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err' | 'warn'; text: string } | null>(null);
   const [livePreview, setLivePreview] = useState<{ faces: number; quality: number } | null>(null);
+
+  // --- Anti-spoofing: live-person challenge -------------------------------
+  const livenessRef = useRef<LivenessState>(createLivenessState());
+  const [liveness, setLiveness] = useState<LivenessResult | null>(null);
+  const [blinkDone, setBlinkDone] = useState(false);
+  const [motionDone, setMotionDone] = useState(false);
+  const livenessOk = !!liveness?.isLive && blinkDone && motionDone;
+
+  const resetChallenge = useCallback(() => {
+    livenessRef.current = createLivenessState();
+    setLiveness(null);
+    setBlinkDone(false);
+    setMotionDone(false);
+  }, []);
 
   // Load existing samples
   const loadSamples = useCallback(async () => {
