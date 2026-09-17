@@ -117,7 +117,8 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
     if (videoRef.current) videoRef.current.srcObject = null;
     setCameraOn(false);
     setLivePreview(null);
-  }, []);
+    resetChallenge();
+  }, [resetChallenge]);
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
@@ -136,9 +137,25 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         const r = await detect(videoRef.current, { scoreThreshold: 0.15 });
         if (!cancelled) {
           setLivePreview(r ? { faces: r.faceCount, quality: r.qualityScore } : { faces: 0, quality: 0 });
+
+          if (r && r.faceCount === 1) {
+            // Accumulate anti-spoofing evidence: blink, micro-motion, skin
+            // texture, screen-replay (moire) and frame-to-frame variation.
+            livenessRef.current = updateLiveness(livenessRef.current, videoRef.current, r.box, r.landmarks);
+            const verdict = evaluateLiveness(livenessRef.current, videoRef.current, r.box);
+            setLiveness(verdict);
+            if (livenessRef.current.blinkSeen) setBlinkDone(true);
+            if (verdict.detail.movement > 1.2 || verdict.detail.earVariance > 0.0015) setMotionDone(true);
+          } else if (!r || r.faceCount === 0) {
+            // Face left the frame — start the challenge over.
+            livenessRef.current = createLivenessState();
+            setLiveness(null);
+            setBlinkDone(false);
+            setMotionDone(false);
+          }
         }
       } catch { /* ignore */ }
-      if (!cancelled) timer = setTimeout(tick, 700);
+      if (!cancelled) timer = setTimeout(tick, 250);
     };
     tick();
     return () => { cancelled = true; clearTimeout(timer); };
