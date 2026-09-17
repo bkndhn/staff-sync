@@ -4,6 +4,13 @@ import { Staff } from '../types';
 import { useFaceEngine } from '../hooks/useFaceEngine';
 import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
 import { cosineDistance, computeCentroid } from '../lib/embeddingMatcher';
+import {
+  createLivenessState,
+  updateLiveness,
+  evaluateLiveness,
+  type LivenessState,
+  type LivenessResult,
+} from '../lib/livenessEngine';
 import { db } from '../lib/db';
 import { customConfirm } from './CustomDialog';
 
@@ -40,6 +47,20 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err' | 'warn'; text: string } | null>(null);
   const [livePreview, setLivePreview] = useState<{ faces: number; quality: number } | null>(null);
+
+  // --- Anti-spoofing: live-person challenge -------------------------------
+  const livenessRef = useRef<LivenessState>(createLivenessState());
+  const [liveness, setLiveness] = useState<LivenessResult | null>(null);
+  const [blinkDone, setBlinkDone] = useState(false);
+  const [motionDone, setMotionDone] = useState(false);
+  const livenessOk = !!liveness?.isLive && blinkDone && motionDone;
+
+  const resetChallenge = useCallback(() => {
+    livenessRef.current = createLivenessState();
+    setLiveness(null);
+    setBlinkDone(false);
+    setMotionDone(false);
+  }, []);
 
   // Load existing samples
   const loadSamples = useCallback(async () => {
@@ -96,7 +117,8 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
     if (videoRef.current) videoRef.current.srcObject = null;
     setCameraOn(false);
     setLivePreview(null);
-  }, []);
+    resetChallenge();
+  }, [resetChallenge]);
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
@@ -115,9 +137,25 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         const r = await detect(videoRef.current, { scoreThreshold: 0.15 });
         if (!cancelled) {
           setLivePreview(r ? { faces: r.faceCount, quality: r.qualityScore } : { faces: 0, quality: 0 });
+
+          if (r && r.faceCount === 1) {
+            // Accumulate anti-spoofing evidence: blink, micro-motion, skin
+            // texture, screen-replay (moire) and frame-to-frame variation.
+            livenessRef.current = updateLiveness(livenessRef.current, videoRef.current, r.box, r.landmarks);
+            const verdict = evaluateLiveness(livenessRef.current, videoRef.current, r.box);
+            setLiveness(verdict);
+            if (livenessRef.current.blinkSeen) setBlinkDone(true);
+            if (verdict.detail.movement > 1.2 || verdict.detail.earVariance > 0.0015) setMotionDone(true);
+          } else if (!r || r.faceCount === 0) {
+            // Face left the frame — start the challenge over.
+            livenessRef.current = createLivenessState();
+            setLiveness(null);
+            setBlinkDone(false);
+            setMotionDone(false);
+          }
         }
       } catch { /* ignore */ }
-      if (!cancelled) timer = setTimeout(tick, 700);
+      if (!cancelled) timer = setTimeout(tick, 250);
     };
     tick();
     return () => { cancelled = true; clearTimeout(timer); };
@@ -139,6 +177,25 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
       }
       if (result.qualityScore < 0.35) {
         setMessage({ kind: 'warn', text: 'Low quality detection. Improve lighting and try again.' });
+        return;
+      }
+
+      // Anti-spoofing gate — a printed photo, a phone screen or a still image
+      // can never satisfy blink + motion + skin-texture checks together.
+      if (liveness?.reason === 'spoof') {
+        setMessage({ kind: 'err', text: 'Spoof detected — a photo or screen was shown to the camera. Use the real person.' });
+        resetChallenge();
+        return;
+      }
+      if (!livenessOk) {
+        setMessage({
+          kind: 'warn',
+          text: !blinkDone
+            ? 'Please blink once while looking at the camera.'
+            : !motionDone
+              ? 'Please move your head slightly so we can confirm you are live.'
+              : 'Still confirming a live person — hold steady for a moment.',
+        });
         return;
       }
 
