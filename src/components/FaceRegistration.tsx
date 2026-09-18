@@ -224,7 +224,15 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         angleLabel: activeAngle,
         descriptor: result.descriptor,
         modelVersion: result.modelVersion,
-        qualityMetrics: { aligned: !!result.aligned, faceCount: result.faceCount, detectScore: result.qualityScore },
+        qualityMetrics: {
+          aligned: !!result.aligned,
+          faceCount: result.faceCount,
+          detectScore: result.qualityScore,
+          livenessVerified: true,
+          livenessScore: liveness?.score ?? null,
+          blinkSeen: blinkDone,
+          motionSeen: motionDone,
+        },
         qualityScore: result.qualityScore,
         imageBlob: blob || undefined,
         capturedBy,
@@ -270,7 +278,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         angleLabel: activeAngle,
         descriptor: result.descriptor,
         modelVersion: result.modelVersion,
-        qualityMetrics: { aligned: !!result.aligned, faceCount: result.faceCount, detectScore: result.qualityScore, source: 'upload' },
+        qualityMetrics: { aligned: !!result.aligned, faceCount: result.faceCount, detectScore: result.qualityScore, source: 'upload', livenessVerified: false, livenessScore: null },
         qualityScore: result.qualityScore,
         imageBlob: file,
         capturedBy,
@@ -385,6 +393,23 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
             </div>
           )}
         </div>
+
+        {cameraOn && (
+          <div className={`mt-3 p-3 rounded-xl border text-sm ${livenessOk ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : liveness?.reason === 'spoof' ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'}`}>
+            <p className="font-semibold mb-1">
+              {livenessOk
+                ? 'Live person confirmed — you can capture now'
+                : liveness?.reason === 'spoof'
+                  ? 'Photo or screen detected — show a real face to the camera'
+                  : 'Live check in progress'}
+            </p>
+            <div className="flex flex-wrap gap-3 text-xs">
+              <span>{blinkDone ? '✓' : '○'} Blink once</span>
+              <span>{motionDone ? '✓' : '○'} Move your head slightly</span>
+              <span>Live score {liveness ? `${Math.round(liveness.score * 100)}%` : '—'}</span>
+            </div>
+          </div>
+        )}
 
         {cameraError && (
           <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
