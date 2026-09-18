@@ -36,7 +36,9 @@ Deno.serve(async (req) => {
       .maybeSingle()
 
     if (error) return json({ error: 'Lookup failed' }, 500)
-    if (!data || data.status !== 'active') return json({ error: 'Not found' }, 404)
+    if (!data || String(data.status ?? '').toLowerCase() !== 'active') {
+      return json({ error: 'Not found' }, 404)
+    }
 
     return json(data)
   } catch {
