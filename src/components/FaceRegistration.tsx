@@ -278,7 +278,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         angleLabel: activeAngle,
         descriptor: result.descriptor,
         modelVersion: result.modelVersion,
-        qualityMetrics: { aligned: !!result.aligned, faceCount: result.faceCount, detectScore: result.qualityScore, source: 'upload' },
+        qualityMetrics: { aligned: !!result.aligned, faceCount: result.faceCount, detectScore: result.qualityScore, source: 'upload', livenessVerified: false, livenessScore: null },
         qualityScore: result.qualityScore,
         imageBlob: file,
         capturedBy,
