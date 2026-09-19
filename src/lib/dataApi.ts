@@ -92,12 +92,29 @@ class QueryBuilder<T = any> implements PromiseLike<{ data: T | null; error: Erro
           token = session.access_token;
         }
       } catch { /* ignore */ }
-      
+
+      // Staff portal sessions are not Supabase Auth sessions: they are rows in
+      // app_sessions and the token is stored in localStorage at sign-in.
+      if (!token) {
+        try {
+          token = localStorage.getItem("sessionToken");
+          if (!token) {
+            const saved = localStorage.getItem("staffManagementLogin");
+            token = saved ? (JSON.parse(saved)?.sessionToken || JSON.parse(saved)?.user?.token || null) : null;
+          }
+        } catch { /* ignore */ }
+      }
+
       if (!token) {
         const empty = { data: (this.state.single ? null : []) as unknown as T, error: null };
         return onFulfilled ? onFulfilled(empty) : (empty as unknown as TR1);
       }
-      
+
+      // A Supabase JWT has three dot-separated segments; legacy app_sessions
+      // tokens are opaque UUIDs and must only travel in x-session-token,
+      // otherwise the server tries (and fails) to validate them as a JWT.
+      const isJwt = token.split(".").length === 3;
+
       // Super admin "view as client" support: scopes every request to a client.
       const impersonated = (() => {
         try { return sessionStorage.getItem('impersonateTenantId') || ''; } catch { return ''; }
@@ -107,7 +124,8 @@ class QueryBuilder<T = any> implements PromiseLike<{ data: T | null; error: Erro
         headers: {
           "Content-Type": "application/json",
           apikey: SUPABASE_PUBLISHABLE_KEY,
-          ...(token ? { "x-session-token": token, "Authorization": `Bearer ${token}` } : {}),
+          "x-session-token": token,
+          ...(isJwt ? { Authorization: `Bearer ${token}` } : {}),
           ...(impersonated ? { "x-tenant-id": impersonated } : {}),
         },
         body: JSON.stringify(this.state),

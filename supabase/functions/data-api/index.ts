@@ -63,11 +63,11 @@ const ACL: Record<string, TableAcl> = {
   // ── Advances / Payroll ──────────────────────────────────────────────────────
   advances:                          { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager"],           staffIdCol: "staff_id" },
   advance_entries:                   { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager"],           staffIdCol: "staff_id" },
-  payroll_runs:                      { read: ["admin","super_admin"],                                                 write: ["admin"] },
-  payroll_snapshots:                 { read: ["admin","super_admin"],                                                 write: ["admin"] },
+  payroll_runs:                      { read: ["admin","staff","super_admin"],                                         write: ["admin"] },
+  payroll_snapshots:                 { read: ["admin","staff","super_admin"],                                         write: ["admin"], staffIdCol: "staff_id" },
   salary_hikes:                      { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin"],                     staffIdCol: "staff_id" },
   salary_manual_overrides:           { read: ["admin","super_admin"],                                                 write: ["admin"] },
-  salary_disbursements:              { read: ["admin","super_admin"],                                                 write: ["admin"] },
+  salary_disbursements:              { read: ["admin","staff","super_admin"],                                         write: ["admin"], staffIdCol: "staff_id" },
   payslip_links:                     { read: ["admin","super_admin"],                                                 write: ["admin"] },
   // ── Face / Biometric ────────────────────────────────────────────────────────
   face_embeddings:                   { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager","staff"],   staffIdCol: "staff_id" },
@@ -683,9 +683,20 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: error.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    const payloadData = wantSingle
+    let payloadData = wantSingle
       ? (Array.isArray(data) ? (data[0] ?? null) : (data ?? null))
       : data;
+
+    // Staff may read payroll_runs only to know which months are published;
+    // company-wide totals are stripped so nobody sees the whole payroll.
+    if (role === "staff" && body.table === "payroll_runs" && body.op === "select") {
+      const redact = (r: any) => {
+        if (!r || typeof r !== "object") return r;
+        const { total_net, headcount, generated_by, submitted_by, approved_by, rejected_by, rejection_reason, ...rest } = r;
+        return rest;
+      };
+      payloadData = Array.isArray(payloadData) ? payloadData.map(redact) : redact(payloadData);
+    }
 
     if (body.op !== "select" && body.table !== "audit_logs") {
       try {

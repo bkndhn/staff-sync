@@ -955,7 +955,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               <IndianRupee size={20} className="text-indigo-500" /> Current Payroll Structure
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <SalaryCard label={categoryLabels.basic} amount={staff.basicSalary} />
+              <SalaryCard label={categoryLabels.basic} amount={staff.basicPayroll ?? staff.basicSalary} />
               <SalaryCard label={categoryLabels.incentive} amount={staff.incentive} />
               <SalaryCard label={categoryLabels.hra} amount={staff.hra} />
               {(staff.mealAllowance || 0) > 0 && <SalaryCard label={categoryLabels.mealAllowance} amount={staff.mealAllowance!} />}
@@ -964,7 +964,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               ))}
             </div>
             <div className="mt-3">
-              <SalaryCard label="Total Payroll" amount={staff.totalSalary} highlight />
+              <SalaryCard label="Total Payroll" amount={staff.totalPayroll ?? staff.totalSalary} highlight />
             </div>
           </div>
 

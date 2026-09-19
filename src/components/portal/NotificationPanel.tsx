@@ -191,7 +191,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           ...(token
             ? {
                 'x-session-token': token,
-                Authorization: `Bearer ${token}`,
+                ...(token.split('.').length === 3 ? { Authorization: `Bearer ${token}` } : {}),
               }
             : {}),
         },
@@ -269,7 +269,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           ...(token
             ? {
                 'x-session-token': token,
-                Authorization: `Bearer ${token}`,
+                ...(token.split('.').length === 3 ? { Authorization: `Bearer ${token}` } : {}),
               }
             : {}),
         },
@@ -311,7 +311,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           ...(token
             ? {
                 'x-session-token': token,
-                Authorization: `Bearer ${token}`,
+                ...(token.split('.').length === 3 ? { Authorization: `Bearer ${token}` } : {}),
               }
             : {}),
         },
