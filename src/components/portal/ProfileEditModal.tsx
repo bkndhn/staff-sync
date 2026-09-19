@@ -181,7 +181,7 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
           ...(token
             ? {
                 'x-session-token': token,
-                Authorization: `Bearer ${token}`,
+                ...(token.split('.').length === 3 ? { Authorization: `Bearer ${token}` } : {}),
               }
             : {}),
         },

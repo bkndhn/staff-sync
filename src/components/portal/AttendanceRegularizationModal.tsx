@@ -193,7 +193,7 @@ export const AttendanceRegularizationModal: React.FC<AttendanceRegularizationMod
           ...(token
             ? {
                 'x-session-token': token,
-                Authorization: `Bearer ${token}`,
+                ...(token.split('.').length === 3 ? { Authorization: `Bearer ${token}` } : {}),
               }
             : {}),
         },
