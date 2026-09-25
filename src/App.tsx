@@ -1517,7 +1517,7 @@ function App() {
               userRole={user?.role}
               userName={user?.staffName || user?.email || 'Reviewer'}
               userLocation={user?.role === 'admin' ? undefined : user?.location}
-              allowedStaffIds={statutoryStaffIds || undefined}
+              allowedStaffIds={statutoryStaffIds ? Array.from(statutoryStaffIds) : undefined}
             />
           </Suspense>
         );
