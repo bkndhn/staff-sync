@@ -110,6 +110,7 @@ const ACL: Record<string, TableAcl> = {
   letter_requests:              { read: ["admin","manager","staff","super_admin"], write: ["admin","manager","staff"], staffIdCol: "staff_id" },
   holidays:                     { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   staff_notifications:          { read: ["admin","manager","staff","super_admin"], write: ["admin","manager","staff"], staffIdCol: "staff_id" },
+  expense_claims:               { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"], write: ["admin","manager","staff"], locationCol: "location", staffIdCol: "staff_id" },
 
   // ── Public API & webhooks (client admins only) ────────────────────────
   api_keys:                     { read: ["admin","super_admin"], write: ["admin","super_admin"] },
