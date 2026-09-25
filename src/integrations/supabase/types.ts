@@ -951,6 +951,69 @@ export type Database = {
           },
         ]
       }
+      expense_claims: {
+        Row: {
+          amount: number
+          category: string
+          claim_date: string
+          created_at: string
+          description: string | null
+          id: string
+          location: string | null
+          paid_month: number | null
+          paid_year: number | null
+          receipt_url: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          staff_id: string
+          staff_name: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          category?: string
+          claim_date?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string | null
+          paid_month?: number | null
+          paid_year?: number | null
+          receipt_url?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          staff_id: string
+          staff_name?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          claim_date?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string | null
+          paid_month?: number | null
+          paid_year?: number | null
+          receipt_url?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          staff_id?: string
+          staff_name?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       face_embeddings: {
         Row: {
           angle_label: string

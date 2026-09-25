@@ -51,6 +51,7 @@ const Settings = React.lazy(() => import('./components/Settings'));
 const StaffPortal = React.lazy(() => import('./components/StaffPortal'));
 const LeaveManagement = React.lazy(() => import('./components/LeaveManagement'));
 const LoanManagement = React.lazy(() => import('./components/LoanManagement'));
+const ExpenseClaims = React.lazy(() => import('./components/ExpenseClaims'));
 const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
@@ -1504,6 +1505,18 @@ function App() {
               userRole={user?.role || 'manager'}
               userName={user?.staffName || user?.email || 'Approver'}
               userLocation={user?.location}
+              allowedStaffIds={statutoryStaffIds || undefined}
+            />
+          </Suspense>
+        );
+      case 'Expense Claims':
+        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'super_admin') return null;
+        return (
+          <Suspense fallback={<ComponentLoader />}>
+            <ExpenseClaims
+              userRole={user?.role}
+              userName={user?.staffName || user?.email || 'Reviewer'}
+              userLocation={user?.role === 'admin' ? undefined : user?.location}
               allowedStaffIds={statutoryStaffIds || undefined}
             />
           </Suspense>
