@@ -1509,6 +1509,18 @@ function App() {
             />
           </Suspense>
         );
+      case 'Expense Claims':
+        if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'super_admin') return null;
+        return (
+          <Suspense fallback={<ComponentLoader />}>
+            <ExpenseClaims
+              userRole={user?.role}
+              userName={user?.staffName || user?.email || 'Reviewer'}
+              userLocation={user?.role === 'admin' ? undefined : user?.location}
+              allowedStaffIds={statutoryStaffIds || undefined}
+            />
+          </Suspense>
+        );
       case 'Face Attendance':
         if (user?.role !== 'admin' && user?.role !== 'manager') return null;
         return (
