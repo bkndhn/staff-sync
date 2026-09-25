@@ -51,6 +51,7 @@ const Settings = React.lazy(() => import('./components/Settings'));
 const StaffPortal = React.lazy(() => import('./components/StaffPortal'));
 const LeaveManagement = React.lazy(() => import('./components/LeaveManagement'));
 const LoanManagement = React.lazy(() => import('./components/LoanManagement'));
+const ExpenseClaims = React.lazy(() => import('./components/ExpenseClaims'));
 const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
