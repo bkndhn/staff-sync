@@ -8,10 +8,10 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: false,
   },
+  // No `server.url`: the app runs from the web assets bundled inside the APK,
+  // so it launches instantly and keeps working when the phone is offline.
   server: {
-    // Points to the live production deployment
-    url: 'https://staff-managment-system.vercel.app',
-    cleartext: true,
+    androidScheme: 'https',
   },
   plugins: {
     Camera: {
