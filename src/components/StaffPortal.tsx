@@ -42,6 +42,7 @@ import { ProfileEditModal } from './portal/ProfileEditModal';
 import { AttendanceRegularizationModal } from './portal/AttendanceRegularizationModal';
 import { DocumentsTab } from './portal/DocumentsTab';
 import { PayslipsTab } from './portal/PayslipsTab';
+import { ExpensesTab } from './portal/ExpensesTab';
 import { NotificationPanel } from './portal/NotificationPanel';
 import { localDateKey, localTimeKey } from '../lib/localDate';
 import { serverNow, syncServerTime } from '../lib/serverTime';
@@ -56,7 +57,7 @@ interface StaffPortalProps {
 }
 
 const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHikes, advances, allStaff }) => {
-  const [activeSection, setActiveSection] = useState<'overview' | 'attendance' | 'yearly' | 'salary' | 'hikes' | 'leave' | 'face' | 'grievances' | 'disbursements' | 'loans' | 'documents' | 'payslips'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'attendance' | 'yearly' | 'salary' | 'hikes' | 'leave' | 'face' | 'grievances' | 'disbursements' | 'loans' | 'documents' | 'payslips' | 'expenses'>('overview');
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [showRegularization, setShowRegularization] = useState(false);
   const [regularizationDate, setRegularizationDate] = useState('');
@@ -707,6 +708,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     { id: 'grievances', label: 'Issues', icon: AlertTriangle },
     { id: 'disbursements', label: 'Payroll Inbox', icon: CreditCard },
     { id: 'payslips', label: 'Payslips', icon: Receipt },
+    { id: 'expenses', label: 'Expenses', icon: Receipt },
     { id: 'documents', label: 'Documents', icon: FileText },
     { id: 'face', label: 'Face Registration', icon: Camera }
   ];
@@ -1976,6 +1978,11 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
             )}
           </div>
         </div>
+      )}
+
+      {/* EXPENSES */}
+      {activeSection === 'expenses' && (
+        <ExpensesTab staffId={staff.id || ''} staffName={staff.name} location={staff.location} />
       )}
 
       {/* PAYSLIPS */}
