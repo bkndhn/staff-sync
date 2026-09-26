@@ -45,6 +45,7 @@ const OnboardingWizard = React.lazy(() => import('./components/OnboardingWizard'
 const PayrollManagement = React.lazy(() => import('./components/SalaryManagement'));
 const SalaryManagement = PayrollManagement;
 const PartTimeStaff = React.lazy(() => import('./components/PartTimeStaff'));
+const FlexPoolHub = React.lazy(() => import('./components/FlexPoolHub'));
 const OldStaffRecords = React.lazy(() => import('./components/OldStaffRecords'));
 const AnnouncementsManagement = React.lazy(() => import('./components/AnnouncementsManagement').then(m => ({ default: m.AnnouncementsManagement })));
 const Settings = React.lazy(() => import('./components/Settings'));
@@ -1452,6 +1453,7 @@ function App() {
         if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'supervisor' && user?.role !== 'floor_supervisor' && user?.role !== 'super_admin') return null;
         return (
           <Suspense fallback={<ComponentLoader />}>
+            <FlexPoolHub attendance={filteredAttendanceData} userLocation={user?.role === 'admin' || user?.role === 'super_admin' ? undefined : user?.location} />
             <PartTimeStaff
               attendance={filteredAttendanceData}
               staff={filteredStaffData}
