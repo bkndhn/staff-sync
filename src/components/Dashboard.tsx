@@ -103,6 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [locationOrder, setLocationOrder] = useUserPreference<string[]>(LOCATION_ORDER_KEY, []);
   const [showOrderEditor, setShowOrderEditor] = React.useState(false);
   const [groupBy, setGroupBy] = React.useState<'none' | 'floor' | 'designation'>('none');
+  const [selectedZoneRoles, setSelectedZoneRoles] = React.useState<Record<string, string>>({});
 
   React.useEffect(() => {
     const loadLocations = async () => {
@@ -229,7 +230,14 @@ const Dashboard: React.FC<DashboardProps> = ({
           if (!sm) return null;
           return (
             <div key={id} className="flex items-center justify-between gap-2 text-[11px] md:text-xs px-2 py-1 rounded bg-[var(--glass-bg)] border border-[var(--glass-border)]">
-              <span className="font-semibold text-[var(--text-primary)] truncate">{sm.name}</span>
+              <span className="font-semibold text-[var(--text-primary)] truncate">
+                {sm.name}
+                {sm.designation && (
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal ml-1.5 opacity-80">
+                    ({sm.designation})
+                  </span>
+                )}
+              </span>
               <span className="font-mono text-[var(--text-secondary)] whitespace-nowrap">
                 <span className="text-emerald-400">IN {fmt12h(rec?.arrivalTime)}</span>
                 <span className="mx-1 opacity-50">·</span>
@@ -662,7 +670,49 @@ const Dashboard: React.FC<DashboardProps> = ({
                 return `${staffMember?.name} (at ${attendanceRecord?.location})`;
               });
 
-            const locationTotalPresent = assignedPresent.length + assignedHalfDay.length;
+            const activeRole = selectedZoneRoles[location.name] || 'all';
+
+            const locationTotalPresent = assignedPresentIds.length + assignedHalfDayIds.length;
+
+            // Compute present staff by designation in this location
+            const locationPresentStaff = [...assignedPresentIds, ...assignedHalfDayIds]
+              .map(id => allActiveStaff.find(s => s.id === id))
+              .filter(Boolean) as Staff[];
+
+            const locationDesCountMap: Record<string, number> = {};
+            locationPresentStaff.forEach(s => {
+              const d = (s.designation || 'Staff').trim();
+              locationDesCountMap[d] = (locationDesCountMap[d] || 0) + 1;
+            });
+            const sortedLocationDes = Object.entries(locationDesCountMap).sort((a, b) => b[1] - a[1]);
+
+            // Filter staff by active designation role
+            const matchesRole = (staffId: string) => {
+              if (activeRole === 'all') return true;
+              const s = allActiveStaff.find(sm => sm.id === staffId);
+              return (s?.designation || 'Staff').trim().toLowerCase() === activeRole.toLowerCase();
+            };
+
+            const displayPresentIds = activeRole === 'all' ? assignedPresentIds : assignedPresentIds.filter(matchesRole);
+            const displayPresent = sortStaffIdsByOrder(displayPresentIds).map(id => formatStaffName(id, false));
+
+            const displayHalfDayIds = activeRole === 'all' ? assignedHalfDayIds : assignedHalfDayIds.filter(matchesRole);
+            const displayHalfDay = sortStaffIdsByOrder(displayHalfDayIds).map(id => formatStaffName(id, false));
+
+            const displayAbsentIds = activeRole === 'all' ? assignedAbsentIds : assignedAbsentIds.filter(matchesRole);
+            const displayAbsent = sortStaffIdsByOrder(displayAbsentIds).map(id => formatStaffName(id, false));
+
+            const roleAssignedStaff = activeRole !== 'all'
+              ? assignedStaff.filter(s => (s.designation || 'Staff').trim().toLowerCase() === activeRole.toLowerCase())
+              : assignedStaff;
+            const displayTotalStaff = roleAssignedStaff.length;
+
+            const displayTempGuests = activeRole === 'all'
+              ? tempGuests
+              : tempGuests.filter(tg => {
+                  const sm = allActiveStaff.find(s => tg.startsWith(s.name));
+                  return (sm?.designation || 'Staff').trim().toLowerCase() === activeRole.toLowerCase();
+                });
 
             const groupedAssignedStaff = assignedStaff.reduce((acc, staff) => {
               let key = 'Unassigned';
@@ -674,11 +724,15 @@ const Dashboard: React.FC<DashboardProps> = ({
             }, {} as Record<string, string[]>);
 
             const renderGroupCards = (groupName: string, groupTotalIds: string[]) => {
-              const groupPresentIds = assignedPresentIds.filter(id => groupTotalIds.includes(id));
-              const groupHalfDayIds = assignedHalfDayIds.filter(id => groupTotalIds.includes(id));
-              const groupAbsentIds = assignedAbsentIds.filter(id => groupTotalIds.includes(id));
+              const groupPresentIds = displayPresentIds.filter(id => groupTotalIds.includes(id));
+              const groupHalfDayIds = displayHalfDayIds.filter(id => groupTotalIds.includes(id));
+              const groupAbsentIds = displayAbsentIds.filter(id => groupTotalIds.includes(id));
+              const groupTotalStaff = activeRole === 'all'
+                ? groupTotalIds.length
+                : groupTotalIds.filter(matchesRole).length;
 
-              const groupPresentStaff = [...groupPresentIds, ...groupHalfDayIds]
+              const groupPresentStaff = [...assignedPresentIds, ...assignedHalfDayIds]
+                .filter(id => groupTotalIds.includes(id))
                 .map(id => allActiveStaff.find(s => s.id === id))
                 .filter(Boolean) as Staff[];
 
@@ -693,50 +747,93 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div key={groupName} className="mb-6 last:mb-0 bg-black/10 dark:bg-white/5 p-4 rounded-xl border border-[var(--glass-border)]">
                   <h4 className="text-sm md:text-base font-bold text-[var(--text-primary)] mb-3 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                    {groupName} <span className="text-[var(--text-secondary)] text-xs font-normal">({groupPresentIds.length + groupHalfDayIds.length}/{groupTotalIds.length} Present)</span>
+                    {groupName} <span className="text-[var(--text-secondary)] text-xs font-normal">
+                      ({groupPresentIds.length + groupHalfDayIds.length}/{groupTotalStaff} Present{activeRole !== 'all' ? ` · ${activeRole}` : ''})
+                    </span>
                   </h4>
                   {groupBy !== 'designation' && sortedGroupDes.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5 mb-3">
                       <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Roles Present:</span>
-                      {sortedGroupDes.map(([des, count]) => (
-                        <span
-                          key={des}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20"
-                        >
-                          <span>{des}</span>
-                          <span className="px-1.5 py-0.2 rounded-full bg-indigo-500/20 dark:bg-indigo-500/30 text-[10px] font-bold">{count}</span>
-                        </span>
-                      ))}
+                      {sortedGroupDes.map(([des, count]) => {
+                        const isSelected = activeRole.toLowerCase() === des.toLowerCase();
+                        return (
+                          <button
+                            key={des}
+                            type="button"
+                            onClick={() => {
+                              setSelectedZoneRoles(prev => ({
+                                ...prev,
+                                [location.name]: isSelected ? 'all' : des
+                              }));
+                            }}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer active:scale-95 ${
+                              isSelected
+                                ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400 font-bold'
+                                : 'bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/20'
+                            }`}
+                            title={isSelected ? `Click to clear ${des} filter` : `Filter by ${des}`}
+                          >
+                            <span>{des}</span>
+                            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                              isSelected ? 'bg-white/25 text-white' : 'bg-indigo-500/20 dark:bg-indigo-500/30'
+                            }`}>
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="glass-card-static p-4 border-l-4 border-emerald-500">
-                      <p className="text-base font-bold text-emerald-400 mb-2">✅ Present: {groupPresentIds.length}/{groupTotalIds.length}</p>
+                      <p className="text-base font-bold text-emerald-400 mb-2">
+                        ✅ Present: {groupPresentIds.length}/{groupTotalStaff}
+                        {activeRole !== 'all' && (
+                          <span className="text-xs font-semibold text-emerald-300/90 ml-1.5 px-2 py-0.5 rounded bg-emerald-500/20">
+                            {activeRole}
+                          </span>
+                        )}
+                      </p>
                       {renderPunchList(groupPresentIds)}
+                      {!showPunches && (
+                        <p className="text-sm text-[var(--text-secondary)]">
+                          {groupPresentIds.length > 0 ? sortStaffIdsByOrder(groupPresentIds).map(id => formatStaffName(id, false)).join(', ') : 'None'}
+                        </p>
+                      )}
                     </div>
                     <div className="glass-card-static p-4 border-l-4 border-amber-500">
-                      <p className="text-base font-bold text-amber-400 mb-2">🕒 Half-day: {groupHalfDayIds.length}</p>
+                      <p className="text-base font-bold text-amber-400 mb-2">
+                        🕒 Half-day: {groupHalfDayIds.length}
+                        {activeRole !== 'all' && (
+                          <span className="text-xs font-semibold text-amber-300/90 ml-1.5 px-2 py-0.5 rounded bg-amber-500/20">
+                            {activeRole}
+                          </span>
+                        )}
+                      </p>
                       {renderPunchList(groupHalfDayIds)}
+                      {!showPunches && (
+                        <p className="text-sm text-[var(--text-secondary)]">
+                          {groupHalfDayIds.length > 0 ? sortStaffIdsByOrder(groupHalfDayIds).map(id => formatStaffName(id, false)).join(', ') : 'None'}
+                        </p>
+                      )}
                     </div>
                     <div className="glass-card-static p-4 border-l-4 border-red-500">
-                      <p className="text-base font-bold text-red-400 mb-2">❌ Absent: {groupAbsentIds.length}</p>
-                      <p className="text-sm text-[var(--text-secondary)]">{groupAbsentIds.length > 0 ? sortStaffIdsByOrder(groupAbsentIds).map(id => formatStaffName(id, false)).join(', ') : 'None'}</p>
+                      <p className="text-base font-bold text-red-400 mb-2">
+                        ❌ Absent: {groupAbsentIds.length}
+                        {activeRole !== 'all' && (
+                          <span className="text-xs font-semibold text-red-300/90 ml-1.5 px-2 py-0.5 rounded bg-red-500/20">
+                            {activeRole}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-sm text-[var(--text-secondary)]">
+                        {groupAbsentIds.length > 0 ? sortStaffIdsByOrder(groupAbsentIds).map(id => formatStaffName(id, false)).join(', ') : 'None'}
+                      </p>
                     </div>
                   </div>
                 </div>
               );
             };
-
-            const locationPresentStaff = [...assignedPresentIds, ...assignedHalfDayIds]
-              .map(id => allActiveStaff.find(s => s.id === id))
-              .filter(Boolean) as Staff[];
-
-            const locationDesCountMap: Record<string, number> = {};
-            locationPresentStaff.forEach(s => {
-              const d = (s.designation || 'Staff').trim();
-              locationDesCountMap[d] = (locationDesCountMap[d] || 0) + 1;
-            });
-            const sortedLocationDes = Object.entries(locationDesCountMap).sort((a, b) => b[1] - a[1]);
 
             return (
               <div key={location.name} className="border-b border-[var(--glass-border)] pb-6 last:border-b-0 last:pb-0">
@@ -765,31 +862,114 @@ const Dashboard: React.FC<DashboardProps> = ({
                 {sortedLocationDes.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 mb-4 px-1">
                     <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Zone Roles Present:</span>
-                    {sortedLocationDes.map(([des, count]) => (
-                      <span
-                        key={des}
-                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/20"
-                      >
-                        <span>{des}</span>
-                        <span className="px-1.5 py-0.2 rounded-full bg-blue-500/20 dark:bg-blue-500/30 text-[10px] font-bold">{count}</span>
+
+                    {/* Default 'All' Chip */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedZoneRoles(prev => ({ ...prev, [location.name]: 'all' }))}
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer active:scale-95 ${
+                        activeRole === 'all'
+                          ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400 font-bold'
+                          : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/15'
+                      }`}
+                    >
+                      <span>All</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                        activeRole === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-white/20 text-slate-700 dark:text-slate-200'
+                      }`}>
+                        {locationTotalPresent}
                       </span>
-                    ))}
+                    </button>
+
+                    {/* Role Filter Chips */}
+                    {sortedLocationDes.map(([des, count]) => {
+                      const isSelected = activeRole.toLowerCase() === des.toLowerCase();
+                      return (
+                        <button
+                          key={des}
+                          type="button"
+                          onClick={() => {
+                            setSelectedZoneRoles(prev => ({
+                              ...prev,
+                              [location.name]: isSelected ? 'all' : des
+                            }));
+                          }}
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer active:scale-95 ${
+                            isSelected
+                              ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400 font-bold'
+                              : 'bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/20 hover:bg-blue-500/20 dark:hover:bg-blue-500/30'
+                          }`}
+                          title={isSelected ? `Click to clear ${des} filter` : `Filter by ${des}`}
+                        >
+                          <span>{des}</span>
+                          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                            isSelected ? 'bg-white/25 text-white' : 'bg-blue-500/20 dark:bg-blue-500/30 text-[10px]'
+                          }`}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+
+                    {/* Active Filter Clear indicator */}
+                    {activeRole !== 'all' && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedZoneRoles(prev => ({ ...prev, [location.name]: 'all' }))}
+                        className="text-[11px] text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 font-medium underline ml-1 cursor-pointer"
+                      >
+                        Reset Filter
+                      </button>
+                    )}
                   </div>
                 )}
 
                 {groupBy === 'none' ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div className="glass-card-static p-4 border-l-4 border-emerald-500">
-                      <p className="text-base font-bold text-emerald-400 mb-2">✅ Present: {assignedPresent.length}/{locationTotalFullTimeStaff}</p>
-                      {renderPunchList(assignedPresentIds)}
+                      <p className="text-base font-bold text-emerald-400 mb-2">
+                        ✅ Present: {displayPresent.length}/{displayTotalStaff}
+                        {activeRole !== 'all' && (
+                          <span className="text-xs font-semibold text-emerald-300/90 ml-1.5 px-2 py-0.5 rounded bg-emerald-500/20">
+                            {activeRole}
+                          </span>
+                        )}
+                      </p>
+                      {renderPunchList(displayPresentIds)}
+                      {!showPunches && (
+                        <p className="text-sm text-[var(--text-secondary)]">
+                          {displayPresent.length > 0 ? displayPresent.join(', ') : 'None'}
+                        </p>
+                      )}
                     </div>
                     <div className="glass-card-static p-4 border-l-4 border-amber-500">
-                      <p className="text-base font-bold text-amber-400 mb-2">🕒 Half-day: {assignedHalfDay.length}</p>
-                      {renderPunchList(assignedHalfDayIds)}
+                      <p className="text-base font-bold text-amber-400 mb-2">
+                        🕒 Half-day: {displayHalfDay.length}
+                        {activeRole !== 'all' && (
+                          <span className="text-xs font-semibold text-amber-300/90 ml-1.5 px-2 py-0.5 rounded bg-amber-500/20">
+                            {activeRole}
+                          </span>
+                        )}
+                      </p>
+                      {renderPunchList(displayHalfDayIds)}
+                      {!showPunches && (
+                        <p className="text-sm text-[var(--text-secondary)]">
+                          {displayHalfDay.length > 0 ? displayHalfDay.join(', ') : 'None'}
+                        </p>
+                      )}
                     </div>
                     <div className="glass-card-static p-4 border-l-4 border-red-500">
-                      <p className="text-base font-bold text-red-400 mb-2">❌ Absent: {assignedAbsent.length}</p>
-                      <p className="text-sm text-[var(--text-secondary)]">{assignedAbsent.length > 0 ? assignedAbsent.join(', ') : 'None'}</p>
+                      <p className="text-base font-bold text-red-400 mb-2">
+                        ❌ Absent: {displayAbsent.length}
+                        {activeRole !== 'all' && (
+                          <span className="text-xs font-semibold text-red-300/90 ml-1.5 px-2 py-0.5 rounded bg-red-500/20">
+                            {activeRole}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-sm text-[var(--text-secondary)]">
+                        {displayAbsent.length > 0 ? displayAbsent.join(', ') : 'None'}
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -802,8 +982,8 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="glass-card-static p-4 border-l-4 border-cyan-500">
-                    <p className="text-base font-bold text-cyan-400 mb-2">🔄 Temp/Guest: {tempGuests.length}</p>
-                    <p className="text-sm text-[var(--text-secondary)]">{tempGuests.length > 0 ? tempGuests.join(', ') : 'None'}</p>
+                    <p className="text-base font-bold text-cyan-400 mb-2">🔄 Temp/Guest: {displayTempGuests.length}</p>
+                    <p className="text-sm text-[var(--text-secondary)]">{displayTempGuests.length > 0 ? displayTempGuests.join(', ') : 'None'}</p>
                   </div>
                   <div className="glass-card-static p-4 border-l-4 border-orange-500">
                     <p className="text-base font-bold text-orange-400 mb-2">📤 Working Elsewhere: {workingElsewhere.length}</p>
