@@ -35,8 +35,9 @@ const invalidateSession = (message: string) => {
 
 interface BuilderState {
   table: string;
-  op: "select" | "insert" | "update" | "upsert" | "delete";
+  op: "select" | "insert" | "update" | "upsert" | "delete" | "qr_sign" | "qr_verify";
   columns?: string;
+  [extra: string]: unknown;
   filters: Filter[];
   values?: unknown;
   order?: { col: string; ascending?: boolean };
@@ -185,4 +186,8 @@ class TableRef {
 
 export const dataApi = {
   from(table: string) { return new TableRef(table); },
+  /** Server-side action (e.g. QR signing) that is not tied to a table. */
+  action<T = any>(op: "qr_sign" | "qr_verify", extra: Record<string, unknown>) {
+    return new QueryBuilder<T>({ table: "", op, filters: [], ...extra });
+  },
 };

@@ -66,7 +66,12 @@ export const AuditLogViewer: React.FC<{ currentUserEmail: string }> = ({ current
   useEffect(() => { fetchLogs(); }, []);
 
   const exportCsv = () => {
-    const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const esc = (v: any) => {
+      let s = String(v ?? '');
+      // Neutralise spreadsheet formulas (=, +, -, @, tab, CR) planted in user text.
+      if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+      return `"${s.replace(/"/g, '""')}"`;
+    };
     const header = ['Timestamp', 'Action', 'Performed By', 'Staff ID', 'Staff Name', 'Details', 'Changes'];
     const rows = filteredLogs.map(log => [
       log.timestamp,
