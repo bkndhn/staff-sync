@@ -160,6 +160,9 @@ export interface PayrollDetail {
   statutoryBreakdown?: Array<{ key: string; label: string; amount: number }>;
   /** Net payable excluding statutory deductions (used by statutory-mode views). */
   nonStatutoryNet?: number;
+  /** Approved expense claims reimbursed in this payroll (non-taxable, added to net). */
+  reimbursement?: number;
+  reimbursedClaimIds?: string[];
 }
 
 export type PayrollRunStatus = 'Generated' | 'PendingApproval' | 'Approved' | 'Rejected' | 'Locked';

@@ -19,6 +19,7 @@ import { settingsService } from '../services/settingsService';
 import { validateSalaryBatch, reconcileSalary, type SalaryIssue } from '../utils/salaryValidation';
 import { appSettingsService } from '../services/appSettingsService';
 import { payrollService } from '../services/payrollService';
+import { expenseClaimService } from '../services/expenseClaimService';
 import { leaveService, type LeaveRequest } from '../services/leaveService';
 import { payrollRulesService } from '../services/payrollRulesService';
 import BulkSalarySender from './BulkSalarySender';
@@ -823,19 +824,38 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
     exportBulkSalarySlipsPDF(salaryDetails, getBaseStaffList(), selectedMonth, selectedYear);
   };
 
+  /** Build payroll rows and add approved (unpaid) expense claims dated on/before this month. */
+  const buildFullDetails = async (): Promise<PayrollDetail[]> => {
+    const monthEnd = new Date(selectedYear, selectedMonth + 1, 0);
+    const cutoff = `${monthEnd.getFullYear()}-${String(monthEnd.getMonth() + 1).padStart(2, '0')}-${String(monthEnd.getDate()).padStart(2, '0')}`;
+    const claims = (await expenseClaimService.listApprovedUnpaid().catch(() => []))
+      .filter(c => !c.claimDate || c.claimDate <= cutoff);
+    return activeStaff.map(member => {
+      const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
+      const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
+      const memberAdvanceEntries = advanceEntries[member.id] || [];
+      const detail = applyStatutoryToDetail(member, calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides[member.id], scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules));
+      const mine = claims.filter(c => c.staffId === member.id);
+      const reimbursement = mine.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+      if (reimbursement <= 0) return detail;
+      const net = (detail.netPayroll ?? detail.netSalary ?? 0) + reimbursement;
+      return { ...detail, reimbursement, reimbursedClaimIds: mine.map(c => c.id), netPayroll: net, netSalary: net };
+    });
+  };
+
+  const settleReimbursedClaims = async (details: PayrollDetail[]) => {
+    const ids = details.flatMap(d => d.reimbursedClaimIds || []);
+    await Promise.all(ids.map(id => expenseClaimService.markPaid(id, selectedMonth + 1, selectedYear).catch(() => false)));
+  };
+
   const handleGeneratePayroll = async () => {
     if (blockIfInvalid('generating payroll')) return;
     if (!await customConfirm('Generate Payroll', 'Are you sure you want to generate payroll for this month? This will snapshot the current salaries and lock them.')) return;
     setGeneratingPayroll(true);
     try {
-      const fullDetails = activeStaff.map(member => {
-        const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
-        const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
-        const memberAdvanceEntries = advanceEntries[member.id] || [];
-        return applyStatutoryToDetail(member, calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides[member.id], scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules));
-      });
-
+      const fullDetails = await buildFullDetails();
       const run = await payrollService.generatePayroll(selectedMonth, selectedYear, activeStaff, fullDetails, 'System');
+      await settleReimbursedClaims(fullDetails);
       setPayrollRun(run);
       const snaps = await payrollService.getSnapshots(run.id);
       setSnapshots(snaps);
@@ -851,14 +871,9 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
     if (!await customConfirm('Regenerate Payroll', 'DANGER: This will delete the current snapshot and recalculate using current master data. Are you sure?')) return;
     setGeneratingPayroll(true);
     try {
-      const fullDetails = activeStaff.map(member => {
-        const attendanceMetrics = calculateAttendanceMetrics(member.id, attendance, selectedYear, selectedMonth, approvedLeaves);
-        const memberAdvances = advances.find(adv => adv.staffId === member.id && adv.month === selectedMonth && adv.year === selectedYear);
-        const memberAdvanceEntries = advanceEntries[member.id] || [];
-        return applyStatutoryToDetail(member, calculatePayroll(member, attendanceMetrics, memberAdvances ?? null, advances, attendance, selectedMonth, selectedYear, memberAdvanceEntries, overrides[member.id], scheduledDeductions[member.id]?.total || 0, globalShiftWindows, payrollRules));
-      });
-
+      const fullDetails = await buildFullDetails();
       const run = await payrollService.regeneratePayroll(selectedMonth, selectedYear, activeStaff, fullDetails, 'System');
+      await settleReimbursedClaims(fullDetails);
       setPayrollRun(run);
       const snaps = await payrollService.getSnapshots(run.id);
       setSnapshots(snaps);
