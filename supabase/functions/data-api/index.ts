@@ -141,16 +141,83 @@ interface Body {
   single?: boolean;
 }
 
+// Only plain comparison filters may be invoked on the query builder.
+const ALLOWED_FILTER_OPS = new Set([
+  "eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "is", "in",
+  "contains", "containedBy", "overlaps",
+]);
+const IDENT_RE = /^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?$/;
+
+class ClientError extends Error {}
+
 function applyFilters(query: any, filters: Filter[] | undefined) {
   if (!filters) return query;
+  if (!Array.isArray(filters)) throw new ClientError("Invalid filters");
   for (const f of filters) {
-    const method = (query as any)[f.op];
-    if (typeof method !== "function") {
-      throw new Error(`Unsupported filter op: ${f.op}`);
+    if (!f || typeof f.op !== "string" || !ALLOWED_FILTER_OPS.has(f.op)) {
+      throw new ClientError(`Unsupported filter op`);
     }
+    if (typeof f.col !== "string" || !IDENT_RE.test(f.col)) {
+      throw new ClientError("Invalid filter column");
+    }
+    const method = (query as any)[f.op];
     query = method.call(query, f.col, f.val);
   }
   return query;
+}
+
+// Columns that must never be returned to any client.
+const SECRET_COLUMNS = new Set([
+  "password_hash", "reset_pin", "reset_pin_hash", "pin_hash", "key_hash", "secret", "secret_hash",
+]);
+
+function stripSecrets(v: any): any {
+  if (Array.isArray(v)) return v.map(stripSecrets);
+  if (v && typeof v === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v)) {
+      if (SECRET_COLUMNS.has(k)) continue;
+      out[k] = val && typeof val === "object" ? stripSecrets(val) : val;
+    }
+    return out;
+  }
+  return v;
+}
+
+function assertSafeColumns(columns: string | undefined) {
+  if (!columns) return;
+  if (typeof columns !== "string" || columns.length > 2000) throw new ClientError("Invalid columns");
+  const tokens = columns.toLowerCase().match(/[a-z_][a-z0-9_]*/g) ?? [];
+  if (tokens.some((t) => SECRET_COLUMNS.has(t))) throw new ClientError("Requested column is not available");
+}
+
+// Fields a non-super-admin may never set, per table.
+const PROTECTED_WRITE_FIELDS: Record<string, string[]> = {
+  app_users: ["auth_id", "tenant_id", "password_hash", "email_verified"],
+  tenants: ["id", "staff_limit", "location_limit", "sub_user_limit", "plan", "status", "is_active", "slug", "expires_at", "trial_ends_at", "subscription_status"],
+};
+
+function sanitizeWriteRows(
+  table: string,
+  rows: Array<Record<string, unknown>>,
+  role: string,
+): string | null {
+  const isSuper = role === "super_admin";
+  const protectedFields = isSuper ? [] : (PROTECTED_WRITE_FIELDS[table] ?? []);
+  for (const r of rows) {
+    if (!r || typeof r !== "object" || Array.isArray(r)) return "Invalid row";
+    for (const k of Object.keys(r)) {
+      if (!IDENT_RE.test(k) || k.includes(".")) return "Invalid field name";
+      if (protectedFields.includes(k)) delete r[k];
+    }
+    // password hashes may only be cleared, never set, through this API
+    if ("password_hash" in r && r.password_hash !== null) delete r.password_hash;
+    if (!isSuper && table === "app_users" && "role" in r) {
+      const allowedRoles = ["admin", "manager", "staff", "statutory_admin", "supervisor", "floor_supervisor", "petty_cash_manager"];
+      if (!allowedRoles.includes(String(r.role))) return "Role not permitted";
+    }
+  }
+  return null;
 }
 
 Deno.serve(async (req) => {
