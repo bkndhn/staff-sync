@@ -75,6 +75,38 @@ function validateServerUrl(raw: string): string | null {
   return null;
 }
 
+function isPrivateIp(ip: string): boolean {
+  const v = ip.toLowerCase();
+  if (v.includes(":")) {
+    return v === "::1" || v === "::" || /^(fc|fd|fe8|fe9|fea|feb)/.test(v) || v.startsWith("::ffff:");
+  }
+  const p = v.split(".").map(Number);
+  if (p.length !== 4 || p.some((n) => isNaN(n))) return true;
+  return p[0] === 0 || p[0] === 10 || p[0] === 127 || (p[0] === 169 && p[1] === 254) ||
+    (p[0] === 172 && p[1] >= 16 && p[1] <= 31) || (p[0] === 192 && p[1] === 168) ||
+    (p[0] === 100 && p[1] >= 64 && p[1] <= 127) || p[0] >= 224;
+}
+
+// Resolve the host and refuse anything that lands on a private/internal address.
+async function assertPublicHost(raw: string): Promise<string | null> {
+  const u = new URL(raw);
+  if (u.port && u.port !== "443") return "serverUrl must use the standard https port";
+  if (u.username || u.password) return "serverUrl must not contain credentials";
+  const host = u.hostname.replace(/^\[|\]$/g, "");
+  if (/^[0-9.]+$/.test(host) || host.includes(":")) return "serverUrl must use a domain name";
+  try {
+    const addrs = [
+      ...(await Deno.resolveDns(host, "A").catch(() => [] as string[])),
+      ...(await Deno.resolveDns(host, "AAAA").catch(() => [] as string[])),
+    ];
+    if (addrs.length === 0) return "serverUrl host could not be resolved";
+    if (addrs.some(isPrivateIp)) return "serverUrl must point to a public host";
+  } catch {
+    return "serverUrl host could not be resolved";
+  }
+  return null;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -90,6 +122,7 @@ function json(body: unknown, status = 200) {
 async function pullEssl(cfg: PullBody, since: Date): Promise<NormalizedPunch[]> {
   const url = `${cfg.serverUrl!.replace(/\/$/, "")}/attendance/list`;
   const resp = await fetch(url, {
+    redirect: "manual",
     method: "POST",
     headers: {
       "Authorization": `Bearer ${cfg.apiKey}`,
@@ -118,6 +151,7 @@ async function pullZkBiotime(cfg: PullBody, since: Date): Promise<NormalizedPunc
   const start = since.toISOString().slice(0, 19).replace("T", " ");
   const url = `${base}/personnel/api/transactions/?start_time=${encodeURIComponent(start)}&page_size=1000`;
   const resp = await fetch(url, {
+    redirect: "manual",
     headers: { "Authorization": `Token ${cfg.apiKey}` },
     signal: AbortSignal.timeout(20_000),
   });
@@ -137,6 +171,7 @@ async function pullRealtime(cfg: PullBody, since: Date): Promise<NormalizedPunch
   const base = cfg.serverUrl!.replace(/\/$/, "");
   const url = `${base}/punches?since=${encodeURIComponent(since.toISOString())}`;
   const resp = await fetch(url, {
+    redirect: "manual",
     headers: { "Authorization": `Bearer ${cfg.apiKey}` },
     signal: AbortSignal.timeout(20_000),
   });
@@ -159,7 +194,7 @@ Deno.serve(async (req) => {
     // validated against Supabase Auth (or app_sessions) and mapped to app_users.
     const auth = await resolveCaller(admin, req);
     if (!auth.ok || !auth.caller) return json({ error: auth.error ?? "Unauthorized" }, auth.status ?? 401);
-    const roleCheck = requireRole(auth.caller, ["admin", "manager", "super_admin"]);
+    const roleCheck = requireRole(auth.caller, ["admin", "super_admin"]);
     if (!roleCheck.ok) return json({ error: roleCheck.error }, roleCheck.status ?? 403);
 
     const callerTenantId = auth.caller.tenant_id;
@@ -172,6 +207,8 @@ Deno.serve(async (req) => {
     if (!body.serverUrl || !body.apiKey) return json({ error: "serverUrl and apiKey are required" }, 400);
     const urlError = validateServerUrl(body.serverUrl);
     if (urlError) return json({ error: urlError }, 400);
+    const hostError = await assertPublicHost(body.serverUrl);
+    if (hostError) return json({ error: hostError }, 400);
     if (!["essl", "zkbiotime", "realtime"].includes(provider)) {
       return json({ error: `Unsupported provider: ${body.provider}` }, 400);
     }
@@ -187,7 +224,7 @@ Deno.serve(async (req) => {
       else if (provider === "zkbiotime") punches = await pullZkBiotime(body, since);
       else punches = await pullRealtime(body, since);
     } catch (err: any) {
-      return json({ error: `Provider fetch failed: ${err?.message || err}` }, 502);
+      return json({ error: "Provider fetch failed" }, 502);
     }
 
     if (body.dryRun) {
