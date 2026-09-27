@@ -677,12 +677,38 @@ const Dashboard: React.FC<DashboardProps> = ({
               const groupPresentIds = assignedPresentIds.filter(id => groupTotalIds.includes(id));
               const groupHalfDayIds = assignedHalfDayIds.filter(id => groupTotalIds.includes(id));
               const groupAbsentIds = assignedAbsentIds.filter(id => groupTotalIds.includes(id));
+
+              const groupPresentStaff = [...groupPresentIds, ...groupHalfDayIds]
+                .map(id => allActiveStaff.find(s => s.id === id))
+                .filter(Boolean) as Staff[];
+
+              const groupDesCountMap: Record<string, number> = {};
+              groupPresentStaff.forEach(s => {
+                const d = (s.designation || 'Staff').trim();
+                groupDesCountMap[d] = (groupDesCountMap[d] || 0) + 1;
+              });
+              const sortedGroupDes = Object.entries(groupDesCountMap).sort((a, b) => b[1] - a[1]);
+
               return (
                 <div key={groupName} className="mb-6 last:mb-0 bg-black/10 dark:bg-white/5 p-4 rounded-xl border border-[var(--glass-border)]">
-                  <h4 className="text-sm md:text-base font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                  <h4 className="text-sm md:text-base font-bold text-[var(--text-primary)] mb-3 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
                     {groupName} <span className="text-[var(--text-secondary)] text-xs font-normal">({groupPresentIds.length + groupHalfDayIds.length}/{groupTotalIds.length} Present)</span>
                   </h4>
+                  {groupBy !== 'designation' && sortedGroupDes.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Roles Present:</span>
+                      {sortedGroupDes.map(([des, count]) => (
+                        <span
+                          key={des}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20"
+                        >
+                          <span>{des}</span>
+                          <span className="px-1.5 py-0.2 rounded-full bg-indigo-500/20 dark:bg-indigo-500/30 text-[10px] font-bold">{count}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="glass-card-static p-4 border-l-4 border-emerald-500">
                       <p className="text-base font-bold text-emerald-400 mb-2">✅ Present: {groupPresentIds.length}/{groupTotalIds.length}</p>
@@ -700,6 +726,17 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               );
             };
+
+            const locationPresentStaff = [...assignedPresentIds, ...assignedHalfDayIds]
+              .map(id => allActiveStaff.find(s => s.id === id))
+              .filter(Boolean) as Staff[];
+
+            const locationDesCountMap: Record<string, number> = {};
+            locationPresentStaff.forEach(s => {
+              const d = (s.designation || 'Staff').trim();
+              locationDesCountMap[d] = (locationDesCountMap[d] || 0) + 1;
+            });
+            const sortedLocationDes = Object.entries(locationDesCountMap).sort((a, b) => b[1] - a[1]);
 
             return (
               <div key={location.name} className="border-b border-[var(--glass-border)] pb-6 last:border-b-0 last:pb-0">
@@ -724,6 +761,21 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {sortedLocationDes.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 mb-4 px-1">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Zone Roles Present:</span>
+                    {sortedLocationDes.map(([des, count]) => (
+                      <span
+                        key={des}
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/20"
+                      >
+                        <span>{des}</span>
+                        <span className="px-1.5 py-0.2 rounded-full bg-blue-500/20 dark:bg-blue-500/30 text-[10px] font-bold">{count}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {groupBy === 'none' ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">

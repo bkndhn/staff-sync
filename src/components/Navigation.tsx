@@ -4,7 +4,8 @@ import {
   BarChart3, Users, Calendar, DollarSign, Clock, Archive, LogOut,
   AlertTriangle, Settings as SettingsIcon, FileText, ScanFace,
   ShieldAlert, Shield, TrendingUp, Coffee, Sun, Moon,
-  PanelLeftClose, PanelLeftOpen, UserCircle, RefreshCw, Zap, IndianRupee, Megaphone, Receipt } from 'lucide-react';
+  PanelLeftClose, PanelLeftOpen, UserCircle, RefreshCw, Zap, IndianRupee, Megaphone, Receipt,
+  LayoutGrid, X } from 'lucide-react';
 import { SyncBadge } from './SyncBadge';
 import { statutoryPortalService, StatutoryPortalConfig, DEFAULT_STATUTORY_CONFIG } from '../services/statutoryPortalService';
 import { hardResetAppCache } from '../lib/cacheService';
@@ -135,12 +136,55 @@ const Navigation: React.FC<NavigationProps> = ({
 
   const tabs = getAvailableTabs();
 
+  // Mobile Navigation: Split into 4 primary tabs + "More" bottom sheet
+  const [showMoreSheet, setShowMoreSheet] = useState(false);
+
+  // Preferred order for top 4 primary tabs on mobile
+  const PRIMARY_PRIORITY_ORDER: NavigationTab[] = [
+    'Dashboard',
+    'Attendance',
+    'Staff Management',
+    'Petty Cash',
+    'Payroll Management',
+    'Flex Staff',
+    'Break Management',
+    'Workforce Insights',
+    'Leave Management',
+  ];
+
+  const { primaryTabs, secondaryTabs } = React.useMemo(() => {
+    if (tabs.length <= 5) {
+      return { primaryTabs: tabs, secondaryTabs: [] };
+    }
+    // Pick the top 4 available tabs according to priority order
+    const prioritized: typeof tabs = [];
+    for (const tabId of PRIMARY_PRIORITY_ORDER) {
+      const found = tabs.find(t => t.id === tabId);
+      if (found && !prioritized.some(p => p.id === found.id)) {
+        prioritized.push(found);
+        if (prioritized.length === 4) break;
+      }
+    }
+    // Fill up to 4 if not reached
+    for (const t of tabs) {
+      if (prioritized.length >= 4) break;
+      if (!prioritized.some(p => p.id === t.id)) {
+        prioritized.push(t);
+      }
+    }
+    // All other tabs go to secondary (More sheet)
+    const secondary = tabs.filter(t => !prioritized.some(p => p.id === t.id));
+    return { primaryTabs: prioritized, secondaryTabs: secondary };
+  }, [tabs]);
+
+  const isMoreActive = secondaryTabs.some(t => t.id === activeTab);
+
 
   const themeBtn = toggleTheme && (
     <button
       onClick={toggleTheme}
       title={isDarkTheme ? 'Switch to light' : 'Switch to dark'}
-      className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-all"
+      className="p-2 rounded-lg text-slate-700 dark:text-white/70 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all"
     >
       {isDarkTheme ? <Sun size={18} /> : <Moon size={18} />}
     </button>
@@ -149,7 +193,7 @@ const Navigation: React.FC<NavigationProps> = ({
   const logoutBtn = (
     <button
       onClick={() => setShowLogoutModal(true)}
-      className="flex items-center gap-2 px-3 py-2 rounded-lg text-white/70 hover:text-red-400 hover:bg-red-500/10 transition-all"
+      className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 dark:text-white/70 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition-all"
       title="Logout"
     >
       <LogOut size={18} />
@@ -235,7 +279,7 @@ const Navigation: React.FC<NavigationProps> = ({
       </div>
 
       {/* ── Mobile Top Bar ─────────────────────────────────────────────── */}
-      <nav className="md:hidden sticky top-0 z-50 px-3 py-2.5 nav-premium border-b border-white/10">
+      <nav className="md:hidden sticky top-0 z-40 px-3 py-2.5 nav-premium border-b border-slate-200/80 dark:border-white/10">
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-base font-bold text-gradient truncate">Staff Mgmt</h1>
           <div className="flex items-center gap-1">
@@ -243,7 +287,7 @@ const Navigation: React.FC<NavigationProps> = ({
             <button
               type="button"
               onClick={hardResetAppCache}
-              className="p-2 rounded-lg text-amber-300 bg-amber-500/15"
+              className="p-2 rounded-lg text-amber-600 dark:text-amber-300 bg-amber-500/15"
               title="Hard Reset App & Clear Cache"
             >
               <Zap size={15} />
@@ -251,7 +295,7 @@ const Navigation: React.FC<NavigationProps> = ({
             {themeBtn}
             <button
               onClick={() => setShowLogoutModal(true)}
-              className="p-2 text-white/60 hover:text-red-400 rounded-lg bg-red-500/10"
+              className="p-2 text-slate-600 dark:text-white/60 hover:text-red-500 dark:hover:text-red-400 rounded-lg bg-red-500/10"
               title="Logout"
             >
               <LogOut size={16} />
@@ -260,27 +304,177 @@ const Navigation: React.FC<NavigationProps> = ({
         </div>
       </nav>
 
-      {/* ── Mobile Bottom Navigation (hidden for staff — StaffPortal has its own) ── */}
+      {/* ── Mobile Bottom Navigation (docked grid, 4 primary tabs + More) ── */}
       {tabs.length > 1 && (
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 mobile-nav safe-area-padding overflow-x-auto pb-[env(safe-area-inset-bottom,0.5rem)]" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        <style>{`.mobile-nav::-webkit-scrollbar { display: none; }`}</style>
-        <div className="flex items-end px-1 pt-1 pb-1 w-max min-w-full justify-around gap-1" style={{ minHeight: '54px' }}>
-          {tabs.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 mobile-nav safe-area-padding pb-[env(safe-area-inset-bottom,0.5rem)] border-t border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-lg">
+          <div className={`grid ${secondaryTabs.length > 0 ? 'grid-cols-5' : `grid-cols-${primaryTabs.length}`} items-center px-1 pt-1 pb-0.5 w-full h-14`}>
+            {primaryTabs.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setShowMoreSheet(false);
+                    setActiveTab(tab.id);
+                  }}
+                  className={`flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all ${
+                    isActive
+                      ? 'text-blue-600 dark:text-blue-400 font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-blue-500/15 dark:bg-blue-500/25 scale-105' : ''}`}>
+                    <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                  </div>
+                  <span className="text-[10px] tracking-tight mt-0.5 truncate max-w-full font-medium">{tab.label}</span>
+                </button>
+              );
+            })}
+
+            {secondaryTabs.length > 0 && (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`mobile-nav-item flex-shrink-0 min-w-[52px] ${isActive ? 'mobile-nav-item-active' : ''}`}
+                onClick={() => setShowMoreSheet(prev => !prev)}
+                className={`relative flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all ${
+                  isMoreActive || showMoreSheet
+                    ? 'text-blue-600 dark:text-blue-400 font-bold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
               >
-                <Icon size={18} className={`transition-all ${isActive ? 'text-white' : 'text-white/50'}`} strokeWidth={isActive ? 2.5 : 2} />
-                <span className={`text-[10px] font-semibold mt-0.5 ${isActive ? 'text-white' : 'text-white/50'}`}>{tab.label}</span>
+                <div className={`p-1 rounded-xl transition-all ${isMoreActive || showMoreSheet ? 'bg-blue-500/15 dark:bg-blue-500/25 scale-105' : ''}`}>
+                  <LayoutGrid size={20} strokeWidth={isMoreActive ? 2.5 : 2} />
+                </div>
+                <span className="text-[10px] tracking-tight mt-0.5 truncate max-w-full font-medium">More</span>
+                {isMoreActive && (
+                  <span className="absolute top-1 right-2.5 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+                )}
               </button>
-            );
-          })}
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ── Mobile "More" Bottom Sheet Drawer ── */}
+      {showMoreSheet && (
+        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            onClick={() => setShowMoreSheet(false)}
+          />
+
+          {/* Drawer content */}
+          <div className="relative z-10 w-full max-h-[82vh] overflow-y-auto rounded-t-3xl bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shadow-2xl p-4 pb-[calc(env(safe-area-inset-bottom,1rem)+1.5rem)] animate-in slide-in-from-bottom duration-200">
+            {/* Drag handle */}
+            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <LayoutGrid size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">All Navigation</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {user.role === 'admin' || user.role === 'super_admin'
+                      ? 'Administrator'
+                      : user.role === 'petty_cash_manager'
+                      ? `Petty Cash Handler (${user.location || ''})`
+                      : user.role === 'staff'
+                      ? (user.staffName || 'Staff Portal')
+                      : `${user.location || ''} Manager`}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowMoreSheet(false)}
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Grid of Secondary Tabs */}
+            <div className="py-3">
+              <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2.5 px-1">
+                More Modules
+              </div>
+              <div className="grid grid-cols-4 gap-2.5">
+                {secondaryTabs.map(tab => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        setShowMoreSheet(false);
+                      }}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-2xl transition-all active:scale-95 ${
+                        isActive
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 ring-2 ring-blue-400'
+                          : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <div className={`p-2 rounded-xl mb-1.5 ${isActive ? 'bg-white/20 text-white' : 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'}`}>
+                        <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                      </div>
+                      <span className={`text-[11px] text-center font-medium leading-tight truncate w-full ${isActive ? 'text-white font-bold' : 'text-slate-700 dark:text-slate-300'}`}>
+                        {tab.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quick Actions Footer */}
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+              <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">
+                Quick Actions
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMoreSheet(false);
+                    hardResetAppCache();
+                  }}
+                  className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 font-medium text-xs border border-amber-500/20 transition-all"
+                >
+                  <Zap size={16} />
+                  <span>Hard Reset</span>
+                </button>
+
+                {toggleTheme && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleTheme();
+                    }}
+                    className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-medium text-xs border border-slate-200 dark:border-slate-700 transition-all"
+                  >
+                    {isDarkTheme ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-indigo-400" />}
+                    <span>{isDarkTheme ? 'Light Mode' : 'Dark Mode'}</span>
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMoreSheet(false);
+                  setShowLogoutModal(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 font-medium text-xs border border-red-500/20 transition-all mt-1"
+              >
+                <LogOut size={16} />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showLogoutModal && (
