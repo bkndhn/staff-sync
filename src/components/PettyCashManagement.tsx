@@ -1,27 +1,42 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { format } from 'date-fns';
-import { Calendar, Download, Printer, Search, FileText, FileSpreadsheet, RefreshCw, Plus, Trash2, Building, ArrowRight, User } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState, useEffect } from 'react';
+import { Calendar, Printer, FileSpreadsheet, RefreshCw, Plus, Trash2, Building, ArrowRight } from 'lucide-react';
+import { localDateKey } from '../lib/localDate';
 import { pettyCashService, PettyCashSheet, StaffMeal, CustomExpense, TransportLogistics } from '../services/pettyCashService';
 import { attendanceService } from '../services/attendanceService';
 import { staffService } from '../services/staffService';
+import { locationService } from '../services/locationService';
 import { exportPettyCashPdf, exportPettyCashExcel } from '../utils/pettyCashExport';
-import { Staff, Attendance, Location } from '../types';
+import { Location } from '../types';
 
 interface Props {
-  locations: Location[];
+  userRole?: string;
+  userLocation?: string;
+  locations?: Location[];
 }
 
-export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
-  const { user } = useAuth();
-  
-  // Default to user's assigned location if petty_cash_manager
-  const initialLocation = (user?.role === 'petty_cash_manager' || user?.role === 'manager') 
-    ? user.location || (locations[0]?.name || '')
-    : (locations[0]?.name || '');
+export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, locations = [] }) => {
+  const [allLocations, setAllLocations] = useState<Location[]>(locations);
+
+  useEffect(() => {
+    if (allLocations.length === 0) {
+      locationService.getLocations().then(locs => {
+        if (locs.length > 0) setAllLocations(locs);
+      }).catch(console.error);
+    }
+  }, []);
+
+  const initialLocation = (userRole === 'petty_cash_manager' || userRole === 'manager') 
+    ? userLocation || (allLocations[0]?.name || '')
+    : (userLocation || allLocations[0]?.name || '');
 
   const [location, setLocation] = useState(initialLocation);
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [date, setDate] = useState(localDateKey());
+
+  useEffect(() => {
+    if (!location && allLocations.length > 0) {
+      setLocation(userLocation || allLocations[0]?.name || '');
+    }
+  }, [allLocations, location, userLocation]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   
@@ -122,7 +137,7 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
         newStaffMeals.push({
           staff_id: a.staffId,
           staff_name: staff.name,
-          designation: staff.designation,
+          designation: staff.designation || 'Staff',
           staff_type: staff.type === 'part-time' ? 'part-time' : 'full-time',
           attendance_status: attStatus,
           amount: existingMeal ? existingMeal.amount : 0
@@ -260,7 +275,7 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
   const totalExp = expensesTotal + transportTotal;
   const balance = (sheet?.received_amount || 0) - totalExp;
 
-  const canEdit = user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'petty_cash_manager';
+  const canEdit = userRole === 'super_admin' || userRole === 'admin' || userRole === 'petty_cash_manager';
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-20">
@@ -275,13 +290,13 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
-          {(user?.role === 'super_admin' || user?.role === 'admin') && (
+          {(userRole === 'super_admin' || userRole === 'admin') && (
             <select
               value={location}
               onChange={e => setLocation(e.target.value)}
               className="pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
             >
-              {locations.map(l => (
+              {allLocations.map(l => (
                 <option key={l.id} value={l.name}>{l.name}</option>
               ))}
             </select>

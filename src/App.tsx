@@ -1527,7 +1527,10 @@ function App() {
       case 'Petty Cash':
         return (
           <Suspense fallback={<ComponentLoader />}>
-            <PettyCashManagement locations={branches} />
+            <PettyCashManagement
+              userRole={user?.role}
+              userLocation={user?.role === 'admin' || user?.role === 'super_admin' ? undefined : user?.location}
+            />
           </Suspense>
         );
       case 'Face Attendance':

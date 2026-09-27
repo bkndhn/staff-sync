@@ -60,36 +60,33 @@ export interface TransportLogistics {
 
 export const pettyCashService = {
   async getSheet(location: string, date: string): Promise<PettyCashSheet | null> {
-    const res = await dataApi.query({
-      table: 'petty_cash_sheets',
-      filters: [
-        { col: 'location', op: 'eq', val: location },
-        { col: 'date', op: 'eq', val: date }
-      ]
-    });
-    
-    if (!res || res.length === 0) return null;
-    
-    const sheet = res[0] as any;
-    
-    // Fetch relations
-    const [meals, exps, trans] = await Promise.all([
-      dataApi.query({ table: 'petty_cash_staff_meals', filters: [{ col: 'sheet_id', op: 'eq', val: sheet.id }], order: { col: 'display_order', ascending: true } }),
-      dataApi.query({ table: 'petty_cash_expenses', filters: [{ col: 'sheet_id', op: 'eq', val: sheet.id }], order: { col: 'display_order', ascending: true } }),
-      dataApi.query({ table: 'petty_cash_transports', filters: [{ col: 'sheet_id', op: 'eq', val: sheet.id }], order: { col: 'display_order', ascending: true } })
+    const { data, error } = await dataApi
+      .from('petty_cash_sheets')
+      .select('*')
+      .eq('location', location)
+      .eq('date', date)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    const sheet = data as any;
+
+    const [mealsRes, expsRes, transRes] = await Promise.all([
+      dataApi.from('petty_cash_staff_meals').select('*').eq('sheet_id', sheet.id).order('display_order', { ascending: true }),
+      dataApi.from('petty_cash_expenses').select('*').eq('sheet_id', sheet.id).order('display_order', { ascending: true }),
+      dataApi.from('petty_cash_transports').select('*').eq('sheet_id', sheet.id).order('display_order', { ascending: true }),
     ]);
-    
+
     return {
       ...sheet,
-      staff_meals: meals || [],
-      expenses: exps || [],
-      transport_logistics: trans || []
+      staff_meals: (mealsRes.data as StaffMeal[]) || [],
+      expenses: (expsRes.data as CustomExpense[]) || [],
+      transport_logistics: (transRes.data as TransportLogistics[]) || [],
     };
   },
 
   async saveSheet(sheet: PettyCashSheet): Promise<PettyCashSheet> {
     let sheetId = sheet.id;
-    
+
     const sheetData = {
       location: sheet.location,
       date: sheet.date,
@@ -103,35 +100,40 @@ export const pettyCashService = {
       total_expense: sheet.total_expense || 0,
       balance: sheet.balance || 0,
       status: sheet.status || 'draft',
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
 
     if (sheetId) {
-      // Update
-      await dataApi.mutate({
-        table: 'petty_cash_sheets',
-        op: 'update',
-        filters: [{ col: 'id', op: 'eq', val: sheetId }],
-        values: sheetData
-      });
-      
-      // Delete existing relations to replace them
-      await dataApi.mutate({ table: 'petty_cash_staff_meals', op: 'delete', filters: [{ col: 'sheet_id', op: 'eq', val: sheetId }] });
-      await dataApi.mutate({ table: 'petty_cash_expenses', op: 'delete', filters: [{ col: 'sheet_id', op: 'eq', val: sheetId }] });
-      await dataApi.mutate({ table: 'petty_cash_transports', op: 'delete', filters: [{ col: 'sheet_id', op: 'eq', val: sheetId }] });
-      
+      const { error } = await dataApi
+        .from('petty_cash_sheets')
+        .update(sheetData)
+        .eq('id', sheetId);
+
+      if (error) {
+        console.error('Error updating petty_cash_sheets:', error);
+        throw error;
+      }
+
+      await Promise.all([
+        dataApi.from('petty_cash_staff_meals').delete().eq('sheet_id', sheetId),
+        dataApi.from('petty_cash_expenses').delete().eq('sheet_id', sheetId),
+        dataApi.from('petty_cash_transports').delete().eq('sheet_id', sheetId),
+      ]);
     } else {
-      // Insert
-      const res = await dataApi.mutate({
-        table: 'petty_cash_sheets',
-        op: 'insert',
-        values: sheetData
-      });
-      sheetId = res[0].id;
+      const { data, error } = await dataApi
+        .from('petty_cash_sheets')
+        .insert(sheetData)
+        .select()
+        .single();
+
+      if (error || !data) {
+        console.error('Error inserting petty_cash_sheets:', error);
+        throw error || new Error('Failed to create sheet');
+      }
+      sheetId = (data as any).id;
     }
-    
-    // Insert new relations
-    if (sheet.staff_meals.length > 0) {
+
+    if (sheet.staff_meals && sheet.staff_meals.length > 0) {
       const mealsToInsert = sheet.staff_meals.map((m, idx) => ({
         sheet_id: sheetId,
         staff_id: m.staff_id,
@@ -140,24 +142,24 @@ export const pettyCashService = {
         staff_type: m.staff_type,
         attendance_status: m.attendance_status,
         amount: m.amount,
-        display_order: idx
+        display_order: idx,
       }));
-      await dataApi.mutate({ table: 'petty_cash_staff_meals', op: 'insert', values: mealsToInsert });
+      await dataApi.from('petty_cash_staff_meals').insert(mealsToInsert);
     }
-    
-    if (sheet.expenses.length > 0) {
+
+    if (sheet.expenses && sheet.expenses.length > 0) {
       const expsToInsert = sheet.expenses.map((e, idx) => ({
         sheet_id: sheetId,
         category: e.category,
         label: e.label,
         amount: e.amount,
         notes: e.notes || null,
-        display_order: idx
+        display_order: idx,
       }));
-      await dataApi.mutate({ table: 'petty_cash_expenses', op: 'insert', values: expsToInsert });
+      await dataApi.from('petty_cash_expenses').insert(expsToInsert);
     }
-    
-    if (sheet.transport_logistics.length > 0) {
+
+    if (sheet.transport_logistics && sheet.transport_logistics.length > 0) {
       const transToInsert = sheet.transport_logistics.map((t, idx) => ({
         sheet_id: sheetId,
         transport_name: t.transport_name,
@@ -166,12 +168,12 @@ export const pettyCashService = {
         auto: t.auto,
         hamali: t.hamali,
         total: t.total,
-        display_order: idx
+        display_order: idx,
       }));
-      await dataApi.mutate({ table: 'petty_cash_transports', op: 'insert', values: transToInsert });
+      await dataApi.from('petty_cash_transports').insert(transToInsert);
     }
-    
-    // Return updated sheet
-    return this.getSheet(sheet.location, sheet.date) as Promise<PettyCashSheet>;
+
+    const updated = await this.getSheet(sheet.location, sheet.date);
+    return updated || sheet;
   }
 };

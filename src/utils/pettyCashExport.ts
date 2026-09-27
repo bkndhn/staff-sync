@@ -2,7 +2,12 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { PettyCashSheet, StaffMeal } from '../services/pettyCashService';
-import { format } from 'date-fns';
+
+const formatDateDMY = (dateStr: string) => {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  return d && m && y ? `${d}/${m}/${y}` : dateStr;
+};
 
 export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
   const doc = new jsPDF('p', 'pt', 'a4');
@@ -15,7 +20,7 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(`DATE: ${format(new Date(sheet.date), 'dd/MM/yyyy')}`, 40, 70);
+  doc.text(`DATE: ${formatDateDMY(sheet.date)}`, 40, 70);
   doc.text(`LOCATION: ${sheet.location.toUpperCase()}`, doc.internal.pageSize.getWidth() - 40, 70, { align: 'right' });
   
   // Tables preparation
@@ -154,7 +159,7 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
   
   const wsData = [];
   wsData.push([sheet.template_type === 'godown' ? 'GODOWN PETTY CASH LIST' : 'PETTY CASH']);
-  wsData.push([`DATE: ${format(new Date(sheet.date), 'dd/MM/yyyy')}`, '', '', '', '', '', `LOCATION: ${sheet.location.toUpperCase()}`]);
+  wsData.push([`DATE: ${formatDateDMY(sheet.date)}`, '', '', '', '', '', `LOCATION: ${sheet.location.toUpperCase()}`]);
   wsData.push([]);
   
   wsData.push(['FULL TIME', '', '', '', '', '', 'PART TIME']);
