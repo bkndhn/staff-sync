@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import { PettyCashSheet, StaffMeal } from '../services/pettyCashService';
+import { PettyCashSheet } from '../services/pettyCashService';
 
 function formatDateDisplay(dateStr: string): string {
   try {
@@ -17,24 +17,31 @@ function formatDateDisplay(dateStr: string): string {
 
 export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
   const doc = new jsPDF('p', 'pt', 'a4');
+  const pageWidth = doc.internal.pageSize.getWidth();
   
-  // Headers
+  // Document Title Banner: Deep Navy ([30, 58, 138]) with crisp white text
+  doc.setFillColor(30, 58, 138);
+  doc.rect(40, 25, pageWidth - 80, 42, 'F');
+  
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  const title = sheet.template_type === 'godown' ? 'GODOWN PETTY CASH LIST' : 'PETTY CASH';
-  doc.text(title, doc.internal.pageSize.getWidth() / 2, 40, { align: 'center' });
+  doc.setTextColor(255, 255, 255);
+  const title = sheet.template_type === 'godown' ? 'GODOWN PETTY CASH LIST' : 'PETTY CASH VOUCHER';
+  doc.text(title, pageWidth / 2, 51, { align: 'center' });
   
+  // Date and Location Badges
   doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`DATE: ${formatDateDisplay(sheet.date)}`, 40, 70);
-  doc.text(`LOCATION: ${sheet.location.toUpperCase()}`, doc.internal.pageSize.getWidth() - 40, 70, { align: 'right' });
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 58, 138);
+  doc.text(`DATE: ${formatDateDisplay(sheet.date)}`, 42, 85);
+  doc.text(`LOCATION: ${sheet.location.toUpperCase()}`, pageWidth - 42, 85, { align: 'right' });
   
-  // Tables preparation
+  // Staff Tables preparation
   const fullTimeStaff = sheet.staff_meals.filter(s => s.staff_type === 'full-time');
   const partTimeStaff = sheet.staff_meals.filter(s => s.staff_type === 'part-time');
   
   const maxRows = Math.max(fullTimeStaff.length, partTimeStaff.length);
-  const staffTableBody = [];
+  const staffTableBody: any[][] = [];
   
   for (let i = 0; i < maxRows; i++) {
     const ft = fullTimeStaff[i];
@@ -45,22 +52,23 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
       ft ? ft.staff_name : '',
       ft ? ft.designation : '',
       ft ? ft.attendance_status : '',
-      ft ? ft.amount : '',
+      ft ? (ft.amount > 0 ? ft.amount : '') : '',
       '', // spacer
       pt ? i + 1 : '',
       pt ? pt.staff_name : '',
       pt ? pt.designation : '',
       pt ? pt.attendance_status : '',
-      pt ? pt.amount : ''
+      pt ? (pt.amount > 0 ? pt.amount : '') : ''
     ]);
   }
   
+  // Main Staff Table with Royal Indigo and Emerald Green headers
   autoTable(doc, {
-    startY: 90,
+    startY: 96,
     head: [[
-      { content: 'FULL TIME', colSpan: 5, styles: { halign: 'center', fillColor: [200, 200, 200], textColor: 0 } },
-      { content: '', styles: { fillColor: 255 } },
-      { content: 'PART TIME', colSpan: 5, styles: { halign: 'center', fillColor: [200, 200, 200], textColor: 0 } }
+      { content: 'FULL TIME STAFF', colSpan: 5, styles: { halign: 'center', fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold' } },
+      { content: '', styles: { fillColor: [255, 255, 255] } },
+      { content: 'PART TIME / FLEX STAFF', colSpan: 5, styles: { halign: 'center', fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold' } }
     ], [
       'S.NO', 'NAME', 'DESIG', 'F/H', 'AMT',
       '',
@@ -68,94 +76,127 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
     ]],
     body: staffTableBody,
     theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 3, textColor: 0, lineColor: 0, lineWidth: 0.5 },
-    headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold', lineWidth: 0.5 },
+    showHead: 'everyPage',
+    styles: { fontSize: 8, cellPadding: 3, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.5 },
+    headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', lineWidth: 0.5 },
     columnStyles: {
-      0: { cellWidth: 25 }, 1: { cellWidth: 70 }, 2: { cellWidth: 50 }, 3: { cellWidth: 25 }, 4: { cellWidth: 35 },
+      0: { cellWidth: 25 }, 1: { cellWidth: 70 }, 2: { cellWidth: 50 }, 3: { cellWidth: 25 }, 4: { cellWidth: 35, halign: 'right' },
       5: { cellWidth: 15, lineWidth: 0 },
-      6: { cellWidth: 25 }, 7: { cellWidth: 70 }, 8: { cellWidth: 50 }, 9: { cellWidth: 25 }, 10: { cellWidth: 35 }
+      6: { cellWidth: 25 }, 7: { cellWidth: 70 }, 8: { cellWidth: 50 }, 9: { cellWidth: 25 }, 10: { cellWidth: 35, halign: 'right' }
     },
     margin: { left: 40, right: 40 }
   });
   
-  let finalY = (doc as any).lastAutoTable.finalY + 20;
+  let finalY = (doc as any).lastAutoTable.finalY + 16;
 
-  // Expenses Table
-  const expensesBody = sheet.expenses.map((e, idx) => [idx + 1, e.label, e.amount]);
-  const expensesTotal = sheet.expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-  
-  let transportTotal = 0;
-  if (sheet.template_type === 'godown') {
-     transportTotal = sheet.transport_logistics.reduce((sum, t) => sum + (t.total || 0), 0);
+  // Multi-page safety check: if remaining space is less than 200pt, break to new page
+  if (finalY > doc.internal.pageSize.getHeight() - 200) {
+    doc.addPage();
+    finalY = 40;
   }
+
+  // Calculate totals
+  const expensesBody = sheet.expenses.map((e, idx) => [idx + 1, e.label, e.amount > 0 ? e.amount : '']);
+  const expensesTotal = sheet.expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  
+  const hasTransports = sheet.transport_logistics && sheet.transport_logistics.some(t => t.transport_name || (Number(t.total) || 0) > 0);
+  const activeTransports = (sheet.transport_logistics || []).filter(t => t.transport_name || (Number(t.total) || 0) > 0);
+  const transportTotal = (sheet.transport_logistics || []).reduce((sum, t) => sum + (Number(t.total) || 0), 0);
   
   const totalExp = expensesTotal + transportTotal;
-  const balance = sheet.received_amount - totalExp;
-  
+  const balance = (Number(sheet.received_amount) || 0) - totalExp;
+
+  // Expenses Table (Left Column) - Header in Indigo ([79, 70, 229])
   autoTable(doc, {
     startY: finalY,
-    head: [['S.NO', 'PARTICULARS', 'AMOUNT']],
+    head: [[
+      { content: 'DAILY EXPENSES', colSpan: 3, styles: { halign: 'center', fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' } }
+    ], ['S.NO', 'PARTICULARS', 'AMOUNT']],
     body: [
       ...expensesBody,
-      [{ content: 'TOTAL EXPENSES', colSpan: 2, styles: { halign: 'right', fontStyle: 'bold' } }, { content: totalExp, styles: { fontStyle: 'bold' } }]
+      [{ content: 'TOTAL EXPENSES', colSpan: 2, styles: { halign: 'right', fontStyle: 'bold', fillColor: [248, 250, 252] } }, { content: expensesTotal, styles: { fontStyle: 'bold', halign: 'right', fillColor: [248, 250, 252] } }]
     ],
     theme: 'grid',
-    styles: { fontSize: 8, textColor: 0, lineColor: 0, lineWidth: 0.5 },
-    headStyles: { fillColor: [240, 240, 240], textColor: 0 },
-    columnStyles: { 0: { cellWidth: 30 }, 1: { cellWidth: 150 }, 2: { cellWidth: 60 } },
+    styles: { fontSize: 8, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.5 },
+    headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] },
+    columnStyles: { 0: { cellWidth: 28 }, 1: { cellWidth: 140 }, 2: { cellWidth: 55, halign: 'right' } },
     margin: { left: 40 },
-    tableWidth: 240
+    tableWidth: 223
   });
 
-  const expenseY = (doc as any).lastAutoTable.finalY;
+  const expenseFinalY = (doc as any).lastAutoTable.finalY;
 
-  // Godown transport logistics if applicable
-  if (sheet.template_type === 'godown') {
-    const transportBody = sheet.transport_logistics.map(t => [t.transport_name, t.count, t.freight, t.auto, t.hamali, t.total]);
+  // Transport Logistics Table (Right Column) - Header in Violet ([109, 40, 217])
+  if (hasTransports && activeTransports.length > 0) {
+    const transportBody = activeTransports.map(t => [t.transport_name, t.count, t.freight || '', t.auto || '', t.hamali || '', t.total || '']);
     autoTable(doc, {
       startY: finalY,
-      head: [['TRANSPORT', 'COUNT', 'FREIGHT', 'AUTO', 'HAMALI', 'TOTAL']],
+      head: [[
+        { content: 'TRANSPORT & GOODS INWARD', colSpan: 6, styles: { halign: 'center', fillColor: [109, 40, 217], textColor: [255, 255, 255], fontStyle: 'bold' } }
+      ], ['TRANSPORT', 'CNT', 'FRT', 'AUTO', 'HAM', 'TOTAL']],
       body: [
         ...transportBody,
-        [{ content: 'TOTAL LOGISTICS', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, { content: transportTotal, styles: { fontStyle: 'bold' } }]
+        [{ content: 'TOTAL LOGISTICS', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold', fillColor: [248, 250, 252] } }, { content: transportTotal, styles: { fontStyle: 'bold', halign: 'right', fillColor: [248, 250, 252] } }]
       ],
       theme: 'grid',
-      styles: { fontSize: 8, textColor: 0, lineColor: 0, lineWidth: 0.5 },
-      headStyles: { fillColor: [240, 240, 240], textColor: 0 },
-      margin: { left: 300 },
-      tableWidth: 'auto'
+      styles: { fontSize: 8, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.5 },
+      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] },
+      columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 26 }, 2: { cellWidth: 32 }, 3: { cellWidth: 30 }, 4: { cellWidth: 30 }, 5: { cellWidth: 35, halign: 'right' } },
+      margin: { left: 275 },
+      tableWidth: 223
     });
     
-    finalY = Math.max(expenseY, (doc as any).lastAutoTable.finalY) + 20;
+    finalY = Math.max(expenseFinalY, (doc as any).lastAutoTable.finalY) + 16;
   } else {
-    finalY = expenseY + 20;
+    finalY = expenseFinalY + 16;
   }
 
-  // Settlement Box
+  // Settlement Card with Specified Pastel Fills & Bold Text
+  if (finalY > doc.internal.pageSize.getHeight() - 120) {
+    doc.addPage();
+    finalY = 40;
+  }
+
   autoTable(doc, {
     startY: finalY,
     body: [
-      ['TOTAL RECEIVED', sheet.received_amount],
-      ['TOTAL EXP', totalExp],
-      ['BALANCE', balance]
+      [
+        { content: 'TOTAL RECEIVED (CASHIER)', styles: { fillColor: [224, 242, 254], textColor: [30, 58, 138], fontStyle: 'bold' } },
+        { content: `Rs. ${(sheet.received_amount || 0).toLocaleString('en-IN')}`, styles: { fillColor: [224, 242, 254], textColor: [30, 58, 138], fontStyle: 'bold', halign: 'right' } }
+      ],
+      [
+        { content: 'TOTAL EXPENSES', styles: { fillColor: [254, 226, 226], textColor: [159, 18, 57], fontStyle: 'bold' } },
+        { content: `Rs. ${totalExp.toLocaleString('en-IN')}`, styles: { fillColor: [254, 226, 226], textColor: [159, 18, 57], fontStyle: 'bold', halign: 'right' } }
+      ],
+      [
+        { content: balance >= 0 ? 'BALANCE REFUND TO CASHIER' : 'CASH DEFICIT / REIMBURSEMENT DUE', styles: { fillColor: [209, 250, 229], textColor: [6, 95, 70], fontStyle: 'bold' } },
+        { content: `Rs. ${balance.toLocaleString('en-IN')}`, styles: { fillColor: [209, 250, 229], textColor: balance >= 0 ? [6, 95, 70] : [185, 28, 28], fontStyle: 'bold', halign: 'right' } }
+      ]
     ],
     theme: 'grid',
-    styles: { fontSize: 10, textColor: 0, lineColor: 0, lineWidth: 0.5, fontStyle: 'bold' },
-    columnStyles: { 0: { cellWidth: 120, fillColor: [240, 240, 240] }, 1: { cellWidth: 80 } },
+    styles: { fontSize: 9.5, cellPadding: 4, lineColor: [203, 213, 225], lineWidth: 0.5 },
+    columnStyles: { 0: { cellWidth: 170 }, 1: { cellWidth: 90 } },
     margin: { left: 40 }
   });
 
-  // Footer signatures
-  finalY = (doc as any).lastAutoTable.finalY + 50;
-  if (finalY > doc.internal.pageSize.getHeight() - 40) {
+  // Footer Signatures
+  let sigY = (doc as any).lastAutoTable.finalY + 45;
+  if (sigY > doc.internal.pageSize.getHeight() - 40) {
     doc.addPage();
-    finalY = 50;
+    sigY = 50;
   }
   
   doc.setFontSize(9);
-  doc.text('CASHIER SIGNATURE', 40, finalY);
-  doc.text('MANAGER SIGNATURE', doc.internal.pageSize.getWidth() / 2, finalY, { align: 'center' });
-  doc.text('VOU/BILL VERIFICATION', doc.internal.pageSize.getWidth() - 40, finalY, { align: 'right' });
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(71, 85, 105);
+  doc.text('_____________________', 40, sigY - 10);
+  doc.text('CASHIER SIGNATURE', 40, sigY + 5);
+  
+  doc.text('_____________________', pageWidth / 2, sigY - 10, { align: 'center' });
+  doc.text('MANAGER SIGNATURE', pageWidth / 2, sigY + 5, { align: 'center' });
+  
+  doc.text('_____________________', pageWidth - 40, sigY - 10, { align: 'right' });
+  doc.text('VOU/BILL VERIFICATION', pageWidth - 40, sigY + 5, { align: 'right' });
 
   doc.save(`Petty_Cash_${sheet.location}_${sheet.date}.pdf`);
 };
@@ -163,12 +204,12 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
 export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
   const wb = XLSX.utils.book_new();
   
-  const wsData = [];
-  wsData.push([sheet.template_type === 'godown' ? 'GODOWN PETTY CASH LIST' : 'PETTY CASH']);
+  const wsData: any[][] = [];
+  wsData.push([sheet.template_type === 'godown' ? 'GODOWN PETTY CASH LIST' : 'PETTY CASH VOUCHER']);
   wsData.push([`DATE: ${formatDateDisplay(sheet.date)}`, '', '', '', '', '', `LOCATION: ${sheet.location.toUpperCase()}`]);
   wsData.push([]);
   
-  wsData.push(['FULL TIME', '', '', '', '', '', 'PART TIME']);
+  wsData.push(['FULL TIME STAFF', '', '', '', '', '', 'PART TIME / FLEX STAFF']);
   wsData.push(['S.NO', 'NAME', 'DESIGNATION', 'F/H', 'AMT', '', 'S.NO', 'NAME', 'DESIGNATION', 'F/H', 'AMT']);
   
   const fullTimeStaff = sheet.staff_meals.filter(s => s.staff_type === 'full-time');
@@ -196,33 +237,35 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
   }
   
   wsData.push([]);
-  wsData.push(['EXPENSES']);
+  wsData.push(['DAILY EXPENSES']);
   wsData.push(['S.NO', 'PARTICULARS', 'AMOUNT']);
   
   sheet.expenses.forEach((e, idx) => {
     wsData.push([idx + 1, e.label, e.amount]);
   });
+  const expensesTotal = sheet.expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  wsData.push(['', 'TOTAL EXPENSES', expensesTotal]);
   
-  let transportTotal = 0;
-  if (sheet.template_type === 'godown') {
+  const transportItems = (sheet.transport_logistics || []).filter(t => t.transport_name || (Number(t.total) || 0) > 0);
+  const transportTotal = (sheet.transport_logistics || []).reduce((sum, t) => sum + (Number(t.total) || 0), 0);
+
+  if (transportItems.length > 0) {
     wsData.push([]);
-    wsData.push(['LOGISTICS']);
+    wsData.push(['TRANSPORT LOGISTICS (GOODS INWARD)']);
     wsData.push(['TRANSPORT', 'COUNT', 'FREIGHT', 'AUTO', 'HAMALI', 'TOTAL']);
-    sheet.transport_logistics.forEach(t => {
+    transportItems.forEach(t => {
       wsData.push([t.transport_name, t.count, t.freight, t.auto, t.hamali, t.total]);
-      transportTotal += (t.total || 0);
     });
-    wsData.push(['', '', '', '', 'TOTAL', transportTotal]);
+    wsData.push(['', '', '', '', 'TOTAL LOGISTICS', transportTotal]);
   }
 
-  const expensesTotal = sheet.expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
   const totalExp = expensesTotal + transportTotal;
   
   wsData.push([]);
-  wsData.push(['SETTLEMENT']);
+  wsData.push(['SETTLEMENT SUMMARY']);
   wsData.push(['TOTAL RECEIVED', sheet.received_amount]);
-  wsData.push(['TOTAL EXP', totalExp]);
-  wsData.push(['BALANCE', sheet.received_amount - totalExp]);
+  wsData.push(['TOTAL EXPENSES', totalExp]);
+  wsData.push(['BALANCE', (Number(sheet.received_amount) || 0) - totalExp]);
 
   const ws = XLSX.utils.aoa_to_sheet(wsData);
   XLSX.utils.book_append_sheet(wb, ws, 'PettyCash');
