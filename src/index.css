@@ -3388,3 +3388,52 @@ body.light-theme [role="dialog"] .text-gray-800 {
   color: #0F172A !important;
 }
 
+
+/* ============================================
+   PETTY CASH HEADERS & CARDS
+   High-contrast foreground for Full-Time & Part-Time/Flex
+   ============================================ */
+.petty-cash-fulltime-header {
+  background-color: #1e3a8a !important;
+  color: #ffffff !important;
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+}
+
+.petty-cash-parttime-header {
+  background-color: #064e3b !important;
+  color: #ffffff !important;
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+}
+
+.petty-cash-header-count {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+/* Explicit high-contrast overrides to defeat global body.light-theme h3 overrides */
+body.light-theme .petty-cash-fulltime-header h3,
+body.light-theme .petty-cash-parttime-header h3,
+body.light-theme .petty-cash-fulltime-header span,
+body.light-theme .petty-cash-parttime-header span,
+body.light-theme .petty-cash-header-count,
+.petty-cash-fulltime-header h3,
+.petty-cash-parttime-header h3,
+.petty-cash-fulltime-header span,
+.petty-cash-parttime-header span {
+  color: #ffffff !important;
+}

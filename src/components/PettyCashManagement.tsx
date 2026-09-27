@@ -556,15 +556,11 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
             
             {/* FULL TIME STAFF */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-              <div
-                className="px-4 py-3 flex justify-between items-center rounded-t-xl"
-                style={{ backgroundColor: '#1e3a8a', color: '#ffffff' }}
-              >
-                <h3 className="font-bold text-base tracking-wide" style={{ color: '#ffffff' }}>FULL TIME STAFF</h3>
-                <span
-                  className="font-semibold px-2.5 py-0.5 rounded-full text-xs"
-                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', color: '#ffffff' }}
-                >
+              <div className="petty-cash-fulltime-header">
+                <h3 className="text-sm font-extrabold tracking-wide text-primary-foreground">
+                  FULL TIME STAFF
+                </h3>
+                <span className="petty-cash-header-count text-primary-foreground">
                   {fullTimeStaff.length} Present
                 </span>
               </div>
@@ -611,15 +607,11 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
 
             {/* PART TIME / FLEX STAFF */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-              <div
-                className="px-4 py-3 flex justify-between items-center rounded-t-xl"
-                style={{ backgroundColor: '#064e3b', color: '#ffffff' }}
-              >
-                <h3 className="font-bold text-base tracking-wide" style={{ color: '#ffffff' }}>PART TIME / FLEX STAFF</h3>
-                <span
-                  className="font-semibold px-2.5 py-0.5 rounded-full text-xs"
-                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', color: '#ffffff' }}
-                >
+              <div className="petty-cash-parttime-header">
+                <h3 className="text-sm font-extrabold tracking-wide text-primary-foreground">
+                  PART TIME / FLEX STAFF
+                </h3>
+                <span className="petty-cash-header-count text-primary-foreground">
                   {partTimeStaff.length} Present
                 </span>
               </div>
