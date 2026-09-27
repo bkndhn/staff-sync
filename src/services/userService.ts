@@ -7,7 +7,7 @@ export interface AppUser {
     id: string;
     email: string;
     full_name: string;
-    role: 'admin' | 'manager' | 'floor_supervisor' | 'statutory_admin' | 'supervisor' | 'super_admin';
+    role: 'admin' | 'manager' | 'floor_supervisor' | 'statutory_admin' | 'supervisor' | 'super_admin' | 'petty_cash_manager';
     location: string | null;
     location_id?: string | null;
     floor?: string | null;
@@ -23,7 +23,7 @@ export interface CreateUserInput {
     email: string;
     password: string;
     full_name: string;
-    role: 'admin' | 'manager' | 'floor_supervisor' | 'statutory_admin' | 'supervisor';
+    role: 'admin' | 'manager' | 'floor_supervisor' | 'statutory_admin' | 'supervisor' | 'petty_cash_manager';
     location?: string | null;
     location_id?: string | null;
     floor?: string | null;
@@ -33,7 +33,7 @@ export interface UpdateUserInput {
     email?: string;
     password?: string;
     full_name?: string;
-    role?: 'admin' | 'manager' | 'floor_supervisor' | 'statutory_admin' | 'supervisor';
+    role?: 'admin' | 'manager' | 'floor_supervisor' | 'statutory_admin' | 'supervisor' | 'petty_cash_manager';
     location?: string | null;
     floor?: string | null;
     location_id?: string | null;
