@@ -19,8 +19,8 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
   doc.text(`LOCATION: ${sheet.location.toUpperCase()}`, doc.internal.pageSize.getWidth() - 40, 70, { align: 'right' });
   
   // Tables preparation
-  const fullTimeStaff = sheet.staff_meals.filter(s => s.type === 'full-time');
-  const partTimeStaff = sheet.staff_meals.filter(s => s.type === 'part-time');
+  const fullTimeStaff = sheet.staff_meals.filter(s => s.staff_type === 'full-time');
+  const partTimeStaff = sheet.staff_meals.filter(s => s.staff_type === 'part-time');
   
   const maxRows = Math.max(fullTimeStaff.length, partTimeStaff.length);
   const staffTableBody = [];
@@ -31,13 +31,13 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
     
     staffTableBody.push([
       ft ? i + 1 : '',
-      ft ? ft.name : '',
+      ft ? ft.staff_name : '',
       ft ? ft.designation : '',
       ft ? ft.attendance_status : '',
       ft ? ft.amount : '',
       '', // spacer
       pt ? i + 1 : '',
-      pt ? pt.name : '',
+      pt ? pt.staff_name : '',
       pt ? pt.designation : '',
       pt ? pt.attendance_status : '',
       pt ? pt.amount : ''
@@ -69,13 +69,8 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
   
   let finalY = (doc as any).lastAutoTable.finalY + 20;
 
-  // Expenses & Summary
-  const ftTotal = fullTimeStaff.reduce((sum, s) => sum + (s.amount || 0), 0);
-  const ptTotal = partTimeStaff.reduce((sum, s) => sum + (s.amount || 0), 0);
-  const mealTotal = ftTotal + ptTotal;
-  
   // Expenses Table
-  const expensesBody = sheet.expenses.map((e, idx) => [idx + 1, e.particulars, e.amount]);
+  const expensesBody = sheet.expenses.map((e, idx) => [idx + 1, e.label, e.amount]);
   const expensesTotal = sheet.expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
   
   let transportTotal = 0;
@@ -84,7 +79,7 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
   }
   
   const totalExp = expensesTotal + transportTotal;
-  const balance = sheet.total_received - totalExp;
+  const balance = sheet.received_amount - totalExp;
   
   autoTable(doc, {
     startY: finalY,
@@ -105,7 +100,7 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
 
   // Godown transport logistics if applicable
   if (sheet.template_type === 'godown') {
-    const transportBody = sheet.transport_logistics.map(t => [t.transport, t.count, t.freight, t.auto, t.hamali, t.total]);
+    const transportBody = sheet.transport_logistics.map(t => [t.transport_name, t.count, t.freight, t.auto, t.hamali, t.total]);
     autoTable(doc, {
       startY: finalY,
       head: [['TRANSPORT', 'COUNT', 'FREIGHT', 'AUTO', 'HAMALI', 'TOTAL']],
@@ -129,7 +124,7 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
   autoTable(doc, {
     startY: finalY,
     body: [
-      ['TOTAL RECEIVED', sheet.total_received],
+      ['TOTAL RECEIVED', sheet.received_amount],
       ['TOTAL EXP', totalExp],
       ['BALANCE', balance]
     ],
@@ -165,8 +160,8 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
   wsData.push(['FULL TIME', '', '', '', '', '', 'PART TIME']);
   wsData.push(['S.NO', 'NAME', 'DESIGNATION', 'F/H', 'AMT', '', 'S.NO', 'NAME', 'DESIGNATION', 'F/H', 'AMT']);
   
-  const fullTimeStaff = sheet.staff_meals.filter(s => s.type === 'full-time');
-  const partTimeStaff = sheet.staff_meals.filter(s => s.type === 'part-time');
+  const fullTimeStaff = sheet.staff_meals.filter(s => s.staff_type === 'full-time');
+  const partTimeStaff = sheet.staff_meals.filter(s => s.staff_type === 'part-time');
   
   const maxRows = Math.max(fullTimeStaff.length, partTimeStaff.length);
   
@@ -176,13 +171,13 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
     
     wsData.push([
       ft ? i + 1 : '',
-      ft ? ft.name : '',
+      ft ? ft.staff_name : '',
       ft ? ft.designation : '',
       ft ? ft.attendance_status : '',
       ft ? ft.amount : '',
       '',
       pt ? i + 1 : '',
-      pt ? pt.name : '',
+      pt ? pt.staff_name : '',
       pt ? pt.designation : '',
       pt ? pt.attendance_status : '',
       pt ? pt.amount : ''
@@ -194,7 +189,7 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
   wsData.push(['S.NO', 'PARTICULARS', 'AMOUNT']);
   
   sheet.expenses.forEach((e, idx) => {
-    wsData.push([idx + 1, e.particulars, e.amount]);
+    wsData.push([idx + 1, e.label, e.amount]);
   });
   
   let transportTotal = 0;
@@ -203,7 +198,7 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
     wsData.push(['LOGISTICS']);
     wsData.push(['TRANSPORT', 'COUNT', 'FREIGHT', 'AUTO', 'HAMALI', 'TOTAL']);
     sheet.transport_logistics.forEach(t => {
-      wsData.push([t.transport, t.count, t.freight, t.auto, t.hamali, t.total]);
+      wsData.push([t.transport_name, t.count, t.freight, t.auto, t.hamali, t.total]);
       transportTotal += (t.total || 0);
     });
     wsData.push(['', '', '', '', 'TOTAL', transportTotal]);
@@ -214,9 +209,9 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
   
   wsData.push([]);
   wsData.push(['SETTLEMENT']);
-  wsData.push(['TOTAL RECEIVED', sheet.total_received]);
+  wsData.push(['TOTAL RECEIVED', sheet.received_amount]);
   wsData.push(['TOTAL EXP', totalExp]);
-  wsData.push(['BALANCE', sheet.total_received - totalExp]);
+  wsData.push(['BALANCE', sheet.received_amount - totalExp]);
 
   const ws = XLSX.utils.aoa_to_sheet(wsData);
   XLSX.utils.book_append_sheet(wb, ws, 'PettyCash');

@@ -112,6 +112,9 @@ const ACL: Record<string, TableAcl> = {
   staff_notifications:          { read: ["admin","manager","staff","super_admin"], write: ["admin","manager","staff"], staffIdCol: "staff_id" },
   expense_claims:               { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin"], write: ["admin","manager","staff"], locationCol: "location", staffIdCol: "staff_id" },
   petty_cash_sheets:            { read: ["admin","super_admin","petty_cash_manager","manager"], write: ["admin","super_admin","petty_cash_manager","manager"], locationCol: "location" },
+  petty_cash_staff_meals:       { read: ["admin","super_admin","petty_cash_manager","manager"], write: ["admin","super_admin","petty_cash_manager","manager"] },
+  petty_cash_expenses:          { read: ["admin","super_admin","petty_cash_manager","manager"], write: ["admin","super_admin","petty_cash_manager","manager"] },
+  petty_cash_transports:        { read: ["admin","super_admin","petty_cash_manager","manager"], write: ["admin","super_admin","petty_cash_manager","manager"] },
 
   // ── Public API & webhooks (client admins only) ────────────────────────
   api_keys:                     { read: ["admin","super_admin"], write: ["admin","super_admin"] },

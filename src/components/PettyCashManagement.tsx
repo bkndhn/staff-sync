@@ -64,29 +64,29 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
   const createNewSheet = async () => {
     const defaultExpenses: CustomExpense[] = templateType === 'shop' 
       ? [
-          { id: crypto.randomUUID(), particulars: 'MEAL TOTAL', amount: 0, is_fixed: true },
-          { id: crypto.randomUUID(), particulars: 'SHOP TEA & SNACKS', amount: 0, is_fixed: true },
-          { id: crypto.randomUUID(), particulars: 'PETROL', amount: 0, is_fixed: true },
-          { id: crypto.randomUUID(), particulars: 'STAFF OVERTIME', amount: 0, is_fixed: true },
+          { id: crypto.randomUUID(), category: 'fixed', label: 'MEAL TOTAL', amount: 0 },
+          { id: crypto.randomUUID(), category: 'fixed', label: 'SHOP TEA & SNACKS', amount: 0 },
+          { id: crypto.randomUUID(), category: 'fixed', label: 'PETROL', amount: 0 },
+          { id: crypto.randomUUID(), category: 'fixed', label: 'STAFF OVERTIME', amount: 0 },
         ]
       : [
-          { id: crypto.randomUUID(), particulars: 'MEAL TOTAL', amount: 0, is_fixed: true },
-          { id: crypto.randomUUID(), particulars: 'PANT GODOWN TEA & SNACKS', amount: 0, is_fixed: true },
-          { id: crypto.randomUUID(), particulars: 'SHIRT GODOWN TEA & SNACKS', amount: 0, is_fixed: true },
-          { id: crypto.randomUUID(), particulars: 'PETROL', amount: 0, is_fixed: true },
-          { id: crypto.randomUUID(), particulars: 'PART TIME SALARY', amount: 0, is_fixed: true },
+          { id: crypto.randomUUID(), category: 'fixed', label: 'MEAL TOTAL', amount: 0 },
+          { id: crypto.randomUUID(), category: 'fixed', label: 'PANT GODOWN TEA & SNACKS', amount: 0 },
+          { id: crypto.randomUUID(), category: 'fixed', label: 'SHIRT GODOWN TEA & SNACKS', amount: 0 },
+          { id: crypto.randomUUID(), category: 'fixed', label: 'PETROL', amount: 0 },
+          { id: crypto.randomUUID(), category: 'fixed', label: 'PART TIME SALARY', amount: 0 },
         ];
         
     const defaultLogistics: TransportLogistics[] = Array(10).fill(null).map((_, i) => ({
       id: crypto.randomUUID(),
-      transport: '', count: '', freight: 0, auto: 0, hamali: 0, total: 0
+      transport_name: '', count: '', freight: 0, auto: 0, hamali: 0, total: 0
     }));
 
     const newSheet: PettyCashSheet = {
       location,
       date,
       template_type: templateType,
-      total_received: 0,
+      received_amount: 0,
       staff_meals: [],
       expenses: defaultExpenses,
       transport_logistics: templateType === 'godown' ? defaultLogistics : []
@@ -121,9 +121,9 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
         
         newStaffMeals.push({
           staff_id: a.staffId,
-          name: staff.name,
+          staff_name: staff.name,
           designation: staff.designation,
-          type: staff.type === 'part-time' ? 'part-time' : 'full-time',
+          staff_type: staff.type === 'part-time' ? 'part-time' : 'full-time',
           attendance_status: attStatus,
           amount: existingMeal ? existingMeal.amount : 0
         });
@@ -141,7 +141,35 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
     if (!sheet) return;
     setSaving(true);
     try {
-      const saved = await pettyCashService.saveSheet(sheet);
+      
+      // Compute totals before saving
+      const fullTimeStaff = sheet.staff_meals.filter(s => s.staff_type === 'full-time');
+      const partTimeStaff = sheet.staff_meals.filter(s => s.staff_type === 'part-time');
+      
+      const ftMealTotal = fullTimeStaff.reduce((sum, s) => sum + (s.amount || 0), 0);
+      const ptMealTotal = partTimeStaff.reduce((sum, s) => sum + (s.amount || 0), 0);
+      const mealTotal = ftMealTotal + ptMealTotal;
+      
+      const expensesTotal = sheet.expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+      const transportTotal = sheet.template_type === 'godown' 
+        ? sheet.transport_logistics.reduce((sum, t) => sum + (Number(t.total) || 0), 0) 
+        : 0;
+        
+      const totalExp = expensesTotal + transportTotal;
+      const balance = sheet.received_amount - totalExp;
+      
+      const toSave = {
+        ...sheet,
+        full_time_meal_total: ftMealTotal,
+        part_time_meal_total: ptMealTotal,
+        meal_total: mealTotal,
+        expenses_total: expensesTotal,
+        transport_total: transportTotal,
+        total_expense: totalExp,
+        balance: balance
+      };
+      
+      const saved = await pettyCashService.saveSheet(toSave);
       setSheet(saved);
       alert('Saved successfully!');
     } catch (e) {
@@ -156,7 +184,7 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
     if (!sheet) return;
     const newMeals = sheet.staff_meals.map(m => {
       let amt = 0;
-      if (m.type === 'full-time') {
+      if (m.staff_type === 'full-time') {
         amt = m.attendance_status === 'H' ? (ftMealRate / 2) : ftMealRate;
       } else {
         amt = m.attendance_status === 'H' ? (ptMealRate / 2) : ptMealRate;
@@ -171,7 +199,7 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
     if (!sheet) return;
     const total = meals.reduce((sum, m) => sum + (m.amount || 0), 0);
     const newExps = sheet.expenses.map(e => 
-      e.particulars === 'MEAL TOTAL' ? { ...e, amount: total } : e
+      e.label === 'MEAL TOTAL' ? { ...e, amount: total } : e
     );
     setSheet({ ...sheet, staff_meals: meals, expenses: newExps });
   };
@@ -188,7 +216,7 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
     if (!sheet) return;
     setSheet({
       ...sheet,
-      expenses: [...sheet.expenses, { id: crypto.randomUUID(), particulars: '', amount: 0, is_fixed: false }]
+      expenses: [...sheet.expenses, { id: crypto.randomUUID(), category: 'custom', label: '', amount: 0 }]
     });
   };
 
@@ -221,8 +249,8 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
     return <div className="p-8 text-center">Failed to load sheet</div>;
   }
 
-  const fullTimeStaff = sheet?.staff_meals.filter(s => s.type === 'full-time') || [];
-  const partTimeStaff = sheet?.staff_meals.filter(s => s.type === 'part-time') || [];
+  const fullTimeStaff = sheet?.staff_meals.filter(s => s.staff_type === 'full-time') || [];
+  const partTimeStaff = sheet?.staff_meals.filter(s => s.staff_type === 'part-time') || [];
   
   const expensesTotal = sheet?.expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) || 0;
   const transportTotal = sheet?.template_type === 'godown' 
@@ -230,7 +258,7 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
     : 0;
     
   const totalExp = expensesTotal + transportTotal;
-  const balance = (sheet?.total_received || 0) - totalExp;
+  const balance = (sheet?.received_amount || 0) - totalExp;
 
   const canEdit = user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'petty_cash_manager';
 
@@ -312,8 +340,8 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium">₹</span>
                   <input
                     type="number"
-                    value={sheet.total_received}
-                    onChange={e => setSheet({...sheet, total_received: Number(e.target.value)})}
+                    value={sheet.received_amount}
+                    onChange={e => setSheet({...sheet, received_amount: Number(e.target.value)})}
                     className="pl-7 pr-3 py-2 w-32 bg-indigo-50 border border-indigo-200 rounded-lg font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-500"
                     disabled={!canEdit}
                   />
@@ -373,7 +401,7 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
                     ) : fullTimeStaff.map((s, idx) => (
                       <tr key={s.staff_id} className="hover:bg-slate-50">
                         <td className="px-4 py-2.5 text-slate-500">{idx + 1}</td>
-                        <td className="px-4 py-2.5 font-medium text-slate-800">{s.name}</td>
+                        <td className="px-4 py-2.5 font-medium text-slate-800">{s.staff_name}</td>
                         <td className="px-4 py-2.5 text-slate-500 text-xs">{s.designation}</td>
                         <td className="px-4 py-2.5 text-center">
                           <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${s.attendance_status === 'F' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -419,7 +447,7 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
                     ) : partTimeStaff.map((s, idx) => (
                       <tr key={s.staff_id} className="hover:bg-slate-50">
                         <td className="px-4 py-2.5 text-slate-500">{idx + 1}</td>
-                        <td className="px-4 py-2.5 font-medium text-slate-800">{s.name}</td>
+                        <td className="px-4 py-2.5 font-medium text-slate-800">{s.staff_name}</td>
                         <td className="px-4 py-2.5 text-slate-500 text-xs">{s.designation}</td>
                         <td className="px-4 py-2.5 text-center">
                           <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${s.attendance_status === 'F' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -467,13 +495,13 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
                       <tr key={e.id} className="hover:bg-slate-50">
                         <td className="px-4 py-2.5 text-slate-500">{idx + 1}</td>
                         <td className="px-4 py-2.5">
-                          {e.is_fixed ? (
-                            <span className="font-medium text-slate-700">{e.particulars}</span>
+                          {e.category === 'fixed' ? (
+                            <span className="font-medium text-slate-700">{e.label}</span>
                           ) : (
                             <input
                               type="text"
-                              value={e.particulars}
-                              onChange={ev => updateExpense(e.id, 'particulars', ev.target.value)}
+                              value={e.label}
+                              onChange={ev => updateExpense(e.id!, 'label', ev.target.value)}
                               className="w-full px-2 py-1 border border-slate-200 rounded focus:ring-indigo-500 focus:border-indigo-500"
                               placeholder="Enter detail..."
                               disabled={!canEdit}
@@ -484,14 +512,14 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
                           <input
                             type="number"
                             value={e.amount || ''}
-                            onChange={ev => updateExpense(e.id, 'amount', Number(ev.target.value))}
-                            className={`w-full text-right px-2 py-1 border rounded focus:ring-indigo-500 ${e.is_fixed && e.particulars === 'MEAL TOTAL' ? 'bg-slate-100 border-transparent text-slate-500 font-bold' : 'border-slate-200'}`}
-                            disabled={!canEdit || (e.is_fixed && e.particulars === 'MEAL TOTAL')}
+                            onChange={ev => updateExpense(e.id!, 'amount', Number(ev.target.value))}
+                            className={`w-full text-right px-2 py-1 border rounded focus:ring-indigo-500 ${e.category === 'fixed' && e.label === 'MEAL TOTAL' ? 'bg-slate-100 border-transparent text-slate-500 font-bold' : 'border-slate-200'}`}
+                            disabled={!canEdit || (e.category === 'fixed' && e.label === 'MEAL TOTAL')}
                           />
                         </td>
                         <td className="px-4 py-2.5 text-center">
-                          {!e.is_fixed && canEdit && (
-                            <button onClick={() => removeExpense(e.id)} className="text-red-400 hover:text-red-600">
+                          {e.category !== 'fixed' && canEdit && (
+                            <button onClick={() => removeExpense(e.id!)} className="text-red-400 hover:text-red-600">
                               <Trash2 size={16} />
                             </button>
                           )}
@@ -531,19 +559,19 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
                         {sheet.transport_logistics.map((t, idx) => (
                           <tr key={t.id} className="hover:bg-slate-50">
                             <td className="px-2 py-1.5">
-                              <input type="text" value={t.transport} onChange={e => updateTransport(t.id, 'transport', e.target.value)} className="w-full px-1 border border-transparent hover:border-slate-200 rounded text-xs" disabled={!canEdit}/>
+                              <input type="text" value={t.transport_name} onChange={e => updateTransport(t.id!, 'transport_name', e.target.value)} className="w-full px-1 border border-transparent hover:border-slate-200 rounded text-xs" disabled={!canEdit}/>
                             </td>
                             <td className="px-2 py-1.5">
-                              <input type="text" value={t.count} onChange={e => updateTransport(t.id, 'count', e.target.value)} className="w-full px-1 border border-transparent hover:border-slate-200 rounded text-xs" disabled={!canEdit}/>
+                              <input type="text" value={t.count} onChange={e => updateTransport(t.id!, 'count', e.target.value)} className="w-full px-1 border border-transparent hover:border-slate-200 rounded text-xs" disabled={!canEdit}/>
                             </td>
                             <td className="px-2 py-1.5 text-right">
-                              <input type="number" value={t.freight || ''} onChange={e => updateTransport(t.id, 'freight', Number(e.target.value))} className="w-full text-right px-1 border border-transparent hover:border-slate-200 rounded text-xs" disabled={!canEdit}/>
+                              <input type="number" value={t.freight || ''} onChange={e => updateTransport(t.id!, 'freight', Number(e.target.value))} className="w-full text-right px-1 border border-transparent hover:border-slate-200 rounded text-xs" disabled={!canEdit}/>
                             </td>
                             <td className="px-2 py-1.5 text-right">
-                              <input type="number" value={t.auto || ''} onChange={e => updateTransport(t.id, 'auto', Number(e.target.value))} className="w-full text-right px-1 border border-transparent hover:border-slate-200 rounded text-xs" disabled={!canEdit}/>
+                              <input type="number" value={t.auto || ''} onChange={e => updateTransport(t.id!, 'auto', Number(e.target.value))} className="w-full text-right px-1 border border-transparent hover:border-slate-200 rounded text-xs" disabled={!canEdit}/>
                             </td>
                             <td className="px-2 py-1.5 text-right">
-                              <input type="number" value={t.hamali || ''} onChange={e => updateTransport(t.id, 'hamali', Number(e.target.value))} className="w-full text-right px-1 border border-transparent hover:border-slate-200 rounded text-xs" disabled={!canEdit}/>
+                              <input type="number" value={t.hamali || ''} onChange={e => updateTransport(t.id!, 'hamali', Number(e.target.value))} className="w-full text-right px-1 border border-transparent hover:border-slate-200 rounded text-xs" disabled={!canEdit}/>
                             </td>
                             <td className="px-2 py-1.5 text-right font-medium text-slate-700">₹ {t.total || 0}</td>
                           </tr>
@@ -566,7 +594,7 @@ export const PettyCashManagement: React.FC<Props> = ({ locations }) => {
                 <div className="p-6 grid gap-4">
                   <div className="flex justify-between items-center">
                     <span className="text-slate-300 font-medium">TOTAL RECEIVED</span>
-                    <span className="text-xl font-bold">₹ {sheet.total_received.toLocaleString('en-IN')}</span>
+                    <span className="text-xl font-bold">₹ {(sheet.received_amount || 0).toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between items-center text-red-400">
                     <span className="font-medium">TOTAL EXPENSES</span>
