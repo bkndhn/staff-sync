@@ -80,6 +80,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
         { id: 'Loan Requests' as NavigationTab, label: 'Loans', icon: IndianRupee },
         { id: 'Expense Claims' as NavigationTab, label: 'Expenses', icon: Receipt },
+        { id: 'Petty Cash' as NavigationTab, label: 'Petty Cash', icon: IndianRupee },
         { id: 'Face Attendance' as NavigationTab, label: 'Face Punch', icon: ScanFace },
         { id: 'Old Staff Records' as NavigationTab, label: 'Archive', icon: Archive },
         { id: 'Action Center' as NavigationTab, label: 'Action Center', icon: AlertTriangle },
@@ -110,6 +111,13 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
       ];
     }
+    if (user.role === 'petty_cash_manager') {
+      return [
+        { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
+        { id: 'Petty Cash' as NavigationTab, label: 'Petty Cash', icon: IndianRupee },
+        { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
+      ];
+    }
     return [
       { id: 'Dashboard' as NavigationTab, label: 'Dashboard', icon: BarChart3 },
       { id: 'Workforce Insights' as NavigationTab, label: 'Insights', icon: TrendingUp },
@@ -118,6 +126,7 @@ const Navigation: React.FC<NavigationProps> = ({
       { id: 'Flex Staff' as NavigationTab, label: 'Flex', icon: Clock },
       { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
       { id: 'Loan Requests' as NavigationTab, label: 'Loans', icon: IndianRupee },
+      { id: 'Petty Cash' as NavigationTab, label: 'Petty Cash', icon: IndianRupee },
       { id: 'Face Attendance' as NavigationTab, label: 'Face Punch', icon: ScanFace },
       { id: 'Announcements' as NavigationTab, label: 'Announcements', icon: Megaphone },
       { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },

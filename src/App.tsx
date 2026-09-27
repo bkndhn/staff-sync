@@ -53,6 +53,7 @@ const StaffPortal = React.lazy(() => import('./components/StaffPortal'));
 const LeaveManagement = React.lazy(() => import('./components/LeaveManagement'));
 const LoanManagement = React.lazy(() => import('./components/LoanManagement'));
 const ExpenseClaims = React.lazy(() => import('./components/ExpenseClaims'));
+const PettyCashManagement = React.lazy(() => import('./components/PettyCashManagement').then(m => ({ default: m.PettyCashManagement })));
 const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
@@ -1521,6 +1522,12 @@ function App() {
               userLocation={user?.role === 'admin' ? undefined : user?.location}
               allowedStaffIds={statutoryStaffIds ? Array.from(statutoryStaffIds) : undefined}
             />
+          </Suspense>
+        );
+      case 'Petty Cash':
+        return (
+          <Suspense fallback={<ComponentLoader />}>
+            <PettyCashManagement locations={branches} />
           </Suspense>
         );
       case 'Face Attendance':
