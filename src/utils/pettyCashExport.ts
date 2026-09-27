@@ -3,11 +3,17 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { PettyCashSheet, StaffMeal } from '../services/pettyCashService';
 
-const formatDateDMY = (dateStr: string) => {
-  if (!dateStr) return '';
-  const [y, m, d] = dateStr.split('-');
-  return d && m && y ? `${d}/${m}/${y}` : dateStr;
-};
+function formatDateDisplay(dateStr: string): string {
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  } catch {
+    return dateStr;
+  }
+}
 
 export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
   const doc = new jsPDF('p', 'pt', 'a4');
@@ -20,7 +26,7 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(`DATE: ${formatDateDMY(sheet.date)}`, 40, 70);
+  doc.text(`DATE: ${formatDateDisplay(sheet.date)}`, 40, 70);
   doc.text(`LOCATION: ${sheet.location.toUpperCase()}`, doc.internal.pageSize.getWidth() - 40, 70, { align: 'right' });
   
   // Tables preparation
@@ -159,7 +165,7 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
   
   const wsData = [];
   wsData.push([sheet.template_type === 'godown' ? 'GODOWN PETTY CASH LIST' : 'PETTY CASH']);
-  wsData.push([`DATE: ${formatDateDMY(sheet.date)}`, '', '', '', '', '', `LOCATION: ${sheet.location.toUpperCase()}`]);
+  wsData.push([`DATE: ${formatDateDisplay(sheet.date)}`, '', '', '', '', '', `LOCATION: ${sheet.location.toUpperCase()}`]);
   wsData.push([]);
   
   wsData.push(['FULL TIME', '', '', '', '', '', 'PART TIME']);
