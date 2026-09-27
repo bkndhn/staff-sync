@@ -194,7 +194,7 @@ export const generatePettyCashPdfDoc = (sheet: PettyCashSheet): jsPDF => {
   if (hasTransports) {
     const transportBody = activeTransports.map(t => [
       sanitize(t.transport_name || '—'),
-      sanitize(t.count || '—'),
+      sanitize(String(t.count || '—')),
       formatAmountOrDash(t.freight),
       formatAmountOrDash(t.auto),
       formatAmountOrDash(t.hamali),
