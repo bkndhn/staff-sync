@@ -167,8 +167,8 @@ const UserCard: React.FC<{
                     <h3 className="font-semibold text-white text-lg">{user.full_name}</h3>
                     <p className="text-white/60 text-sm font-mono break-all">{user.email}</p>
                 </div>
-                <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'statutory_admin' ? 'badge-success' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
-                    {user.role === 'admin' ? 'Admin' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
+                <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'statutory_admin' ? 'badge-success' : user.role === 'petty_cash_manager' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
+                    {user.role === 'admin' ? 'Admin' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'petty_cash_manager' ? 'Petty Cash Handler' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
                 </span>
             </div>
 
@@ -232,7 +232,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
         email: '',
         password: '',
         full_name: '',
-        role: 'manager' as 'admin' | 'manager' | 'floor_supervisor' | 'supervisor' | 'statutory_admin',
+        role: 'manager' as 'admin' | 'manager' | 'floor_supervisor' | 'supervisor' | 'statutory_admin' | 'petty_cash_manager',
         location: '',
         floor: ''
     });
@@ -303,7 +303,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
             email: user.email,
             password: '',
             full_name: user.full_name,
-            role: (['admin','manager','floor_supervisor','supervisor','statutory_admin'].includes(user.role) ? user.role : 'manager') as any,
+            role: (['admin','manager','floor_supervisor','supervisor','statutory_admin','petty_cash_manager'].includes(user.role) ? user.role : 'manager') as any,
             location: user.location || '',
             floor: user.floor || ''
         });
@@ -797,8 +797,8 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                                         <td className="font-medium text-white !text-left">{user.full_name}</td>
                                         <td className="text-white/70 font-mono text-sm !text-left">{user.email}</td>
                                         <td className="!text-center">
-                                            <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'statutory_admin' ? 'badge-success' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
-                                                {user.role === 'admin' ? 'Admin' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
+                                            <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'statutory_admin' ? 'badge-success' : user.role === 'petty_cash_manager' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
+                                                {user.role === 'admin' ? 'Admin' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'petty_cash_manager' ? 'Petty Cash Handler' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
                                             </span>
                                         </td>
                                         <td className="!text-left">
@@ -904,11 +904,11 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                                 <select
                                     value={formData.role}
                                     onChange={(e) => {
-                                        const newRole = e.target.value as 'admin' | 'manager' | 'floor_supervisor' | 'supervisor' | 'statutory_admin';
+                                        const newRole = e.target.value as 'admin' | 'manager' | 'floor_supervisor' | 'supervisor' | 'statutory_admin' | 'petty_cash_manager';
                                         setFormData(prev => ({ 
                                             ...prev, 
                                             role: newRole,
-                                            location: newRole === 'admin' || newRole === 'statutory_admin' ? '' : prev.location,
+                                            location: (newRole === 'admin' || newRole === 'statutory_admin') ? '' : prev.location,
                                             floor: (newRole !== 'supervisor' && newRole !== 'floor_supervisor') ? '' : prev.floor
                                         }));
                                     }}
@@ -919,9 +919,10 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                                     <option value="supervisor">Supervisor</option>
                                     <option value="floor_supervisor">Zone Supervisor</option>
                                     <option value="statutory_admin">Statutory Admin</option>
+                                    <option value="petty_cash_manager">Petty Cash Handler</option>
                                 </select>
                             </div>
-                            {(formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor') && (
+                            {(formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor' || formData.role === 'petty_cash_manager') && (
                                 <div>
                                     <label className="block text-sm font-medium text-white/70 mb-1">Branch *</label>
                                     <select
@@ -935,6 +936,9 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                                             <option key={loc.id} value={loc.name}>{loc.name}</option>
                                         ))}
                                     </select>
+                                    {formData.role === 'petty_cash_manager' && (
+                                        <p className="text-xs text-white/50 mt-1">This user will only have access to petty cash records for this branch.</p>
+                                    )}
                                 </div>
                             )}
                             {(formData.role === 'supervisor' || formData.role === 'floor_supervisor') && (

@@ -32,7 +32,7 @@ function formatAmountOrDash(val: number | string | undefined, prefix = 'Rs. '): 
   return formatCurrency(num, prefix);
 }
 
-export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
+export const generatePettyCashPdfDoc = (sheet: PettyCashSheet): jsPDF => {
   const doc = new jsPDF('p', 'pt', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -308,9 +308,66 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
     doc.text('Confidential — System Generated Petty Cash Voucher', 40, pageHeight - 16);
   }
 
-  // Filename format: Petty_Cash_<Location>_<YYYY-MM-DD>.pdf
+  return doc;
+};
+
+export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
+  const doc = generatePettyCashPdfDoc(sheet);
   const safeLoc = (sheet.location || 'Shop').replace(/[^a-zA-Z0-9_-]/g, '_');
   doc.save(`Petty_Cash_${safeLoc}_${sheet.date}.pdf`);
+};
+
+export const sharePettyCashWhatsApp = async (sheet: PettyCashSheet) => {
+  const doc = generatePettyCashPdfDoc(sheet);
+  const pdfBlob = doc.output('blob');
+  const safeLoc = (sheet.location || 'Shop').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const fileName = `Petty_Cash_${safeLoc}_${sheet.date}.pdf`;
+  const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+  const fullTimeStaff = sheet.staff_meals.filter(s => s.staff_type === 'full-time');
+  const partTimeStaff = sheet.staff_meals.filter(s => s.staff_type === 'part-time');
+  const mealTotal = (sheet.meal_total || 0);
+  const expTotal = (sheet.expenses_total || 0);
+  const trTotal = (sheet.transport_total || 0);
+  const totalExpenses = (sheet.total_expense || (mealTotal + expTotal + trTotal));
+  const balance = (Number(sheet.received_amount) || 0) - totalExpenses;
+
+  const messageText = 
+    `*PETTY CASH VOUCHER*\n` +
+    `*Location:* ${sheet.location.toUpperCase()} (${sheet.template_type?.toUpperCase() || 'SHOP'})\n` +
+    `*Date:* ${sheet.date}\n` +
+    `--------------------------------\n` +
+    `Cash Received: Rs. ${(Number(sheet.received_amount) || 0).toLocaleString('en-IN')}\n` +
+    `Staff Meals (${fullTimeStaff.length} FT + ${partTimeStaff.length} PT): Rs. ${mealTotal.toLocaleString('en-IN')}\n` +
+    `Shop/Godown Expenses: Rs. ${expTotal.toLocaleString('en-IN')}\n` +
+    `Transport & Logistics: Rs. ${trTotal.toLocaleString('en-IN')}\n` +
+    `*Total Expenses:* Rs. ${totalExpenses.toLocaleString('en-IN')}\n` +
+    `--------------------------------\n` +
+    `*${balance >= 0 ? 'Balance Refund to Cashier' : 'Cash Deficit / Reimbursement'}*: Rs. ${Math.abs(balance).toLocaleString('en-IN')}\n\n` +
+    `_Detailed PDF voucher generated from StaffSync._`;
+
+  // Attempt Web Share API (native WhatsApp file attachment on mobile)
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        title: `Petty Cash Voucher - ${sheet.location}`,
+        text: messageText,
+        files: [file]
+      });
+      return;
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.warn('Native share failed, falling back to WhatsApp link:', err);
+      } else {
+        return; // User cancelled share sheet
+      }
+    }
+  }
+
+  // Fallback: Trigger PDF download and open WhatsApp Web/App with message
+  doc.save(fileName);
+  const encoded = encodeURIComponent(messageText);
+  window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
 };
 
 export const exportPettyCashExcel = (sheet: PettyCashSheet) => {

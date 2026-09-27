@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Printer, FileSpreadsheet, RefreshCw, Plus, Trash2, Building, ArrowRight, Truck, ChevronDown, ChevronUp, X, Sparkles } from 'lucide-react';
+import { Calendar, Printer, FileSpreadsheet, RefreshCw, Plus, Trash2, Building, Building2, ArrowRight, Truck, ChevronDown, ChevronUp, X, Sparkles, Share2, Save } from 'lucide-react';
 import { localDateKey } from '../lib/localDate';
 import { pettyCashService, PettyCashSheet, StaffMeal, CustomExpense, TransportLogistics } from '../services/pettyCashService';
 import { attendanceService } from '../services/attendanceService';
 import { staffService } from '../services/staffService';
 import { locationService } from '../services/locationService';
-import { exportPettyCashPdf, exportPettyCashExcel } from '../utils/pettyCashExport';
+import { exportPettyCashPdf, exportPettyCashExcel, sharePettyCashWhatsApp } from '../utils/pettyCashExport';
 import { Location } from '../types';
 
 interface Props {
@@ -25,12 +25,21 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
     }
   }, []);
 
-  const initialLocation = (userRole === 'petty_cash_manager' || userRole === 'manager') 
+  const isZoneHandler = userRole === 'petty_cash_manager';
+
+  const initialLocation = isZoneHandler
     ? userLocation || (allLocations[0]?.name || '')
     : (userLocation || allLocations[0]?.name || '');
 
   const [location, setLocation] = useState(initialLocation);
   const [date, setDate] = useState(localDateKey());
+
+  // Enforce zone handler location lock
+  useEffect(() => {
+    if (isZoneHandler && userLocation && location !== userLocation) {
+      setLocation(userLocation);
+    }
+  }, [isZoneHandler, userLocation, location]);
 
   useEffect(() => {
     if (!location && allLocations.length > 0) {
@@ -49,6 +58,27 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
 
   // Saved Custom Expense presets per location
   const [savedExpenses, setSavedExpenses] = useState<string[]>([]);
+
+  // Saved Transporters Autocomplete per location
+  const [savedTransports, setSavedTransports] = useState<string[]>(() => {
+    try {
+      const locKey = (location || 'default').trim().toLowerCase();
+      const raw = localStorage.getItem(`petty_cash_transports_${locKey}`);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return ['VRL Logistics', 'KRS Parcel Service', 'Navata Transport', 'Auto / Tempo Fare', 'Hamali / Unloading'];
+  });
+
+  const rememberTransporter = (name: string) => {
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+    if (!savedTransports.includes(trimmed)) {
+      const updated = [...savedTransports, trimmed];
+      setSavedTransports(updated);
+      const locKey = (location || 'default').trim().toLowerCase();
+      localStorage.setItem(`petty_cash_transports_${locKey}`, JSON.stringify(updated));
+    }
+  };
 
   // Collapsible Transport Logistics
   const [showTransport, setShowTransport] = useState<boolean>(true);
@@ -93,6 +123,20 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
       }
     } catch (e) {
       console.error('Failed to load expense presets:', e);
+    }
+
+    // Saved transports presets
+    try {
+      const rawTransports = localStorage.getItem(`petty_cash_transports_${locKey}`);
+      if (rawTransports) {
+        setSavedTransports(JSON.parse(rawTransports));
+      } else {
+        const defaultList = ['VRL Logistics', 'KRS Parcel Service', 'Navata Transport', 'Auto / Tempo Fare', 'Hamali / Unloading'];
+        setSavedTransports(defaultList);
+        localStorage.setItem(`petty_cash_transports_${locKey}`, JSON.stringify(defaultList));
+      }
+    } catch (e) {
+      console.error('Failed to load transports:', e);
     }
 
     setTemplateType(locKey.includes('godown') || locKey.includes('warehouse') ? 'godown' : 'shop');
@@ -419,62 +463,74 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-36 sm:pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <Building className="text-indigo-600" />
-            Petty Cash Management
-          </h1>
-          <p className="text-slate-500 text-sm mt-1">Multi-shop & Godown daily cash voucher with automatic attendance & transport logistics</p>
+      {/* Streamlined Compact Control Bar */}
+      <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg shrink-0">
+              <Building2 size={20} />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">Petty Cash</h1>
+              <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full inline-block sm:hidden">
+                {location}
+              </span>
+            </div>
+          </div>
+
+          {/* Mode Toggle: Shop vs Godown */}
+          <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-bold">
+            <button
+              onClick={() => { setTemplateType('shop'); if (sheet) setSheet({ ...sheet, template_type: 'shop' }); }}
+              className={`px-2.5 py-1 rounded-md transition-colors ${templateType === 'shop' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-500'}`}
+            >
+              Shop
+            </button>
+            <button
+              onClick={() => { setTemplateType('godown'); if (sheet) setSheet({ ...sheet, template_type: 'godown' }); }}
+              className={`px-2.5 py-1 rounded-md transition-colors ${templateType === 'godown' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-500'}`}
+            >
+              Godown
+            </button>
+          </div>
         </div>
-        
-        <div className="flex flex-wrap items-center gap-3">
-          {(userRole === 'super_admin' || userRole === 'admin') && (
+
+        {/* Date & Location Controls */}
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {/* Branch Selector (Shown only to Admin / Super Admin) */}
+          {!isZoneHandler ? (
             <select
               value={location}
               onChange={e => setLocation(e.target.value)}
-              className="pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 sm:flex-initial text-xs sm:text-sm font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500"
             >
               {allLocations.map(l => (
                 <option key={l.id} value={l.name}>{l.name}</option>
               ))}
             </select>
+          ) : (
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-xs font-bold">
+              Branch: {location}
+            </span>
           )}
-          
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+
+          {/* Date Picker with Quick 'Today' Button */}
+          <div className="flex items-center gap-1 flex-1 sm:flex-initial">
             <input
               type="date"
               value={date}
               onChange={e => setDate(e.target.value)}
-              className="pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-500"
+              className="w-full sm:w-auto text-xs sm:text-sm font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500"
             />
-          </div>
-
-          <div className="flex bg-slate-100 p-1 rounded-lg">
-            <button
-              onClick={() => {
-                if (sheet) {
-                  setTemplateType('shop');
-                  setSheet({ ...sheet, template_type: 'shop' });
-                }
-              }}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${templateType === 'shop' ? 'bg-white text-indigo-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`}
-            >
-              Shop
-            </button>
-            <button
-              onClick={() => {
-                if (sheet) {
-                  setTemplateType('godown');
-                  setSheet({ ...sheet, template_type: 'godown' });
-                }
-              }}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${templateType === 'godown' ? 'bg-white text-indigo-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`}
-            >
-              Godown
-            </button>
+            {date !== localDateKey() && (
+              <button
+                onClick={() => setDate(localDateKey())}
+                className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-1.5 rounded-lg whitespace-nowrap hover:bg-indigo-100"
+                title="Jump to today"
+              >
+                Today
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -564,75 +620,63 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
             </div>
           </div>
 
-          {/* Mobile Section Tab Switcher (Visible only on < sm screens) */}
-          <div className="sm:hidden sticky top-0 z-30 bg-slate-100/95 backdrop-blur-md p-1.5 rounded-xl border border-slate-200/80 shadow-sm flex items-center gap-1 overflow-x-auto no-scrollbar">
+          {/* Mobile Section Tab Switcher (sm:hidden) */}
+          <div className="sm:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md p-1 rounded-xl border border-slate-200 shadow-sm grid grid-cols-4 gap-1">
             <button
               onClick={() => setMobileSection('meals')}
-              className={`flex-1 min-w-[76px] py-2 px-2 text-xs font-bold rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                mobileSection === 'meals'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 bg-white/70'
+              className={`py-2 px-1 text-center rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 ${
+                mobileSection === 'meals' ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:bg-slate-50 font-medium'
               }`}
             >
-              <span>Meals</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                mobileSection === 'meals' ? 'bg-indigo-700 text-white' : 'bg-slate-200 text-slate-700'
+              <span className="text-xs">Meals</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                mobileSection === 'meals' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
               }`}>
                 {sheet.staff_meals.length}
               </span>
             </button>
-            
+
             <button
               onClick={() => setMobileSection('expenses')}
-              className={`flex-1 min-w-[85px] py-2 px-2 text-xs font-bold rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                mobileSection === 'expenses'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 bg-white/70'
+              className={`py-2 px-1 text-center rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 ${
+                mobileSection === 'expenses' ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:bg-slate-50 font-medium'
               }`}
             >
-              <span>Expenses</span>
-              {expensesTotal > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                  mobileSection === 'expenses' ? 'bg-indigo-700 text-white' : 'bg-slate-200 text-slate-700'
-                }`}>
-                  ₹{expensesTotal > 999 ? `${Math.round(expensesTotal / 1000)}k` : expensesTotal}
-                </span>
-              )}
+              <span className="text-xs">Expenses</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                mobileSection === 'expenses' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                ₹{expensesTotal > 999 ? `${Math.round(expensesTotal / 1000)}k` : expensesTotal}
+              </span>
             </button>
 
             <button
               onClick={() => setMobileSection('transport')}
-              className={`flex-1 min-w-[85px] py-2 px-2 text-xs font-bold rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                mobileSection === 'transport'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 bg-white/70'
+              className={`py-2 px-1 text-center rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 ${
+                mobileSection === 'transport' ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:bg-slate-50 font-medium'
               }`}
             >
-              <span>Transport</span>
-              {transportTotal > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                  mobileSection === 'transport' ? 'bg-indigo-700 text-white' : 'bg-slate-200 text-slate-700'
-                }`}>
-                  ₹{transportTotal > 999 ? `${Math.round(transportTotal / 1000)}k` : transportTotal}
-                </span>
-              )}
+              <span className="text-xs">Transport</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                mobileSection === 'transport' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                ₹{transportTotal > 999 ? `${Math.round(transportTotal / 1000)}k` : transportTotal}
+              </span>
             </button>
 
             <button
               onClick={() => setMobileSection('summary')}
-              className={`flex-1 min-w-[85px] py-2 px-2 text-xs font-bold rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                mobileSection === 'summary'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 bg-white/70'
+              className={`py-2 px-1 text-center rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 ${
+                mobileSection === 'summary' ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:bg-slate-50 font-medium'
               }`}
             >
-              <span>Summary</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+              <span className="text-xs">Summary</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                 balance < 0 
                   ? 'bg-rose-500 text-white' 
                   : mobileSection === 'summary' ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-800'
               }`}>
-                ₹{Math.abs(balance) > 999 ? `${Math.round(balance / 1000)}k` : balance}
+                ₹{Math.abs(balance) > 999 ? `${Math.round(balance / 1000)}k` : Math.abs(balance)}
               </span>
             </button>
           </div>
@@ -1041,6 +1085,13 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                         📦 <strong>Log goods received today:</strong> Freight = Lorry charges, Auto = Local tempo fare, Hamali = Coolie / unloading labor.
                       </div>
 
+                      {/* Transporter suggestions datalist */}
+                      <datalist id="transporter-suggestions">
+                        {savedTransports.map(t => (
+                          <option key={t} value={t} />
+                        ))}
+                      </datalist>
+
                       {/* Mobile Consignment Cards (sm:hidden) */}
                       <div className="sm:hidden p-3 space-y-3">
                         {sheet.transport_logistics
@@ -1074,9 +1125,11 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                                 <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Transporter / LR Number</label>
                                 <input
                                   type="text"
+                                  list="transporter-suggestions"
                                   value={t.transport_name}
                                   onChange={e => updateTransport(t.id!, 'transport_name', e.target.value)}
-                                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-900 font-medium bg-white focus:ring-2 focus:ring-violet-500"
+                                  onBlur={e => rememberTransporter(e.target.value)}
+                                  className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 font-medium bg-white focus:ring-2 focus:ring-violet-500"
                                   placeholder="e.g. VRL Logistics / LR#..."
                                   disabled={!canEdit}
                                 />
@@ -1171,8 +1224,10 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                                 <td className="px-2 py-1.5">
                                   <input
                                     type="text"
+                                    list="transporter-suggestions"
                                     value={t.transport_name}
                                     onChange={e => updateTransport(t.id!, 'transport_name', e.target.value)}
+                                    onBlur={e => rememberTransporter(e.target.value)}
                                     className="w-full px-1.5 py-0.5 border border-slate-200 rounded text-xs text-slate-900 font-medium"
                                     placeholder="Transporter / LR#"
                                     disabled={!canEdit}
@@ -1334,33 +1389,50 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
           </div>
 
           {/* Action Bar (Sticky with safe clearance for mobile navigation) */}
-          <div className="sticky bottom-[76px] sm:bottom-4 z-40 bg-white/95 backdrop-blur px-4 sm:px-6 py-3 sm:py-4 rounded-2xl shadow-xl border border-slate-200">
-            <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 justify-end items-center">
-              <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="sticky bottom-[72px] sm:bottom-4 z-40 bg-white/95 backdrop-blur px-3 sm:px-6 py-2.5 sm:py-4 rounded-2xl shadow-xl border border-slate-200">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-between items-center">
+              
+              {/* Export & Share Group */}
+              <div className="grid grid-cols-3 sm:flex gap-1.5 sm:gap-2.5 w-full sm:w-auto">
+                {/* WhatsApp Share Button */}
                 <button
-                  onClick={() => exportPettyCashExcel(sheet)}
-                  className="flex items-center gap-1.5 px-3 sm:px-5 py-2.5 text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 font-semibold text-xs sm:text-sm justify-center transition-all shadow-sm"
+                  onClick={() => sharePettyCashWhatsApp(sheet)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95"
+                  title="Share voucher PDF directly on WhatsApp"
                 >
-                  <FileSpreadsheet size={16} className="text-emerald-600 shrink-0" />
-                  <span>Excel</span>
+                  <Share2 size={15} />
+                  <span>WhatsApp</span>
                 </button>
+
+                {/* Print PDF Button */}
                 <button
                   onClick={() => exportPettyCashPdf(sheet)}
-                  className="flex items-center gap-1.5 px-3 sm:px-5 py-2.5 text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 font-semibold text-xs sm:text-sm justify-center transition-all shadow-sm"
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl font-semibold text-xs sm:text-sm transition-all"
                 >
-                  <Printer size={16} className="text-rose-600 shrink-0" />
-                  <span>Print PDF</span>
+                  <Printer size={15} className="text-rose-600" />
+                  <span>PDF</span>
+                </button>
+
+                {/* Excel Button */}
+                <button
+                  onClick={() => exportPettyCashExcel(sheet)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl font-semibold text-xs sm:text-sm transition-all"
+                >
+                  <FileSpreadsheet size={15} className="text-emerald-600" />
+                  <span>Excel</span>
                 </button>
               </div>
-              <div className="h-8 w-px bg-slate-300 hidden sm:block mx-1"></div>
+
+              {/* Save Voucher Button */}
               <button
                 onClick={saveSheet}
                 disabled={!canEdit || saving}
-                className="w-full sm:w-auto flex items-center gap-2 px-6 sm:px-8 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-bold text-sm shadow-md shadow-indigo-200 disabled:opacity-50 justify-center transition-all"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-200 disabled:opacity-50 transition-all active:scale-98"
               >
-                {saving ? <RefreshCw size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+                {saving ? <RefreshCw size={17} className="animate-spin" /> : <Save size={17} />}
                 <span>Save Voucher</span>
               </button>
+
             </div>
           </div>
 
