@@ -19,7 +19,8 @@ const QRAttendanceGenerator: React.FC<Props> = ({ location }) => {
     setTimeLeft(period);
 
     const generate = async () => {
-      const newPayload = await generateQRPayload(location);
+      let newPayload: string;
+      try { newPayload = await generateQRPayload(location); } catch { return; }
       if (active) {
         setPayload(newPayload);
         setTimeLeft(period);
