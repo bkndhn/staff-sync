@@ -268,12 +268,10 @@ Deno.serve(async (req) => {
       // Validate Supabase Auth JWT
       const { data: { user: authUser }, error: authErr } = await admin.auth.getUser(jwt);
       if (authErr || !authUser) {
-        console.error("[data-api] JWT validation failed:", authErr?.message);
         return new Response(JSON.stringify({ error: "Invalid or expired authorization token" }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      console.log("[data-api] JWT auth user:", authUser.email, authUser.id);
 
       // Find user in app_users by auth_id first, then email fallback
       let { data: uRow, error: uErr } = await admin
@@ -284,7 +282,6 @@ Deno.serve(async (req) => {
 
       // Fallback: match by email if auth_id lookup failed
       if (!uRow && authUser.email) {
-        console.log("[data-api] auth_id lookup found nothing, trying email:", authUser.email);
         const { data: uRowByEmail, error: eErr } = await admin
           .from("app_users")
           .select("id, role, location, location_id, floor, floor_id, is_active, tenant_id, auth_id, email")
@@ -295,12 +292,10 @@ Deno.serve(async (req) => {
         // Patch auth_id so future lookups work
         if (uRow && !uRow.auth_id) {
           await admin.from("app_users").update({ auth_id: authUser.id }).eq("id", uRow.id);
-          console.log("[data-api] Patched auth_id for user:", uRow.id);
         }
       }
 
       if (uErr) console.error("[data-api] app_users auth_id lookup error:", uErr.message);
-      console.log("[data-api] app_users row found:", JSON.stringify(uRow));
       
       user = uRow;
 
@@ -391,7 +386,7 @@ Deno.serve(async (req) => {
       }
       // Only enforce floor requirement for floor_supervisor on tables that have a floor column
       if (role === "floor_supervisor" && acl.floorCol && !user.floor) {
-        console.warn(`[data-api] floor_supervisor ${user.email} has no floor assigned, skipping floor scope for ${body.table}`);
+        // floor_supervisor without a floor: floor scope skipped
       }
       if (acl.locationCol && user.location) {
         scopeFilters.push({ col: acl.locationCol, op: "eq", val: user.location });
@@ -417,6 +412,20 @@ Deno.serve(async (req) => {
         for (const r of rows) r[acl.staffIdCol!] = user.id;
       }
     };
+
+    assertSafeColumns(body.columns);
+    if (body.op !== "select" && body.op !== "delete" && body.values !== undefined) {
+      const rows = (Array.isArray(body.values) ? body.values : [body.values]) as Array<Record<string, unknown>>;
+      const err = sanitizeWriteRows(body.table, rows, role);
+      if (err) {
+        return new Response(JSON.stringify({ error: err }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+    if (!isSuper && body.table === "app_users" && (body.op === "upsert")) {
+      return new Response(JSON.stringify({ error: "Upsert is not permitted on users" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     let query: any = admin.from(body.table);
     let beforeData: any = null;
@@ -755,9 +764,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: error.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    let payloadData = wantSingle
+    let payloadData = stripSecrets(wantSingle
       ? (Array.isArray(data) ? (data[0] ?? null) : (data ?? null))
-      : data;
+      : data);
 
     // Staff may read payroll_runs only to know which months are published;
     // company-wide totals are stripped so nobody sees the whole payroll.
@@ -792,8 +801,12 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ data: payloadData }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
-    console.error("data-api error:", err);
-    return new Response(JSON.stringify({ error: (err as Error).message ?? "Internal error" }),
+    if (err instanceof ClientError) {
+      return new Response(JSON.stringify({ error: err.message }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    console.error("data-api error:", (err as Error)?.message);
+    return new Response(JSON.stringify({ error: "Internal error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
