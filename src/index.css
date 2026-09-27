@@ -3437,3 +3437,12 @@ body.light-theme .petty-cash-header-count,
 .petty-cash-parttime-header span {
   color: #ffffff !important;
 }
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
