@@ -1020,7 +1020,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
   const handleGenerateResetPin = async (staffId: string, staffName: string) => {
     if (!await customConfirm(`Generate a secure 4-digit reset PIN for ${staffName}? You must read this PIN to them.`)) return;
     try {
-      const pin = Math.floor(1000 + Math.random() * 9000).toString();
+      const pin = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
       // valid for 10 mins
       const expiresAt = new Date(Date.now() + 10 * 60000).toISOString();
       

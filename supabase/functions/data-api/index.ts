@@ -35,7 +35,7 @@ const corsHeaders = {
 //                    'location_id')
 // ---------------------------------------------------------------------------
 type Role = "admin" | "manager" | "staff" | "statutory_admin" | "supervisor" | "floor_supervisor" | "super_admin";
-type Op = "select" | "insert" | "update" | "upsert" | "delete";
+type Op = "select" | "insert" | "update" | "upsert" | "delete" | "qr_sign" | "qr_verify";
 
 interface TableAcl {
   read: Role[];
@@ -141,16 +141,83 @@ interface Body {
   single?: boolean;
 }
 
+// Only plain comparison filters may be invoked on the query builder.
+const ALLOWED_FILTER_OPS = new Set([
+  "eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "is", "in",
+  "contains", "containedBy", "overlaps",
+]);
+const IDENT_RE = /^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?$/;
+
+class ClientError extends Error {}
+
 function applyFilters(query: any, filters: Filter[] | undefined) {
   if (!filters) return query;
+  if (!Array.isArray(filters)) throw new ClientError("Invalid filters");
   for (const f of filters) {
-    const method = (query as any)[f.op];
-    if (typeof method !== "function") {
-      throw new Error(`Unsupported filter op: ${f.op}`);
+    if (!f || typeof f.op !== "string" || !ALLOWED_FILTER_OPS.has(f.op)) {
+      throw new ClientError(`Unsupported filter op`);
     }
+    if (typeof f.col !== "string" || !IDENT_RE.test(f.col)) {
+      throw new ClientError("Invalid filter column");
+    }
+    const method = (query as any)[f.op];
     query = method.call(query, f.col, f.val);
   }
   return query;
+}
+
+// Columns that must never be returned to any client.
+const SECRET_COLUMNS = new Set([
+  "password_hash", "reset_pin", "reset_pin_hash", "pin_hash", "key_hash", "secret", "secret_hash",
+]);
+
+function stripSecrets(v: any): any {
+  if (Array.isArray(v)) return v.map(stripSecrets);
+  if (v && typeof v === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v)) {
+      if (SECRET_COLUMNS.has(k)) continue;
+      out[k] = val && typeof val === "object" ? stripSecrets(val) : val;
+    }
+    return out;
+  }
+  return v;
+}
+
+function assertSafeColumns(columns: string | undefined) {
+  if (!columns) return;
+  if (typeof columns !== "string" || columns.length > 2000) throw new ClientError("Invalid columns");
+  const tokens = columns.toLowerCase().match(/[a-z_][a-z0-9_]*/g) ?? [];
+  if (tokens.some((t) => SECRET_COLUMNS.has(t))) throw new ClientError("Requested column is not available");
+}
+
+// Fields a non-super-admin may never set, per table.
+const PROTECTED_WRITE_FIELDS: Record<string, string[]> = {
+  app_users: ["auth_id", "tenant_id", "password_hash", "email_verified"],
+  tenants: ["id", "staff_limit", "location_limit", "sub_user_limit", "plan", "status", "is_active", "slug", "expires_at", "trial_ends_at", "subscription_status"],
+};
+
+function sanitizeWriteRows(
+  table: string,
+  rows: Array<Record<string, unknown>>,
+  role: string,
+): string | null {
+  const isSuper = role === "super_admin";
+  const protectedFields = isSuper ? [] : (PROTECTED_WRITE_FIELDS[table] ?? []);
+  for (const r of rows) {
+    if (!r || typeof r !== "object" || Array.isArray(r)) return "Invalid row";
+    for (const k of Object.keys(r)) {
+      if (!IDENT_RE.test(k) || k.includes(".")) return "Invalid field name";
+      if (protectedFields.includes(k)) delete r[k];
+    }
+    // password hashes may only be cleared, never set, through this API
+    if ("password_hash" in r && r.password_hash !== null) delete r.password_hash;
+    if (!isSuper && table === "app_users" && "role" in r) {
+      const allowedRoles = ["admin", "manager", "staff", "statutory_admin", "supervisor", "floor_supervisor", "petty_cash_manager"];
+      if (!allowedRoles.includes(String(r.role))) return "Role not permitted";
+    }
+  }
+  return null;
 }
 
 Deno.serve(async (req) => {
@@ -178,13 +245,14 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    if (!body?.table || !body?.op) {
+    const isQrOp = body?.op === ("qr_sign" as Op) || body?.op === ("qr_verify" as Op);
+    if (!isQrOp && (!body?.table || !body?.op)) {
       return new Response(JSON.stringify({ error: "table and op are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
 
-    const acl = ACL[body.table];
+    const acl = ACL[body.table] ?? (isQrOp ? { read: [], write: [] } as TableAcl : undefined);
     if (!acl) {
       return new Response(JSON.stringify({ error: `Table not exposed: ${body.table}` }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -201,12 +269,10 @@ Deno.serve(async (req) => {
       // Validate Supabase Auth JWT
       const { data: { user: authUser }, error: authErr } = await admin.auth.getUser(jwt);
       if (authErr || !authUser) {
-        console.error("[data-api] JWT validation failed:", authErr?.message);
         return new Response(JSON.stringify({ error: "Invalid or expired authorization token" }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      console.log("[data-api] JWT auth user:", authUser.email, authUser.id);
 
       // Find user in app_users by auth_id first, then email fallback
       let { data: uRow, error: uErr } = await admin
@@ -217,7 +283,6 @@ Deno.serve(async (req) => {
 
       // Fallback: match by email if auth_id lookup failed
       if (!uRow && authUser.email) {
-        console.log("[data-api] auth_id lookup found nothing, trying email:", authUser.email);
         const { data: uRowByEmail, error: eErr } = await admin
           .from("app_users")
           .select("id, role, location, location_id, floor, floor_id, is_active, tenant_id, auth_id, email")
@@ -228,12 +293,10 @@ Deno.serve(async (req) => {
         // Patch auth_id so future lookups work
         if (uRow && !uRow.auth_id) {
           await admin.from("app_users").update({ auth_id: authUser.id }).eq("id", uRow.id);
-          console.log("[data-api] Patched auth_id for user:", uRow.id);
         }
       }
 
       if (uErr) console.error("[data-api] app_users auth_id lookup error:", uErr.message);
-      console.log("[data-api] app_users row found:", JSON.stringify(uRow));
       
       user = uRow;
 
@@ -282,6 +345,48 @@ Deno.serve(async (req) => {
     }
 
     const role = (user.role as Role) ?? "staff";
+
+    // ── Attendance QR codes: signed and verified server-side only ─────────────
+    if (body.op === "qr_sign" || body.op === "qr_verify") {
+      const qrKey = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode("attendance-qr:" + Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")),
+        { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+      );
+      const sign = async (data: string) => {
+        const buf = await crypto.subtle.sign("HMAC", qrKey, new TextEncoder().encode(data));
+        return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+      };
+      const reply = (d: unknown, status = 200) => new Response(JSON.stringify(d),
+        { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const qb = body as unknown as { location?: string; payload?: string; window?: number };
+      if (body.op === "qr_sign") {
+        if (!["admin", "manager", "supervisor", "floor_supervisor", "super_admin"].includes(role)) {
+          return reply({ error: "Not permitted" }, 403);
+        }
+        const loc = String(qb.location ?? "").slice(0, 200);
+        if (!loc) return reply({ error: "location required" }, 400);
+        const ts = Math.floor(Date.now() / 1000);
+        const sig = await sign(`${user.tenant_id ?? ""}:${loc}:${ts}`);
+        return reply({ data: { payload: JSON.stringify({ loc, ts, sig }) } });
+      }
+      try {
+        const p = JSON.parse(String(qb.payload ?? ""));
+        if (!p?.loc || !p?.ts || !p?.sig) return reply({ data: { valid: false, reason: "Invalid QR format" } });
+        if (user.location && p.loc !== user.location) {
+          return reply({ data: { valid: false, reason: "QR code is for a different branch/location" } });
+        }
+        const win = Math.min(Math.max(Number(qb.window) || 7, 3), 60) + 45;
+        if (Math.abs(Math.floor(Date.now() / 1000) - Number(p.ts)) > win) {
+          return reply({ data: { valid: false, reason: "QR code has expired. Please scan the current one." } });
+        }
+        const expected = await sign(`${user.tenant_id ?? ""}:${p.loc}:${p.ts}`);
+        if (expected !== p.sig) return reply({ data: { valid: false, reason: "Invalid signature. Fake QR code detected." } });
+        return reply({ data: { valid: true } });
+      } catch {
+        return reply({ data: { valid: false, reason: "Malformed QR data" } });
+      }
+    }
     const isSuper = role === "super_admin";
     const isRead = body.op === "select";
     const allowed = isRead ? acl.read : acl.write;
@@ -324,7 +429,7 @@ Deno.serve(async (req) => {
       }
       // Only enforce floor requirement for floor_supervisor on tables that have a floor column
       if (role === "floor_supervisor" && acl.floorCol && !user.floor) {
-        console.warn(`[data-api] floor_supervisor ${user.email} has no floor assigned, skipping floor scope for ${body.table}`);
+        // floor_supervisor without a floor: floor scope skipped
       }
       if (acl.locationCol && user.location) {
         scopeFilters.push({ col: acl.locationCol, op: "eq", val: user.location });
@@ -350,6 +455,20 @@ Deno.serve(async (req) => {
         for (const r of rows) r[acl.staffIdCol!] = user.id;
       }
     };
+
+    assertSafeColumns(body.columns);
+    if (body.op !== "select" && body.op !== "delete" && body.values !== undefined) {
+      const rows = (Array.isArray(body.values) ? body.values : [body.values]) as Array<Record<string, unknown>>;
+      const err = sanitizeWriteRows(body.table, rows, role);
+      if (err) {
+        return new Response(JSON.stringify({ error: err }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+    if (!isSuper && body.table === "app_users" && (body.op === "upsert")) {
+      return new Response(JSON.stringify({ error: "Upsert is not permitted on users" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     let query: any = admin.from(body.table);
     let beforeData: any = null;
@@ -688,9 +807,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: error.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    let payloadData = wantSingle
+    let payloadData = stripSecrets(wantSingle
       ? (Array.isArray(data) ? (data[0] ?? null) : (data ?? null))
-      : data;
+      : data);
 
     // Staff may read payroll_runs only to know which months are published;
     // company-wide totals are stripped so nobody sees the whole payroll.
@@ -725,8 +844,12 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ data: payloadData }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
-    console.error("data-api error:", err);
-    return new Response(JSON.stringify({ error: (err as Error).message ?? "Internal error" }),
+    if (err instanceof ClientError) {
+      return new Response(JSON.stringify({ error: err.message }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    console.error("data-api error:", (err as Error)?.message);
+    return new Response(JSON.stringify({ error: "Internal error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!target) return json({ error: "not_found" }, 404);
-    if ((caller as any).tenant_id && (target as any).tenant_id !== (caller as any).tenant_id) {
+    if (!(caller as any).tenant_id || (target as any).tenant_id !== (caller as any).tenant_id) {
       return json({ error: "forbidden" }, 403);
     }
 
@@ -125,6 +125,6 @@ Deno.serve(async (req) => {
     return json({ ok: true });
   } catch (err) {
     console.error("staff-reset-password error:", err);
-    return json({ error: (err as Error).message ?? "internal_error" }, 500);
+    return json({ error: "internal_error" }, 500);
   }
 });

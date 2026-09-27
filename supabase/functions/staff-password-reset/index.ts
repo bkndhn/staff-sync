@@ -22,6 +22,17 @@ serve(async (req) => {
       });
     }
 
+    if (typeof contactNumber !== "string" || !/^[0-9+\- ]{6,20}$/.test(contactNumber) ||
+        typeof doj !== "string" || !/^\d{8}$/.test(doj) ||
+        typeof tenantSlug !== "string" || tenantSlug.length > 100 ||
+        typeof managerPin !== "string" || !/^\d{6,10}$/.test(managerPin) ||
+        typeof newPassword !== "string" || newPassword.length < 8 || newPassword.length > 128) {
+      return new Response(JSON.stringify({ error: "Invalid details. Password must be 8-128 characters." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const admin = createClient(supabaseUrl, supabaseKey);
@@ -67,15 +78,20 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!staffMatch || !staffMatch.is_active) {
-      return new Response(JSON.stringify({ error: "No active staff member found matching those details" }), {
+      return new Response(JSON.stringify({ error: "Could not reset password. Please check your details." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Validate Manager PIN
-    if (staffMatch.reset_pin !== managerPin) {
-      return new Response(JSON.stringify({ error: "Invalid Manager PIN" }), {
+    // Validate the one-time manager PIN. A PIN must have been issued by a
+    // manager for this staff member; any wrong attempt burns the PIN so it
+    // cannot be guessed, and the manager must issue a new one.
+    if (!staffMatch.reset_pin || staffMatch.reset_pin !== managerPin) {
+      if (staffMatch.reset_pin) {
+        await admin.from("staff").update({ reset_pin: null, reset_pin_expires_at: null }).eq("id", staffMatch.id);
+      }
+      return new Response(JSON.stringify({ error: "Could not reset password. Please ask your manager for a new PIN." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -109,7 +125,7 @@ serve(async (req) => {
     });
 
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

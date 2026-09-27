@@ -1,4 +1,4 @@
-export const QR_SECRET_KEY = 'staff_sync_qr_attendance_secret_2026';
+import { dataApi } from '../lib/dataApi';
 
 /** Default refresh window if the admin hasn't customised it. */
 export const QR_REFRESH_DEFAULT = 7;
@@ -29,62 +29,27 @@ export const setQRRefreshSeconds = (seconds: number): number => {
 export const QR_EXPIRATION_SECONDS = QR_REFRESH_DEFAULT;
 
 /**
- * Secure HMAC-SHA256 cryptographic signature using Web Crypto API.
+ * QR codes are signed and verified by the server. The signing key never
+ * reaches the browser, so codes cannot be forged on the client.
  */
-const getCryptoKey = async (): Promise<CryptoKey> => {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(QR_SECRET_KEY);
-  return await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign', 'verify']
-  );
-};
-
-const signPayload = async (data: string): Promise<string> => {
-  const key = await getCryptoKey();
-  const encoder = new TextEncoder();
-  const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
-  const hashArray = Array.from(new Uint8Array(signatureBuffer));
-  // Convert to hex string and truncate to 16 chars for QR code size efficiency
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
-};
-
 export const generateQRPayload = async (location: string): Promise<string> => {
-  const timestamp = Math.floor(Date.now() / 1000);
-  const dataString = `${location}:${timestamp}`;
-  const sig = await signPayload(dataString);
-  return JSON.stringify({ loc: location, ts: timestamp, sig });
+  const { data, error } = await dataApi.action<{ payload: string }>('qr_sign', { location });
+  if (error || !data?.payload) throw new Error(error?.message || 'Could not generate QR code');
+  return data.payload;
 };
 
 export const validateQRPayload = async (payloadStr: string, staffLocation: string): Promise<{ valid: boolean; reason?: string }> => {
   try {
     const payload = JSON.parse(payloadStr);
-    if (!payload.loc || !payload.ts || !payload.sig) {
-      return { valid: false, reason: 'Invalid QR format' };
-    }
-
-    if (payload.loc !== staffLocation) {
-      return { valid: false, reason: 'QR code is for a different branch/location' };
-    }
-
-    const now = Math.floor(Date.now() / 1000);
-    // Expand the window to handle up to 45 seconds of clock drift between devices.
-    // This dramatically improves reliability without sacrificing realistic security against remote replay.
-    const window = getQRRefreshSeconds() + 45; 
-    if (Math.abs(now - payload.ts) > window) {
-      return { valid: false, reason: 'QR code has expired. Please scan the current one.' };
-    }
-
-    const expectedSig = await signPayload(`${payload.loc}:${payload.ts}`);
-    if (payload.sig !== expectedSig) {
-      return { valid: false, reason: 'Invalid cryptographic signature. Fake QR code detected.' };
-    }
-
-    return { valid: true };
+    if (!payload?.loc || !payload?.ts || !payload?.sig) return { valid: false, reason: 'Invalid QR format' };
+    if (payload.loc !== staffLocation) return { valid: false, reason: 'QR code is for a different branch/location' };
   } catch {
     return { valid: false, reason: 'Malformed QR data' };
   }
+  const { data, error } = await dataApi.action<{ valid: boolean; reason?: string }>('qr_verify', {
+    payload: payloadStr,
+    window: getQRRefreshSeconds(),
+  });
+  if (error || !data) return { valid: false, reason: 'Could not verify QR code. Please try again.' };
+  return data;
 };

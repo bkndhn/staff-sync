@@ -107,6 +107,21 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Tenant isolation: a client admin may only change passwords of users in their own client.
+    if (sessionCheck.userId !== userId && sessionCheck.role !== 'super_admin') {
+      const { data: callerRow } = await supabase.from('app_users')
+        .select('tenant_id, is_active').eq('id', sessionCheck.userId).maybeSingle();
+      const { data: targetRow } = await supabase.from('app_users')
+        .select('tenant_id, role').eq('id', userId).maybeSingle();
+      if (!callerRow || !callerRow.is_active || !callerRow.tenant_id || !targetRow ||
+          targetRow.tenant_id !== callerRow.tenant_id || targetRow.role === 'super_admin') {
+        return new Response(
+          JSON.stringify({ error: 'Forbidden' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Password validation
     if (!newPassword || typeof newPassword !== 'string') {
       return new Response(
@@ -197,7 +212,7 @@ Deno.serve(async (req) => {
   } catch (err: any) {
     console.error('Internal server error:', err);
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: err.message || err.toString() }),
+      JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
