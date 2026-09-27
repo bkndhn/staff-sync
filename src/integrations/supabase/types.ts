@@ -2038,6 +2038,255 @@ export type Database = {
           },
         ]
       }
+      petty_cash_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          display_order: number
+          id: string
+          label: string
+          notes: string | null
+          sheet_id: string
+          tenant_id: string
+        }
+        Insert: {
+          amount?: number
+          category: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          label: string
+          notes?: string | null
+          sheet_id: string
+          tenant_id?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          label?: string
+          notes?: string | null
+          sheet_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "petty_cash_expenses_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "petty_cash_sheets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "petty_cash_expenses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      petty_cash_sheets: {
+        Row: {
+          balance: number
+          created_at: string
+          created_by: string | null
+          date: string
+          expenses_total: number
+          full_time_meal_total: number
+          id: string
+          location: string
+          meal_total: number
+          notes: string | null
+          part_time_meal_total: number
+          received_amount: number
+          status: string
+          template_type: string
+          tenant_id: string
+          total_expense: number
+          transport_total: number
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          created_by?: string | null
+          date: string
+          expenses_total?: number
+          full_time_meal_total?: number
+          id?: string
+          location: string
+          meal_total?: number
+          notes?: string | null
+          part_time_meal_total?: number
+          received_amount?: number
+          status?: string
+          template_type: string
+          tenant_id?: string
+          total_expense?: number
+          transport_total?: number
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          expenses_total?: number
+          full_time_meal_total?: number
+          id?: string
+          location?: string
+          meal_total?: number
+          notes?: string | null
+          part_time_meal_total?: number
+          received_amount?: number
+          status?: string
+          template_type?: string
+          tenant_id?: string
+          total_expense?: number
+          transport_total?: number
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "petty_cash_sheets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      petty_cash_staff_meals: {
+        Row: {
+          amount: number
+          attendance_status: string
+          created_at: string
+          designation: string | null
+          display_order: number
+          id: string
+          sheet_id: string
+          staff_id: string | null
+          staff_name: string
+          staff_type: string
+          tenant_id: string
+        }
+        Insert: {
+          amount?: number
+          attendance_status: string
+          created_at?: string
+          designation?: string | null
+          display_order?: number
+          id?: string
+          sheet_id: string
+          staff_id?: string | null
+          staff_name: string
+          staff_type: string
+          tenant_id?: string
+        }
+        Update: {
+          amount?: number
+          attendance_status?: string
+          created_at?: string
+          designation?: string | null
+          display_order?: number
+          id?: string
+          sheet_id?: string
+          staff_id?: string | null
+          staff_name?: string
+          staff_type?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "petty_cash_staff_meals_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "petty_cash_sheets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "petty_cash_staff_meals_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "petty_cash_staff_meals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      petty_cash_transports: {
+        Row: {
+          auto: number
+          count: number
+          created_at: string
+          display_order: number
+          freight: number
+          hamali: number
+          id: string
+          sheet_id: string
+          tenant_id: string
+          total: number
+          transport_name: string | null
+        }
+        Insert: {
+          auto?: number
+          count?: number
+          created_at?: string
+          display_order?: number
+          freight?: number
+          hamali?: number
+          id?: string
+          sheet_id: string
+          tenant_id?: string
+          total?: number
+          transport_name?: string | null
+        }
+        Update: {
+          auto?: number
+          count?: number
+          created_at?: string
+          display_order?: number
+          freight?: number
+          hamali?: number
+          id?: string
+          sheet_id?: string
+          tenant_id?: string
+          total?: number
+          transport_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "petty_cash_transports_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "petty_cash_sheets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "petty_cash_transports_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       punch_events: {
         Row: {
           created_at: string
