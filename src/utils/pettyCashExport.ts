@@ -15,17 +15,21 @@ function formatDateDisplay(dateStr: string): string {
   }
 }
 
-/** Formats a numeric value into standard Indian currency with rupee symbol: ₹1,300.00 */
-function formatINR(val: number | string | undefined): string {
-  const num = Number(val) || 0;
-  return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/** 
+ * Formats a numeric value into standard Indian currency for PDF: Rs. 1,300.00
+ * Uses ASCII 'Rs. ' prefix to prevent WinAnsi encoding corruption in jsPDF (which turns '₹' into '¹').
+ */
+function formatCurrency(val: number | string | undefined, prefix = 'Rs. '): string {
+  const num = Number(val);
+  if (val === undefined || val === null || isNaN(num)) return `${prefix}0.00`;
+  return `${prefix}${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /** Formats an amount cell, showing '—' if 0 or empty */
-function formatAmountOrDash(val: number | string | undefined): string {
+function formatAmountOrDash(val: number | string | undefined, prefix = 'Rs. '): string {
   const num = Number(val);
   if (!val || isNaN(num) || num === 0) return '—';
-  return formatINR(num);
+  return formatCurrency(num, prefix);
 }
 
 export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
@@ -91,9 +95,9 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
       { content: '', styles: { fillColor: [255, 255, 255] } },
       { content: 'PART TIME / FLEX STAFF', colSpan: 5, styles: { halign: 'center', fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold' } }
     ], [
-      'S.NO', 'NAME', 'DESIG', 'F/H', 'AMT',
+      'S.NO', 'NAME', 'DESIG', 'F/H', 'AMT (Rs.)',
       '',
-      'S.NO', 'NAME', 'DESIG', 'F/H', 'AMT'
+      'S.NO', 'NAME', 'DESIG', 'F/H', 'AMT (Rs.)'
     ]],
     body: staffTableBody,
     theme: 'grid',
@@ -103,17 +107,17 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
     headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', lineWidth: 0.5 },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: {
-      0: { cellWidth: 25, halign: 'center' },
-      1: { cellWidth: 90 },
-      2: { cellWidth: 70 },
-      3: { cellWidth: 25, halign: 'center' },
-      4: { cellWidth: 40, halign: 'right' },
+      0: { cellWidth: 24, halign: 'center' },
+      1: { cellWidth: 88 },
+      2: { cellWidth: 68 },
+      3: { cellWidth: 24, halign: 'center' },
+      4: { cellWidth: 46, halign: 'right' },
       5: { cellWidth: 15, lineWidth: 0 },
-      6: { cellWidth: 25, halign: 'center' },
-      7: { cellWidth: 90 },
-      8: { cellWidth: 70 },
-      9: { cellWidth: 25, halign: 'center' },
-      10: { cellWidth: 40, halign: 'right' }
+      6: { cellWidth: 24, halign: 'center' },
+      7: { cellWidth: 88 },
+      8: { cellWidth: 68 },
+      9: { cellWidth: 24, halign: 'center' },
+      10: { cellWidth: 46, halign: 'right' }
     },
     didDrawPage: () => {
       drawPageHeader();
@@ -131,7 +135,7 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
   const expensesBody: any[][] = [];
   
   // Total Meals line item
-  expensesBody.push([1, 'TOTAL MEALS (FT + PT/FLEX)', formatINR(mealTotal)]);
+  expensesBody.push([1, 'TOTAL MEALS (FT + PT/FLEX)', formatCurrency(mealTotal)]);
   
   otherExpenses.forEach((e, idx) => {
     expensesBody.push([idx + 2, e.label, formatAmountOrDash(e.amount)]);
@@ -160,12 +164,12 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
     startY: finalY,
     head: [[
       { content: 'DAILY EXPENSES', colSpan: 3, styles: { halign: 'center', fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' } }
-    ], ['S.NO', 'PARTICULARS', 'AMOUNT']],
+    ], ['S.NO', 'PARTICULARS', 'AMOUNT (Rs.)']],
     body: [
       ...expensesBody,
       [
         { content: 'TOTAL DAILY EXPENSES', colSpan: 2, styles: { halign: 'right', fontStyle: 'bold', fillColor: [241, 245, 249] } },
-        { content: formatINR(expensesTotal), styles: { fontStyle: 'bold', halign: 'right', fillColor: [241, 245, 249] } }
+        { content: formatCurrency(expensesTotal), styles: { fontStyle: 'bold', halign: 'right', fillColor: [241, 245, 249] } }
       ]
     ],
     theme: 'grid',
@@ -191,19 +195,19 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
       formatAmountOrDash(t.freight),
       formatAmountOrDash(t.auto),
       formatAmountOrDash(t.hamali),
-      formatINR(t.total)
+      formatCurrency(t.total)
     ]);
 
     autoTable(doc, {
       startY: finalY,
       head: [[
         { content: 'TRANSPORT & GOODS INWARD', colSpan: 6, styles: { halign: 'center', fillColor: [109, 40, 217], textColor: [255, 255, 255], fontStyle: 'bold' } }
-      ], ['TRANSPORT', 'CNT', 'FREIGHT', 'AUTO', 'HAMALI', 'TOTAL']],
+      ], ['TRANSPORT', 'CNT', 'FREIGHT', 'AUTO', 'HAMALI', 'TOTAL (Rs.)']],
       body: [
         ...transportBody,
         [
           { content: 'TOTAL LOGISTICS', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold', fillColor: [241, 245, 249] } },
-          { content: formatINR(transportTotal), styles: { fontStyle: 'bold', halign: 'right', fillColor: [241, 245, 249] } }
+          { content: formatCurrency(transportTotal), styles: { fontStyle: 'bold', halign: 'right', fillColor: [241, 245, 249] } }
         ]
       ],
       theme: 'grid',
@@ -240,11 +244,11 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
     body: [
       [
         { content: 'TOTAL RECEIVED FROM CASHIER', styles: { fillColor: [224, 242, 254], textColor: [30, 58, 138], fontStyle: 'bold' } },
-        { content: formatINR(sheet.received_amount), styles: { fillColor: [224, 242, 254], textColor: [30, 58, 138], fontStyle: 'bold', halign: 'right' } }
+        { content: formatCurrency(sheet.received_amount), styles: { fillColor: [224, 242, 254], textColor: [30, 58, 138], fontStyle: 'bold', halign: 'right' } }
       ],
       [
         { content: 'GRAND TOTAL EXPENSES (MEALS + EXPENSES + LOGISTICS)', styles: { fillColor: [254, 226, 226], textColor: [159, 18, 57], fontStyle: 'bold' } },
-        { content: formatINR(grandTotalExpense), styles: { fillColor: [254, 226, 226], textColor: [159, 18, 57], fontStyle: 'bold', halign: 'right' } }
+        { content: formatCurrency(grandTotalExpense), styles: { fillColor: [254, 226, 226], textColor: [159, 18, 57], fontStyle: 'bold', halign: 'right' } }
       ],
       [
         {
@@ -256,7 +260,7 @@ export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
           }
         },
         {
-          content: formatINR(balance),
+          content: formatCurrency(balance),
           styles: {
             fillColor: balance >= 0 ? [209, 250, 229] : [254, 226, 226],
             textColor: balance >= 0 ? [6, 95, 70] : [185, 28, 28],
@@ -327,7 +331,7 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
   wsData.push(['FULL TIME STAFF', '', '', '', '', '', 'PART TIME / FLEX STAFF', '', '', '', '']);
   
   // Row 5: Column Headers
-  wsData.push(['S.NO', 'NAME', 'DESIGNATION', 'F/H', 'AMOUNT', '', 'S.NO', 'NAME', 'DESIGNATION', 'F/H', 'AMOUNT']);
+  wsData.push(['S.NO', 'NAME', 'DESIGNATION', 'F/H', 'AMOUNT (Rs.)', '', 'S.NO', 'NAME', 'DESIGNATION', 'F/H', 'AMOUNT (Rs.)']);
   
   const fullTimeStaff = sheet.staff_meals.filter(s => s.staff_type === 'full-time');
   const partTimeStaff = sheet.staff_meals.filter(s => s.staff_type === 'part-time');
@@ -343,13 +347,13 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
       ft ? ft.staff_name : '—',
       ft ? ft.designation : '—',
       ft ? ft.attendance_status : '—',
-      ft ? (ft.amount > 0 ? formatINR(ft.amount) : '—') : '—',
+      ft ? (ft.amount > 0 ? formatCurrency(ft.amount) : '—') : '—',
       '',
       pt ? i + 1 : '—',
       pt ? pt.staff_name : '—',
       pt ? pt.designation : '—',
       pt ? pt.attendance_status : '—',
-      pt ? (pt.amount > 0 ? formatINR(pt.amount) : '—') : '—'
+      pt ? (pt.amount > 0 ? formatCurrency(pt.amount) : '—') : '—'
     ]);
   }
   
@@ -358,16 +362,16 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
   const mealTotal = ftMealTotal + ptMealTotal;
   
   // Subtotal for Staff Meals
-  wsData.push(['', '', '', 'TOTAL FT:', formatINR(ftMealTotal), '', '', '', '', 'TOTAL PT:', formatINR(ptMealTotal)]);
-  wsData.push(['', '', '', 'MEAL TOTAL:', formatINR(mealTotal), '', '', '', '', '', '']);
+  wsData.push(['', '', '', 'TOTAL FT:', formatCurrency(ftMealTotal), '', '', '', '', 'TOTAL PT:', formatCurrency(ptMealTotal)]);
+  wsData.push(['', '', '', 'MEAL TOTAL:', formatCurrency(mealTotal), '', '', '', '', '', '']);
   
   // Daily Expenses Section
   wsData.push([]);
   wsData.push(['DAILY EXPENSES']);
-  wsData.push(['S.NO', 'PARTICULARS', 'AMOUNT']);
+  wsData.push(['S.NO', 'PARTICULARS', 'AMOUNT (Rs.)']);
   
   // Meal Total line item in expenses
-  wsData.push([1, 'TOTAL MEALS (FT + PT/FLEX)', formatINR(mealTotal)]);
+  wsData.push([1, 'TOTAL MEALS (FT + PT/FLEX)', formatCurrency(mealTotal)]);
   
   const otherExpenses = sheet.expenses.filter(e => e.label !== 'MEAL TOTAL');
   otherExpenses.forEach((e, idx) => {
@@ -375,7 +379,7 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
   });
   
   const expensesTotal = sheet.expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-  wsData.push(['', 'TOTAL DAILY EXPENSES', formatINR(expensesTotal)]);
+  wsData.push(['', 'TOTAL DAILY EXPENSES', formatCurrency(expensesTotal)]);
   
   // Transport Logistics Section (rendered only when entries exist)
   const activeTransports = (sheet.transport_logistics || []).filter(t => t.transport_name || (Number(t.total) || 0) > 0);
@@ -384,7 +388,7 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
   if (activeTransports.length > 0) {
     wsData.push([]);
     wsData.push(['TRANSPORT LOGISTICS (GOODS INWARD)']);
-    wsData.push(['TRANSPORT', 'COUNT', 'FREIGHT', 'AUTO', 'HAMALI', 'TOTAL LOGISTICS']);
+    wsData.push(['TRANSPORT', 'COUNT', 'FREIGHT (Rs.)', 'AUTO (Rs.)', 'HAMALI (Rs.)', 'TOTAL (Rs.)']);
     activeTransports.forEach(t => {
       wsData.push([
         t.transport_name || '—',
@@ -392,10 +396,10 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
         formatAmountOrDash(t.freight),
         formatAmountOrDash(t.auto),
         formatAmountOrDash(t.hamali),
-        formatINR(t.total)
+        formatCurrency(t.total)
       ]);
     });
-    wsData.push(['', '', '', '', 'TOTAL LOGISTICS:', formatINR(transportTotal)]);
+    wsData.push(['', '', '', '', 'TOTAL LOGISTICS:', formatCurrency(transportTotal)]);
   }
 
   const grandTotalExpense = expensesTotal + transportTotal;
@@ -404,11 +408,11 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
   // Settlement Summary Section
   wsData.push([]);
   wsData.push(['CASH SETTLEMENT SUMMARY']);
-  wsData.push(['TOTAL RECEIVED FROM CASHIER', formatINR(sheet.received_amount)]);
-  wsData.push(['GRAND TOTAL EXPENSES', formatINR(grandTotalExpense)]);
+  wsData.push(['TOTAL RECEIVED FROM CASHIER', formatCurrency(sheet.received_amount)]);
+  wsData.push(['GRAND TOTAL EXPENSES', formatCurrency(grandTotalExpense)]);
   wsData.push([
     balance >= 0 ? 'BALANCE TO RETURN TO CASHIER' : 'CASH DEFICIT / REIMBURSEMENT DUE',
-    formatINR(balance)
+    formatCurrency(balance)
   ]);
 
   const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -419,13 +423,13 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
     { wch: 24 }, // B: Name
     { wch: 18 }, // C: Designation
     { wch: 8 },  // D: F/H
-    { wch: 15 }, // E: Amount
+    { wch: 16 }, // E: Amount (Rs.)
     { wch: 4 },  // F: Spacer
     { wch: 6 },  // G: S.No
     { wch: 24 }, // H: Name
     { wch: 18 }, // I: Designation
     { wch: 8 },  // J: F/H
-    { wch: 15 }, // K: Amount
+    { wch: 16 }, // K: Amount (Rs.)
   ];
 
   // Cell merges
