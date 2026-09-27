@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Printer, FileSpreadsheet, RefreshCw, Plus, Trash2, Building, Building2, ArrowRight, Truck, ChevronDown, ChevronUp, X, Sparkles, Share2, Save } from 'lucide-react';
+import { Calendar, Printer, FileSpreadsheet, RefreshCw, Plus, Trash2, Building, Building2, ArrowRight, Truck, ChevronDown, ChevronUp, X, Sparkles, Share2, Save, MapPin } from 'lucide-react';
 import { localDateKey } from '../lib/localDate';
 import { pettyCashService, PettyCashSheet, StaffMeal, CustomExpense, TransportLogistics } from '../services/pettyCashService';
 import { attendanceService } from '../services/attendanceService';
@@ -7,6 +7,15 @@ import { staffService } from '../services/staffService';
 import { locationService } from '../services/locationService';
 import { exportPettyCashPdf, exportPettyCashExcel, sharePettyCashWhatsApp } from '../utils/pettyCashExport';
 import { Location } from '../types';
+
+const getYesterdayKey = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 interface Props {
   userRole?: string;
@@ -464,19 +473,64 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-36 sm:pb-16">
       {/* Streamlined Compact Control Bar */}
-      <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg shrink-0">
-              <Building2 size={20} />
-            </div>
-            <div>
-              <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">Petty Cash</h1>
-              <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full inline-block sm:hidden">
-                {location}
-              </span>
-            </div>
+      <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+        
+        {/* Left: Date picker & Quick jump ("Today", "Yesterday") */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+            <Calendar size={14} className="text-slate-500 shrink-0" />
+            <input
+              type="date"
+              value={date}
+              onChange={e => setDate(e.target.value)}
+              className="text-xs sm:text-sm font-semibold bg-transparent border-0 p-0 text-slate-800 focus:ring-0 cursor-pointer"
+            />
           </div>
+          <button
+            onClick={() => setDate(localDateKey())}
+            className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border transition-colors ${
+              date === localDateKey()
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+            }`}
+            title="Today's voucher"
+          >
+            Today
+          </button>
+          <button
+            onClick={() => setDate(getYesterdayKey())}
+            className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border transition-colors ${
+              date === getYesterdayKey()
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+            }`}
+            title="Yesterday's voucher"
+          >
+            Yesterday
+          </button>
+        </div>
+
+        {/* Center: Location selector & Mode toggle */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {!isZoneHandler ? (
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+              <MapPin size={14} className="text-indigo-600 shrink-0" />
+              <select
+                value={location}
+                onChange={e => setLocation(e.target.value)}
+                className="text-xs sm:text-sm font-semibold bg-transparent border-0 p-0 text-slate-800 focus:ring-0 cursor-pointer"
+              >
+                {allLocations.map(l => (
+                  <option key={l.id} value={l.name}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-xs font-bold">
+              <MapPin size={14} />
+              {userLocation || location}
+            </span>
+          )}
 
           {/* Mode Toggle: Shop vs Godown */}
           <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-bold">
@@ -495,43 +549,53 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
           </div>
         </div>
 
-        {/* Date & Location Controls */}
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          {/* Branch Selector (Shown only to Admin / Super Admin) */}
-          {!isZoneHandler ? (
-            <select
-              value={location}
-              onChange={e => setLocation(e.target.value)}
-              className="flex-1 sm:flex-initial text-xs sm:text-sm font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500"
-            >
-              {allLocations.map(l => (
-                <option key={l.id} value={l.name}>{l.name}</option>
-              ))}
-            </select>
-          ) : (
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-xs font-bold">
-              Branch: {location}
-            </span>
-          )}
-
-          {/* Date Picker with Quick 'Today' Button */}
-          <div className="flex items-center gap-1 flex-1 sm:flex-initial">
-            <input
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              className="w-full sm:w-auto text-xs sm:text-sm font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500"
-            />
-            {date !== localDateKey() && (
+        {/* Right: Action icons row */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            onClick={saveSheet}
+            disabled={!canEdit || saving}
+            className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs disabled:opacity-50 transition-all active:scale-95"
+            title="Save voucher"
+          >
+            {saving ? <RefreshCw size={13} className="animate-spin" /> : <Save size={13} />}
+            <span>Save</span>
+          </button>
+          <button
+            onClick={() => refreshAttendanceData()}
+            disabled={!canEdit}
+            className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg border border-slate-200 bg-white"
+            title="Refresh attendance from punches & regularizations"
+          >
+            <RefreshCw size={14} />
+          </button>
+          {sheet && (
+            <>
               <button
-                onClick={() => setDate(localDateKey())}
-                className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-1.5 rounded-lg whitespace-nowrap hover:bg-indigo-100"
-                title="Jump to today"
+                onClick={() => exportPettyCashPdf(sheet)}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-all"
+                title="Export PDF"
               >
-                Today
+                <Printer size={13} className="text-rose-600" />
+                <span>PDF</span>
               </button>
-            )}
-          </div>
+              <button
+                onClick={() => exportPettyCashExcel(sheet)}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-all"
+                title="Export Excel"
+              >
+                <FileSpreadsheet size={13} className="text-emerald-600" />
+                <span>Excel</span>
+              </button>
+              <button
+                onClick={() => sharePettyCashWhatsApp(sheet)}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all active:scale-95"
+                title="Share voucher via WhatsApp"
+              >
+                <Share2 size={13} />
+                <span>WhatsApp</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -552,7 +616,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-700 font-bold">₹</span>
                   <input
                     type="number"
-                    inputMode="numeric"
+                    inputMode="decimal"
                     value={sheet.received_amount || ''}
                     onChange={e => setSheet({ ...sheet, received_amount: Number(e.target.value) })}
                     className="pl-7 pr-3 py-2 w-36 bg-indigo-50/70 border border-indigo-200 rounded-lg font-extrabold text-indigo-900 focus:ring-2 focus:ring-indigo-500 text-base"
@@ -572,7 +636,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                     <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₹</span>
                     <input
                       type="number"
-                      inputMode="numeric"
+                      inputMode="decimal"
                       value={ftMealRate}
                       onChange={e => updateMealRates(Number(e.target.value), ptMealRate)}
                       className="w-16 pl-4 pr-1 py-1 border border-slate-200 rounded text-xs font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500"
@@ -587,7 +651,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                     <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₹</span>
                     <input
                       type="number"
-                      inputMode="numeric"
+                      inputMode="decimal"
                       value={ptMealRate}
                       onChange={e => updateMealRates(ftMealRate, Number(e.target.value))}
                       className="w-16 pl-4 pr-1 py-1 border border-slate-200 rounded text-xs font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500"
@@ -620,65 +684,38 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
             </div>
           </div>
 
-          {/* Mobile Section Tab Switcher (sm:hidden) */}
-          <div className="sm:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md p-1 rounded-xl border border-slate-200 shadow-sm grid grid-cols-4 gap-1">
-            <button
-              onClick={() => setMobileSection('meals')}
-              className={`py-2 px-1 text-center rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 ${
-                mobileSection === 'meals' ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:bg-slate-50 font-medium'
-              }`}
+          {/* Mobile Section Tab Switcher (md:hidden) */}
+          <div className="md:hidden sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-1 -mx-1 sm:mx-0">
+            <div 
+              className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 px-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/60"
+              style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              <span className="text-xs">Meals</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                mobileSection === 'meals' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-              }`}>
-                {sheet.staff_meals.length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setMobileSection('expenses')}
-              className={`py-2 px-1 text-center rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 ${
-                mobileSection === 'expenses' ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:bg-slate-50 font-medium'
-              }`}
-            >
-              <span className="text-xs">Expenses</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                mobileSection === 'expenses' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-              }`}>
-                ₹{expensesTotal > 999 ? `${Math.round(expensesTotal / 1000)}k` : expensesTotal}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setMobileSection('transport')}
-              className={`py-2 px-1 text-center rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 ${
-                mobileSection === 'transport' ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:bg-slate-50 font-medium'
-              }`}
-            >
-              <span className="text-xs">Transport</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                mobileSection === 'transport' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-              }`}>
-                ₹{transportTotal > 999 ? `${Math.round(transportTotal / 1000)}k` : transportTotal}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setMobileSection('summary')}
-              className={`py-2 px-1 text-center rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 ${
-                mobileSection === 'summary' ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:bg-slate-50 font-medium'
-              }`}
-            >
-              <span className="text-xs">Summary</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                balance < 0 
-                  ? 'bg-rose-500 text-white' 
-                  : mobileSection === 'summary' ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-800'
-              }`}>
-                ₹{Math.abs(balance) > 999 ? `${Math.round(balance / 1000)}k` : Math.abs(balance)}
-              </span>
-            </button>
+              {[
+                { id: 'meals', label: 'Staff Meals', count: sheet?.staff_meals?.length || 0 },
+                { id: 'expenses', label: 'Expenses', count: sheet?.expenses?.length || 0 },
+                { id: 'transport', label: 'Logistics', count: (sheet?.transport_logistics || []).filter(t => t.transport_name).length },
+                { id: 'summary', label: 'Settlement', highlight: true }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setMobileSection(tab.id as any)}
+                  className={`shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                    mobileSection === tab.id
+                      ? 'bg-indigo-600 text-white shadow-sm font-bold'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  {tab.count !== undefined && tab.count > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                      mobileSection === tab.id ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Staff Meals Section */}
@@ -754,7 +791,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                           <span className="absolute left-3 text-slate-400 font-bold text-sm">₹</span>
                           <input
                             type="number"
-                            inputMode="numeric"
+                            inputMode="decimal"
                             value={s.amount || ''}
                             onChange={e => handleMealChange(s.staff_id, Number(e.target.value))}
                             className="w-32 pl-7 pr-3 py-2 text-right border border-slate-300 rounded-lg text-base font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -946,7 +983,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                         {e.category !== 'fixed' && canEdit && (
                           <button
                             onClick={() => removeExpense(e.id!)}
-                            className="p-1.5 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+                            className="h-9 w-9 flex items-center justify-center text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors shrink-0"
                             title="Delete expense"
                           >
                             <Trash2 size={16} />
@@ -959,7 +996,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                           <span className="absolute left-3 text-slate-400 font-bold text-sm">₹</span>
                           <input
                             type="number"
-                            inputMode="numeric"
+                            inputMode="decimal"
                             value={e.amount || ''}
                             onChange={ev => updateExpense(e.id!, 'amount', Number(ev.target.value))}
                             className={`w-32 pl-7 pr-3 py-1.5 text-right border rounded-lg font-bold text-base focus:ring-2 focus:ring-indigo-500 ${
@@ -1085,7 +1122,12 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                         📦 <strong>Log goods received today:</strong> Freight = Lorry charges, Auto = Local tempo fare, Hamali = Coolie / unloading labor.
                       </div>
 
-                      {/* Transporter suggestions datalist */}
+                      {/* Transporter suggestions datalists */}
+                      <datalist id="transporter-list">
+                        {savedTransports.map(t => (
+                          <option key={t} value={t} />
+                        ))}
+                      </datalist>
                       <datalist id="transporter-suggestions">
                         {savedTransports.map(t => (
                           <option key={t} value={t} />
@@ -1112,10 +1154,10 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                                   {canEdit && (
                                     <button
                                       onClick={() => removeTransport(t.id!)}
-                                      className="p-1 text-slate-400 hover:text-red-500 rounded hover:bg-red-50"
+                                      className="h-9 w-9 flex items-center justify-center text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
                                       title="Remove consignment"
                                     >
-                                      <X size={15} />
+                                      <X size={16} />
                                     </button>
                                   )}
                                 </div>
@@ -1125,12 +1167,12 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                                 <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Transporter / LR Number</label>
                                 <input
                                   type="text"
-                                  list="transporter-suggestions"
+                                  list="transporter-list"
                                   value={t.transport_name}
                                   onChange={e => updateTransport(t.id!, 'transport_name', e.target.value)}
                                   onBlur={e => rememberTransporter(e.target.value)}
                                   className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 font-medium bg-white focus:ring-2 focus:ring-violet-500"
-                                  placeholder="e.g. VRL Logistics / LR#..."
+                                  placeholder="e.g. VRL, KRS, Auto"
                                   disabled={!canEdit}
                                 />
                               </div>
@@ -1151,7 +1193,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                                   <label className="text-[10px] font-semibold text-slate-500 block mb-0.5">Freight (₹)</label>
                                   <input
                                     type="number"
-                                    inputMode="numeric"
+                                    inputMode="decimal"
                                     value={t.freight || ''}
                                     onChange={e => updateTransport(t.id!, 'freight', Number(e.target.value))}
                                     className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-900 font-bold bg-white text-right focus:ring-2 focus:ring-violet-500"
@@ -1163,7 +1205,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                                   <label className="text-[10px] font-semibold text-slate-500 block mb-0.5">Auto / Tempo (₹)</label>
                                   <input
                                     type="number"
-                                    inputMode="numeric"
+                                    inputMode="decimal"
                                     value={t.auto || ''}
                                     onChange={e => updateTransport(t.id!, 'auto', Number(e.target.value))}
                                     className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-900 font-bold bg-white text-right focus:ring-2 focus:ring-violet-500"
@@ -1175,7 +1217,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                                   <label className="text-[10px] font-semibold text-slate-500 block mb-0.5">Hamali (₹)</label>
                                   <input
                                     type="number"
-                                    inputMode="numeric"
+                                    inputMode="decimal"
                                     value={t.hamali || ''}
                                     onChange={e => updateTransport(t.id!, 'hamali', Number(e.target.value))}
                                     className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-900 font-bold bg-white text-right focus:ring-2 focus:ring-violet-500"
@@ -1224,12 +1266,12 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                                 <td className="px-2 py-1.5">
                                   <input
                                     type="text"
-                                    list="transporter-suggestions"
+                                    list="transporter-list"
                                     value={t.transport_name}
                                     onChange={e => updateTransport(t.id!, 'transport_name', e.target.value)}
                                     onBlur={e => rememberTransporter(e.target.value)}
                                     className="w-full px-1.5 py-0.5 border border-slate-200 rounded text-xs text-slate-900 font-medium"
-                                    placeholder="Transporter / LR#"
+                                    placeholder="e.g. VRL, KRS, Auto"
                                     disabled={!canEdit}
                                   />
                                 </td>
@@ -1246,6 +1288,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                                 <td className="px-2 py-1.5 text-right">
                                   <input
                                     type="number"
+                                    inputMode="decimal"
                                     value={t.freight || ''}
                                     onChange={e => updateTransport(t.id!, 'freight', Number(e.target.value))}
                                     className="w-full text-right px-1.5 py-0.5 border border-slate-200 rounded text-xs text-slate-900 font-semibold"
@@ -1256,6 +1299,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                                 <td className="px-2 py-1.5 text-right">
                                   <input
                                     type="number"
+                                    inputMode="decimal"
                                     value={t.auto || ''}
                                     onChange={e => updateTransport(t.id!, 'auto', Number(e.target.value))}
                                     className="w-full text-right px-1.5 py-0.5 border border-slate-200 rounded text-xs text-slate-900 font-semibold"
@@ -1266,6 +1310,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                                 <td className="px-2 py-1.5 text-right">
                                   <input
                                     type="number"
+                                    inputMode="decimal"
                                     value={t.hamali || ''}
                                     onChange={e => updateTransport(t.id!, 'hamali', Number(e.target.value))}
                                     className="w-full text-right px-1.5 py-0.5 border border-slate-200 rounded text-xs text-slate-900 font-semibold"
@@ -1278,7 +1323,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                                 </td>
                                 <td className="px-1 py-1.5 text-center">
                                   {canEdit && (
-                                    <button onClick={() => removeTransport(t.id!)} className="text-slate-300 hover:text-red-500">
+                                    <button onClick={() => removeTransport(t.id!)} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
                                       <X size={14} />
                                     </button>
                                   )}

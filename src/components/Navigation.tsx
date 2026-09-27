@@ -262,7 +262,7 @@ const Navigation: React.FC<NavigationProps> = ({
 
       {/* ── Mobile Bottom Navigation (hidden for staff — StaffPortal has its own) ── */}
       {tabs.length > 1 && (
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 mobile-nav safe-area-padding overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 mobile-nav safe-area-padding overflow-x-auto pb-[env(safe-area-inset-bottom,0.5rem)]" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <style>{`.mobile-nav::-webkit-scrollbar { display: none; }`}</style>
         <div className="flex items-end px-1 pt-1 pb-1 w-max min-w-full justify-around gap-1" style={{ minHeight: '54px' }}>
           {tabs.map(tab => {

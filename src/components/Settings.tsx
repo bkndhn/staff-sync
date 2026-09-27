@@ -167,9 +167,16 @@ const UserCard: React.FC<{
                     <h3 className="font-semibold text-white text-lg">{user.full_name}</h3>
                     <p className="text-white/60 text-sm font-mono break-all">{user.email}</p>
                 </div>
-                <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'statutory_admin' ? 'badge-success' : user.role === 'petty_cash_manager' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
-                    {user.role === 'admin' ? 'Admin' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'petty_cash_manager' ? 'Petty Cash Handler' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                    <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'statutory_admin' ? 'badge-success' : user.role === 'petty_cash_manager' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
+                        {user.role === 'admin' ? 'Admin' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'petty_cash_manager' ? 'Petty Cash Handler' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
+                    </span>
+                    {user.role === 'petty_cash_manager' && user.location && (
+                        <span className="text-[11px] font-semibold text-amber-300/90 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                            {user.location}
+                        </span>
+                    )}
+                </div>
             </div>
 
             <div className="flex items-center gap-4 text-sm">
@@ -322,7 +329,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                     email: formData.email,
                     full_name: formData.full_name,
                     role: formData.role,
-                    location: (formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.location : null,
+                    location: (formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor' || formData.role === 'petty_cash_manager') ? formData.location : null,
                     floor: (formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.floor : null
                 };
 
@@ -350,7 +357,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                     password: formData.password,
                     full_name: formData.full_name,
                     role: formData.role,
-                    location: (formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.location : null,
+                    location: (formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor' || formData.role === 'petty_cash_manager') ? formData.location : null,
                     floor: (formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.floor : null
                 };
 
@@ -797,9 +804,16 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                                         <td className="font-medium text-white !text-left">{user.full_name}</td>
                                         <td className="text-white/70 font-mono text-sm !text-left">{user.email}</td>
                                         <td className="!text-center">
-                                            <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'statutory_admin' ? 'badge-success' : user.role === 'petty_cash_manager' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
-                                                {user.role === 'admin' ? 'Admin' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'petty_cash_manager' ? 'Petty Cash Handler' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
-                                            </span>
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'statutory_admin' ? 'badge-success' : user.role === 'petty_cash_manager' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
+                                                    {user.role === 'admin' ? 'Admin' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'petty_cash_manager' ? 'Petty Cash Handler' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
+                                                </span>
+                                                {user.role === 'petty_cash_manager' && user.location && (
+                                                    <span className="text-[11px] font-semibold text-amber-300/90 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                                        {user.location}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="!text-left">
                                             {user.location ? (
@@ -937,7 +951,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                                         ))}
                                     </select>
                                     {formData.role === 'petty_cash_manager' && (
-                                        <p className="text-xs text-white/50 mt-1">This user will only have access to petty cash records for this branch.</p>
+                                        <p className="text-xs text-amber-300/80 font-medium mt-1">Select Zone/Branch assigned to this Petty Cash Handler</p>
                                     )}
                                 </div>
                             )}

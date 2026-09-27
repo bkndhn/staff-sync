@@ -374,6 +374,10 @@ function App() {
         const floorSupervisorAllowed: NavigationTab[] = ['Dashboard', 'Attendance', 'Break Management', 'Leave Management', 'Profile'];
         return floorSupervisorAllowed.includes(tab);
       }
+      if (user.role === 'petty_cash_manager') {
+        const allowed: NavigationTab[] = ['Petty Cash', 'Dashboard', 'Profile'];
+        return allowed.includes(tab);
+      }
       if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security';
       return tab !== 'My Portal';
     };
@@ -383,6 +387,8 @@ function App() {
       setActiveTab('My Portal');
     } else if (user.role === 'manager') {
       setActiveTab('Face Attendance');
+    } else if (user.role === 'petty_cash_manager') {
+      setActiveTab('Petty Cash');
     } else {
       setActiveTab('Dashboard');
     }

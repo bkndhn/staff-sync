@@ -32,6 +32,9 @@ function formatAmountOrDash(val: number | string | undefined, prefix = 'Rs. '): 
   return formatCurrency(num, prefix);
 }
 
+/** Sanitizes any text to strip Unicode Rupee symbol and avoid WinAnsi encoding bugs */
+const sanitize = (text: string) => (text || '').replace(/₹/g, 'Rs.');
+
 export const generatePettyCashPdfDoc = (sheet: PettyCashSheet): jsPDF => {
   const doc = new jsPDF('p', 'pt', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -53,7 +56,7 @@ export const generatePettyCashPdfDoc = (sheet: PettyCashSheet): jsPDF => {
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(30, 58, 138);
     doc.text(`DATE: ${formatDateDisplay(sheet.date)}`, 40, 78);
-    doc.text(`LOCATION: ${sheet.location.toUpperCase()}`, pageWidth - 40, 78, { align: 'right' });
+    doc.text(`LOCATION: ${sanitize(sheet.location).toUpperCase()}`, pageWidth - 40, 78, { align: 'right' });
     
     // Subtle thin divider below the date/location line
     doc.setDrawColor(203, 213, 225); // Slate 300
@@ -74,14 +77,14 @@ export const generatePettyCashPdfDoc = (sheet: PettyCashSheet): jsPDF => {
     
     staffTableBody.push([
       ft ? i + 1 : '—',
-      ft ? ft.staff_name : '—',
-      ft ? ft.designation : '—',
+      ft ? sanitize(ft.staff_name) : '—',
+      ft ? sanitize(ft.designation) : '—',
       ft ? ft.attendance_status : '—',
       ft ? formatAmountOrDash(ft.amount) : '—',
       '', // spacer
       pt ? i + 1 : '—',
-      pt ? pt.staff_name : '—',
-      pt ? pt.designation : '—',
+      pt ? sanitize(pt.staff_name) : '—',
+      pt ? sanitize(pt.designation) : '—',
       pt ? pt.attendance_status : '—',
       pt ? formatAmountOrDash(pt.amount) : '—'
     ]);
@@ -138,7 +141,7 @@ export const generatePettyCashPdfDoc = (sheet: PettyCashSheet): jsPDF => {
   expensesBody.push([1, 'TOTAL MEALS (FT + PT/FLEX)', formatCurrency(mealTotal)]);
   
   otherExpenses.forEach((e, idx) => {
-    expensesBody.push([idx + 2, e.label, formatAmountOrDash(e.amount)]);
+    expensesBody.push([idx + 2, sanitize(e.label), formatAmountOrDash(e.amount)]);
   });
   
   const expensesTotal = sheet.expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
@@ -190,8 +193,8 @@ export const generatePettyCashPdfDoc = (sheet: PettyCashSheet): jsPDF => {
   // Transport & Goods Inward Table (Right Column) - Distinct colored Violet bar ([109, 40, 217])
   if (hasTransports) {
     const transportBody = activeTransports.map(t => [
-      t.transport_name || '—',
-      t.count || '—',
+      sanitize(t.transport_name || '—'),
+      sanitize(t.count || '—'),
       formatAmountOrDash(t.freight),
       formatAmountOrDash(t.auto),
       formatAmountOrDash(t.hamali),
@@ -334,16 +337,15 @@ export const sharePettyCashWhatsApp = async (sheet: PettyCashSheet) => {
 
   const messageText = 
     `*PETTY CASH VOUCHER*\n` +
-    `*Location:* ${sheet.location.toUpperCase()} (${sheet.template_type?.toUpperCase() || 'SHOP'})\n` +
-    `*Date:* ${sheet.date}\n` +
-    `--------------------------------\n` +
-    `Cash Received: Rs. ${(Number(sheet.received_amount) || 0).toLocaleString('en-IN')}\n` +
-    `Staff Meals (${fullTimeStaff.length} FT + ${partTimeStaff.length} PT): Rs. ${mealTotal.toLocaleString('en-IN')}\n` +
-    `Shop/Godown Expenses: Rs. ${expTotal.toLocaleString('en-IN')}\n` +
-    `Transport & Logistics: Rs. ${trTotal.toLocaleString('en-IN')}\n` +
-    `*Total Expenses:* Rs. ${totalExpenses.toLocaleString('en-IN')}\n` +
-    `--------------------------------\n` +
-    `*${balance >= 0 ? 'Balance Refund to Cashier' : 'Cash Deficit / Reimbursement'}*: Rs. ${Math.abs(balance).toLocaleString('en-IN')}\n\n` +
+    `Location: ${sheet.location}\n` +
+    `Date: ${formatDateDisplay(sheet.date)}\n` +
+    `-------------------------\n` +
+    `Total Received: Rs. ${(Number(sheet.received_amount) || 0).toLocaleString('en-IN')}\n` +
+    `Staff Meals: Rs. ${mealTotal.toLocaleString('en-IN')}\n` +
+    `Expenses: Rs. ${expTotal.toLocaleString('en-IN')}\n` +
+    `Logistics: Rs. ${trTotal.toLocaleString('en-IN')}\n` +
+    `*Grand Total:* Rs. ${totalExpenses.toLocaleString('en-IN')}\n` +
+    `*Balance to Return:* Rs. ${balance.toLocaleString('en-IN')}\n\n` +
     `_Detailed PDF voucher generated from StaffSync._`;
 
   // Attempt Web Share API (native WhatsApp file attachment on mobile)
