@@ -1,0 +1,2 @@
+ALTER TABLE public.payroll_runs DROP CONSTRAINT IF EXISTS payroll_runs_month_year_key;
+CREATE UNIQUE INDEX IF NOT EXISTS payroll_runs_tenant_month_year_key ON public.payroll_runs (tenant_id, month, year);
