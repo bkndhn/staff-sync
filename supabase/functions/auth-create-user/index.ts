@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
 };
 
-const VALID_ROLES = ['admin', 'manager', 'supervisor', 'floor_supervisor', 'statutory_admin'];
+const VALID_ROLES = ['admin', 'manager', 'supervisor', 'floor_supervisor', 'statutory_admin', 'petty_cash_manager'];
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isValidEmail(email: string): boolean {
