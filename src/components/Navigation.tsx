@@ -153,7 +153,7 @@ const Navigation: React.FC<NavigationProps> = ({
   ];
 
   const { primaryTabs, secondaryTabs } = React.useMemo(() => {
-    if (tabs.length <= 5) {
+    if (tabs.length <= 6) {
       return { primaryTabs: tabs, secondaryTabs: [] };
     }
     // Pick the top 4 available tabs according to priority order
@@ -162,12 +162,12 @@ const Navigation: React.FC<NavigationProps> = ({
       const found = tabs.find(t => t.id === tabId);
       if (found && !prioritized.some(p => p.id === found.id)) {
         prioritized.push(found);
-        if (prioritized.length === 4) break;
+        if (prioritized.length === 5) break;
       }
     }
     // Fill up to 4 if not reached
     for (const t of tabs) {
-      if (prioritized.length >= 4) break;
+      if (prioritized.length >= 5) break;
       if (!prioritized.some(p => p.id === t.id)) {
         prioritized.push(t);
       }
@@ -239,7 +239,7 @@ const Navigation: React.FC<NavigationProps> = ({
                     : 'text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                 }`}
               >
-                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                <Icon size={19} strokeWidth={isActive ? 2.5 : 2} />
                 {!collapsed && <span className="truncate">{tab.label}</span>}
               </button>
             );
@@ -307,7 +307,7 @@ const Navigation: React.FC<NavigationProps> = ({
       {/* ── Mobile Bottom Navigation (docked grid, 4 primary tabs + More) ── */}
       {tabs.length > 1 && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 mobile-nav safe-area-padding pb-[env(safe-area-inset-bottom,0.5rem)] border-t border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-lg">
-          <div className={`grid ${secondaryTabs.length > 0 ? 'grid-cols-5' : `grid-cols-${primaryTabs.length}`} items-center px-1 pt-1 pb-0.5 w-full h-14`}>
+          <div className="grid items-center px-0.5 pt-1 pb-0.5 w-full h-14" style={{ gridTemplateColumns: `repeat(${primaryTabs.length + (secondaryTabs.length > 0 ? 1 : 0)}, minmax(0, 1fr))` }}>
             {primaryTabs.map(tab => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -325,7 +325,7 @@ const Navigation: React.FC<NavigationProps> = ({
                   }`}
                 >
                   <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-blue-500/15 dark:bg-blue-500/25 scale-105' : ''}`}>
-                    <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                    <Icon size={19} strokeWidth={isActive ? 2.5 : 2} />
                   </div>
                   <span className="text-[10px] tracking-tight mt-0.5 truncate max-w-full font-medium">{tab.label}</span>
                 </button>
@@ -418,7 +418,7 @@ const Navigation: React.FC<NavigationProps> = ({
                       }`}
                     >
                       <div className={`p-2 rounded-xl mb-1.5 ${isActive ? 'bg-white/20 text-white' : 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'}`}>
-                        <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                        <Icon size={19} strokeWidth={isActive ? 2.5 : 2} />
                       </div>
                       <span className={`text-[11px] text-center font-medium leading-tight truncate w-full ${isActive ? 'text-white font-bold' : 'text-slate-700 dark:text-slate-300'}`}>
                         {tab.label}
