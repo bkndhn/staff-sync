@@ -859,6 +859,53 @@ const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                 </div>
 
+                {(() => {
+                  const KEY_ROLES = ['Salesman', 'Supervisor', 'Manager', 'Cashier', 'Biller'];
+                  const roleOf = (s: Staff) => {
+                    const d = (s.designation || '').toLowerCase();
+                    if (d.includes('sales')) return 'Salesman';
+                    if (d.includes('supervisor')) return 'Supervisor';
+                    if (d.includes('manager')) return 'Manager';
+                    if (d.includes('cashier')) return 'Cashier';
+                    if (d.includes('biller') || d.includes('billing')) return 'Biller';
+                    return 'Others';
+                  };
+                  const cols = [...KEY_ROLES, 'Others'];
+                  const zero = () => Object.fromEntries(cols.map(c => [c, 0])) as Record<string, number>;
+                  const zone = zero();
+                  const floors: Record<string, Record<string, number>> = {};
+                  locationPresentStaff.forEach(s => {
+                    const r = roleOf(s);
+                    zone[r]++;
+                    const f = s.floor || 'No floor';
+                    (floors[f] ||= zero())[r]++;
+                  });
+                  const floorNames = Object.keys(floors).sort();
+                  return (
+                    <div className="mb-4 px-1 overflow-x-auto">
+                      <table className="w-full text-xs border-collapse min-w-[420px]">
+                        <thead>
+                          <tr className="text-muted-foreground">
+                            <th className="text-left font-semibold py-1 pr-2">Present by role</th>
+                            {cols.map(c => <th key={c} className="font-semibold py-1 px-1 text-center">{c}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-t border-border font-bold text-foreground">
+                            <td className="py-1 pr-2">Zone total</td>
+                            {cols.map(c => <td key={c} className="text-center tabular-nums">{zone[c]}</td>)}
+                          </tr>
+                          {floorNames.map(f => (
+                            <tr key={f} className="border-t border-border text-foreground/80">
+                              <td className="py-1 pr-2">{f}</td>
+                              {cols.map(c => <td key={c} className="text-center tabular-nums">{floors[f][c] || '–'}</td>)}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
                 {sortedLocationDes.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 mb-4 px-1">
                     <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Zone Roles Present:</span>

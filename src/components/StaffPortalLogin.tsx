@@ -185,8 +185,8 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
     if (!mustSetPassword) return;
     setError('');
 
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -253,8 +253,8 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
       return;
     }
 
-    if (!managerPin || managerPin.length !== 4) {
-      setError('Please enter the 4-digit Manager Reset PIN');
+    if (!managerPin || managerPin.length !== 6) {
+      setError('Please enter the 6-digit Manager Reset PIN');
       return;
     }
 
@@ -450,10 +450,11 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
                 <input
                   type="text"
                   value={managerPin}
-                  onChange={(e) => setManagerPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  onChange={(e) => setManagerPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   className="input-premium font-mono tracking-widest"
-                  placeholder="4-digit PIN from your manager"
-                  maxLength={4}
+                  placeholder="6-digit PIN from your manager"
+                  maxLength={6}
+                  inputMode="numeric"
                   required
                 />
               </div>
@@ -465,7 +466,7 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="input-premium"
                   placeholder="Enter new password"
-                  minLength={6}
+                  minLength={8}
                   required
                 />
               </div>
@@ -477,7 +478,7 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="input-premium"
                   placeholder="Confirm new password"
-                  minLength={6}
+                  minLength={8}
                   required
                 />
               </div>
@@ -513,8 +514,8 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value.slice(0, 128))}
                     className="input-premium pr-12"
-                    placeholder="At least 6 characters"
-                    minLength={6}
+                    placeholder="At least 8 characters"
+                    minLength={8}
                     maxLength={128}
                     required
                     autoComplete="new-password"
@@ -574,7 +575,7 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
                     onChange={(e) => setConfirmPassword(e.target.value.slice(0, 128))}
                     className="input-premium pr-12"
                     placeholder="Re-enter new password"
-                    minLength={6}
+                    minLength={8}
                     maxLength={128}
                     required
                     autoComplete="new-password"
