@@ -48,8 +48,8 @@ interface TableAcl {
 
 const ACL: Record<string, TableAcl> = {
   // ── Staff & Attendance ─────────────────────────────────────────────────────
-  staff:                             { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager"],           locationCol: "location", floorCol: "floor", staffIdCol: "id" },
-  attendance:                        { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager","statutory_admin","supervisor","floor_supervisor"], locationCol: "location", floorCol: "floor", staffIdCol: "staff_id" },
+  staff:                             { read: ["petty_cash_manager","admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager"],           locationCol: "location", floorCol: "floor", staffIdCol: "id" },
+  attendance:                        { read: ["petty_cash_manager","admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager","statutory_admin","supervisor","floor_supervisor"], locationCol: "location", floorCol: "floor", staffIdCol: "staff_id" },
   punch_events:                      { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager","supervisor","floor_supervisor"], locationCol: "location", staffIdCol: "staff_id" },
   push_subscriptions:                { read: ["admin","manager","staff","supervisor","floor_supervisor"],                                 write: ["admin","manager","staff","supervisor","floor_supervisor"], staffIdCol: "staff_id" },
   // ── Breaks ──────────────────────────────────────────────────────────────────
@@ -80,9 +80,9 @@ const ACL: Record<string, TableAcl> = {
 
   // ── Config / Settings ───────────────────────────────────────────────────────
   app_settings:                      { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
-  locations:                         { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
-  designations:                      { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
-  floors:                            { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
+  locations:                         { read: ["petty_cash_manager","admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
+  designations:                      { read: ["petty_cash_manager","admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
+  floors:                            { read: ["petty_cash_manager","admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   salary_categories:                 { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   location_shift_config:             { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   location_designation_shift_config: { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
@@ -839,6 +839,13 @@ Deno.serve(async (req) => {
     let payloadData = stripSecrets(wantSingle
       ? (Array.isArray(data) ? (data[0] ?? null) : (data ?? null))
       : data);
+
+    // Petty Cash Handler sees only name/designation/type of staff — never pay or ID details.
+    if (role === "petty_cash_manager" && body.table === "staff" && body.op === "select") {
+      const keep = ["id","name","designation","location","floor","type","staff_type","is_active","display_order","employee_code","tenant_id"];
+      const pick = (r: any) => (!r || typeof r !== "object") ? r : Object.fromEntries(Object.entries(r).filter(([k]) => keep.includes(k)));
+      payloadData = Array.isArray(payloadData) ? payloadData.map(pick) : pick(payloadData);
+    }
 
     // Staff may read payroll_runs only to know which months are published;
     // company-wide totals are stripped so nobody sees the whole payroll.
