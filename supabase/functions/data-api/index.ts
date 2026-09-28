@@ -442,6 +442,33 @@ Deno.serve(async (req) => {
       scopeFilters.push({ col: acl.staffIdCol, op: "eq", val: user.id });
     }
 
+    // Petty Cash Handler: hard-locked to their assigned zone (location)
+    if (role === "petty_cash_manager") {
+      const deny = (msg: string) => new Response(JSON.stringify({ error: msg }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!user.location) return deny("Petty Cash Handler is not assigned to a zone");
+      if (acl.locationCol) {
+        scopeFilters.push({ col: acl.locationCol, op: "eq", val: user.location });
+      }
+      const PC_CHILD = ["petty_cash_staff_meals", "petty_cash_expenses", "petty_cash_transports"];
+      if (PC_CHILD.includes(body.table)) {
+        const ids = new Set<string>();
+        const fSheet = body.filters?.find((f) => f.col === "sheet_id" && f.op === "eq")?.val;
+        if (body.op === "select" || body.op === "update" || body.op === "delete") {
+          if (!fSheet) return deny("sheet_id filter required");
+          ids.add(String(fSheet));
+        } else {
+          const rows = (Array.isArray(body.values) ? body.values : [body.values]) as Array<Record<string, unknown>>;
+          for (const r of rows) { if (!r?.sheet_id) return deny("sheet_id required"); ids.add(String(r.sheet_id)); }
+        }
+        let chk: any = admin.from("petty_cash_sheets").select("id").in("id", [...ids]).eq("location", user.location);
+        if (tenantId) chk = chk.eq("tenant_id", tenantId);
+        const { data: okRows } = await chk;
+        if ((okRows?.length ?? 0) !== ids.size) return deny("Sheet belongs to another zone");
+      }
+    }
+
+
     const forceScope = (rows: Array<Record<string, unknown>>) => {
       if (tenantId) for (const r of rows) r[tenantCol] = tenantId;
       if (role === "manager" && acl.locationCol && user.location) {
