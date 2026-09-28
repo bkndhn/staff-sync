@@ -480,6 +480,8 @@ Deno.serve(async (req) => {
       }
       if (role === "staff" && acl.staffIdCol && user.id) {
         for (const r of rows) r[acl.staffIdCol!] = user.id;
+      }      if (role === "petty_cash_manager" && acl.locationCol && user.location) {
+        for (const r of rows) r[acl.locationCol!] = user.location;
       }
     };
 
