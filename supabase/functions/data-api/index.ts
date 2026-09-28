@@ -48,8 +48,8 @@ interface TableAcl {
 
 const ACL: Record<string, TableAcl> = {
   // ── Staff & Attendance ─────────────────────────────────────────────────────
-  staff:                             { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager"],           locationCol: "location", floorCol: "floor", staffIdCol: "id" },
-  attendance:                        { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager","statutory_admin","supervisor","floor_supervisor"], locationCol: "location", floorCol: "floor", staffIdCol: "staff_id" },
+  staff:                             { read: ["petty_cash_manager","admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager"],           locationCol: "location", floorCol: "floor", staffIdCol: "id" },
+  attendance:                        { read: ["petty_cash_manager","admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager","statutory_admin","supervisor","floor_supervisor"], locationCol: "location", floorCol: "floor", staffIdCol: "staff_id" },
   punch_events:                      { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin","manager","supervisor","floor_supervisor"], locationCol: "location", staffIdCol: "staff_id" },
   push_subscriptions:                { read: ["admin","manager","staff","supervisor","floor_supervisor"],                                 write: ["admin","manager","staff","supervisor","floor_supervisor"], staffIdCol: "staff_id" },
   // ── Breaks ──────────────────────────────────────────────────────────────────
@@ -80,9 +80,9 @@ const ACL: Record<string, TableAcl> = {
 
   // ── Config / Settings ───────────────────────────────────────────────────────
   app_settings:                      { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
-  locations:                         { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
-  designations:                      { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
-  floors:                            { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
+  locations:                         { read: ["petty_cash_manager","admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
+  designations:                      { read: ["petty_cash_manager","admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
+  floors:                            { read: ["petty_cash_manager","admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   salary_categories:                 { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   location_shift_config:             { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
   location_designation_shift_config: { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["admin"] },
@@ -97,7 +97,7 @@ const ACL: Record<string, TableAcl> = {
   ai_insights:                       { read: ["admin","manager","super_admin","statutory_admin"], write: ["admin","manager"] },
   announcements:                     { read: ["admin","manager","staff","supervisor","floor_supervisor","super_admin","statutory_admin"], write: ["admin","manager"] },
   // ── Platform-level ──────────────────────────────────────────────────────────
-  app_users:                         { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["super_admin","admin"] },
+  app_users:                         { read: ["petty_cash_manager","admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"], write: ["super_admin","admin"] },
   blacklisted_devices:               { read: ["admin","super_admin"], write: ["admin","super_admin"] },
   payroll_rules:                     { read: ["admin","manager","super_admin","statutory_admin"], write: ["admin","super_admin"] },
   // ── Tenants (self-scoped: the tenant's own PK is 'id', not 'tenant_id') ─
@@ -442,6 +442,34 @@ Deno.serve(async (req) => {
       scopeFilters.push({ col: acl.staffIdCol, op: "eq", val: user.id });
     }
 
+    // Petty Cash Handler: hard-locked to their assigned zone (location)
+    if (role === "petty_cash_manager") {
+      const deny = (msg: string) => new Response(JSON.stringify({ error: msg }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!user.location) return deny("Petty Cash Handler is not assigned to a zone");
+      if (acl.locationCol) {
+        scopeFilters.push({ col: acl.locationCol, op: "eq", val: user.location });
+      }
+      if (body.table === "app_users") scopeFilters.push({ col: "id", op: "eq", val: user.id });
+      const PC_CHILD = ["petty_cash_staff_meals", "petty_cash_expenses", "petty_cash_transports"];
+      if (PC_CHILD.includes(body.table)) {
+        const ids = new Set<string>();
+        const fSheet = body.filters?.find((f) => f.col === "sheet_id" && f.op === "eq")?.val;
+        if (body.op === "select" || body.op === "update" || body.op === "delete") {
+          if (!fSheet) return deny("sheet_id filter required");
+          ids.add(String(fSheet));
+        } else {
+          const rows = (Array.isArray(body.values) ? body.values : [body.values]) as Array<Record<string, unknown>>;
+          for (const r of rows) { if (!r?.sheet_id) return deny("sheet_id required"); ids.add(String(r.sheet_id)); }
+        }
+        let chk: any = admin.from("petty_cash_sheets").select("id").in("id", [...ids]).eq("location", user.location);
+        if (tenantId) chk = chk.eq("tenant_id", tenantId);
+        const { data: okRows } = await chk;
+        if ((okRows?.length ?? 0) !== ids.size) return deny("Sheet belongs to another zone");
+      }
+    }
+
+
     const forceScope = (rows: Array<Record<string, unknown>>) => {
       if (tenantId) for (const r of rows) r[tenantCol] = tenantId;
       if (role === "manager" && acl.locationCol && user.location) {
@@ -453,6 +481,8 @@ Deno.serve(async (req) => {
       }
       if (role === "staff" && acl.staffIdCol && user.id) {
         for (const r of rows) r[acl.staffIdCol!] = user.id;
+      }      if (role === "petty_cash_manager" && acl.locationCol && user.location) {
+        for (const r of rows) r[acl.locationCol!] = user.location;
       }
     };
 
@@ -810,6 +840,13 @@ Deno.serve(async (req) => {
     let payloadData = stripSecrets(wantSingle
       ? (Array.isArray(data) ? (data[0] ?? null) : (data ?? null))
       : data);
+
+    // Petty Cash Handler sees only name/designation/type of staff — never pay or ID details.
+    if (role === "petty_cash_manager" && body.table === "staff" && body.op === "select") {
+      const keep = ["id","name","designation","location","floor","type","staff_type","is_active","display_order","employee_code","tenant_id"];
+      const pick = (r: any) => (!r || typeof r !== "object") ? r : Object.fromEntries(Object.entries(r).filter(([k]) => keep.includes(k)));
+      payloadData = Array.isArray(payloadData) ? payloadData.map(pick) : pick(payloadData);
+    }
 
     // Staff may read payroll_runs only to know which months are published;
     // company-wide totals are stripped so nobody sees the whole payroll.

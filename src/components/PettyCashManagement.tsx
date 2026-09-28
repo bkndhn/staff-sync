@@ -37,7 +37,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
   const isZoneHandler = userRole === 'petty_cash_manager';
 
   const initialLocation = isZoneHandler
-    ? userLocation || (allLocations[0]?.name || '')
+    ? (userLocation || '')
     : (userLocation || allLocations[0]?.name || '');
 
   const [location, setLocation] = useState(initialLocation);
@@ -51,7 +51,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
   }, [isZoneHandler, userLocation, location]);
 
   useEffect(() => {
-    if (!location && allLocations.length > 0) {
+    if (!location && allLocations.length > 0 && !isZoneHandler) {
       setLocation(userLocation || allLocations[0]?.name || '');
     }
   }, [allLocations, location, userLocation]);
