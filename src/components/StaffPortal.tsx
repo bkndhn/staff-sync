@@ -744,32 +744,85 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         ))}
       </div>
 
-      {/* Bottom Navigation (mobile) — every tab, horizontally scrollable */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 safe-area-padding staff-bottom-nav border-t border-[var(--glass-border)] bg-[var(--bg-card)]/95 backdrop-blur-xl shadow-[0_-4px_24px_rgba(15,23,42,0.12)]">
-        <style>{`.staff-bottom-nav .staff-nav-scroll::-webkit-scrollbar { display: none; }`}</style>
-        <div
-          className="staff-nav-scroll flex items-end gap-1 px-2 pt-1.5 pb-1.5 w-max min-w-full justify-around overflow-x-auto"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', minHeight: '58px' }}
-        >
-          {sections.map(s => {
+      {/* Bottom Navigation (mobile) — 5 primary tabs + More sheet */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 safe-area-padding pb-[env(safe-area-inset-bottom,0.5rem)] border-t border-[var(--glass-border)] bg-[var(--bg-card)]/95 backdrop-blur-xl shadow-[0_-4px_24px_rgba(15,23,42,0.12)]">
+        <div className="grid grid-cols-6 items-center px-0.5 pt-1 pb-0.5 h-14">
+          {primarySections.map(s => {
             const isActive = activeSection === s.id;
             return (
               <button
                 key={s.id}
-                onClick={() => setActiveSection(s.id as any)}
-                className={`flex-shrink-0 min-w-[60px] flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-2xl transition-all active:scale-95 ${
-                  isActive
-                    ? 'bg-gradient-to-b from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/30'
-                    : 'text-[var(--text-secondary)]'
+                onClick={() => { setShowMoreSections(false); setActiveSection(s.id as any); }}
+                className={`flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all active:scale-95 ${
+                  isActive ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-[var(--text-secondary)]'
                 }`}
               >
-                <s.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-                <span className="text-[10px] font-semibold leading-tight text-center whitespace-nowrap">{s.label}</span>
+                <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-indigo-500/15 dark:bg-indigo-500/25 scale-105' : ''}`}>
+                  <s.icon size={19} strokeWidth={isActive ? 2.5 : 2} />
+                </div>
+                <span className="text-[10px] font-medium leading-tight mt-0.5 truncate max-w-full">{s.label}</span>
               </button>
             );
           })}
+          {secondarySections.length > 0 && (
+            <button
+              onClick={() => setShowMoreSections(v => !v)}
+              className={`relative flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all active:scale-95 ${
+                isMoreSectionActive || showMoreSections ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-[var(--text-secondary)]'
+              }`}
+            >
+              <div className={`p-1 rounded-xl transition-all ${isMoreSectionActive || showMoreSections ? 'bg-indigo-500/15 dark:bg-indigo-500/25 scale-105' : ''}`}>
+                <Grid3x3 size={19} strokeWidth={isMoreSectionActive ? 2.5 : 2} />
+              </div>
+              <span className="text-[10px] font-medium leading-tight mt-0.5">More</span>
+              {isMoreSectionActive && (
+                <span className="absolute top-1 right-2.5 w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-[var(--bg-card)]" />
+              )}
+            </button>
+          )}
         </div>
       </div>
+
+      {/* More sheet (mobile) */}
+      {showMoreSections && (
+        <div className="md:hidden fixed inset-0 z-[60] flex flex-col justify-end">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowMoreSections(false)} />
+          <div className="relative z-10 w-full max-h-[82vh] overflow-y-auto rounded-t-3xl bg-[var(--bg-card)] border-t border-[var(--glass-border)] shadow-2xl p-4 pb-[calc(env(safe-area-inset-bottom,1rem)+1.5rem)]">
+            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3" />
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--glass-border)]">
+              <div>
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">All Sections</h3>
+                <p className="text-[11px] text-[var(--text-muted)]">{staff.name}</p>
+              </div>
+              <button onClick={() => setShowMoreSections(false)} className="p-1.5 rounded-full text-[var(--text-muted)]">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="grid grid-cols-4 gap-2.5 py-3">
+              {secondarySections.map(s => {
+                const isActive = activeSection === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => { setActiveSection(s.id as any); setShowMoreSections(false); }}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-2xl transition-all active:scale-95 ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30 ring-2 ring-indigo-400'
+                        : 'bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-secondary)]'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-xl mb-1.5 ${isActive ? 'bg-white/20 text-white' : 'bg-[var(--bg-card)] text-indigo-500 shadow-sm'}`}>
+                      <s.icon size={19} strokeWidth={isActive ? 2.5 : 2} />
+                    </div>
+                    <span className="text-[11px] text-center font-medium leading-tight w-full truncate">{s.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
 
 
       {/* Month Navigator (for attendance & salary) */}

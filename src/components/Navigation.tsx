@@ -153,7 +153,7 @@ const Navigation: React.FC<NavigationProps> = ({
   ];
 
   const { primaryTabs, secondaryTabs } = React.useMemo(() => {
-    if (tabs.length <= 6) {
+    if (tabs.length <= 5) {
       return { primaryTabs: tabs, secondaryTabs: [] };
     }
     // Pick the top 4 available tabs according to priority order
