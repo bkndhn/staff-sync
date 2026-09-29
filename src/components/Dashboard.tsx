@@ -883,10 +883,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                   const floorNames = Object.keys(floors).sort();
                   return (
                     <div className="mb-4 px-1 overflow-x-auto">
-                      <table className="w-full text-xs border-collapse min-w-[420px]">
+                      <table className="w-full text-[10px] sm:text-xs border-collapse">
                         <thead>
                           <tr className="text-muted-foreground">
-                            <th className="text-left font-semibold py-1 pr-2">Present by role</th>
+                            <th className="text-left font-semibold py-1 pr-2">Present</th>
                             {cols.map(c => <th key={c} className="font-semibold py-1 px-1 text-center">{c}</th>)}
                           </tr>
                         </thead>
