@@ -348,7 +348,7 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
           </div>
 
           {/* Staff Login Form */}
-          {!mustSetPassword ? (
+          {!mustSetPassword && !isForgotPassword ? (
             <div className="space-y-4">
               <form onSubmit={handleStaffSubmit} className="space-y-4">
                 <div>
@@ -503,7 +503,7 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
             <form onSubmit={handleStaffSetPassword} className="space-y-4">
               <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
                 <p className="text-sm font-medium text-[var(--text-primary)]">
-                  Welcome {mustSetPassword.staff.name}! Please set a new password to continue.
+                  Welcome {mustSetPassword?.staff.name}! Please set a new password to continue.
                 </p>
               </div>
               <div>
