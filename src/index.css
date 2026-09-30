@@ -3446,3 +3446,17 @@ body.light-theme .petty-cash-header-count,
   display: none;
 }
 
+
+/* ===== Premium mobile feel (app-wide) ===== */
+@media (max-width: 767px) {
+  html { -webkit-tap-highlight-color: transparent; }
+  button, [role="button"], a { touch-action: manipulation; transition: transform 120ms ease, opacity 120ms ease; }
+  button:active:not(:disabled), [role="button"]:active { transform: scale(0.96); }
+  input, select, textarea { font-size: 16px !important; }
+  body { overscroll-behavior-y: contain; }
+}
+/* High-contrast dark mode: lift faint greys to readable levels */
+body:not(.light-theme) .text-slate-400, body:not(.light-theme) .text-gray-400 { color: rgb(203 213 225) !important; }
+body:not(.light-theme) .text-slate-500, body:not(.light-theme) .text-gray-500 { color: rgb(170 182 199) !important; }
+body:not(.light-theme) .text-slate-600, body:not(.light-theme) .text-gray-600 { color: rgb(148 163 184) !important; }
+body:not(.light-theme) ::placeholder { color: rgb(148 163 184); opacity: 1; }
