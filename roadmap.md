@@ -4,3 +4,5 @@
 - [x] Mobile bottom nav: 5 tabs + More sheet, fits 393px
 - [x] Dashboard role breakdown (Salesman/Supervisor/Manager/Cashier/Biller) per zone & floor
 - [x] Petty Cash Handler zone-scoped view/edit; admin sees all
+- [x] Staff portal 5 tabs + More bottom bar
+- [x] Premium mobile feel + high-contrast dark mode (global)
