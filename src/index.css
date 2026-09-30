@@ -3456,7 +3456,7 @@ body.light-theme .petty-cash-header-count,
   body { overscroll-behavior-y: contain; }
 }
 /* High-contrast dark mode: lift faint greys to readable levels */
-.dark .text-slate-400, .dark .text-gray-400 { color: rgb(203 213 225) !important; }
-.dark .text-slate-500, .dark .text-gray-500 { color: rgb(170 182 199) !important; }
-.dark .text-slate-600, .dark .text-gray-600 { color: rgb(148 163 184) !important; }
-.dark ::placeholder { color: rgb(148 163 184); opacity: 1; }
+body:not(.light-theme) .text-slate-400, body:not(.light-theme) .text-gray-400 { color: rgb(203 213 225) !important; }
+body:not(.light-theme) .text-slate-500, body:not(.light-theme) .text-gray-500 { color: rgb(170 182 199) !important; }
+body:not(.light-theme) .text-slate-600, body:not(.light-theme) .text-gray-600 { color: rgb(148 163 184) !important; }
+body:not(.light-theme) ::placeholder { color: rgb(148 163 184); opacity: 1; }
