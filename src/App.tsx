@@ -499,6 +499,21 @@ function App() {
     }, [])
   );
 
+  // Poll attendance every 60s while Dashboard is visible so present-by-role
+  // counts stay live even when realtime is blocked by RLS.
+  useEffect(() => {
+    if (activeTab !== 'Dashboard' || !user) return;
+    const id = window.setInterval(async () => {
+      if (document.hidden) return;
+      try {
+        cacheService.invalidate(CACHE_KEYS.ATTENDANCE);
+        const fresh = await attendanceService.getAll();
+        if (Array.isArray(fresh)) setAttendance(fresh);
+      } catch { /* keep last data */ }
+    }, 60000);
+    return () => window.clearInterval(id);
+  }, [activeTab, user]);
+
   const handleLogin = async (userData: { id?: string; email: string; role: string; location?: string; floor?: string; floorId?: string; staffId?: string; staffName?: string }) => {
     cacheService.clearAll();
     setStaff([]);
