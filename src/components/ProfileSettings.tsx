@@ -91,7 +91,17 @@ const ProfileSettings: React.FC<Props> = ({ user, onUpdateUser }) => {
           
           <div className="pt-2">
             <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Change Password</h3>
-            <p className="text-xs text-[var(--text-muted)] mb-3">Leave blank to keep current password</p>
+            <p className="text-xs text-[var(--text-muted)] mb-3">Leave blank to keep current password. Minimum 8 characters.</p>
+            {form.newPassword && (
+              <ul className="mb-3 space-y-1 text-xs">
+                <li className={form.newPassword.length >= 8 ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--text-muted)]'}>
+                  {form.newPassword.length >= 8 ? '✓' : '•'} At least 8 characters
+                </li>
+                <li className={form.confirmPassword && form.newPassword === form.confirmPassword ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--text-muted)]'}>
+                  {form.confirmPassword && form.newPassword === form.confirmPassword ? '✓' : '•'} Passwords match
+                </li>
+              </ul>
+            )}
             
             <div className="space-y-4">
               <div>
