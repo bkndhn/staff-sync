@@ -56,7 +56,11 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
     }
   }, [allLocations, location, userLocation]);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'sheet' | 'history'>('sheet');
+  const [historySheets, setHistorySheets] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [saving, setSaving] = useState(false);
   
   const [sheet, setSheet] = useState<PettyCashSheet | null>(null);
@@ -169,6 +173,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
   const fetchSheet = async () => {
     if (!location || !date) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const existing = await pettyCashService.getSheet(location, date);
       if (existing) {
@@ -189,10 +194,29 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
       }
     } catch (e) {
       console.error('Error fetching sheet:', e);
+      setLoadError('Failed to load petty cash sheet.');
     } finally {
       setLoading(false);
     }
   };
+
+  const loadHistory = async () => {
+    if (!location) return;
+    setLoadingHistory(true);
+    try {
+      const sheets = await pettyCashService.getSheetHistory(location);
+      setHistorySheets(sheets || []);
+    } catch (e) {
+      console.error('Error loading history:', e);
+      setHistorySheets([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'history') loadHistory();
+  }, [activeTab, location]);
 
   const createNewSheet = async () => {
     const defaultExpenses: CustomExpense[] = templateType === 'shop' 
@@ -455,8 +479,25 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
     setSheet({ ...sheet, transport_logistics: tr });
   };
 
-  if (!sheet && !loading) {
-    return <div className="p-8 text-center text-slate-500 font-medium">Failed to load petty cash sheet.</div>;
+  if (loading) {
+    return (
+      <div className="p-4 space-y-4 animate-pulse">
+        <div className="h-20 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+        <div className="h-40 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+        <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+      </div>
+    );
+  }
+  if (!sheet && !loading && loadError) {
+    return (
+      <div className="p-8 text-center">
+        <div className="inline-flex flex-col items-center gap-3 p-6 rounded-2xl bg-red-500/10 border border-red-500/20">
+          <span className="text-2xl">⚠️</span>
+          <p className="text-red-400 font-semibold">{loadError}</p>
+          <button onClick={fetchSheet} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">Retry</button>
+        </div>
+      </div>
+    );
   }
 
   const fullTimeStaff = sheet?.staff_meals.filter(s => s.staff_type === 'full-time') || [];
@@ -472,6 +513,31 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-36 sm:pb-16">
+      {/* Tab Switcher */}
+      <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+        <button
+          onClick={() => setActiveTab('sheet')}
+          className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all ${
+            activeTab === 'sheet'
+              ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          Today&apos;s Sheet
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all ${
+            activeTab === 'history'
+              ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          History
+        </button>
+      </div>
+
+      {activeTab === 'sheet' && (<>
       {/* Streamlined Compact Control Bar */}
       <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-2.5">
         
@@ -1481,6 +1547,58 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
             </div>
           </div>
 
+        </div>
+      )}
+      </>)}
+
+      {activeTab === 'history' && (
+        <div className="space-y-3">
+          {loadingHistory ? (
+            <div className="p-4 space-y-3 animate-pulse">
+              {[1,2,3,4,5].map(i => <div key={i} className="h-20 bg-slate-200 dark:bg-slate-800 rounded-xl" />)}
+            </div>
+          ) : historySheets.length === 0 ? (
+            <div className="text-center py-12 text-slate-500">No history found for {location}</div>
+          ) : (
+            historySheets.map((s: any) => {
+              const expTotal = (s.expenses || []).reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0);
+              const mealTotal = (s.staff_meals || []).reduce((sum: number, m: any) => sum + (Number(m.amount) || 0), 0);
+              const transportTotal = (s.transport_logistics || []).reduce((sum: number, t: any) => sum + (Number(t.total) || 0), 0);
+              const netReimbursed = (Number(s.received_amount) || 0) - expTotal - transportTotal;
+              const dateLabel = new Date(s.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+              return (
+                <div key={s.id || s.date} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <div className="font-bold text-slate-800 dark:text-slate-100">{dateLabel}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{s.location}</div>
+                    </div>
+                    <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
+                      s.saved_at ? 'bg-emerald-500/15 text-emerald-600' : 'bg-amber-500/15 text-amber-600'
+                    }`}>{s.saved_at ? 'Saved' : 'Draft'}</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                      <div className="text-slate-500 font-medium">Total Expense</div>
+                      <div className="font-bold text-slate-800 dark:text-slate-100">Rs. {expTotal.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                      <div className="text-slate-500 font-medium">Meal Total</div>
+                      <div className="font-bold text-slate-800 dark:text-slate-100">Rs. {mealTotal.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                      <div className="text-slate-500 font-medium">Transport</div>
+                      <div className="font-bold text-slate-800 dark:text-slate-100">Rs. {transportTotal.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                      <div className="text-slate-500 font-medium">Net Reimbursed</div>
+                      <div className={`font-bold ${netReimbursed >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>Rs. {netReimbursed.toLocaleString('en-IN')}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       )}
     </div>

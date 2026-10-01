@@ -1099,7 +1099,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
             <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-orange-500 ring-2 ring-orange-300 inline-block"></span> Uninformed</span>
           </div>
 
-          {/* Day-by-day */}
+          {/* Day-by-day — desktop only */}
+          <div className="hidden md:block">
           <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-2xl overflow-hidden shadow-[var(--shadow-soft)]">
             <div className="p-4 border-b border-[var(--glass-border)]">
               <h3 className="font-bold text-[var(--text-primary)]">Monthly Attendance View</h3>
@@ -1255,6 +1256,164 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                 );
               })()}
             </div>
+          </div>
+          </div>
+
+          {/* Mobile Daily Punch Feed - only on small screens */}
+          <div className="block md:hidden space-y-2">
+            {/* Month/Year Header */}
+            <div className="flex items-center justify-between px-1 mb-2">
+              <button
+                onClick={() => {
+                  let m = selectedMonth - 1;
+                  let y = selectedYear;
+                  if (m < 0) { m = 11; y--; }
+                  setSelectedMonth(m);
+                  setSelectedYear(y);
+                }}
+                className="p-2 rounded-xl bg-[var(--bg-card)] border border-[var(--glass-border)] text-[var(--text-secondary)] active:scale-95 transition-transform"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <h3 className="font-bold text-[var(--text-primary)] text-base">
+                {new Date(selectedYear, selectedMonth).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+              </h3>
+              <button
+                onClick={() => {
+                  let m = selectedMonth + 1;
+                  let y = selectedYear;
+                  if (m > 11) { m = 0; y++; }
+                  setSelectedMonth(m);
+                  setSelectedYear(y);
+                }}
+                className="p-2 rounded-xl bg-[var(--bg-card)] border border-[var(--glass-border)] text-[var(--text-secondary)] active:scale-95 transition-transform"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+            {/* 3-Card Metric Pill Row */}
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                <div className="text-lg font-extrabold text-emerald-600">{metrics.presentDays}<span className="text-xs font-normal text-emerald-500/70">d</span></div>
+                <div className="text-[10px] font-semibold text-emerald-600/80 uppercase tracking-wide">Present</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center">
+                <div className="text-lg font-extrabold text-amber-600">{metrics.halfDays}<span className="text-xs font-normal text-amber-500/70">d</span></div>
+                <div className="text-[10px] font-semibold text-amber-600/80 uppercase tracking-wide">Half Days</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-center">
+                <div className="text-lg font-extrabold text-red-600">{metrics.leaveDays}<span className="text-xs font-normal text-red-500/70">d</span></div>
+                <div className="text-[10px] font-semibold text-red-600/80 uppercase tracking-wide">Leaves</div>
+              </div>
+            </div>
+            {/* Vertical Day Card List */}
+            {(() => {
+              const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
+              const today = new Date();
+              const todayStr = today.toISOString().slice(0, 10);
+              return Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+                const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const record = monthlyAttendance.find(a => a.date === dateStr);
+                const status = record?.status || 'Absent';
+                const isSun = isSunday(dateStr);
+                const isToday = dateStr === todayStr;
+                const dayLabel = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+                const dayOfMonth = new Date(dateStr + 'T12:00:00').getDate();
+                const monthLabel = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' });
+
+                // Calculate duration
+                let durationStr = '';
+                let lateStr = '';
+                if (record?.arrivalTime && record?.leavingTime) {
+                  const [ih, im] = record.arrivalTime.split(':').map(Number);
+                  const [oh, om] = record.leavingTime.split(':').map(Number);
+                  const totalMins = (oh * 60 + om) - (ih * 60 + im);
+                  if (totalMins > 0) {
+                    const h = Math.floor(totalMins / 60);
+                    const m = totalMins % 60;
+                    durationStr = `${h}h${m > 0 ? ` ${m}m` : ''}`;
+                  }
+                }
+                // Late check (default shift 10:00)
+                if (record?.arrivalTime) {
+                  const [h, m] = record.arrivalTime.split(':').map(Number);
+                  const arrMins = h * 60 + m;
+                  const shiftKey = record.shift || staff.shift || 'Both';
+                  const baseWin = DEFAULT_SHIFT_WINDOWS[shiftKey] || DEFAULT_SHIFT_WINDOWS['Both'];
+                  const win = staff.shiftWindow ? { ...baseWin, ...staff.shiftWindow } : baseWin;
+                  if (win) {
+                    const startMins = parseHHMM(win.start) || 600;
+                    const lateMins = Math.max(0, arrMins - startMins - (win.graceLateMin || 0));
+                    if (lateMins > 0) lateStr = `Late (${lateMins}m)`;
+                  }
+                }
+
+                // Format time AM/PM
+                const fmtTime = (t?: string) => {
+                  if (!t) return null;
+                  const [h, m] = t.split(':').map(Number);
+                  const ampm = h >= 12 ? 'PM' : 'AM';
+                  const hour = h % 12 || 12;
+                  return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
+                };
+
+                const statusColor = status === 'Present'
+                  ? { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-600', badge: 'bg-emerald-500 text-white' }
+                  : status === 'Half Day'
+                  ? { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-600', badge: 'bg-amber-500 text-white' }
+                  : { bg: 'bg-slate-500/5', border: 'border-slate-200/50', text: 'text-slate-400', badge: 'bg-red-500 text-white' };
+
+                if (isSun) return null; // skip sundays or render differently — keep sundays
+
+                return (
+                  <div
+                    key={dateStr}
+                    className={`flex items-center gap-3 p-3 rounded-2xl border ${isToday ? 'ring-2 ring-indigo-500/40 ' : ''}${statusColor.bg} ${statusColor.border}`}
+                  >
+                    {/* Date Badge */}
+                    <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex flex-col items-center justify-center ${isSun ? 'bg-red-500/20' : 'bg-[var(--bg-secondary)]'}`}>
+                      <div className={`text-[10px] font-semibold uppercase ${isSun ? 'text-red-500' : 'text-[var(--text-muted)]'}`}>{dayLabel}</div>
+                      <div className={`text-lg font-extrabold leading-none ${isSun ? 'text-red-500' : 'text-[var(--text-primary)]'}`}>{dayOfMonth}</div>
+                      <div className="text-[9px] text-[var(--text-muted)]">{monthLabel}</div>
+                    </div>
+                    {/* Status & Times */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${statusColor.badge}`}>
+                          {status === 'Half Day' ? (record?.shift === 'Morning' ? 'Half-Morning' : record?.shift === 'Evening' ? 'Half-Eve' : 'Half Day') : status}
+                        </span>
+                        {lateStr && <span className="text-[10px] font-semibold text-red-500">{lateStr}</span>}
+                        {durationStr && <span className="text-[10px] font-medium text-[var(--text-muted)]">{durationStr}</span>}
+                      </div>
+                      {(record?.arrivalTime || record?.leavingTime) && (
+                        <div className="flex items-center gap-3 mt-1">
+                          {record.arrivalTime && (
+                            <span className="text-xs font-medium text-emerald-600">IN: {fmtTime(record.arrivalTime)}</span>
+                          )}
+                          {record.leavingTime && (
+                            <span className="text-xs font-medium text-orange-600">OUT: {fmtTime(record.leavingTime)}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {/* Correction Button */}
+                    <button
+                      onClick={() => {
+                        setRegularizationDate(dateStr);
+                        setRegularizationStatus(status);
+                        setRegularizationPunchIn(record?.arrivalTime || undefined);
+                        setRegularizationPunchOut(record?.leavingTime || undefined);
+                        setShowRegularization(true);
+                      }}
+                      className="flex-shrink-0 p-2 rounded-xl text-blue-400 hover:bg-blue-500/10 active:scale-95 transition-transform"
+                      title="Request correction"
+                    >
+                      🔧
+                    </button>
+                  </div>
+                );
+              });
+            })()}
           </div>
 
           {/* Break detail modal */}
@@ -1433,10 +1592,29 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
           </div>
         ) : (
         <div className="space-y-4">
-          {/* Download button */}
-          <button onClick={downloadSalarySlip} className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all active:scale-[0.98]">
-            <Download size={18} /> Download Payroll Slip
-          </button>
+          {/* Mobile Hero Salary Card */}
+          <div className="md:hidden rounded-3xl overflow-hidden shadow-xl mb-2" style={{background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)'}}>
+            <div className="p-5">
+              <div className="text-xs font-bold text-indigo-200 uppercase tracking-widest mb-1">Net Payable — {monthName} {selectedYear}</div>
+              <div className="text-4xl font-black text-white mb-1">Rs. {salaryDetail.netSalary.toLocaleString('en-IN')}</div>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white">Gross: Rs. {salaryDetail.grossSalary.toLocaleString('en-IN')}</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-400/30 text-red-100">Deductions: Rs. {(salaryDetail.grossSalary - salaryDetail.netSalary).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+            <button
+              onClick={downloadSalarySlip}
+              className="w-full py-3.5 bg-white/15 hover:bg-white/25 active:bg-white/30 text-white font-semibold flex items-center justify-center gap-2 transition-colors text-sm"
+            >
+              <Download size={16} /> Download Payslip PDF
+            </button>
+          </div>
+          {/* Desktop download button */}
+          <div className="hidden md:block">
+            <button onClick={downloadSalarySlip} className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all active:scale-[0.98]">
+              <Download size={18} /> Download Payroll Slip
+            </button>
+          </div>
 
           {/* Earnings */}
           <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-2xl shadow-[var(--shadow-soft)] overflow-hidden">
@@ -1629,6 +1807,16 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                 <IndianRupee size={28} className="text-white" />
               </div>
             </div>
+          </div>
+
+          {/* Sticky Download - Mobile Only */}
+          <div className="md:hidden fixed bottom-16 left-0 right-0 z-40 px-4 pb-2">
+            <button
+              onClick={downloadSalarySlip}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold flex items-center justify-center gap-2 shadow-xl shadow-indigo-500/30 active:scale-[0.98] transition-transform"
+            >
+              <Download size={18} /> Download Payslip PDF
+            </button>
           </div>
         </div>
         )

@@ -1113,43 +1113,43 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               onChange={(e) => onDateChange(e.target.value)}
               className="filter-chip flex-1 min-w-0 md:flex-none"
             />
-            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1 md:hidden">
+            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1 md:hidden min-w-[90px]">
               <label className="text-[10px] uppercase text-gray-500 font-bold">IN</label>
               <input
                 type="time"
                 value={bulkInTime}
                 onChange={e => setBulkInTime(e.target.value)}
-                className="text-xs border-none outline-none focus:ring-0 p-0 w-[70px] bg-transparent"
+                className="text-xs border-none outline-none focus:ring-0 p-0 min-w-[90px] bg-transparent"
               />
             </div>
-            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1 md:hidden">
+            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1 md:hidden min-w-[90px]">
               <label className="text-[10px] uppercase text-gray-500 font-bold">OUT</label>
               <input
                 type="time"
                 value={bulkOutTime}
                 onChange={e => setBulkOutTime(e.target.value)}
-                className="text-xs border-none outline-none focus:ring-0 p-0 w-[70px] bg-transparent"
+                className="text-xs border-none outline-none focus:ring-0 p-0 min-w-[90px] bg-transparent"
               />
             </div>
           </div>
           <div className="flex flex-row items-center gap-1 md:gap-2 w-full md:w-auto">
-            <div className="hidden md:flex items-center gap-1 border border-gray-200 rounded-lg px-1 md:px-2 py-1">
+            <div className="hidden md:flex items-center gap-1 border border-gray-200 rounded-lg px-1 md:px-2 py-1 min-w-[90px]">
 
               <label className="text-[10px] uppercase text-gray-500 font-bold">IN</label>
               <input 
                 type="time" 
                 value={bulkInTime} 
                 onChange={e => setBulkInTime(e.target.value)} 
-                className="text-xs border-none outline-none focus:ring-0 p-0 w-[55px] md:w-[70px] bg-transparent"
+                className="text-xs border-none outline-none focus:ring-0 p-0 min-w-[90px] bg-transparent"
               />
             </div>
-            <div className="hidden md:flex items-center gap-1 border border-gray-200 rounded-lg px-1 md:px-2 py-1">
+            <div className="hidden md:flex items-center gap-1 border border-gray-200 rounded-lg px-1 md:px-2 py-1 min-w-[90px]">
               <label className="text-[10px] uppercase text-gray-500 font-bold">OUT</label>
               <input 
                 type="time" 
                 value={bulkOutTime} 
                 onChange={e => setBulkOutTime(e.target.value)} 
-                className="text-xs border-none outline-none focus:ring-0 p-0 w-[55px] md:w-[70px] bg-transparent"
+                className="text-xs border-none outline-none focus:ring-0 p-0 min-w-[90px] bg-transparent"
               />
             </div>
             <div className="flex gap-1">
@@ -1411,17 +1411,17 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     <button
                       onClick={() => confirmIndividualUpdate(data.id, 'Present', data)}
                       disabled={!canEditDate}
-                      className={`h-10 rounded-lg text-sm font-bold shadow-sm transition-all ${data.status === 'Present' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-800 active:bg-green-200'}`}
+                      className={`h-10 min-h-[44px] min-w-[44px] rounded-lg text-sm font-bold shadow-sm transition-all active:scale-95 ${data.status === 'Present' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-800 active:bg-green-200'}`}
                     >P</button>
                     <button
                       onClick={() => setShowHalfDayModal({ staffId: data.id, staffName: data.originalName || data.name })}
                       disabled={!canEditDate}
-                      className={`h-10 rounded-lg text-sm font-bold shadow-sm transition-all ${data.status === 'Half Day' ? 'bg-yellow-500 text-white' : 'bg-yellow-100 text-yellow-800 active:bg-yellow-200'}`}
+                      className={`h-10 min-h-[44px] min-w-[44px] rounded-lg text-sm font-bold shadow-sm transition-all active:scale-95 ${data.status === 'Half Day' ? 'bg-yellow-500 text-white' : 'bg-yellow-100 text-yellow-800 active:bg-yellow-200'}`}
                     >H</button>
                     <button
                       onClick={() => confirmIndividualUpdate(data.id, 'Absent', data)}
                       disabled={!canEditDate}
-                      className={`h-10 rounded-lg text-sm font-bold shadow-sm transition-all ${data.status === 'Absent' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-800 active:bg-red-200'}`}
+                      className={`h-10 min-h-[44px] min-w-[44px] rounded-lg text-sm font-bold shadow-sm transition-all active:scale-95 ${data.status === 'Absent' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-800 active:bg-red-200'}`}
                     >A</button>
                     <button
                       onClick={async () => {
@@ -1449,7 +1449,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                           newVal
                         );
                       }}
-                      className={`h-10 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-1 ${(data.status === 'Absent' && data.isUninformed) ? 'bg-orange-600 text-white' : 'bg-orange-100 text-orange-800 active:bg-orange-200'}`}
+                      className={`h-10 min-h-[44px] min-w-[44px] rounded-lg text-sm font-bold shadow-sm transition-all active:scale-95 flex items-center justify-center gap-1 ${(data.status === 'Absent' && data.isUninformed) ? 'bg-orange-600 text-white' : 'bg-orange-100 text-orange-800 active:bg-orange-200'}`}
                       title="Uninformed Leave"
                     >UL</button>
                     <button

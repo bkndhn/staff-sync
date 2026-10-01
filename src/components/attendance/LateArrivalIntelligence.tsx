@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Clock, AlertTriangle, TrendingDown } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Clock, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Attendance, Staff } from '../../types';
 
 interface Props {
@@ -9,6 +9,7 @@ interface Props {
 
 const LateArrivalIntelligence: React.FC<Props> = ({ attendance, staff }) => {
   const isLight = document.body.classList.contains('light-theme');
+  const [expanded, setExpanded] = useState(false);
   
   const stats = useMemo(() => {
     let totalLateMins = 0;
@@ -56,51 +57,90 @@ const LateArrivalIntelligence: React.FC<Props> = ({ attendance, staff }) => {
       borderRadius: '1rem',
       border: `1px solid ${c.border}`,
       background: c.cardBg,
-      padding: '1.25rem',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '1rem',
+      overflow: 'hidden',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <Clock size={18} style={{ color: c.textDanger }} />
-        <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: c.title, margin: 0 }}>
-          Late Arrival Intelligence
-        </h3>
+      {/* Collapsed / header bar — always visible */}
+      <div
+        style={{
+          padding: '0.625rem 1rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <Clock size={14} style={{ color: c.textDanger }} />
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: c.title }}>
+            Late Arrival Intelligence
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontSize: '0.75rem', color: c.subtitle }}>
+            Punctuality: <strong style={{ color: stats.punctualityScore > 80 ? c.textSuccess : c.textDanger }}>{stats.punctualityScore}%</strong>
+            {' · '}
+            <strong style={{ color: c.textDanger }}>{stats.lateCount}</strong> late today
+          </span>
+          <button
+            onClick={() => setExpanded(prev => !prev)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: c.subtitle,
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0.125rem',
+            }}
+            aria-label={expanded ? 'Collapse' : 'Expand'}
+          >
+            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-        <div style={{ background: isLight ? '#FFF' : 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '0.75rem', border: `1px solid ${c.border}` }}>
-          <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: c.subtitle, fontWeight: 700 }}>Punctuality Score</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 800, color: stats.punctualityScore > 80 ? c.textSuccess : c.textDanger }}>
-            {stats.punctualityScore}%
+      {/* Expanded content */}
+      {expanded && (
+        <div style={{
+          padding: '0 1.25rem 1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem',
+        }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+            <div style={{ background: isLight ? '#FFF' : 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '0.75rem', border: `1px solid ${c.border}` }}>
+              <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: c.subtitle, fontWeight: 700 }}>Punctuality Score</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: stats.punctualityScore > 80 ? c.textSuccess : c.textDanger }}>
+                {stats.punctualityScore}%
+              </div>
+            </div>
+            <div style={{ background: isLight ? '#FFF' : 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '0.75rem', border: `1px solid ${c.border}` }}>
+              <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: c.subtitle, fontWeight: 700 }}>Staff Late Today</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: c.textDanger }}>
+                {stats.lateCount} <span style={{fontSize: '0.8rem', color: c.subtitle, fontWeight: 500}}>/ {stats.totalPunches}</span>
+              </div>
+            </div>
+            <div style={{ background: isLight ? '#FFF' : 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '0.75rem', border: `1px solid ${c.border}` }}>
+              <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: c.subtitle, fontWeight: 700 }}>Total Mins Lost</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: c.textDanger }}>
+                {stats.totalLateMins}m
+              </div>
+            </div>
           </div>
-        </div>
-        <div style={{ background: isLight ? '#FFF' : 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '0.75rem', border: `1px solid ${c.border}` }}>
-          <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: c.subtitle, fontWeight: 700 }}>Staff Late Today</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 800, color: c.textDanger }}>
-            {stats.lateCount} <span style={{fontSize: '0.8rem', color: c.subtitle, fontWeight: 500}}>/ {stats.totalPunches}</span>
-          </div>
-        </div>
-        <div style={{ background: isLight ? '#FFF' : 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '0.75rem', border: `1px solid ${c.border}` }}>
-          <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: c.subtitle, fontWeight: 700 }}>Total Mins Lost</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 800, color: c.textDanger }}>
-            {stats.totalLateMins}m
-          </div>
-        </div>
-      </div>
 
-      <div style={{ marginTop: '0.5rem' }}>
-        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: c.subtitle, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <AlertTriangle size={12} /> Late Streaks Detected (3+ Days)
-        </div>
-        {stats.lateCount === 0 ? (
-          <div style={{ fontSize: '0.75rem', color: c.textSuccess, fontWeight: 500 }}>No late streaks detected this week. Great job!</div>
-        ) : (
-          <div style={{ fontSize: '0.75rem', color: c.textDanger, background: isLight ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.2)', padding: '0.5rem', borderRadius: '0.5rem' }}>
-            Analytics suggest <strong>{stats.lateCount} staff members</strong> are showing a pattern of late arrivals this week.
+          <div style={{ marginTop: '0.5rem' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: c.subtitle, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <AlertTriangle size={12} /> Late Streaks Detected (3+ Days)
+            </div>
+            {stats.lateCount === 0 ? (
+              <div style={{ fontSize: '0.75rem', color: c.textSuccess, fontWeight: 500 }}>No late streaks detected this week. Great job!</div>
+            ) : (
+              <div style={{ fontSize: '0.75rem', color: c.textDanger, background: isLight ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.2)', padding: '0.5rem', borderRadius: '0.5rem' }}>
+                Analytics suggest <strong>{stats.lateCount} staff members</strong> are showing a pattern of late arrivals this week.
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

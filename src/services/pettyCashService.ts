@@ -175,5 +175,36 @@ export const pettyCashService = {
 
     const updated = await this.getSheet(sheet.location, sheet.date);
     return updated || sheet;
-  }
+  },
+
+  async getSheetHistory(location: string): Promise<PettyCashSheet[]> {
+    const { data, error } = await dataApi
+      .from('petty_cash_sheets')
+      .select('*')
+      .eq('location', location)
+      .order('date', { ascending: false })
+      .limit(30);
+
+    if (error || !data) return [];
+
+    const sheets = data as any[];
+
+    const sheetsWithDetails = await Promise.all(
+      sheets.map(async (sheet: any) => {
+        const [mealsRes, expsRes, transRes] = await Promise.all([
+          dataApi.from('petty_cash_staff_meals').select('*').eq('sheet_id', sheet.id).order('display_order', { ascending: true }),
+          dataApi.from('petty_cash_expenses').select('*').eq('sheet_id', sheet.id).order('display_order', { ascending: true }),
+          dataApi.from('petty_cash_transports').select('*').eq('sheet_id', sheet.id).order('display_order', { ascending: true }),
+        ]);
+        return {
+          ...sheet,
+          staff_meals: (mealsRes.data as StaffMeal[]) || [],
+          expenses: (expsRes.data as CustomExpense[]) || [],
+          transport_logistics: (transRes.data as TransportLogistics[]) || [],
+        };
+      })
+    );
+
+    return sheetsWithDetails;
+  },
 };
