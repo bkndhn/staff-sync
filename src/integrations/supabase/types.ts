@@ -526,6 +526,74 @@ export type Database = {
           },
         ]
       }
+      attendance_regularizations: {
+        Row: {
+          created_at: string
+          current_status: string | null
+          id: string
+          location: string | null
+          punch_in_time: string | null
+          punch_out_time: string | null
+          reason: string | null
+          request_type: string | null
+          requested_status: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          staff_id: string
+          status: string
+          target_date: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_status?: string | null
+          id?: string
+          location?: string | null
+          punch_in_time?: string | null
+          punch_out_time?: string | null
+          reason?: string | null
+          request_type?: string | null
+          requested_status?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          staff_id: string
+          status?: string
+          target_date: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_status?: string | null
+          id?: string
+          location?: string | null
+          punch_in_time?: string | null
+          punch_out_time?: string | null
+          reason?: string | null
+          request_type?: string | null
+          requested_status?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          staff_id?: string
+          status?: string
+          target_date?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_regularizations_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1231,6 +1299,59 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      letter_requests: {
+        Row: {
+          created_at: string
+          document_url: string | null
+          id: string
+          letter_type: string
+          purpose: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          staff_id: string
+          status: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          document_url?: string | null
+          id?: string
+          letter_type: string
+          purpose?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          staff_id: string
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          document_url?: string | null
+          id?: string
+          letter_type?: string
+          purpose?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          staff_id?: string
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "letter_requests_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
         ]
@@ -2283,6 +2404,53 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_change_requests: {
+        Row: {
+          created_at: string
+          id: string
+          requested_changes: Json
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          staff_id: string
+          status: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          requested_changes?: Json
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          staff_id: string
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          requested_changes?: Json
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          staff_id?: string
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_change_requests_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
         ]
