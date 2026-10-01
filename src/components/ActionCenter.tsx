@@ -32,20 +32,24 @@ export default function ActionCenter({ user }: ActionCenterProps) {
       const gData = await grievanceService.getAllActive(loc);
       setGrievances(gData);
 
-      const { data: pData } = await dataApi.from('profile_change_requests')
-        .select('*, staff:staff_id(name)')
-        .eq('status', 'pending');
-      setProfileRequests(pData || []);
-
-      const { data: aData } = await dataApi.from('attendance_regularizations')
-        .select('*, staff:staff_id(name)')
-        .eq('status', 'pending');
-      setAttendanceRegs(aData || []);
-
-      const { data: lData } = await dataApi.from('letter_requests')
-        .select('*, staff:staff_id(name)')
-        .eq('status', 'pending');
-      setLetterRequests(lData || []);
+      // No FK embeds: attach staff names client-side; tolerate missing tables.
+      const [pRes, aRes, lRes] = await Promise.all([
+        dataApi.from('profile_change_requests').select('*').eq('status', 'pending'),
+        dataApi.from('attendance_regularizations').select('*').eq('status', 'pending'),
+        dataApi.from('letter_requests').select('*').eq('status', 'pending'),
+      ]);
+      const rows = (r: { data: any; error: Error | null }) => (r.error || !Array.isArray(r.data) ? [] : r.data);
+      const pRows = rows(pRes), aRows = rows(aRes), lRows = rows(lRes);
+      const ids = Array.from(new Set([...pRows, ...aRows, ...lRows].map((x: any) => x.staff_id).filter(Boolean)));
+      let names = new Map<string, string>();
+      if (ids.length) {
+        const { data: sData } = await dataApi.from('staff').select('id,name').in('id', ids);
+        names = new Map((sData || []).map((s: any) => [s.id, s.name]));
+      }
+      const withStaff = (list: any[]) => list.map(x => ({ ...x, staff: { name: names.get(x.staff_id) || x.staff_name || '' } }));
+      setProfileRequests(withStaff(pRows));
+      setAttendanceRegs(withStaff(aRows));
+      setLetterRequests(withStaff(lRows));
     } catch (e) {
       console.error("Error fetching action center data", e);
     }
