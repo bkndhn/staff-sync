@@ -119,9 +119,18 @@ const Dashboard: React.FC<DashboardProps> = ({
         'bg-indigo-100 text-indigo-800'
       ];
 
-      const locationsToShow = userRole === 'admin'
+      let locationsToShow = userRole === 'admin'
         ? fetchedLocations
         : fetchedLocations.filter(loc => loc.name === userLocation);
+
+      if (locationsToShow.length === 0) {
+        const staffLocations = Array.from(new Set(activeStaff.map(s => s.location).filter(Boolean)));
+        if (staffLocations.length > 0) {
+          locationsToShow = staffLocations.map((name, i) => ({ id: `derived-${i}`, name, is_active: true }));
+        } else {
+          locationsToShow = [{ id: 'default-loc', name: userLocation || 'Main Branch', is_active: true }];
+        }
+      }
 
       const formattedLocations = locationsToShow.map((loc, index) => ({
         name: loc.name,
@@ -906,70 +915,68 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                   );
                 })()}
-                {sortedLocationDes.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 mb-4 px-1">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Zone Roles Present:</span>
+                <div className="flex flex-wrap items-center gap-1.5 mb-4 px-1">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Zone Roles Present:</span>
 
-                    {/* Default 'All' Chip */}
+                  {/* Default 'All' Chip */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedZoneRoles(prev => ({ ...prev, [location.name]: 'all' }))}
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer active:scale-95 ${
+                      activeRole === 'all'
+                        ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400 font-bold'
+                        : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/15'
+                    }`}
+                  >
+                    <span>All</span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      activeRole === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-white/20 text-slate-700 dark:text-slate-200'
+                    }`}>
+                      {locationTotalPresent}
+                    </span>
+                  </button>
+
+                  {/* Role Filter Chips */}
+                  {sortedLocationDes.map(([des, count]) => {
+                    const isSelected = activeRole.toLowerCase() === des.toLowerCase();
+                    return (
+                      <button
+                        key={des}
+                        type="button"
+                        onClick={() => {
+                          setSelectedZoneRoles(prev => ({
+                            ...prev,
+                            [location.name]: isSelected ? 'all' : des
+                          }));
+                        }}
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer active:scale-95 ${
+                          isSelected
+                            ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400 font-bold'
+                            : 'bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/20 hover:bg-blue-500/20 dark:hover:bg-blue-500/30'
+                        }`}
+                        title={isSelected ? `Click to clear ${des} filter` : `Filter by ${des}`}
+                      >
+                        <span>{des}</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                          isSelected ? 'bg-white/25 text-white' : 'bg-blue-500/20 dark:bg-blue-500/30 text-[10px]'
+                        }`}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+
+                  {/* Active Filter Clear indicator */}
+                  {activeRole !== 'all' && (
                     <button
                       type="button"
                       onClick={() => setSelectedZoneRoles(prev => ({ ...prev, [location.name]: 'all' }))}
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer active:scale-95 ${
-                        activeRole === 'all'
-                          ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400 font-bold'
-                          : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/15'
-                      }`}
+                      className="text-[11px] text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 font-medium underline ml-1 cursor-pointer"
                     >
-                      <span>All</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                        activeRole === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-white/20 text-slate-700 dark:text-slate-200'
-                      }`}>
-                        {locationTotalPresent}
-                      </span>
+                      Reset Filter
                     </button>
-
-                    {/* Role Filter Chips */}
-                    {sortedLocationDes.map(([des, count]) => {
-                      const isSelected = activeRole.toLowerCase() === des.toLowerCase();
-                      return (
-                        <button
-                          key={des}
-                          type="button"
-                          onClick={() => {
-                            setSelectedZoneRoles(prev => ({
-                              ...prev,
-                              [location.name]: isSelected ? 'all' : des
-                            }));
-                          }}
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer active:scale-95 ${
-                            isSelected
-                              ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400 font-bold'
-                              : 'bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/20 hover:bg-blue-500/20 dark:hover:bg-blue-500/30'
-                          }`}
-                          title={isSelected ? `Click to clear ${des} filter` : `Filter by ${des}`}
-                        >
-                          <span>{des}</span>
-                          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                            isSelected ? 'bg-white/25 text-white' : 'bg-blue-500/20 dark:bg-blue-500/30 text-[10px]'
-                          }`}>
-                            {count}
-                          </span>
-                        </button>
-                      );
-                    })}
-
-                    {/* Active Filter Clear indicator */}
-                    {activeRole !== 'all' && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedZoneRoles(prev => ({ ...prev, [location.name]: 'all' }))}
-                        className="text-[11px] text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 font-medium underline ml-1 cursor-pointer"
-                      >
-                        Reset Filter
-                      </button>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {groupBy === 'none' ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">

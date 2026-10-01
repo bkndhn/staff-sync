@@ -700,9 +700,9 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
   const sections = [
     { id: 'overview' as const, label: 'Overview', icon: User },
-    { id: 'attendance' as const, label: 'Monthly', icon: Calendar },
+    { id: 'attendance' as const, label: 'Attendance', icon: Calendar },
     { id: 'yearly' as const, label: 'Yearly', icon: CalendarDays },
-    { id: 'salary' as const, label: 'Payroll', icon: IndianRupee },
+    { id: 'salary' as const, label: 'Salary', icon: IndianRupee },
     { id: 'hikes' as const, label: 'Hikes', icon: TrendingUp },
     { id: 'leave', label: 'Leave', icon: FileText },
     { id: 'loans', label: 'Loans', icon: CreditCard },

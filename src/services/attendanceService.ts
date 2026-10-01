@@ -120,7 +120,7 @@ export const attendanceService = {
       .single();
 
     if (error) throw error;
-    return this.mapFromDatabase(data as any);
+    return data ? this.mapFromDatabase(data as any) : (attendance as Attendance);
   },
 
   async bulkUpsert(attendanceRecords: Omit<Attendance, 'id'>[]): Promise<Attendance[]> {
@@ -191,6 +191,7 @@ export const attendanceService = {
   },
 
   mapFromDatabase(dbAttendance: any): Attendance {
+    if (!dbAttendance) return {} as Attendance;
     const attendance: Attendance = {
       id: dbAttendance.id,
       staffId: dbAttendance.staff_id,

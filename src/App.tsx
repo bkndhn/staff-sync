@@ -548,6 +548,9 @@ function App() {
       }
     }
     setUser(enriched as User);
+    if (userData.role === 'staff') {
+      setActiveTab('My Portal');
+    }
   };
 
   const handleLogout = async () => {
