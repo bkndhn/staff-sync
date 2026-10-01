@@ -1434,7 +1434,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
           </div>
 
           {/* Action Bar (Sticky with safe clearance for mobile navigation) */}
-          <div className="sticky bottom-[72px] sm:bottom-4 z-40 bg-white/95 backdrop-blur px-3 sm:px-6 py-2.5 sm:py-4 rounded-2xl shadow-xl border border-slate-200">
+          <div className="sticky bottom-[calc(84px+env(safe-area-inset-bottom))] sm:bottom-4 z-40 bg-white/95 backdrop-blur px-3 sm:px-6 py-2.5 sm:py-4 rounded-2xl shadow-xl border border-slate-200">
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-between items-center">
               
               {/* Export & Share Group */}
