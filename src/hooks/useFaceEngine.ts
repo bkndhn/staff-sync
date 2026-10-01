@@ -144,7 +144,12 @@ export const useFaceEngine = (autoLoad = true) => {
    */
   const detect = async (
     input: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
-    opts?: { scoreThreshold?: number; withLandmarks?: boolean; withLegacy?: boolean },
+    opts?: {
+      scoreThreshold?: number;
+      withLandmarks?: boolean;
+      withLegacy?: boolean;
+      highResSource?: HTMLVideoElement | HTMLCanvasElement | HTMLImageElement;
+    },
   ): Promise<DetectionResult | null> => {
     const endDetect = perfStart('face.detect');
     const dev = getDeviceProfile();
@@ -165,20 +170,33 @@ export const useFaceEngine = (autoLoad = true) => {
     };
 
     // ── Primary path: MediaPipe detection + ArcFace embedding ──
-    if (isMediaPipeReady() && input instanceof HTMLVideoElement) {
+    if (isMediaPipeReady() && (input instanceof HTMLVideoElement || input instanceof HTMLCanvasElement)) {
       try {
         const mp = detectFaceMediaPipe(input);
         if (mp && mp.score > (opts?.scoreThreshold ?? 0.5)) {
-          const vw = input.videoWidth || input.clientWidth;
-          const vh = input.videoHeight || input.clientHeight;
+          const cropSource = opts?.highResSource || input;
+          const vw = (cropSource as HTMLVideoElement).videoWidth || (cropSource as HTMLCanvasElement).width || cropSource.clientWidth;
+          const vh = (cropSource as HTMLVideoElement).videoHeight || (cropSource as HTMLCanvasElement).height || cropSource.clientHeight;
           const points = fivePointsFromMediaPipe(mp.landmarks, vw, vh);
-          const crop = points ? alignFace(input, points) : cropFaceBox(input, mp.box);
+
+          const inW = (input as HTMLVideoElement).videoWidth || (input as HTMLCanvasElement).width || input.clientWidth;
+          const inH = (input as HTMLVideoElement).videoHeight || (input as HTMLCanvasElement).height || input.clientHeight;
+          const sx = inW > 0 ? vw / inW : 1;
+          const sy = inH > 0 ? vh / inH : 1;
+          const scaledBox = {
+            x: mp.box.x * sx,
+            y: mp.box.y * sy,
+            width: mp.box.width * sx,
+            height: mp.box.height * sy,
+          };
+
+          const crop = points ? alignFace(cropSource, points) : cropFaceBox(cropSource, scaledBox);
           const embedding = crop && isArcFaceReady() ? await embedAlignedFace(crop) : null;
 
           if (embedding) {
             let legacyDescriptor: number[] | undefined;
             if (opts?.withLegacy) {
-              const legacy = await runFaceApi(input, 0.2);
+              const legacy = await runFaceApi(cropSource, 0.2);
               if (legacy) legacyDescriptor = Array.from(legacy.best.descriptor);
             }
             endDetect();
@@ -188,7 +206,7 @@ export const useFaceEngine = (autoLoad = true) => {
               legacyDescriptor,
               qualityScore: mp.score,
               faceCount: mp.faceCount,
-              box: mp.box,
+              box: scaledBox,
               aligned: !!points,
               landmarks:
                 opts?.withLandmarks === false
@@ -198,7 +216,7 @@ export const useFaceEngine = (autoLoad = true) => {
           }
 
           // ArcFace unavailable — legacy face-api descriptor keeps attendance working.
-          const legacy = await runFaceApi(input, 0.2);
+          const legacy = await runFaceApi(cropSource, 0.2);
           endDetect();
           if (!legacy) return null;
           return {
@@ -207,7 +225,7 @@ export const useFaceEngine = (autoLoad = true) => {
             legacyDescriptor: Array.from(legacy.best.descriptor),
             qualityScore: mp.score,
             faceCount: mp.faceCount,
-            box: mp.box,
+            box: scaledBox,
             aligned: false,
             landmarks: opts?.withLandmarks === false ? undefined : legacy.best.landmarks,
           };

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { dataApi } from '../lib/dataApi';
 import { punchEventService } from '../services/punchEventService';
 import { attendanceService } from '../services/attendanceService';
 import { useUserPreference } from './useUserPreference';
@@ -38,7 +39,9 @@ export function useBiometricSync(
         const kioskSettings = await appSettingsService.getKioskGlobalSettings().catch(() => null);
         
         // 1. Trigger Cloud Pull
+        const sessionToken = localStorage.getItem('sessionToken') || localStorage.getItem('token') || '';
         const { data, error } = await supabase.functions.invoke('device-pull', {
+          headers: sessionToken ? { 'x-session-token': sessionToken } : undefined,
           body: {
             provider: apiConfig.provider,
             serverUrl: apiConfig.serverUrl,
@@ -63,7 +66,7 @@ export function useBiometricSync(
         // 2. Fetch today's punches
         const today = new Date().toISOString().split('T')[0];
         // We only aggregate today's punches to save API calls. Cloud pull usually gets today's data unless 'since' is passed.
-        const { data: allTodayPunches } = await supabase
+        const { data: allTodayPunches } = await dataApi
           .from('punch_events')
           .select('*')
           .eq('date', today)

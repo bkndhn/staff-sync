@@ -160,44 +160,32 @@ export const punchEventService = {
    * Syncs all pending offline punches to Supabase.
    * Called automatically when the network returns.
    */
-  async syncPending(): Promise<void> {
-    if (!navigator.onLine) return;
-    
-    try {
-      const allLocal = await db.punchEvents.toArray();
-      const pending = allLocal.filter(e => e.id.startsWith('evt_'));
-      
-      if (pending.length === 0) return;
-      
-      console.log(`[Sync] Found ${pending.length} offline punches. Syncing...`);
-      
-      for (const event of pending) {
-        const { error } = await dataApi
-          .from('punch_events' as any)
-          .insert([{
-            staff_id: event.staffId,
-            staff_name: event.staffName,
-            location: event.location,
-            date: event.date,
-            event_time: event.eventTime,
-            kind: event.kind,
-            source: event.source,
-            match_distance: event.matchDistance,
-            liveness_score: event.livenessScore,
-            device_label: event.deviceLabel,
-          }]);
-          
+  async syncPending(): Promise<number> {
+    if (!navigator.onLine) return 0;
+    const localEvents = await db.punchEvents.filter(e => e.id.startsWith('evt_')).toArray();
+    let synced = 0;
+    for (const evt of localEvents) {
+      try {
+        const { id, ...payload } = evt;
+        const { error } = await dataApi.from('punch_events' as any).insert([{
+          staff_id: payload.staffId,
+          staff_name: payload.staffName,
+          location: payload.location,
+          date: payload.date,
+          event_time: payload.eventTime,
+          kind: payload.kind,
+          source: payload.source,
+          match_distance: payload.matchDistance,
+          liveness_score: payload.livenessScore,
+          device_label: payload.deviceLabel,
+        }]);
         if (!error) {
-          await db.punchEvents.delete(event.id);
-        } else {
-          console.error(`[Sync] Failed to sync event ${event.id}:`, error);
+          await db.punchEvents.delete(evt.id);
+          synced++;
         }
-      }
-      
-      console.log('[Sync] Offline punches synced successfully.');
-    } catch (e) {
-      console.error('[Sync] Error during background sync:', e);
+      } catch {}
     }
+    return synced;
   },
 };
 

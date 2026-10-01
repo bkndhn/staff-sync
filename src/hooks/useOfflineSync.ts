@@ -66,7 +66,7 @@ export function useOfflineSync() {
         runSync();
       }
 
-      // Listen for network changes
+      // Listen for network changes via Capacitor
       const handle = await Network.addListener('networkStatusChange', async (networkStatus) => {
         const online = networkStatus.connected;
         setStatus(prev => ({ ...prev, isOnline: online }));
@@ -80,7 +80,27 @@ export function useOfflineSync() {
         }
       });
 
-      removeListener = () => handle.remove();
+      // Also listen to browser online/offline events for PWA & web browsers
+      const handleBrowserOnline = async () => {
+        console.log('[Browser] Connection restored — syncing offline punches...');
+        setStatus(prev => ({ ...prev, isOnline: true }));
+        await runSync();
+      };
+
+      const handleBrowserOffline = () => {
+        console.log('[Browser] Connection lost — punches will be saved locally.');
+        setStatus(prev => ({ ...prev, isOnline: false }));
+        refreshPendingCount();
+      };
+
+      window.addEventListener('online', handleBrowserOnline);
+      window.addEventListener('offline', handleBrowserOffline);
+
+      removeListener = () => {
+        handle.remove();
+        window.removeEventListener('online', handleBrowserOnline);
+        window.removeEventListener('offline', handleBrowserOffline);
+      };
     };
 
     setup();

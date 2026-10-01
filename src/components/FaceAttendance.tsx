@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity, Zap, QrCode, UserPlus, RefreshCw, WifiOff } from 'lucide-react';
+import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity, Zap, QrCode, UserPlus, RefreshCw, WifiOff, Sun } from 'lucide-react';
 import { Staff, Attendance, Designation, BranchDesignationShiftConfig, type LocationDesignationShiftConfig, type LocationShiftConfig } from '../types';
 import { useFaceEngine } from '../hooks/useFaceEngine';
 import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
@@ -62,6 +62,38 @@ const formatNow = () => {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 };
 
+/** Zero-dependency synthesized audio feedback for kiosks via Web Audio API (100% offline) */
+const playChime = (kind: 'in' | 'out' | 'error') => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    if (kind === 'in') {
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1); // A5
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } else if (kind === 'out') {
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime + 0.1); // D5
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } else {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, ctx.currentTime);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    }
+  } catch {}
+};
 
 const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole, userLocation }) => {
   const { ready, loading, error, detect } = useFaceEngine(true);
@@ -115,6 +147,42 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       setSelectedLocation(userLocation);
     }
   }, [userRole, userLocation, selectedLocation]);
+
+  const [keepScreenOn, setKeepScreenOn] = useState(true);
+  const wakeLockRef = useRef<any>(null);
+
+  // Screen Wake Lock API — keeps kiosk display active during attendance hours
+  useEffect(() => {
+    let active = true;
+    const requestLock = async () => {
+      try {
+        if ('wakeLock' in navigator && keepScreenOn && cameraOn) {
+          wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+        }
+      } catch {}
+    };
+
+    if (keepScreenOn && cameraOn) {
+      requestLock();
+    } else {
+      wakeLockRef.current?.release?.().catch(() => {});
+      wakeLockRef.current = null;
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && keepScreenOn && cameraOn && active) {
+        requestLock();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      active = false;
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      wakeLockRef.current?.release?.().catch(() => {});
+      wakeLockRef.current = null;
+    };
+  }, [keepScreenOn, cameraOn]);
 
   useEffect(() => { void syncServerTime(true); }, []);
 
@@ -217,7 +285,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     }
   };
 
-  // Load all approved embeddings, shift windows, location config, and kiosk settings on mount
+  // Load all approved embeddings, shift windows, location config, and kiosk settings on mount (Dual-Tier Sync)
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -227,6 +295,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         setEmbeddingsError(null);
         const locationName = selectedLocation;
 
+        // ── Tier 1: Instant 0ms local load from Dexie DB ──
         const [list, sw, locCfgArr, kioskSettings, desigs, locDesigConfigs, allLocs] = await Promise.all([
           db.faceEmbeddings.toArray(),
           shiftService.loadGlobal(true),
@@ -241,8 +310,10 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         const locCfg = locCfgArr.length > 0 ? locCfgArr[0] : null;
 
         if (!cancelled) {
-          setAllEmbeddings(filteredList);
-          perfRecord('face.embeddings.count', filteredList.length);
+          if (filteredList.length > 0) {
+            setAllEmbeddings(filteredList);
+            perfRecord('face.embeddings.count', filteredList.length);
+          }
           setShiftWindows(sw);
           setLocationConfig(locCfg || { ...DEFAULT_LOCATION_CONFIG, locationName });
           setManagerCanOverride(kioskSettings.managerCanOverride);
@@ -252,6 +323,31 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           setLocations(allLocs);
           const rawThreshold = kioskSettings.matchThreshold || 0.60;
           COSINE_THRESHOLD = rawThreshold <= 1.0 ? Math.min(0.50, rawThreshold * 0.63) : 0.38;
+          if (filteredList.length > 0) {
+            setLoadingEmbeddings(false);
+          }
+        }
+
+        // ── Tier 2: Cloud sync from Supabase if online ──
+        if (navigator.onLine) {
+          try {
+            const remoteList = await faceEmbeddingService.getAllApproved();
+            if (!cancelled && remoteList && remoteList.length > 0) {
+              console.log(`[FaceAttendance] Loaded ${remoteList.length} embeddings from cloud`);
+              await db.faceEmbeddings.clear();
+              await db.faceEmbeddings.bulkPut(remoteList);
+              setAllEmbeddings(remoteList);
+              perfRecord('face.embeddings.count', remoteList.length);
+
+              // Rebuild centroid index for cosine matching
+              const versions = new Set(remoteList.map(e => (e as { modelVersion?: string }).modelVersion || 'faceapi-resnet34-128'));
+              const byVersion = new Map<string, Map<string, StaffEmbedding>>();
+              for (const v of versions) byVersion.set(v, buildCentroidIndex(remoteList, v));
+              centroidIndexRef.current = byVersion;
+            }
+          } catch (cloudErr) {
+            console.warn('[FaceAttendance] Cloud embeddings sync failed, falling back to local cache', cloudErr);
+          }
         }
       } catch (e: any) {
         if (!cancelled) {
@@ -426,12 +522,14 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       onAttendancePatch?.(saved);
       lastPunchRef.current[s.id] = { ts: Date.now(), kind };
       setRecent(prev => [{ staffId: s.id, staffName: s.name, kind, time, distance }, ...prev].slice(0, 20));
+      playChime(kind);
       haptics.success();
       setMessage({
         kind: autoStatus === 'Absent' ? 'warn' : 'ok',
         text: `${kind === 'in' ? 'Punched IN' : 'Punched OUT'}: ${s.name} @ ${formatTime12h(time)} · ${autoStatus} · ${summary.count} event(s)`,
       });
     } catch (e: any) {
+      playChime('error');
       haptics.error();
       setMessage({ kind: 'err', text: `Failed to punch ${s.name}: ${e?.message || e}` });
     }
@@ -452,6 +550,12 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       livenessRef.current = { staffId, state: createLivenessState() };
     };
 
+    // Offscreen helper canvas for fast detection pass (15-25ms)
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = 480;
+    offscreenCanvas.height = 360;
+    const offscreenCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
+
     const onFrame = async () => {
       if (cancelled) return;
       const now = performance.now();
@@ -459,7 +563,14 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         processing = true;
         lastRun = now;
         try {
-          const r = await detect(videoRef.current, { scoreThreshold: 0.35, withLandmarks: true });
+          if (offscreenCtx) {
+            offscreenCtx.drawImage(videoRef.current, 0, 0, 480, 360);
+          }
+          const r = await detect(offscreenCanvas, {
+            scoreThreshold: 0.35,
+            withLandmarks: true,
+            highResSource: videoRef.current,
+          });
 
           if (!r) {
             setLastMatch(null);
@@ -476,6 +587,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
             } else if (!allowedStaffIds.has(staffId)) {
               const wrongStaff = allEmbeddings.find(e => e.staffId === staffId);
               setLastMatch({ name: wrongStaff?.staffName || 'Other location', distance, ts: Date.now(), status: 'wrong-loc' });
+              playChime('error');
               haptics.error();
               setMessage({ kind: 'err', text: `${wrongStaff?.staffName || 'This staff'} does not belong to this location.` });
 
@@ -503,6 +615,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'blink-please' });
                 } else if (liveness.reason === 'spoof') {
                   setLastMatch({ name: s.name, distance, ts: Date.now(), status: 'spoof' });
+                  playChime('error');
                   haptics.error();
                   setMessage({ kind: 'err', text: `Spoof detected for ${s.name}. Blink naturally and try again.` });
 
@@ -633,6 +746,18 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
               <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center gap-1">
                 <Zap size={12} /> MediaPipe AI
               </span>
+              <button
+                onClick={() => setKeepScreenOn(k => !k)}
+                className={`text-xs px-3 py-1.5 rounded-full border flex items-center gap-1 transition-all pointer-events-auto ${
+                  keepScreenOn
+                    ? 'bg-amber-500/20 border-amber-400/40 text-amber-300'
+                    : 'bg-white/10 border-white/20 text-white/60'
+                }`}
+                title={keepScreenOn ? 'Screen Wake Lock active: display will stay on' : 'Screen Wake Lock inactive'}
+              >
+                <Sun size={12} className={keepScreenOn ? 'text-amber-400' : ''} />
+                {keepScreenOn ? 'Keep Awake: On' : 'Keep Awake: Off'}
+              </button>
             </div>
           </div>
         </div>

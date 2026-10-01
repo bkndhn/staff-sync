@@ -90,6 +90,7 @@ const DeviceIntegration: React.FC<DeviceIntegrationProps> = ({ onImportPunches }
   const [bridgeExpanded, setBridgeExpanded] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [syncing, setSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   // Background Auto-Sync
@@ -99,7 +100,9 @@ const DeviceIntegration: React.FC<DeviceIntegrationProps> = ({ onImportPunches }
     const pullData = async () => {
       try {
         const { supabase } = await import('../lib/supabase');
+        const sessionToken = localStorage.getItem('sessionToken') || localStorage.getItem('token') || '';
         await supabase.functions.invoke('device-pull', {
+          headers: sessionToken ? { 'x-session-token': sessionToken } : undefined,
           body: {
             provider: apiConfig.provider,
             serverUrl: apiConfig.serverUrl,
@@ -122,11 +125,17 @@ const DeviceIntegration: React.FC<DeviceIntegrationProps> = ({ onImportPunches }
   }, []);
 
   const handleSyncNow = async () => {
+    if (!apiConfig.serverUrl || !apiConfig.apiKey) {
+      setSyncResult({ ok: false, message: 'Please configure Server URL and API Key first.' });
+      return;
+    }
     setSyncing(true);
     setSyncResult(null);
     try {
       const { supabase } = await import('../lib/supabase');
+      const sessionToken = localStorage.getItem('sessionToken') || localStorage.getItem('token') || '';
       const { data, error } = await supabase.functions.invoke('device-pull', {
+        headers: sessionToken ? { 'x-session-token': sessionToken } : undefined,
         body: {
           provider: apiConfig.provider,
           serverUrl: apiConfig.serverUrl,
@@ -136,11 +145,15 @@ const DeviceIntegration: React.FC<DeviceIntegrationProps> = ({ onImportPunches }
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      const r = data as { fetched: number; inserted: number; skipped: number };
+      const r = data as { fetched?: number; inserted?: number; skipped?: number };
+      const fetched = r.fetched ?? 0;
+      const inserted = r.inserted ?? 0;
+      const skipped = r.skipped ?? 0;
       setSyncResult({
         ok: true,
-        message: `Fetched ${r.fetched} punches · Inserted ${r.inserted} · Skipped ${r.skipped}`,
+        message: `Fetched: ${fetched} · Inserted: ${inserted} · Skipped: ${skipped}`,
       });
+      setLastSyncedAt(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } catch (err: any) {
       setSyncResult({ ok: false, message: err?.message || 'Sync failed. Check credentials and try again.' });
     } finally {
@@ -474,28 +487,56 @@ LOCATION_NAME=${apiConfig.locationCode || ''}`;
               </div>
             )}
 
-            {apiStatus === 'success' && (
-              <button
-                onClick={handleSyncNow}
-                disabled={syncing}
-                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold flex items-center justify-center gap-2 transition-all text-sm disabled:opacity-60"
-              >
-                {syncing
-                  ? <><Loader2 size={16} className="animate-spin" /> Syncing…</>
-                  : <><RefreshCw size={16} /> Sync Today's Punches</>}
-              </button>
-            )}
-
-            {syncResult && (
-              <div className={`p-3 rounded-xl text-xs flex items-start gap-2 border ${
-                syncResult.ok
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                  : 'bg-red-500/10 border-red-500/30 text-red-400'
-              }`}>
-                {syncResult.ok ? <CheckCircle2 size={14} className="shrink-0 mt-0.5" /> : <AlertTriangle size={14} className="shrink-0 mt-0.5" />}
-                {syncResult.message}
+            <div className="pt-2 border-t border-[var(--glass-border)] space-y-3">
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <button
+                  onClick={handleSyncNow}
+                  disabled={syncing || !apiConfig.serverUrl || !apiConfig.apiKey}
+                  className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/40 text-white font-semibold flex items-center justify-center gap-2 transition-all text-sm shadow-lg shadow-indigo-600/20 disabled:cursor-not-allowed"
+                >
+                  {syncing ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Syncing Device Punches...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw size={16} />
+                      <span>Sync Now</span>
+                    </>
+                  )}
+                </button>
+                {lastSyncedAt && (
+                  <span className="text-xs text-[var(--text-secondary)] whitespace-nowrap">
+                    Last synced: <span className="font-semibold text-white/90">{lastSyncedAt}</span>
+                  </span>
+                )}
               </div>
-            )}
+
+              {syncResult && (
+                <div
+                  className={`p-3 rounded-xl text-xs flex items-center justify-between gap-2 border ${
+                    syncResult.ok
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                      : 'bg-red-500/10 border-red-500/30 text-red-400'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {syncResult.ok ? (
+                      <CheckCircle2 size={14} className="shrink-0" />
+                    ) : (
+                      <AlertTriangle size={14} className="shrink-0" />
+                    )}
+                    <span>{syncResult.message}</span>
+                  </div>
+                  {syncResult.ok && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 shrink-0">
+                      Cloud Sync OK
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

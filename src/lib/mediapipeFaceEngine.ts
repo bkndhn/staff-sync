@@ -83,11 +83,11 @@ export interface MediaPipeDetection {
  * Returns null if no face found.
  */
 export function detectFaceMediaPipe(
-  video: HTMLVideoElement,
+  video: HTMLVideoElement | HTMLCanvasElement,
   timestampMs?: number,
 ): MediaPipeDetection | null {
   if (!faceDetector || !faceLandmarker) return null;
-  if (video.readyState < 2) return null;
+  if (video instanceof HTMLVideoElement && video.readyState < 2) return null;
 
   const ts = timestampMs ?? performance.now();
 
