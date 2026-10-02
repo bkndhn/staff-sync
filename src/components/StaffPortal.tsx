@@ -243,18 +243,16 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       // 1. Location gate (permission + live fix + anti-spoof + branch fence)
       try {
         const { locationService } = await import('../services/locationService');
-        const { settingsService } = await import('../services/settingsService');
         const { enforcePunchLocation } = await import('../lib/geofence');
-        const allLocs = await locationService.getLocations();
-        const locConfig: any = allLocs.find(l => l.name === staff.location);
-        const requireGeofence = await settingsService.getRequireGeofence();
-
-        if (requireGeofence && locConfig && locConfig.latitude != null && locConfig.longitude != null) {
-          return {
-            ok: false,
-            title: 'Mobile App Required',
-            subtitle: `Your branch requires strict geofencing. Please use the Geofence Mobile App to clock in.`
-          };
+        // Branch fence is cached locally so the GPS check still works offline.
+        const cacheKey = `branch_fence_${staff.location || ''}`;
+        let locConfig: any = null;
+        try {
+          const allLocs = await locationService.getLocations();
+          locConfig = allLocs.find(l => l.name === staff.location) || null;
+          if (locConfig) localStorage.setItem(cacheKey, JSON.stringify(locConfig));
+        } catch {
+          try { locConfig = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch { locConfig = null; }
         }
 
         const verdict = await enforcePunchLocation(
@@ -919,12 +917,16 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               const hasBreakIn = !!(todayRec?.breakTimeIn);
               
               const handleWebPunch = async (kind: 'in'|'out'|'break_out'|'break_in') => {
-                 setPunchingStatus(`Processing ${kind.replace('_', ' ')}...`);
+                 setPunchingStatus('Checking GPS...');
                  const res = await handleQRScanSuccess({ kind });
                  setPunchingStatus(null);
                  if (res.ok) {
-                    alert(res.subtitle);
-                    window.location.reload();
+                    if (!navigator.onLine) {
+                       alert(`${res.subtitle}\nSaved on this phone — it will sync automatically when you are back online.`);
+                    } else {
+                       alert(res.subtitle);
+                       window.location.reload();
+                    }
                  } else {
                     alert(`${res.title}: ${res.subtitle}`);
                  }
