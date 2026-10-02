@@ -724,7 +724,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   const isWideTab = activeSection === 'attendance' || activeSection === 'yearly';
 
   return (
-    <div className={`p-2 md:p-6 pb-4 md:pb-6 space-y-4 overflow-x-hidden ${isWideTab ? 'w-full' : 'max-w-4xl mx-auto'}`}>
+    <div className={`p-2 md:p-6 pb-28 md:pb-8 space-y-4 overflow-x-hidden ${isWideTab ? 'w-full' : 'max-w-4xl mx-auto'}`}>
       <div className="flex items-center justify-between mb-2">
         <TenantStatusBanner tenant={(staff as any).tenant} role="staff" />
         <NotificationPanel
