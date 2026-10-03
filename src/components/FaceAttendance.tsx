@@ -95,6 +95,17 @@ const playChime = (kind: 'in' | 'out' | 'error') => {
   } catch {}
 };
 
+/** Spoken confirmation like commercial biometric terminals (offline, built into the phone). */
+const speak = (text: string) => {
+  try {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.05;
+    window.speechSynthesis.speak(u);
+  } catch {}
+};
+
 const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole, userLocation }) => {
   const { ready, loading, error, detect } = useFaceEngine(true);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -128,6 +139,15 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const [recent, setRecent] = useState<RecentEvent[]>([]);
   const [lastMatch, setLastMatch] = useState<{ name: string; distance: number; ts: number; status: 'matching' | 'live-check' | 'blink-please' | 'ok' | 'wrong-loc' | 'spoof' | 'unknown' } | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err' | 'warn'; text: string } | null>(null);
+  // eSSL-style result card shown for ~2.5s after each punch (does not block scanning)
+  const [punchCard, setPunchCard] = useState<{ name: string; designation?: string; kind: 'in' | 'out' | 'dup'; time: string; ts: number } | null>(null);
+  // Per-person acknowledgement cooldown so the next person in line scans instantly
+  const ackRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    if (!punchCard) return;
+    const t = setTimeout(() => setPunchCard(c => (c && c.ts === punchCard.ts ? null : c)), 2500);
+    return () => clearTimeout(t);
+  }, [punchCard]);
   const [editing, setEditing] = useState<Record<string, { arrival: string; leaving: string }>>({});
   const [viewMode, setViewMode] = useState<'camera' | 'qr'>('camera');
   const [designations, setDesignations] = useState<Designation[]>([]);
