@@ -114,5 +114,5 @@ export function useOfflineSync() {
     };
   }, [refreshPendingCount, runSync]);
 
-  return { status, runSync };
+  return { status, runSync, refreshPendingCount };
 }
