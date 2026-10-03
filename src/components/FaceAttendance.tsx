@@ -503,7 +503,14 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       }
     }
 
-    // Save audit event
+    // ── Instant feedback (before any network/DB work), like eSSL terminals ──
+    lastPunchRef.current[s.id] = { ts: Date.now(), kind };
+    setPunchCard({ name: s.name, designation: (s as any).designation, kind, time, ts: Date.now() });
+    playChime(kind);
+    haptics.success();
+    speak(`${kind === 'in' ? 'Welcome' : 'Thank you'}, ${s.name.split(' ')[0]}`);
+
+    // Save audit event (local-first, syncs in background)
     await punchEventService.insert({
       staffId: s.id, staffName: s.name, location: s.location,
       date: today, eventTime: time, kind, source: 'face',
