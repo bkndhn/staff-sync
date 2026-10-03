@@ -95,6 +95,17 @@ const playChime = (kind: 'in' | 'out' | 'error') => {
   } catch {}
 };
 
+/** Spoken confirmation like commercial biometric terminals (offline, built into the phone). */
+const speak = (text: string) => {
+  try {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.05;
+    window.speechSynthesis.speak(u);
+  } catch {}
+};
+
 const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole, userLocation }) => {
   const { ready, loading, error, detect } = useFaceEngine(true);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -128,6 +139,15 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const [recent, setRecent] = useState<RecentEvent[]>([]);
   const [lastMatch, setLastMatch] = useState<{ name: string; distance: number; ts: number; status: 'matching' | 'live-check' | 'blink-please' | 'ok' | 'wrong-loc' | 'spoof' | 'unknown' } | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err' | 'warn'; text: string } | null>(null);
+  // eSSL-style result card shown for ~2.5s after each punch (does not block scanning)
+  const [punchCard, setPunchCard] = useState<{ name: string; designation?: string; kind: 'in' | 'out' | 'dup'; time: string; ts: number } | null>(null);
+  // Per-person acknowledgement cooldown so the next person in line scans instantly
+  const ackRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    if (!punchCard) return;
+    const t = setTimeout(() => setPunchCard(c => (c && c.ts === punchCard.ts ? null : c)), 2500);
+    return () => clearTimeout(t);
+  }, [punchCard]);
   const [editing, setEditing] = useState<Record<string, { arrival: string; leaving: string }>>({});
   const [viewMode, setViewMode] = useState<'camera' | 'qr'>('camera');
   const [designations, setDesignations] = useState<Designation[]>([]);
@@ -483,7 +503,14 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       }
     }
 
-    // Save audit event
+    // ── Instant feedback (before any network/DB work), like eSSL terminals ──
+    lastPunchRef.current[s.id] = { ts: Date.now(), kind };
+    setPunchCard({ name: s.name, designation: (s as any).designation, kind, time, ts: Date.now() });
+    playChime(kind);
+    haptics.success();
+    speak(`${kind === 'in' ? 'Welcome' : 'Thank you'}, ${s.name.split(' ')[0]}`);
+
+    // Save audit event (local-first, syncs in background)
     await punchEventService.insert({
       staffId: s.id, staffName: s.name, location: s.location,
       date: today, eventTime: time, kind, source: 'face',
@@ -767,6 +794,25 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           {viewMode === 'camera' ? (
             <>
               <video ref={videoRef} onTouchEnd={isMobile ? onVideoDoubleTap : undefined} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
+              {punchCard && (
+                <div className="absolute top-16 md:top-24 left-1/2 -translate-x-1/2 z-40 w-[90%] max-w-sm animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                  <div className={`rounded-2xl p-4 shadow-2xl border-2 text-white flex items-center gap-3 ${
+                    punchCard.kind === 'in' ? 'bg-emerald-600/95 border-emerald-300' :
+                    punchCard.kind === 'out' ? 'bg-sky-600/95 border-sky-300' : 'bg-amber-600/95 border-amber-300'
+                  }`}>
+                    <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                      {punchCard.kind === 'in' ? <LogIn size={24} /> : punchCard.kind === 'out' ? <LogOut size={24} /> : <CheckCircle2 size={24} />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-lg font-extrabold truncate">{punchCard.name}</div>
+                      {punchCard.designation && <div className="text-xs opacity-90 truncate">{punchCard.designation}</div>}
+                      <div className="text-sm font-semibold mt-0.5">
+                        {punchCard.kind === 'in' ? 'PUNCHED IN' : punchCard.kind === 'out' ? 'PUNCHED OUT' : 'Already recorded'} · {formatTime12h(punchCard.time)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Aadhaar-style circular face guide — always visible when camera is on */}
               {cameraOn && (
                 <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
