@@ -292,7 +292,7 @@ export const evaluateLiveness = (state: LivenessState, video: HTMLVideoElement, 
 
   const detail = { blinkSeen: state.blinkSeen, textureAvg, hsvAvg, temporalAvg, moireAvg, movement, earVariance };
 
-  if (state.frames < 3) return { isLive: false, score: 0, reason: 'checking', detail };
+  if (state.frames < 2) return { isLive: false, score: 0, reason: 'checking', detail };
 
   // Weighted liveness score
   const score = Math.min(1,

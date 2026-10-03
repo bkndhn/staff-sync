@@ -26,6 +26,7 @@ import FaceMigrationPanel from './face/FaceMigrationPanel';
 import FaceAccuracyReport from './face/FaceAccuracyReport';
 import { localDateKey } from '../lib/localDate';
 import { serverNow, syncServerTime } from '../lib/serverTime';
+import { useOfflineSync } from '../hooks/useOfflineSync';
 
 
 
@@ -143,6 +144,12 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const [punchCard, setPunchCard] = useState<{ name: string; designation?: string; kind: 'in' | 'out' | 'dup'; time: string; ts: number } | null>(null);
   // Per-person acknowledgement cooldown so the next person in line scans instantly
   const ackRef = useRef<Record<string, number>>({});
+  // Local punch queue: auto-sync on reconnect + every 30s
+  const { status: syncStatus, runSync, refreshPendingCount } = useOfflineSync() as any;
+  useEffect(() => {
+    const t = setInterval(() => { if (navigator.onLine) runSync?.(); else refreshPendingCount?.(); }, 30000);
+    return () => clearInterval(t);
+  }, [runSync, refreshPendingCount]);
   useEffect(() => {
     if (!punchCard) return;
     const t = setTimeout(() => setPunchCard(c => (c && c.ts === punchCard.ts ? null : c)), 2500);
@@ -549,6 +556,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       onAttendancePatch?.(saved);
       lastPunchRef.current[s.id] = { ts: Date.now(), kind };
       setRecent(prev => [{ staffId: s.id, staffName: s.name, kind, time, distance }, ...prev].slice(0, 20));
+      if (navigator.onLine) runSync?.(); else refreshPendingCount?.();
       playChime(kind);
       haptics.success();
       setMessage({
@@ -560,7 +568,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       haptics.error();
       setMessage({ kind: 'err', text: `Failed to punch ${s.name}: ${e?.message || e}` });
     }
-  }, [attendance, today, onAttendancePatch, shiftWindows, haptics, locations]);
+  }, [attendance, today, onAttendancePatch, shiftWindows, haptics, locations, runSync, refreshPendingCount]);
 
 
   // ---- Continuous recognition loop (time-throttled per device profile) -----
@@ -794,6 +802,26 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           {viewMode === 'camera' ? (
             <>
               <video ref={videoRef} onTouchEnd={isMobile ? onVideoDoubleTap : undefined} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
+              <div className="absolute top-2 right-2 md:top-auto md:bottom-24 z-40 pointer-events-none">
+                <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border backdrop-blur ${
+                  !syncStatus?.isOnline ? 'bg-amber-500/80 border-amber-300 text-white' :
+                  (syncStatus?.pendingCount || 0) > 0 ? 'bg-sky-500/80 border-sky-300 text-white' : 'bg-emerald-600/80 border-emerald-300 text-white'
+                }`}>
+                  {!syncStatus?.isOnline ? `Offline · ${syncStatus?.pendingCount || 0} saved on device` :
+                   (syncStatus?.pendingCount || 0) > 0 ? `Syncing ${syncStatus.pendingCount}…` : 'All synced'}
+                </span>
+              </div>
+              {cameraOn && recent.length > 0 && (
+                <div className="absolute bottom-2 left-2 right-2 z-30 flex gap-2 overflow-x-auto no-scrollbar pointer-events-none">
+                  {recent.slice(0, 5).map((r, i) => (
+                    <div key={r.staffId + r.time + i} className="shrink-0 flex items-center gap-1.5 bg-black/60 backdrop-blur rounded-full pl-1 pr-3 py-1 border border-white/15 text-white">
+                      <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${r.kind === 'in' ? 'bg-emerald-500' : 'bg-sky-500'}`}>{r.kind.toUpperCase()}</span>
+                      <span className="text-xs font-semibold max-w-[110px] truncate">{r.staffName}</span>
+                      <span className="text-[10px] opacity-80">{formatTime12h(r.time)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               {punchCard && (
                 <div className="absolute top-16 md:top-24 left-1/2 -translate-x-1/2 z-40 w-[90%] max-w-sm animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                   <div className={`rounded-2xl p-4 shadow-2xl border-2 text-white flex items-center gap-3 ${
