@@ -5,7 +5,7 @@ import { pettyCashService, PettyCashSheet, StaffMeal, CustomExpense, TransportLo
 import { attendanceService } from '../services/attendanceService';
 import { staffService } from '../services/staffService';
 import { locationService } from '../services/locationService';
-import { exportPettyCashPdf, exportPettyCashExcel, sharePettyCashWhatsApp } from '../utils/pettyCashExport';
+import { exportPettyCashPdf, exportPettyCashExcel, sharePettyCashWhatsApp, formatPunchRange, type PunchTimes } from '../utils/pettyCashExport';
 import { Location } from '../types';
 
 const getYesterdayKey = () => {
@@ -64,6 +64,23 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
   const [saving, setSaving] = useState(false);
   
   const [sheet, setSheet] = useState<PettyCashSheet | null>(null);
+  const [punchTimes, setPunchTimes] = useState<PunchTimes>({});
+
+  // Staff IN/OUT punch times for the selected date (full + part time)
+  useEffect(() => {
+    let cancelled = false;
+    attendanceService.getByDateRange(date, date).then(list => {
+      if (cancelled) return;
+      const map: PunchTimes = {};
+      list.forEach((a: any) => {
+        const t = { in: a.arrivalTime, out: a.leavingTime };
+        if (a.staffId) map[a.staffId] = t;
+        if (a.id) map[a.id] = map[a.id] || t;
+      });
+      setPunchTimes(map);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [date, location]);
   
   // Configurable Default Meal Rates persisted per location
   const [ftMealRate, setFtMealRate] = useState<number>(130);
@@ -637,7 +654,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
           {sheet && (
             <>
               <button
-                onClick={() => exportPettyCashPdf(sheet)}
+                onClick={() => exportPettyCashPdf(sheet, punchTimes)}
                 className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-all"
                 title="Export PDF"
               >
@@ -645,7 +662,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                 <span>PDF</span>
               </button>
               <button
-                onClick={() => exportPettyCashExcel(sheet)}
+                onClick={() => exportPettyCashExcel(sheet, punchTimes)}
                 className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-all"
                 title="Export Excel"
               >
@@ -653,7 +670,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                 <span>Excel</span>
               </button>
               <button
-                onClick={() => sharePettyCashWhatsApp(sheet)}
+                onClick={() => sharePettyCashWhatsApp(sheet, punchTimes)}
                 className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all active:scale-95"
                 title="Share voucher via WhatsApp"
               >
@@ -902,7 +919,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                       ) : fullTimeStaff.map((s, idx) => (
                         <tr key={s.staff_id} className="hover:bg-slate-50 transition-colors">
                           <td className="px-4 py-2.5 text-slate-500">{idx + 1}</td>
-                          <td className="px-4 py-2.5 font-bold text-slate-800">{s.staff_name}</td>
+                          <td className="px-4 py-2.5 font-bold text-slate-800">{s.staff_name}{formatPunchRange(punchTimes, s.staff_id) && <div className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">{formatPunchRange(punchTimes, s.staff_id)}</div>}</td>
                           <td className="px-4 py-2.5 text-slate-500 text-xs">{s.designation}</td>
                           <td className="px-4 py-2.5 text-center">
                             <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold ${s.attendance_status === 'F' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
@@ -953,7 +970,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                       ) : partTimeStaff.map((s, idx) => (
                         <tr key={s.staff_id} className="hover:bg-slate-50 transition-colors">
                           <td className="px-4 py-2.5 text-slate-500">{idx + 1}</td>
-                          <td className="px-4 py-2.5 font-bold text-slate-800">{s.staff_name}</td>
+                          <td className="px-4 py-2.5 font-bold text-slate-800">{s.staff_name}{formatPunchRange(punchTimes, s.staff_id) && <div className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">{formatPunchRange(punchTimes, s.staff_id)}</div>}</td>
                           <td className="px-4 py-2.5 text-slate-500 text-xs">{s.designation}</td>
                           <td className="px-4 py-2.5 text-center">
                             <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold ${s.attendance_status === 'F' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
@@ -1507,7 +1524,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
               <div className="grid grid-cols-3 sm:flex gap-1.5 sm:gap-2.5 w-full sm:w-auto">
                 {/* WhatsApp Share Button */}
                 <button
-                  onClick={() => sharePettyCashWhatsApp(sheet)}
+                  onClick={() => sharePettyCashWhatsApp(sheet, punchTimes)}
                   className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95"
                   title="Share voucher PDF directly on WhatsApp"
                 >
@@ -1517,7 +1534,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
 
                 {/* Print PDF Button */}
                 <button
-                  onClick={() => exportPettyCashPdf(sheet)}
+                  onClick={() => exportPettyCashPdf(sheet, punchTimes)}
                   className="flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl font-semibold text-xs sm:text-sm transition-all"
                 >
                   <Printer size={15} className="text-rose-600" />
@@ -1526,7 +1543,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
 
                 {/* Excel Button */}
                 <button
-                  onClick={() => exportPettyCashExcel(sheet)}
+                  onClick={() => exportPettyCashExcel(sheet, punchTimes)}
                   className="flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl font-semibold text-xs sm:text-sm transition-all"
                 >
                   <FileSpreadsheet size={15} className="text-emerald-600" />

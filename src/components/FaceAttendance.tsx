@@ -802,14 +802,14 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           {viewMode === 'camera' ? (
             <>
               <video ref={videoRef} onTouchEnd={isMobile ? onVideoDoubleTap : undefined} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
-              <div className="absolute top-2 right-2 md:top-auto md:bottom-24 z-40 pointer-events-none">
-                <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border backdrop-blur ${
+              <div className="absolute top-2 right-2 md:top-auto md:bottom-24 z-40">
+                <button type="button" onClick={() => { if (syncStatus?.isOnline && runSync) runSync().then(() => onAttendanceUpdated?.()); }} title="Tap to sync now" className={`active:scale-95 transition-transform text-[11px] font-bold px-2.5 py-1 rounded-full border backdrop-blur ${
                   !syncStatus?.isOnline ? 'bg-amber-500/80 border-amber-300 text-white' :
                   (syncStatus?.pendingCount || 0) > 0 ? 'bg-sky-500/80 border-sky-300 text-white' : 'bg-emerald-600/80 border-emerald-300 text-white'
                 }`}>
                   {!syncStatus?.isOnline ? `Offline · ${syncStatus?.pendingCount || 0} saved on device` :
                    (syncStatus?.pendingCount || 0) > 0 ? `Syncing ${syncStatus.pendingCount}…` : 'All synced'}
-                </span>
+                </button>
               </div>
               {cameraOn && recent.length > 0 && (
                 <div className="absolute bottom-2 left-2 right-2 z-30 flex gap-2 overflow-x-auto no-scrollbar pointer-events-none">
