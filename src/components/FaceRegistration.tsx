@@ -48,12 +48,13 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
   const [message, setMessage] = useState<{ kind: 'ok' | 'err' | 'warn'; text: string } | null>(null);
   const [livePreview, setLivePreview] = useState<{ faces: number; quality: number } | null>(null);
 
-  // --- Anti-spoofing: live-person challenge -------------------------------
+  // --- Anti-spoofing: passive live-person check -------------------------------
   const livenessRef = useRef<LivenessState>(createLivenessState());
   const [liveness, setLiveness] = useState<LivenessResult | null>(null);
   const [blinkDone, setBlinkDone] = useState(false);
   const [motionDone, setMotionDone] = useState(false);
-  const livenessOk = !!liveness?.isLive && blinkDone && motionDone;
+  // Instant: one clear face and no spoof signal is enough to capture.
+  const livenessOk = liveness?.reason !== 'spoof' && (livePreview?.faces ?? 0) === 1;
 
   const resetChallenge = useCallback(() => {
     livenessRef.current = createLivenessState();
