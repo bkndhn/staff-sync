@@ -146,6 +146,13 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const ackRef = useRef<Record<string, number>>({});
   // Local punch queue: auto-sync on reconnect + every 30s
   const { status: syncStatus, runSync, refreshPendingCount } = useOfflineSync() as any;
+  // When queued offline punches finish syncing, refresh app attendance so Dashboard counts update.
+  const prevPendingRef = useRef<number>(0);
+  useEffect(() => {
+    const n = syncStatus?.pendingCount || 0;
+    if (prevPendingRef.current > 0 && n < prevPendingRef.current) onAttendanceUpdated?.();
+    prevPendingRef.current = n;
+  }, [syncStatus?.pendingCount, onAttendanceUpdated]);
   useEffect(() => {
     const t = setInterval(() => { if (navigator.onLine) runSync?.(); else refreshPendingCount?.(); }, 30000);
     return () => clearInterval(t);
