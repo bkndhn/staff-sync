@@ -35,7 +35,20 @@ function formatAmountOrDash(val: number | string | undefined, prefix = 'Rs. '): 
 /** Sanitizes any text to strip Unicode Rupee symbol and avoid WinAnsi encoding bugs */
 const sanitize = (text: string) => (text || '').replace(/₹/g, 'Rs.');
 
-export const generatePettyCashPdfDoc = (sheet: PettyCashSheet): jsPDF => {
+export type PunchTimes = Record<string, { in?: string; out?: string }>;
+const to12 = (t?: string) => {
+  if (!t) return '--:--';
+  const [h, m] = t.split(':').map(Number);
+  if (isNaN(h)) return '--:--';
+  const ap = h >= 12 ? 'PM' : 'AM';
+  return `${String(h % 12 || 12).padStart(2, '0')}:${String(m || 0).padStart(2, '0')} ${ap}`;
+};
+export const formatPunchRange = (times: PunchTimes | undefined, id: string) => {
+  const t = times?.[id];
+  if (!t || (!t.in && !t.out)) return '';
+  return `IN ${to12(t.in)} / OUT ${to12(t.out)}`;
+};
+export const generatePettyCashPdfDoc = (sheet: PettyCashSheet, times?: PunchTimes): jsPDF => {
   const doc = new jsPDF('p', 'pt', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -77,13 +90,13 @@ export const generatePettyCashPdfDoc = (sheet: PettyCashSheet): jsPDF => {
     
     staffTableBody.push([
       ft ? i + 1 : '—',
-      ft ? sanitize(ft.staff_name) : '—',
+      ft ? sanitize(ft.staff_name) + (formatPunchRange(times, ft.staff_id) ? '\n' + formatPunchRange(times, ft.staff_id) : '') : '—',
       ft ? sanitize(ft.designation) : '—',
       ft ? ft.attendance_status : '—',
       ft ? formatAmountOrDash(ft.amount) : '—',
       '', // spacer
       pt ? i + 1 : '—',
-      pt ? sanitize(pt.staff_name) : '—',
+      pt ? sanitize(pt.staff_name) + (formatPunchRange(times, pt.staff_id) ? '\n' + formatPunchRange(times, pt.staff_id) : '') : '—',
       pt ? sanitize(pt.designation) : '—',
       pt ? pt.attendance_status : '—',
       pt ? formatAmountOrDash(pt.amount) : '—'
@@ -314,14 +327,14 @@ export const generatePettyCashPdfDoc = (sheet: PettyCashSheet): jsPDF => {
   return doc;
 };
 
-export const exportPettyCashPdf = (sheet: PettyCashSheet) => {
-  const doc = generatePettyCashPdfDoc(sheet);
+export const exportPettyCashPdf = (sheet: PettyCashSheet, times?: PunchTimes) => {
+  const doc = generatePettyCashPdfDoc(sheet, times);
   const safeLoc = (sheet.location || 'Shop').replace(/[^a-zA-Z0-9_-]/g, '_');
   doc.save(`Petty_Cash_${safeLoc}_${sheet.date}.pdf`);
 };
 
-export const sharePettyCashWhatsApp = async (sheet: PettyCashSheet) => {
-  const doc = generatePettyCashPdfDoc(sheet);
+export const sharePettyCashWhatsApp = async (sheet: PettyCashSheet, times?: PunchTimes) => {
+  const doc = generatePettyCashPdfDoc(sheet, times);
   const pdfBlob = doc.output('blob');
   const safeLoc = (sheet.location || 'Shop').replace(/[^a-zA-Z0-9_-]/g, '_');
   const fileName = `Petty_Cash_${safeLoc}_${sheet.date}.pdf`;
@@ -372,7 +385,7 @@ export const sharePettyCashWhatsApp = async (sheet: PettyCashSheet) => {
   window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
 };
 
-export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
+export const exportPettyCashExcel = (sheet: PettyCashSheet, times?: PunchTimes) => {
   const wb = XLSX.utils.book_new();
   
   const wsData: any[][] = [];
@@ -403,13 +416,13 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
     
     wsData.push([
       ft ? i + 1 : '—',
-      ft ? ft.staff_name : '—',
+      ft ? ft.staff_name + (formatPunchRange(times, ft.staff_id) ? ' (' + formatPunchRange(times, ft.staff_id) + ')' : '') : '—',
       ft ? ft.designation : '—',
       ft ? ft.attendance_status : '—',
       ft ? (ft.amount > 0 ? formatCurrency(ft.amount) : '—') : '—',
       '',
       pt ? i + 1 : '—',
-      pt ? pt.staff_name : '—',
+      pt ? pt.staff_name + (formatPunchRange(times, pt.staff_id) ? ' (' + formatPunchRange(times, pt.staff_id) + ')' : '') : '—',
       pt ? pt.designation : '—',
       pt ? pt.attendance_status : '—',
       pt ? (pt.amount > 0 ? formatCurrency(pt.amount) : '—') : '—'
@@ -479,13 +492,13 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet) => {
   // Column Widths for clean layout
   ws['!cols'] = [
     { wch: 6 },  // A: S.No
-    { wch: 24 }, // B: Name
+    { wch: 44 }, // B: Name
     { wch: 18 }, // C: Designation
     { wch: 8 },  // D: F/H
     { wch: 16 }, // E: Amount (Rs.)
     { wch: 4 },  // F: Spacer
     { wch: 6 },  // G: S.No
-    { wch: 24 }, // H: Name
+    { wch: 44 }, // H: Name
     { wch: 18 }, // I: Designation
     { wch: 8 },  // J: F/H
     { wch: 16 }, // K: Amount (Rs.)
