@@ -2536,6 +2536,27 @@ body.light-theme button[class*="text-emerald"] svg {
    Only applies on <md screens; desktop untouched.
    ============================================ */
 
+/* Kiosk-style face guide frame (corner brackets) */
+.face-reticle {
+  position: relative;
+  width: min(62vw, 280px);
+  aspect-ratio: 3 / 4;
+  border-radius: 40%;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.face-reticle span {
+  position: absolute; width: 34px; height: 34px;
+  border-color: rgba(255, 255, 255, 0.85); border-style: solid; border-width: 0;
+  transition: border-color 160ms ease;
+}
+.face-reticle span:nth-child(1) { top: 0; left: 0; border-top-width: 4px; border-left-width: 4px; border-top-left-radius: 18px; }
+.face-reticle span:nth-child(2) { top: 0; right: 0; border-top-width: 4px; border-right-width: 4px; border-top-right-radius: 18px; }
+.face-reticle span:nth-child(3) { bottom: 0; left: 0; border-bottom-width: 4px; border-left-width: 4px; border-bottom-left-radius: 18px; }
+.face-reticle span:nth-child(4) { bottom: 0; right: 0; border-bottom-width: 4px; border-right-width: 4px; border-bottom-right-radius: 18px; }
+.face-reticle.is-match { transform: scale(1.04); }
+.face-reticle.is-match span { border-color: rgb(52, 211, 153); }
+.face-reticle.is-dup span { border-color: rgb(251, 191, 36); }
+
 @media (max-width: 767px) {
   .face-mobile-shell {
     /* Flow within normal page layout — NOT position:fixed */

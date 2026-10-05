@@ -818,6 +818,12 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           {viewMode === 'camera' ? (
             <>
               <video ref={videoRef} onTouchEnd={isMobile ? onVideoDoubleTap : undefined} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
+              {/* Face guide frame — turns green the moment someone is recognised */}
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                <div className={`face-reticle ${punchCard ? (punchCard.kind === 'dup' ? 'is-dup' : 'is-match') : ''}`}>
+                  <span /><span /><span /><span />
+                </div>
+              </div>
               <div className="absolute top-2 right-2 md:top-auto md:bottom-24 z-40">
                 <button type="button" onClick={() => { if (syncStatus?.isOnline && runSync) runSync().then(() => onAttendanceUpdated?.()); }} title="Tap to sync now" className={`active:scale-95 transition-transform text-[11px] font-bold px-2.5 py-1 rounded-full border backdrop-blur ${
                   !syncStatus?.isOnline ? 'bg-amber-500/80 border-amber-300 text-white' :
