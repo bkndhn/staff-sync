@@ -96,6 +96,15 @@ const playChime = (kind: 'in' | 'out' | 'error') => {
   } catch {}
 };
 
+/** "ARUN KUMAR" → "Arun Kumar" so voices read it as a name instead of spelling letters. */
+const spokenName = (name: string) =>
+  (name || '')
+    .replace(/[._]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 1)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+
 /** Spoken confirmation like commercial biometric terminals (offline, built into the phone). */
 const speak = (text: string) => {
   try {
@@ -522,7 +531,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     setPunchCard({ name: s.name, designation: (s as any).designation, kind, time, ts: Date.now() });
     playChime(kind);
     haptics.success();
-    speak(`${kind === 'in' ? 'Welcome' : 'Thank you'}, ${s.name.split(' ')[0]}`);
+    speak(`${kind === 'in' ? 'Welcome' : 'Thank you'}, ${spokenName(s.name)}`);
 
     // Save audit event (local-first, syncs in background)
     await punchEventService.insert({

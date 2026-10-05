@@ -77,14 +77,20 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         await db.faceEmbeddings.bulkPut(approvedList);
       }
 
-      // Load signed URLs in parallel
+      // Show embedded thumbnails instantly, then upgrade to storage URLs when available
+      const thumbs: Record<string, string> = {};
+      for (const s of list) {
+        const t = (s.qualityMetrics as any)?.thumbnail;
+        if (typeof t === 'string' && t.startsWith('data:image')) thumbs[s.id] = t;
+      }
+      setImageUrls(thumbs);
       const urlEntries = await Promise.all(
-        list.filter(s => s.imagePath).map(async (s) => {
-          const url = await faceEmbeddingService.getSignedImageUrl(s.imagePath!);
+        list.filter(s => s.imagePath && !thumbs[s.id]).map(async (s) => {
+          const url = await faceEmbeddingService.getSignedImageUrl(s.imagePath!).catch(() => null);
           return [s.id, url || ''] as const;
         })
       );
-      setImageUrls(Object.fromEntries(urlEntries));
+      setImageUrls(prev => ({ ...prev, ...Object.fromEntries(urlEntries.filter(([, u]) => u)) }));
     } catch (e: any) {
       setMessage({ kind: 'err', text: e?.message || 'Failed to load samples' });
     }
@@ -218,6 +224,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
       const ctx = c.getContext('2d');
       if (ctx) ctx.drawImage(v, 0, 0, c.width, c.height);
       const blob: Blob | null = await new Promise(res => c.toBlob(b => res(b), 'image/jpeg', 0.85));
+      const thumbnail = makeThumb(c);
 
       await faceEmbeddingService.create({
         staffId: staff.id,
@@ -233,6 +240,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
           livenessScore: liveness?.score ?? null,
           blinkSeen: blinkDone,
           motionSeen: motionDone,
+          thumbnail,
         },
         qualityScore: result.qualityScore,
         imageBlob: blob || undefined,
@@ -279,7 +287,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
         angleLabel: activeAngle,
         descriptor: result.descriptor,
         modelVersion: result.modelVersion,
-        qualityMetrics: { aligned: !!result.aligned, faceCount: result.faceCount, detectScore: result.qualityScore, source: 'upload', livenessVerified: false, livenessScore: null },
+        qualityMetrics: { aligned: !!result.aligned, faceCount: result.faceCount, detectScore: result.qualityScore, source: 'upload', livenessVerified: false, livenessScore: null, thumbnail: await fileThumb(file) },
         qualityScore: result.qualityScore,
         imageBlob: file,
         capturedBy,
