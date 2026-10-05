@@ -33,6 +33,27 @@ const ANGLES = [
 // Cosine duplicate deduplication threshold: < 0.25 = very similar (reject)
 const DUP_THRESHOLD_COSINE = 0.25;
 
+/** Small JPEG preview (~8 KB) kept with the sample so photos always show, even without file storage. */
+const makeThumb = (src: CanvasImageSource & { width: number; height: number }, max = 160): string => {
+  try {
+    const scale = Math.min(1, max / Math.max(src.width || 1, src.height || 1));
+    const t = document.createElement('canvas');
+    t.width = Math.round((src.width || max) * scale);
+    t.height = Math.round((src.height || max) * scale);
+    t.getContext('2d')?.drawImage(src, 0, 0, t.width, t.height);
+    return t.toDataURL('image/jpeg', 0.7);
+  } catch { return ''; }
+};
+
+const fileThumb = (file: Blob): Promise<string> =>
+  new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { resolve(makeThumb(img)); URL.revokeObjectURL(url); };
+    img.onerror = () => { resolve(''); URL.revokeObjectURL(url); };
+    img.src = url;
+  });
+
 const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy }) => {
   const { ready: modelsReady, loading: modelsLoading, error: modelsError, detect } = useFaceEngine(true);
   const videoRef = useRef<HTMLVideoElement>(null);
