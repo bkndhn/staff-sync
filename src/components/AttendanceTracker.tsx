@@ -717,7 +717,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <select
               value={selectedStaff?.id || ''}
               onChange={(e) => setYearlyView({ ...yearlyView, staffId: e.target.value })}
-              className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 min-w-[200px]"
+              className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 w-full sm:w-auto sm:min-w-[200px]"
             >
               <option value="">— Select Staff —</option>
               {yearStaff.map(s => <option key={s.id} value={s.id}>{s.name} ({s.location})</option>)}
@@ -1057,7 +1057,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   };
 
   return (
-    <div className="p-1 md:p-6 space-y-2 md:space-y-4">
+    <div className="p-1 md:p-6 space-y-2 md:space-y-4 max-w-full overflow-x-hidden">
       {/* Combined Compact Header & Controls */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2 md:p-4">
         
