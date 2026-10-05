@@ -71,6 +71,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
 
   // --- Anti-spoofing: passive live-person check -------------------------------
   const livenessRef = useRef<LivenessState>(createLivenessState());
+  const lastDetectRef = useRef<{ r: any; at: number } | null>(null);
   const [liveness, setLiveness] = useState<LivenessResult | null>(null);
   const [blinkDone, setBlinkDone] = useState(false);
   const [motionDone, setMotionDone] = useState(false);
@@ -163,6 +164,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
       }
       try {
         const r = await detect(videoRef.current, { scoreThreshold: 0.15 });
+        lastDetectRef.current = r ? { r, at: Date.now() } : null;
         if (!cancelled) {
           setLivePreview(r ? { faces: r.faceCount, quality: r.qualityScore } : { faces: 0, quality: 0 });
 
@@ -183,7 +185,7 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
           }
         }
       } catch { /* ignore */ }
-      if (!cancelled) timer = setTimeout(tick, 250);
+      if (!cancelled) timer = setTimeout(tick, 120);
     };
     tick();
     return () => { cancelled = true; clearTimeout(timer); };
@@ -194,7 +196,11 @@ const FaceRegistration: React.FC<Props> = ({ staff, isAdmin = false, capturedBy 
     setBusy(true);
     setMessage(null);
     try {
-      const result = await detect(videoRef.current, { scoreThreshold: 0.15 });
+      // Reuse the live-loop result if it is fresh — saves a full second detection pass.
+      const cached = lastDetectRef.current;
+      const result = cached && Date.now() - cached.at < 600 && cached.r?.descriptor?.length
+        ? cached.r
+        : await detect(videoRef.current, { scoreThreshold: 0.15 });
       if (!result) {
         setMessage({ kind: 'err', text: 'No face detected. Center your face and try again.' });
         return;
