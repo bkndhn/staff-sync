@@ -1131,7 +1131,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
   const totals = calculateTotals();
 
   return (
-    <div className="p-1 md:p-6 space-y-6">
+    <div className="mobile-page p-1 md:p-6 space-y-6">
       {/* Combined Compact Header */}
       <div className="glass-card-static p-2 md:p-4 rounded-xl border border-[var(--glass-border)]">
         <div className="flex items-center gap-2 text-[var(--text-primary)]">
