@@ -859,6 +859,9 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                           <div className="min-w-0">
                             <h4 className="font-bold text-slate-800 text-sm truncate">{s.staff_name}</h4>
                             <p className="text-xs text-slate-500 truncate">{s.designation || 'Staff'}</p>
+                            {formatPunchRange(punchTimes, s.staff_id) && (
+                              <p className="text-[11px] font-semibold text-slate-600 whitespace-nowrap mt-0.5">{formatPunchRange(punchTimes, s.staff_id)}</p>
+                            )}
                           </div>
                         </div>
                         <span className={`inline-flex px-2 py-0.5 rounded text-xs font-extrabold shrink-0 ${
