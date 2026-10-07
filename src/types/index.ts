@@ -163,6 +163,14 @@ export interface PayrollDetail {
   /** Approved expense claims reimbursed in this payroll (non-taxable, added to net). */
   reimbursement?: number;
   reimbursedClaimIds?: string[];
+  /** Total on-premises hours from punch IN/OUT this month. */
+  workedHours?: number;
+  /** Hours beyond the daily overtime threshold. */
+  overtimeHours?: number;
+  /** Overtime earnings added to gross. */
+  overtimePay?: number;
+  /** Hourly overtime rate used. */
+  overtimeRate?: number;
 }
 
 export type PayrollRunStatus = 'Generated' | 'PendingApproval' | 'Approved' | 'Rejected' | 'Locked';

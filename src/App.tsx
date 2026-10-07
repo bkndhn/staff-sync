@@ -381,7 +381,11 @@ function App() {
       if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security';
       return tab !== 'My Portal';
     };
-    if (validForRole(saved)) {
+    const kioskLaunch = new URLSearchParams(window.location.search).get('kiosk') === '1'
+      || localStorage.getItem('kioskDevice') === '1';
+    if (kioskLaunch && validForRole('Face Attendance')) {
+      setActiveTab('Face Attendance');
+    } else if (validForRole(saved)) {
       setActiveTab(saved!);
     } else if (user.role === 'staff') {
       setActiveTab('My Portal');
@@ -498,6 +502,19 @@ function App() {
       cacheService.invalidate(CACHE_KEYS.STAFF);
     }, [])
   );
+
+  // Instant reload when another screen (e.g. Action Center approval) changes attendance
+  useEffect(() => {
+    const onChanged = async () => {
+      try {
+        cacheService.invalidate(CACHE_KEYS.ATTENDANCE);
+        const fresh = await attendanceService.getAll();
+        if (Array.isArray(fresh)) setAttendance(fresh);
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('attendance-changed', onChanged);
+    return () => window.removeEventListener('attendance-changed', onChanged);
+  }, []);
 
   // Poll attendance every 60s while Dashboard is visible so present-by-role
   // counts stay live even when realtime is blocked by RLS.

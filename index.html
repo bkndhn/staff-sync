@@ -9,7 +9,13 @@
     <meta name="theme-color" content="#0f0f1a" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="/manifest.json" id="app-manifest" />
+    <script>
+      // Opening /?kiosk=1 and choosing "Add to Home screen" installs a separate Kiosk app with its own icon.
+      if (new URLSearchParams(location.search).get('kiosk') === '1') {
+        document.getElementById('app-manifest').setAttribute('href', '/kiosk-manifest.json');
+      }
+    </script>
     <title>Staff Management System</title>
     
   
