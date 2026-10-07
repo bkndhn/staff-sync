@@ -381,7 +381,11 @@ function App() {
       if (user.role === 'manager') return tab !== 'Settings' && tab !== 'My Portal' && tab !== 'Security';
       return tab !== 'My Portal';
     };
-    if (validForRole(saved)) {
+    const kioskLaunch = new URLSearchParams(window.location.search).get('kiosk') === '1'
+      || localStorage.getItem('kioskDevice') === '1';
+    if (kioskLaunch && validForRole('Face Attendance')) {
+      setActiveTab('Face Attendance');
+    } else if (validForRole(saved)) {
       setActiveTab(saved!);
     } else if (user.role === 'staff') {
       setActiveTab('My Portal');
