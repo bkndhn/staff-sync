@@ -32,6 +32,23 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
+// Outbound destinations are restricted to known vendor cloud domains per provider,
+// plus any extra hosts the operator explicitly lists in the
+// DEVICE_PULL_ALLOWED_HOSTS secret (comma-separated, e.g. "biotime.myshop.in").
+const PROVIDER_HOST_SUFFIXES: Record<string, string[]> = {
+  essl: ["etimetrack.in", "essl.in", "esslsecurity.com", "esslcloud.com"],
+  zkbiotime: ["zkteco.com", "zkbiotime.com", "zkbiocloud.com", "biotimecloud.com"],
+  realtime: ["realtimebiometrics.net", "realtimebiometrics.com", "realtimeams.com"],
+};
+function isAllowedProviderHost(provider: string, raw: string): boolean {
+  let host: string;
+  try { host = new URL(raw).hostname.toLowerCase(); } catch { return false; }
+  const extra = (Deno.env.get("DEVICE_PULL_ALLOWED_HOSTS") || "")
+    .split(",").map((h) => h.trim().toLowerCase()).filter(Boolean);
+  const allowed = [...(PROVIDER_HOST_SUFFIXES[provider] || []), ...extra];
+  return allowed.some((s) => host === s || host.endsWith("." + s));
+}
+
 interface PullBody {
   provider?: string;
   serverUrl?: string;
@@ -210,7 +227,10 @@ Deno.serve(async (req) => {
     const hostError = await assertPublicHost(body.serverUrl);
     if (hostError) return json({ error: hostError }, 400);
     if (!["essl", "zkbiotime", "realtime"].includes(provider)) {
-      return json({ error: `Unsupported provider: ${body.provider}` }, 400);
+      return json({ error: "Unsupported provider" }, 400);
+    }
+    if (!isAllowedProviderHost(provider, body.serverUrl)) {
+      return json({ error: "serverUrl is not an approved server for this device provider. Ask your administrator to add it to the allowed list." }, 400);
     }
 
     const since = body.since ? new Date(body.since) : (() => {
