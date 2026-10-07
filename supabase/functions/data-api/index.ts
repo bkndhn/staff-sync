@@ -184,11 +184,40 @@ function stripSecrets(v: any): any {
   return v;
 }
 
-function assertSafeColumns(columns: string | undefined) {
+// Strict projection grammar: plain columns, "*", optional "alias:col", and
+// one level of embedded resources "alias:target(col, col)" whose target maps to
+// a table the caller's role may read. No casts, hints, JSON paths or nesting.
+const PLAIN_COL_RE = /^(?:[a-z_][a-z0-9_]*:)?(?:\*|[a-z_][a-z0-9_]*)$/;
+const EMBED_RE = /^(?:([a-z_][a-z0-9_]*):)?([a-z_][a-z0-9_]*)\(([^()]*)\)$/;
+function splitTopLevel(s: string): string[] {
+  const out: string[] = []; let depth = 0; let cur = "";
+  for (const ch of s) {
+    if (ch === "(") depth++;
+    if (ch === ")") depth--;
+    if (depth < 0) throw new ClientError("Invalid columns");
+    if (ch === "," && depth === 0) { out.push(cur); cur = ""; } else cur += ch;
+  }
+  if (depth !== 0) throw new ClientError("Invalid columns");
+  out.push(cur);
+  return out.map((t) => t.trim()).filter(Boolean);
+}
+function assertSafeColumns(columns: string | undefined, role?: string) {
   if (!columns) return;
   if (typeof columns !== "string" || columns.length > 2000) throw new ClientError("Invalid columns");
-  const tokens = columns.toLowerCase().match(/[a-z_][a-z0-9_]*/g) ?? [];
+  const lower = columns.toLowerCase();
+  const tokens = lower.match(/[a-z_][a-z0-9_]*/g) ?? [];
   if (tokens.some((t) => SECRET_COLUMNS.has(t))) throw new ClientError("Requested column is not available");
+  for (const part of splitTopLevel(lower)) {
+    if (PLAIN_COL_RE.test(part)) continue;
+    const m = part.match(EMBED_RE);
+    if (!m) throw new ClientError("Invalid columns");
+    const target = m[2];
+    const table = ACL[target] ? target : (target.endsWith("_id") && ACL[target.slice(0, -3)] ? target.slice(0, -3) : null);
+    if (!table || !role || !(ACL[table].read as string[]).includes(role)) throw new ClientError("Requested relation is not available");
+    for (const inner of splitTopLevel(m[3])) {
+      if (!/^(?:\*|[a-z_][a-z0-9_]*)$/.test(inner)) throw new ClientError("Invalid columns");
+    }
+  }
 }
 
 // Fields a non-super-admin may never set, per table.
@@ -196,6 +225,22 @@ const PROTECTED_WRITE_FIELDS: Record<string, string[]> = {
   app_users: ["auth_id", "tenant_id", "password_hash", "email_verified"],
   tenants: ["id", "staff_limit", "location_limit", "sub_user_limit", "plan", "status", "is_active", "slug", "expires_at", "trial_ends_at", "subscription_status"],
 };
+// Fields nobody but super_admin may set on any table (tenant is server-stamped).
+const GLOBAL_PROTECTED_FIELDS = ["tenant_id", "created_at", "updated_at"];
+// Compensation fields on staff that only admins may change.
+const STAFF_COMPENSATION_FIELDS = [
+  "basic_salary", "total_salary", "incentive", "hra", "meal_allowance", "meal_allowance_threshold",
+  "salary_supplements", "initial_salary", "sunday_penalty", "salary_calculation_days",
+  "allowance_calc_modes", "statutory_deductions", "is_statutory", "next_hike_date", "hike_interval_months",
+  "exempt_from_late_deduction",
+];
+// Approval/decision fields a staff member can never set on their own requests.
+const STAFF_DECISION_FIELDS = [
+  "approved_by", "approved_at", "rejected_by", "rejected_at", "reviewed_by", "reviewed_at",
+  "resolved_by", "resolved_at", "resolution", "resolution_note", "manager_comment", "admin_comment",
+  "current_level", "approval_history", "paid_at", "paid_by", "approved_amount", "disbursed_at",
+];
+const STAFF_ALLOWED_STATUS = new Set(["pending", "withdrawn", "cancelled", "Pending", "Withdrawn", "Cancelled"]);
 
 function sanitizeWriteRows(
   table: string,
@@ -203,18 +248,30 @@ function sanitizeWriteRows(
   role: string,
 ): string | null {
   const isSuper = role === "super_admin";
-  const protectedFields = isSuper ? [] : (PROTECTED_WRITE_FIELDS[table] ?? []);
+  const protectedFields = isSuper ? [] : [...GLOBAL_PROTECTED_FIELDS, ...(PROTECTED_WRITE_FIELDS[table] ?? [])];
   for (const r of rows) {
     if (!r || typeof r !== "object" || Array.isArray(r)) return "Invalid row";
     for (const k of Object.keys(r)) {
       if (!IDENT_RE.test(k) || k.includes(".")) return "Invalid field name";
       if (protectedFields.includes(k)) delete r[k];
+      if (SECRET_COLUMNS.has(k) && k !== "password_hash") delete r[k];
     }
     // password hashes may only be cleared, never set, through this API
     if ("password_hash" in r && r.password_hash !== null) delete r.password_hash;
     if (!isSuper && table === "app_users" && "role" in r) {
       const allowedRoles = ["admin", "manager", "staff", "statutory_admin", "supervisor", "floor_supervisor", "petty_cash_manager"];
       if (!allowedRoles.includes(String(r.role))) return "Role not permitted";
+    }
+    if (table === "staff" && role !== "admin" && !isSuper) {
+      if (STAFF_COMPENSATION_FIELDS.some((f) => f in r)) return "Only administrators can change salary details";
+    }
+    if (role === "staff") {
+      for (const f of STAFF_DECISION_FIELDS) delete r[f];
+      if ("status" in r && table !== "attendance" && table !== "break_events" && table !== "push_subscriptions"
+          && table !== "face_embeddings" && table !== "face_registration_logs" && table !== "staff_notifications"
+          && !STAFF_ALLOWED_STATUS.has(String(r.status))) {
+        return "Status change not permitted";
+      }
     }
   }
   return null;

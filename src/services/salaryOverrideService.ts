@@ -1,9 +1,9 @@
-import { supabase } from '../lib/supabase';
+import { dataApi } from '../lib/dataApi';
 import type { PayrollOverride, PayrollOverride as SalaryOverride } from '../types';
 
 export const salaryOverrideService = {
     async getOverrides(month: number, year: number) {
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('salary_manual_overrides')
             .select('*')
             .eq('month', month)
@@ -46,12 +46,9 @@ export const salaryOverrideService = {
             updated_at: new Date().toISOString()
         };
 
-        const { data, error } = await supabase
+        const { data, error } = await dataApi
             .from('salary_manual_overrides')
-            .upsert(dbOverride, {
-                onConflict: 'staff_id,month,year',
-                ignoreDuplicates: false
-            })
+            .upsert(dbOverride, { onConflict: 'staff_id,month,year' })
             .select()
             .single();
 

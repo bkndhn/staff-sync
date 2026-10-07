@@ -135,6 +135,18 @@ Deno.serve(async (req) => {
       passwordValid = simpleHash(password) === user.password_hash;
     }
 
+    // Passwords that were ever published in seed scripts are permanently refused,
+    // whatever account they are set on. The owner must reset the password.
+    const COMPROMISED_SEED_PASSWORDS = new Set(['Staffans7369', 'Qwe12345']);
+    if (passwordValid && COMPROMISED_SEED_PASSWORDS.has(password)) {
+      recordFailedAttempt(rateLimitKey);
+      await supabase.from('app_users').update({ password_hash: null }).eq('id', user.id);
+      return new Response(
+        JSON.stringify({ error: 'This password is no longer allowed. Ask your administrator to set a new password.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (!passwordValid) {
       recordFailedAttempt(rateLimitKey);
       return new Response(

@@ -487,7 +487,10 @@ export const exportPettyCashExcel = (sheet: PettyCashSheet, times?: PunchTimes) 
     formatCurrency(balance)
   ]);
 
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  // Neutralise spreadsheet formulas in any user-typed text cell.
+  const safeData = wsData.map((row: any[]) => row.map((v: any) =>
+    typeof v === 'string' && /^[=+\-@\t\r]/.test(v) ? "'" + v : v));
+  const ws = XLSX.utils.aoa_to_sheet(safeData);
   
   // Column Widths for clean layout
   ws['!cols'] = [

@@ -12,7 +12,13 @@ interface Props {
 const toCsv = (rows: any[]) => {
   if (rows.length === 0) return '';
   const keys = Object.keys(rows[0]);
-  return [keys.join(','), ...rows.map(r => keys.map(k => JSON.stringify(r[k] ?? '')).join(','))].join('\n');
+  // Neutralise spreadsheet formulas: text cells starting with = + - @ tab or CR get a leading apostrophe.
+  const cell = (v: unknown) => {
+    let s = String(v ?? '');
+    if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return JSON.stringify(s);
+  };
+  return [keys.map(cell).join(','), ...rows.map(r => keys.map(k => cell(r[k])).join(','))].join('\n');
 };
 
 const BreakManagement: React.FC<Props> = ({ staff, user }) => {
