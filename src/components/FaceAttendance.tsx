@@ -124,7 +124,18 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const isMobile = useIsMobile();
 
   // ── Standalone kiosk mode: full screen, nav hidden, live role counts ──
-  const [kioskMode, setKioskMode] = useState(false);
+  // Opens straight into kiosk when launched with ?kiosk=1 (home-screen kiosk icon)
+  // or when this device was left in kiosk mode last time.
+  const [kioskMode, setKioskModeState] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('kiosk') === '1'
+        || localStorage.getItem('kioskDevice') === '1';
+    } catch { return false; }
+  });
+  const setKioskMode = (v: boolean) => {
+    setKioskModeState(v);
+    try { v ? localStorage.setItem('kioskDevice', '1') : localStorage.removeItem('kioskDevice'); } catch { /* ignore */ }
+  };
   const [nowTick, setNowTick] = useState(Date.now());
   useEffect(() => {
     if (!kioskMode) return;
