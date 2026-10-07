@@ -51,7 +51,16 @@ Deno.serve(async (req) => {
       return json({ error: "Unauthorized" }, 401);
     }
 
-    const { title, body, staffId, userId, actionUrl, icon } = await req.json();
+    const raw = await req.json();
+    const { staffId, userId } = raw ?? {};
+    const clean = (v: unknown, max: number) =>
+      typeof v === "string" ? v.replace(/[\u0000-\u001F\u007F<>]/g, " ").trim().slice(0, max) : "";
+    const title = clean(raw?.title, 80);
+    const body = clean(raw?.body, 300);
+    // Only same-app relative links; no external or protocol-relative URLs.
+    const actionUrl = typeof raw?.actionUrl === "string" && /^\/(?!\/)[A-Za-z0-9_\-/?=&.#%]*$/.test(raw.actionUrl) && raw.actionUrl.length <= 200
+      ? raw.actionUrl : "/";
+    const icon = "/image.png";
 
     if (!staffId && !userId) {
       return json({ error: "Missing recipient (staffId or userId required)" }, 400);

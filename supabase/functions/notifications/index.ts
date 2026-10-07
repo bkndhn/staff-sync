@@ -131,12 +131,16 @@ async function adminsOf(tenantId: string) {
 }
 
 async function salaryCredit(tenantId: string, payload: any) {
-  const monthLabel = payload.monthYear || `${payload.month}/${payload.year}`;
+  const m = Number(payload.month), y = Number(payload.year);
+  const validMonthYear = typeof payload.monthYear === "string" && /^[A-Za-z]{3,9} \d{4}$/.test(payload.monthYear);
+  const monthLabel = validMonthYear ? payload.monthYear
+    : (Number.isInteger(m) && m >= 1 && m <= 12 && Number.isInteger(y) && y >= 2000 && y <= 2100 ? `${m}/${y}` : "this month");
   const { data: staff } = await admin.from("staff").select("id, name")
     .eq("tenant_id", tenantId).eq("is_active", true);
   const list = staff || [];
   const title = "Salary Credited 💸";
-  const message = payload.message || `Your salary for ${monthLabel} has been processed and credited.`;
+  // Fixed server-side wording: callers cannot inject custom text into salary alerts.
+  const message = `Your salary for ${monthLabel} has been processed and credited.`;
   const pushed = await pushTo(list.map((s) => ({ staffId: s.id })), { title, body: message, actionUrl: "/?tab=salary" });
   await record(tenantId, "salary_credit", "staff", list.map((s) => ({
     staffId: s.id, title, message, type: "salary_disbursed", tabId: "salary",
@@ -243,7 +247,7 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case "salary_credit": {
-        if (!["admin", "manager"].includes(caller.role)) return json({ error: "Forbidden" }, 403);
+        if (caller.role !== "admin") return json({ error: "Forbidden" }, 403);
         return json({ success: true, ...(await salaryCredit(tenantId, body)) });
       }
       case "uninformed_leave":
