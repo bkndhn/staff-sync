@@ -499,6 +499,19 @@ function App() {
     }, [])
   );
 
+  // Instant reload when another screen (e.g. Action Center approval) changes attendance
+  useEffect(() => {
+    const onChanged = async () => {
+      try {
+        cacheService.invalidate(CACHE_KEYS.ATTENDANCE);
+        const fresh = await attendanceService.getAll();
+        if (Array.isArray(fresh)) setAttendance(fresh);
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('attendance-changed', onChanged);
+    return () => window.removeEventListener('attendance-changed', onChanged);
+  }, []);
+
   // Poll attendance every 60s while Dashboard is visible so present-by-role
   // counts stay live even when realtime is blocked by RLS.
   useEffect(() => {
