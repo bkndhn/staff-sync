@@ -122,42 +122,6 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const streamRef = useRef<MediaStream | null>(null);
   const lastPunchRef = useRef<Record<string, { ts: number; kind: 'in' | 'out' }>>({});
   const isMobile = useIsMobile();
-
-  // ── Standalone kiosk mode: full screen, nav hidden, live role counts ──
-  const [kioskMode, setKioskMode] = useState(false);
-  const [nowTick, setNowTick] = useState(Date.now());
-  useEffect(() => {
-    if (!kioskMode) return;
-    const t = window.setInterval(() => setNowTick(Date.now()), 15000);
-    return () => window.clearInterval(t);
-  }, [kioskMode]);
-  useEffect(() => {
-    document.body.classList.toggle('kiosk-active', kioskMode);
-    return () => document.body.classList.remove('kiosk-active');
-  }, [kioskMode]);
-  const toggleKiosk = useCallback(async () => {
-    const next = !kioskMode;
-    setKioskMode(next);
-    try {
-      if (next && !document.fullscreenElement) await document.documentElement.requestFullscreen?.();
-      if (!next && document.fullscreenElement) await document.exitFullscreen?.();
-    } catch { /* fullscreen not allowed — overlay still works */ }
-  }, [kioskMode]);
-  const kioskCounts = useMemo(() => {
-    const today = localDateKey(new Date());
-    const c = { total: 0, Supervisor: 0, Salesman: 0, Cashier: 0 };
-    const byId = new Map(staff.map(s => [s.id, s]));
-    attendance.forEach(a => {
-      if (a.date !== today || a.isPartTime) return;
-      if (a.status !== 'Present' && a.status !== 'Half Day') return;
-      c.total++;
-      const d = (byId.get(a.staffId)?.designation || '').toLowerCase();
-      if (d.includes('supervisor')) c.Supervisor++;
-      else if (d.includes('cashier')) c.Cashier++;
-      else if (d.includes('sales')) c.Salesman++;
-    });
-    return c;
-  }, [attendance, staff]);
   const haptics = useHaptics();
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [mobileTab, setMobileTab] = useState<'camera' | 'recent' | 'admin'>('camera');
@@ -755,25 +719,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   };
 
   return (
-    <div className={`flex flex-col lg:flex-row gap-3 md:gap-4 w-full min-h-[calc(100vh-80px)] py-2 md:py-4 max-w-[1920px] mx-auto px-2 md:px-0 ${isMobile ? 'face-mobile-shell' : ''} ${kioskMode ? 'face-kiosk-mode' : ''}`}>
-      <button
-        type="button"
-        onClick={toggleKiosk}
-        className="face-kiosk-toggle"
-        aria-label={kioskMode ? 'Exit kiosk mode' : 'Start kiosk mode'}
-      >
-        {kioskMode ? 'Exit Kiosk' : 'Kiosk Mode'}
-      </button>
-      {kioskMode && (
-        <div className="face-kiosk-hud" aria-live="polite">
-          <span className="face-kiosk-clock">{new Date(nowTick).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
-          <span>Present {kioskCounts.total}</span>
-          <span>Supervisor {kioskCounts.Supervisor}</span>
-          <span>Salesman {kioskCounts.Salesman}</span>
-          <span>Cashier {kioskCounts.Cashier}</span>
-        </div>
-      )}
-
+    <div className={`flex flex-col lg:flex-row gap-3 md:gap-4 w-full min-h-[calc(100vh-80px)] py-2 md:py-4 max-w-[1920px] mx-auto px-2 md:px-0 ${isMobile ? 'face-mobile-shell' : ''}`}>
 
       <PerfOverlay />
       {/* ── Left Side: Full Height Camera Feed ── */}

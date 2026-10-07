@@ -143,23 +143,9 @@ export default function ActionCenter({ user }: ActionCenterProps) {
         status: 'approved'
       }).eq('id', selectedItem.id);
       
-      const patch: Record<string, any> = {};
-      if (selectedItem.requested_status) patch.status = selectedItem.requested_status;
-      if (selectedItem.punch_in_time) patch.arrival_time = String(selectedItem.punch_in_time).slice(0, 5);
-      if (selectedItem.punch_out_time) patch.leaving_time = String(selectedItem.punch_out_time).slice(0, 5);
-      if (!patch.status && (patch.arrival_time || patch.leaving_time)) patch.status = 'Present';
-      const { data: existing } = await dataApi.from('attendance').select('id')
-        .eq('staff_id', selectedItem.staff_id).eq('date', selectedItem.target_date);
-      const { error: err2 } = Array.isArray(existing) && existing.length > 0
-        ? await dataApi.from('attendance').update(patch)
-            .eq('staff_id', selectedItem.staff_id).eq('date', selectedItem.target_date)
-        : await dataApi.from('attendance').insert({
-            staff_id: selectedItem.staff_id, date: selectedItem.target_date,
-            attendance_value: patch.status === 'Half Day' ? 0.5 : patch.status === 'Absent' ? 0 : 1,
-            ...patch,
-          });
-      // Tell the app to reload attendance so the tracker & dashboard reflect it instantly
-      window.dispatchEvent(new CustomEvent('attendance-changed'));
+      const { error: err2 } = await dataApi.from('attendance').update({
+        status: selectedItem.requested_status
+      }).eq('staff_id', selectedItem.staff_id).eq('date', selectedItem.target_date);
       
       const { error: err3 } = await dataApi.from('staff_notifications').insert({
         staff_id: selectedItem.staff_id,
