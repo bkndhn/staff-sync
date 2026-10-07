@@ -96,6 +96,9 @@ export const exportSalaryToExcel = async (
       [`${incentiveName} Earned`]: formatNumberForExport(detail.incentiveEarned),
       [`${hraName} Earned`]: formatNumberForExport(detail.hraEarned),
       [`${mealName} Earned`]: formatNumberForExport(detail.mealAllowance),
+      'Hours Worked': detail.workedHours || 0,
+      'OT Hours': detail.overtimeHours || 0,
+      'OT Pay': formatNumberForExport(detail.overtimePay || 0),
     };
     // Add custom supplement columns
     customCategories.forEach((cat: PayrollCategory) => {
@@ -599,6 +602,12 @@ const renderCompactSalarySlip = (
     ['HRA', fmt(salaryDetail.hraEarned), 'Deduction', fmt(salaryDetail.deduction)],
     ['Meal', fmt(salaryDetail.mealAllowance), 'Sun Penalty', fmt(salaryDetail.sundayPenalty)],
   ];
+  if ((salaryDetail.overtimePay || 0) > 0) {
+    tableData.push([`OT ${salaryDetail.overtimeHours}h @ ${salaryDetail.overtimeRate}/h`, fmt(salaryDetail.overtimePay || 0), '', '']);
+  }
+  if ((salaryDetail.workedHours || 0) > 0) {
+    tableData.push([`Hours worked`, `${salaryDetail.workedHours}h`, 'Overtime', `${salaryDetail.overtimeHours || 0}h`]);
+  }
   // Append statutory rows (ESI/PF/PT/TDS/Custom)
   (salaryDetail.statutoryBreakdown || []).forEach(b => {
     tableData.push(['', '', b.label, fmt(b.amount)]);

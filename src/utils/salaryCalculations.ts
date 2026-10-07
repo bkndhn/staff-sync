@@ -677,8 +677,31 @@ export const calculatePayroll = (
   if (overrideConfig?.mealAllowance && overrides.mealAllowance !== undefined) mealAllowance = Number(overrides.mealAllowance) || 0;
   if (overrideConfig?.sundayPenalty && overrides.sundayPenalty !== undefined) sundayPenalty = Number(overrides.sundayPenalty) || 0;
 
+  // Punch-based working hours & overtime.
+  // Rules (payroll_rules): overtime_enabled ('false' disables), overtime_threshold_hours
+  // (on-premises hours per day before OT starts, default 9 = 8h work + 1h break),
+  // overtime_multiplier (default 1 = flat hourly rate).
+  const otEnabled = (payrollRules?.overtime_enabled ?? 'true') !== 'false';
+  const otThreshold = Number(payrollRules?.overtime_threshold_hours) || 9;
+  const otMultiplier = Number(payrollRules?.overtime_multiplier) || 1;
+  let workedMinutes = 0;
+  let overtimeMinutes = 0;
+  monthlyAttendance.forEach(record => {
+    if (!record.arrivalTime || !record.leavingTime) return;
+    const mins = minutesBetween(record.arrivalTime, record.leavingTime);
+    if (!(mins > 0)) return;
+    workedMinutes += mins;
+    const extra = mins - otThreshold * 60;
+    if (extra >= 15) overtimeMinutes += extra; // ignore <15 min spill-over
+  });
+  const workedHours = Math.round((workedMinutes / 60) * 10) / 10;
+  const overtimeHours = Math.round((overtimeMinutes / 60) * 10) / 10;
+  const monthlyBase = (Number(staff.basicSalary) || 0) + (Number(staff.incentive) || 0) + (Number(staff.hra) || 0);
+  const hourlyRate = monthlyBase > 0 ? monthlyBase / (calculationDays * 8) : 0;
+  const overtimePay = otEnabled ? roundToNearest10(overtimeHours * hourlyRate * otMultiplier) : 0;
+
   // Gross salary calculation
-  const grossPayroll = roundToNearest10((basicEarned || 0) + (incentiveEarned || 0) + (hraEarned || 0) + (supplementsTotal || 0) + (mealAllowance || 0));
+  const grossPayroll = roundToNearest10((basicEarned || 0) + (incentiveEarned || 0) + (hraEarned || 0) + (supplementsTotal || 0) + (mealAllowance || 0) + overtimePay);
 
   // Advance and deduction handling with carry-forward
   const oldAdv = advances?.oldAdvance || getPreviousMonthAdvance(staff.id, allAdvances, currentMonth, currentYear) || 0;
@@ -728,6 +751,10 @@ export const calculatePayroll = (
     netPayroll,
     netSalary: netPayroll,
     calculationDays, // Include for reference
+    workedHours,
+    overtimeHours: otEnabled ? overtimeHours : 0,
+    overtimePay,
+    overtimeRate: Math.round(hourlyRate * otMultiplier),
     isProcessed: false
   };
 };
