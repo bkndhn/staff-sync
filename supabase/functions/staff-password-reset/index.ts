@@ -71,7 +71,7 @@ serve(async (req) => {
     // Find staff
     const { data: staffMatch } = await admin
       .from("staff")
-      .select("id, is_active, reset_pin, reset_pin_expires_at")
+      .select("id, name, tenant_id, is_active, reset_pin, reset_pin_expires_at")
       .eq("tenant_id", tenant.id)
       .eq("contact_number", contactNumber)
       .eq("joined_date", formattedDoj)
@@ -118,6 +118,24 @@ serve(async (req) => {
         reset_pin_expires_at: null,
       })
       .eq("id", staffMatch.id);
+
+    // Tell the employee and record it, so an unexpected reset is noticed.
+    const when = new Date().toISOString();
+    await admin.from("staff_notifications").insert({
+      staff_id: staffMatch.id,
+      tenant_id: (staffMatch as any).tenant_id,
+      title: "Your password was changed",
+      message: "Your app password was just reset using a manager PIN. If this wasn't you, tell your manager immediately.",
+      type: "security",
+    }).then(() => undefined, () => undefined);
+    await admin.from("audit_logs").insert([{
+      id: `audit_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      tenant_id: (staffMatch as any).tenant_id,
+      action: "staff_password_reset_via_pin",
+      details: `Password reset with manager PIN for staff ${staffMatch.id}`,
+      performed_by: `staff:${staffMatch.id}`,
+      timestamp: when,
+    }]).then(() => undefined, () => undefined);
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
