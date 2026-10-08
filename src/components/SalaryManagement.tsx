@@ -230,7 +230,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
   };
   const salaryColLabels: Record<string, string> = {
     location: 'Branch', type: 'Type', payment: 'Payment', floor: 'Zone', designation: 'Designation',
-    present: 'Present', leave: 'Leave', sunAbs: 'Sun Abs', oldAdv: 'Old Adv', curAdv: 'Cur Adv',
+    present: 'Present', leave: 'Leave', sunAbs: 'Sun Abs', hours: 'Hours', overtime: 'Overtime', oldAdv: 'Old Adv', curAdv: 'Cur Adv',
     deduction: 'Deduction', basic: 'Basic', incentive: 'Incentive', hra: 'HRA', meal: 'Meal',
     sunPenalty: 'Sun Penalty', lateComingDeduction: 'Late Coming Ded.', earlyLeaveDeduction: 'Early Leave Ded.', statutory: hideStatutoryExtras(userRole) ? 'Deductions' : 'ESI/PF/Statutory', esi: 'ESI', pf: 'PF', gross: 'Gross', net: 'Net Payroll', newAdv: 'New Adv'
   };
@@ -1797,6 +1797,8 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
                 {salaryVisibleCols.present !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Present</th>}
                 {salaryVisibleCols.leave !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Leave</th>}
                 {salaryVisibleCols.sunAbs !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sun Abs</th>}
+                {salaryVisibleCols.hours !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Hours</th>}
+                {salaryVisibleCols.overtime !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Overtime</th>}
                 {salaryVisibleCols.oldAdv !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Old Adv</th>}
                 {salaryVisibleCols.curAdv !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Cur Adv</th>}
                 {salaryVisibleCols.deduction !== false && <th className="px-2 md:px-4 py-3 md:py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Deduction</th>}
@@ -1871,6 +1873,14 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
                       <span className={`badge-premium ${detail.sundayAbsents > 0 ? 'badge-danger' : 'badge-neutral'}`}>
                         {detail.sundayAbsents}
                       </span>
+                    </td>}
+                    {salaryVisibleCols.hours !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-sm">
+                      {(detail.workedHours ?? 0) > 0 ? `${detail.workedHours}h` : '-'}
+                    </td>}
+                    {salaryVisibleCols.overtime !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center text-sm">
+                      {(detail.overtimeHours ?? 0) > 0 ? (
+                        <div className="leading-tight"><div className="font-semibold">{detail.overtimeHours}h</div><div className="text-xs text-green-700">₹{detail.overtimePay ?? 0}</div></div>
+                      ) : '-'}
                     </td>}
                     {salaryVisibleCols.oldAdv !== false && <td className="px-2 md:px-4 py-3 whitespace-nowrap text-center">
                       {editMode && overrideConfig?.oldAdvance ? (
@@ -2101,7 +2111,9 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
                   (salaryVisibleCols.payment !== false ? 1 : 0) +
                   (salaryVisibleCols.present !== false ? 1 : 0) +
                   (salaryVisibleCols.leave !== false ? 1 : 0) +
-                  (salaryVisibleCols.sunAbs !== false ? 1 : 0)
+                  (salaryVisibleCols.sunAbs !== false ? 1 : 0) +
+                  (salaryVisibleCols.hours !== false ? 1 : 0) +
+                  (salaryVisibleCols.overtime !== false ? 1 : 0)
                 }>
                   <span className="text-gray-800">TOTAL</span>
                 </td>
