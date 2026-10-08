@@ -2111,7 +2111,9 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
                   (salaryVisibleCols.payment !== false ? 1 : 0) +
                   (salaryVisibleCols.present !== false ? 1 : 0) +
                   (salaryVisibleCols.leave !== false ? 1 : 0) +
-                  (salaryVisibleCols.sunAbs !== false ? 1 : 0)
+                  (salaryVisibleCols.sunAbs !== false ? 1 : 0) +
+                  (salaryVisibleCols.hours !== false ? 1 : 0) +
+                  (salaryVisibleCols.overtime !== false ? 1 : 0)
                 }>
                   <span className="text-gray-800">TOTAL</span>
                 </td>
