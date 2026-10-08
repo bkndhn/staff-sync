@@ -499,7 +499,7 @@ export const generateSalarySlipPDF = (
   const doc = new jsPDF();
   const monthName = new Date(year, month).toLocaleString('default', { month: 'long' });
 
-  renderCompactSalarySlip(doc, salaryDetail, staffMember, monthName, year, 10);
+  renderCompactSalarySlip(doc, salaryDetail, staffMember, monthName, year, 10, true);
 
   doc.save(`salary-slip-${staffMember.name.replace(/\s+/g, '-')}-${monthName}-${year}.pdf`);
 };
@@ -552,7 +552,8 @@ const renderCompactSalarySlip = (
   staffMember: Staff,
   monthName: string,
   year: number,
-  startY: number
+  startY: number,
+  withWhatsApp = false
 ) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const leftMargin = 15;
@@ -660,6 +661,52 @@ const renderCompactSalarySlip = (
   doc.text(`NET: ${fmt(salaryDetail.netPayroll ?? salaryDetail.netSalary ?? 0)}`, pageWidth - leftMargin - 5, y + 8, { align: 'right' });
 
   doc.setTextColor(0, 0, 0);
+
+  if (withWhatsApp) {
+    const url = buildPayslipWhatsAppUrl(salaryDetail, staffMember, monthName, year);
+    const by = y + 16;
+    const bw = 62;
+    doc.setFillColor(37, 211, 102);
+    doc.roundedRect(leftMargin, by, bw, 10, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Send on WhatsApp', leftMargin + bw / 2, by + 6.5, { align: 'center' });
+    doc.link(leftMargin, by, bw, 10, { url });
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+  }
+};
+
+/** wa.me link with the staff member's salary breakdown pre-filled. */
+export const buildPayslipWhatsAppUrl = (
+  d: PayrollDetail,
+  s: Staff,
+  monthName: string,
+  year: number
+) => {
+  const r = (n?: number) => `Rs. ${(n || 0).toLocaleString('en-IN')}`;
+  const lines = [
+    `*Salary Slip - ${monthName} ${year}*`,
+    `Name: ${s.name}`,
+    `Present: ${d.presentDays}  Half: ${d.halfDays}  Leave: ${d.leaveDays}`,
+    '',
+    `Basic: ${r(d.basicEarned)}`,
+    `Incentive: ${r(d.incentiveEarned)}`,
+    `HRA: ${r(d.hraEarned)}`,
+    `Meal: ${r(d.mealAllowance)}`,
+  ];
+  if ((d.overtimePay || 0) > 0) lines.push(`Overtime (${d.overtimeHours}h): ${r(d.overtimePay)}`);
+  lines.push(`Gross: ${r(d.grossPayroll ?? d.grossSalary)}`, '');
+  if (d.oldAdv) lines.push(`Old Adv: ${r(d.oldAdv)}`);
+  if (d.curAdv) lines.push(`Cur Adv: ${r(d.curAdv)}`);
+  if (d.deduction) lines.push(`Deduction: ${r(d.deduction)}`);
+  if (d.sundayPenalty) lines.push(`Sun Penalty: ${r(d.sundayPenalty)}`);
+  (d.statutoryBreakdown || []).forEach(b => lines.push(`${b.label}: ${r(b.amount)}`));
+  lines.push('', `*Net Pay: ${r(d.netPayroll ?? d.netSalary)}*`);
+  const digits = String(s.contactNumber || '').replace(/\D/g, '');
+  const phone = digits.length === 10 ? `91${digits}` : digits;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(lines.join('\n'))}`;
 };
 
 export interface FlexDirectoryExportEntry {
