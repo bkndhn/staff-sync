@@ -23,6 +23,23 @@
             </intent-filter>
         </activity>
 
+        <!-- Separate "Staff Kiosk" launcher icon: opens directly in face-attendance kiosk mode -->
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".KioskActivity"
+            android:label="Staff Kiosk"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.staffsync.app.kiosk"
+            android:screenOrientation="portrait"
+            android:hardwareAccelerated="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
