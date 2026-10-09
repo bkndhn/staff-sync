@@ -64,6 +64,7 @@ export const locationService = {
     },
 
     async addLocation(name: string): Promise<{ location: Branch | null; credentials?: { email: string; password: string } }> {
+        invalidateLocations();
         const { data, error } = await api
             .from('locations')
             .insert([{ name: name.toLowerCase().replace(/\s+/g, '_'), display_name: name, is_active: true }])
@@ -98,6 +99,7 @@ export const locationService = {
     },
 
     async updateLocation(id: string, name: string): Promise<Branch | null> {
+        invalidateLocations();
         const { data: oldData, error: fetchError } = await api
             .from('locations')
             .select('display_name')
@@ -135,6 +137,7 @@ export const locationService = {
     },
 
     async updateLocationConfig(id: string, config: { device_ip?: string; device_port?: number; latitude?: number; longitude?: number; radius_meters?: number }): Promise<boolean> {
+        invalidateLocations();
         const { error } = await api
             .from('locations')
             .update({
@@ -154,6 +157,7 @@ export const locationService = {
     },
 
     async deleteLocation(id: string): Promise<boolean> {
+        invalidateLocations();
         const { data: locationData, error: fetchError } = await api
             .from('locations')
             .select('display_name')
