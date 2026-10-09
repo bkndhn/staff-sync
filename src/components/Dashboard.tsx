@@ -400,26 +400,29 @@ const Dashboard: React.FC<DashboardProps> = ({
 
         {/* Filters Row */}
         <div className="flex flex-col md:flex-row md:items-center gap-3">
-          <div className="flex items-center gap-2 flex-wrap flex-1">
-            <label className="text-xs font-medium text-[var(--text-muted)]">Date:</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => onDateChange(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
-              className="input-premium py-1 px-2 text-xs flex-1 min-w-[120px] md:flex-none"
-            />
-            
-            <label className="text-xs font-medium text-[var(--text-muted)] ml-2">Group:</label>
-            <select
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value as any)}
-              className="input-premium py-1 px-2 text-xs flex-1 min-w-[100px] md:flex-none"
-            >
-              <option value="none">Branch</option>
-              <option value="floor">Zone</option>
-              <option value="designation">Designation</option>
-            </select>
+          <div className="grid grid-cols-2 gap-2 md:flex md:items-center md:flex-1">
+            <label className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-[11px] font-medium text-[var(--text-muted)]">Date</span>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => onDateChange(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+                className="input-premium py-1.5 px-2 text-xs w-full min-w-[9.5rem]"
+              />
+            </label>
+            <label className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-[11px] font-medium text-[var(--text-muted)]">Group by</span>
+              <select
+                value={groupBy}
+                onChange={(e) => setGroupBy(e.target.value as any)}
+                className="input-premium py-1.5 pl-2 pr-7 text-xs w-full min-w-[8rem]"
+              >
+                <option value="none">Branch</option>
+                <option value="floor">Zone</option>
+                <option value="designation">Designation</option>
+              </select>
+            </label>
           </div>
         </div>
       </div>
@@ -1101,11 +1104,15 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="glass-card-static p-4 border-l-4 border-emerald-500">
                       <p className="text-base font-bold text-emerald-400 mb-2">✅ Present: {overallFullTimePresent.length}/{fullTimeStaff.length}</p>
-                      <p className="text-sm text-[var(--text-secondary)]">{overallFullTimePresent.length > 0 ? overallFullTimePresent.join(', ') : 'None'}</p>
+                      {showPunches && overallFullTimePresentIds.length > 0
+                        ? renderPunchList(sortStaffIdsByOrder(overallFullTimePresentIds))
+                        : <p className="text-sm text-[var(--text-secondary)]">{overallFullTimePresent.length > 0 ? overallFullTimePresent.join(', ') : 'None'}</p>}
                     </div>
                     <div className="glass-card-static p-4 border-l-4 border-amber-500">
                       <p className="text-base font-bold text-amber-400 mb-2">🕒 Half-day: {overallFullTimeHalfDay.length}</p>
-                      <p className="text-sm text-[var(--text-secondary)]">{overallFullTimeHalfDay.length > 0 ? overallFullTimeHalfDay.join(', ') : 'None'}</p>
+                      {showPunches && overallFullTimeHalfDayIds.length > 0
+                        ? renderPunchList(sortStaffIdsByOrder(overallFullTimeHalfDayIds))
+                        : <p className="text-sm text-[var(--text-secondary)]">{overallFullTimeHalfDay.length > 0 ? overallFullTimeHalfDay.join(', ') : 'None'}</p>}
                     </div>
                     <div className="glass-card-static p-4 border-l-4 border-red-500">
                       <p className="text-base font-bold text-red-400 mb-2">❌ Absent: {overallFullTimeAbsent.length}</p>

@@ -722,7 +722,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                       inputMode="decimal"
                       value={ftMealRate}
                       onChange={e => updateMealRates(Number(e.target.value), ptMealRate)}
-                      className="w-16 pl-4 pr-1 py-1 border border-slate-200 rounded text-xs font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500"
+                      className="w-20 pl-5 pr-1.5 py-1.5 border border-slate-200 rounded text-sm font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                       title="Default Full-Time Meal Rate (₹)"
                       disabled={!canEdit}
                     />
@@ -737,7 +737,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                       inputMode="decimal"
                       value={ptMealRate}
                       onChange={e => updateMealRates(ftMealRate, Number(e.target.value))}
-                      className="w-16 pl-4 pr-1 py-1 border border-slate-200 rounded text-xs font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500"
+                      className="w-20 pl-5 pr-1.5 py-1.5 border border-slate-200 rounded text-sm font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                       title="Default Part-Time / Flex Meal Rate (₹)"
                       disabled={!canEdit}
                     />

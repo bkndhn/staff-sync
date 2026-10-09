@@ -21,6 +21,7 @@ const invalidateSession = (message: string) => {
   sessionInvalidated = true;
   try {
     localStorage.removeItem("staffManagementLogin");
+    localStorage.removeItem("staffManagementUser");
     localStorage.removeItem("sessionToken");
     localStorage.removeItem("activeTab");
     localStorage.removeItem("impersonateTenantId");
