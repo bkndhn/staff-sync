@@ -1111,7 +1111,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               value={selectedDate}
               max={new Date().toISOString().split('T')[0]}
               onChange={(e) => onDateChange(e.target.value)}
-              className="filter-chip flex-1 min-w-0 md:flex-none"
+              className="filter-chip flex-1 min-w-[9rem] md:flex-none"
             />
             <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1 md:hidden min-w-[90px]">
               <label className="text-[10px] uppercase text-gray-500 font-bold">IN</label>
@@ -1381,7 +1381,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               {!data.isPartTime && (
                 <>
                   {/* Time inputs */}
-                  <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2 mb-2">
                     <label className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-2 py-1.5 border border-gray-100">
                       <Clock size={12} className="text-gray-400" />
                       <span className="text-[10px] font-bold text-gray-500">IN</span>
@@ -1390,7 +1390,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                         value={inVal}
                         onChange={(e) => handleIndividualTimeChange(data.id, 'inTime', e.target.value)}
                         onBlur={() => { if (data.hasRecord) confirmIndividualUpdate(data.id, data.status, data); }}
-                        className="flex-1 bg-transparent text-xs outline-none focus:ring-0 border-none p-0 min-w-0"
+                        className="flex-1 bg-transparent text-sm font-semibold outline-none focus:ring-0 border-none p-0"
                       />
                     </label>
                     <label className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-2 py-1.5 border border-gray-100">
@@ -1401,7 +1401,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                         value={outVal}
                         onChange={(e) => handleIndividualTimeChange(data.id, 'outTime', e.target.value)}
                         onBlur={() => { if (data.hasRecord) confirmIndividualUpdate(data.id, data.status, data); }}
-                        className="flex-1 bg-transparent text-xs outline-none focus:ring-0 border-none p-0 min-w-0"
+                        className="flex-1 bg-transparent text-sm font-semibold outline-none focus:ring-0 border-none p-0"
                       />
                     </label>
                   </div>
@@ -1554,7 +1554,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                                 onBlur={() => {
                                   if (data.hasRecord) confirmIndividualUpdate(data.id, data.status, data);
                                 }}
-                                className="text-[10px] md:text-xs border-none p-0 outline-none focus:ring-0 w-[55px]"
+                                className="text-[10px] md:text-xs border-none p-0 outline-none focus:ring-0 min-w-[7.5rem]"
                               />
                             </div>
                             <div className="flex items-center gap-1 border border-gray-200 rounded px-1 bg-white shrink-0 animate-in fade-in slide-in-from-left-2 duration-200">
@@ -1566,7 +1566,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                                 onBlur={() => {
                                   if (data.hasRecord) confirmIndividualUpdate(data.id, data.status, data);
                                 }}
-                                className="text-[10px] md:text-xs border-none p-0 outline-none focus:ring-0 w-[55px]"
+                                className="text-[10px] md:text-xs border-none p-0 outline-none focus:ring-0 min-w-[7.5rem]"
                               />
                             </div>
                           </div>
