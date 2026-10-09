@@ -155,12 +155,19 @@ function App() {
         }
 
         const email = session.user.email;
-        // Fetch full profile from app_users
-        const { data: uRow } = await supabase
+        // Fetch full profile from app_users; fall back to the profile saved at
+        // sign-in when direct reads are blocked, so a refresh never logs out.
+        let { data: uRow } = await supabase
             .from('app_users')
             .select('id, email, full_name, role, location, location_id, floor, floor_id, is_active, last_login, created_at, updated_at, tenant_id')
             .eq('id', session.user.id)
-            .single();
+            .maybeSingle();
+        if (!uRow) {
+          try {
+            const cached = JSON.parse(localStorage.getItem('staffManagementUser') || 'null');
+            if (cached && (cached.id === session.user.id || cached.email === email)) uRow = cached;
+          } catch { /* ignore */ }
+        }
 
         if (mounted && uRow) {
           setUser({
@@ -565,6 +572,9 @@ function App() {
       }
     }
     setUser(enriched as User);
+    if (userData.role !== 'staff') {
+      try { localStorage.setItem('staffManagementUser', JSON.stringify(enriched)); } catch { /* ignore */ }
+    }
     if (userData.role === 'staff') {
       setActiveTab('My Portal');
     }
