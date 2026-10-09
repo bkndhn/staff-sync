@@ -577,6 +577,7 @@ function App() {
     try { await supabase.auth.signOut(); } catch (e) { console.warn('Supabase signout failed', e); }
 
     localStorage.removeItem('staffManagementLogin');
+    localStorage.removeItem('staffManagementUser');
     localStorage.removeItem('sessionToken');
     localStorage.removeItem('activeTab');
     
