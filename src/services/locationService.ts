@@ -20,13 +20,30 @@ export type Location = Branch;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const api: any = dataApi;
 
+// Short-lived cache + in-flight de-duplication. Many screens (and re-renders)
+// request the branch list; without this the server was flooded and throttled.
+let locCache: { at: number; data: Branch[] } | null = null;
+let locInflight: Promise<Branch[]> | null = null;
+const LOC_TTL = 60_000;
+const invalidateLocations = () => { locCache = null; };
+
 export const locationService = {
     async getLocations(): Promise<Branch[]> {
+        if (locCache && Date.now() - locCache.at < LOC_TTL) return locCache.data;
+        if (locInflight) return locInflight;
+        locInflight = this._fetchLocations()
+            .then((d) => { if (d.length) locCache = { at: Date.now(), data: d }; return d; })
+            .finally(() => { locInflight = null; });
+        return locInflight;
+    },
+
+    async _fetchLocations(): Promise<Branch[]> {
         const { data, error } = await api
             .from('locations')
             .select('id, display_name, is_active, device_ip, device_port, last_sync_time, latitude, longitude, radius_meters')
             .eq('is_active', true)
             .order('display_name');
+
 
         if (error) {
             console.error('Error fetching locations:', error);
@@ -47,6 +64,7 @@ export const locationService = {
     },
 
     async addLocation(name: string): Promise<{ location: Branch | null; credentials?: { email: string; password: string } }> {
+        invalidateLocations();
         const { data, error } = await api
             .from('locations')
             .insert([{ name: name.toLowerCase().replace(/\s+/g, '_'), display_name: name, is_active: true }])
@@ -81,6 +99,7 @@ export const locationService = {
     },
 
     async updateLocation(id: string, name: string): Promise<Branch | null> {
+        invalidateLocations();
         const { data: oldData, error: fetchError } = await api
             .from('locations')
             .select('display_name')
@@ -118,6 +137,7 @@ export const locationService = {
     },
 
     async updateLocationConfig(id: string, config: { device_ip?: string; device_port?: number; latitude?: number; longitude?: number; radius_meters?: number }): Promise<boolean> {
+        invalidateLocations();
         const { error } = await api
             .from('locations')
             .update({
@@ -137,6 +157,7 @@ export const locationService = {
     },
 
     async deleteLocation(id: string): Promise<boolean> {
+        invalidateLocations();
         const { data: locationData, error: fetchError } = await api
             .from('locations')
             .select('display_name')
