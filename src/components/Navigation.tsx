@@ -306,8 +306,8 @@ const Navigation: React.FC<NavigationProps> = ({
 
       {/* ── Mobile Bottom Navigation (docked grid, 4 primary tabs + More) ── */}
       {tabs.length > 1 && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 mobile-nav safe-area-padding pb-[env(safe-area-inset-bottom,0.5rem)] border-t border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-lg">
-          <div className="grid items-center px-0.5 pt-1 pb-0.5 w-full h-14" style={{ gridTemplateColumns: `repeat(${primaryTabs.length + (secondaryTabs.length > 0 ? 1 : 0)}, minmax(0, 1fr))` }}>
+        <div className="md:hidden fixed left-3 right-3 z-40 mobile-nav rounded-[1.75rem] border border-slate-200/80 dark:border-white/10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-[0_10px_30px_-8px_rgba(15,23,42,0.35)]" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}>
+          <div className="grid items-center px-1.5 py-1 w-full h-16" style={{ gridTemplateColumns: `repeat(${primaryTabs.length + (secondaryTabs.length > 0 ? 1 : 0)}, minmax(0, 1fr))` }}>
             {primaryTabs.map(tab => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
