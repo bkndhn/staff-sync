@@ -307,6 +307,52 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
         </div>
       </div>
 
+      {/* Who is on leave today — grouped by branch and zone */}
+      {!loading && !error && (() => {
+        const today = new Date().toISOString().split('T')[0];
+        const onLeave = scopedLeaves.filter(l => l.status === 'approved' && l.leaveDate <= today && (l.leaveEndDate || l.leaveDate) >= today);
+        const groups: Record<string, Record<string, LeaveRequest[]>> = {};
+        onLeave.forEach(l => {
+          const b = leaveBranch(l) || 'Unassigned';
+          const z = leaveZone(l) || 'No zone';
+          ((groups[b] ||= {})[z] ||= []).push(l);
+        });
+        return (
+          <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2"><Calendar size={16} className="text-indigo-500" /> On leave today</h3>
+              <span className="px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-500 text-xs font-bold">{onLeave.length}</span>
+            </div>
+            {onLeave.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)]">Everyone is in today.</p>
+            ) : Object.entries(groups).map(([branch, zones]) => (
+              <div key={branch} className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{branch}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {Object.entries(zones).map(([zone, list]) => (
+                    <div key={zone} className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-[var(--text-primary)]">{zone}</span>
+                        <span className="text-[11px] text-[var(--text-muted)]">{list.length} away</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {list.map(l => (
+                          <span key={l.id} className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[var(--bg-card)] border border-[var(--glass-border)] text-xs">
+                            <span className="w-5 h-5 rounded-md bg-indigo-500/15 text-indigo-500 flex items-center justify-center font-bold text-[10px]">{l.staffName.charAt(0)}</span>
+                            <span className="font-medium text-[var(--text-primary)]">{l.staffName}</span>
+                            <span className="text-[10px] text-[var(--text-muted)]">{leaveTypeLabels[l.leaveType]?.split(' ')[0]}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Leave List */}
       {loading ? (
         <SkeletonList rows={4} />
