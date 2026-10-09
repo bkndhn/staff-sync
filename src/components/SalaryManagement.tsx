@@ -995,12 +995,16 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
       `📊 *ATTENDANCE*\n` +
       `• Present Days: ${presentDays}\n` +
       `• Leave Days: ${leaveDays}\n` +
-      `• Sunday Absents: ${detail.sundayAbsents}\n\n` +
+      `• Sunday Absents: ${detail.sundayAbsents}\n` +
+      ((detail.workedHours ?? 0) > 0 ? `• Worked Hours: ${detail.workedHours}h\n` : '') +
+      ((detail.overtimeHours ?? 0) > 0 ? `• Overtime: ${detail.overtimeHours}h (₹${(detail.overtimePay ?? 0).toLocaleString()})\n` : '') +
+      `\n` +
       `💰 *EARNINGS*\n` +
       `• ${basicName}: ₹${detail.basicEarned.toLocaleString()}\n` +
       `• ${incentiveName}: ₹${detail.incentiveEarned.toLocaleString()}\n` +
       `• ${hraName}: ₹${detail.hraEarned.toLocaleString()}\n` +
       `• ${mealName}: ₹${detail.mealAllowance.toLocaleString()}\n` +
+      ((detail.overtimePay ?? 0) > 0 ? `• Overtime Pay: ₹${(detail.overtimePay ?? 0).toLocaleString()}\n` : '') +
       customSupplLines +
       `\n📉 *DEDUCTIONS*\n` +
       `• Old Advance: ₹${detail.oldAdv.toLocaleString()}\n` +

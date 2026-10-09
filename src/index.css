@@ -3503,3 +3503,17 @@ body:not(.light-theme) ::placeholder { color: rgb(148 163 184); opacity: 1; }
 .face-kiosk-hud span{flex:none;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:700;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--glass-border)}
 .face-kiosk-hud .face-kiosk-clock{font-variant-numeric:tabular-nums}
 body.kiosk-active nav,body.kiosk-active header,body.kiosk-active .mobile-bottom-nav{display:none!important}
+
+/* Date/time inputs: never clip AM/PM or the year on phones */
+input[type="time"], input[type="date"] {
+  min-width: 7.5rem !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+input[type="time"]::-webkit-calendar-picker-indicator {
+  margin-left: 2px;
+  padding: 0;
+  width: 14px;
+}
+input[type="time"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-datetime-edit { padding: 0; overflow: visible; }
