@@ -18,11 +18,19 @@ export interface StaffGrievance {
   updatedAt: string;
 }
 
+async function withStaff(rows: any[]): Promise<any[]> {
+  const ids = [...new Set(rows.map((r) => r.staff_id).filter(Boolean))];
+  if (!ids.length) return rows;
+  const { data } = await dataApi.from('staff').select('id, name, location').in('id', ids);
+  const byId = new Map((data || []).map((s: any) => [s.id, s]));
+  return rows.map((r) => ({ ...r, staff: byId.get(r.staff_id) ?? null }));
+}
+
 export const grievanceService = {
   async getByStaffId(staffId: string): Promise<StaffGrievance[]> {
     const { data, error } = await dataApi
       .from('staff_grievances')
-      .select('*, staff:staff_id(name, location)')
+      .select('*')
       .eq('staff_id', staffId)
       .order('created_at', { ascending: false });
 
@@ -31,13 +39,13 @@ export const grievanceService = {
       return [];
     }
 
-    return (data || []).map(mapRow);
+    return (await withStaff(data || [])).map(mapRow);
   },
 
   async getAllActive(location?: string): Promise<StaffGrievance[]> {
     const query = dataApi
       .from('staff_grievances')
-      .select('*, staff:staff_id(name, location)')
+      .select('*')
       .in('status', ['pending', 'escalated'])
       .order('created_at', { ascending: false });
 
@@ -48,7 +56,7 @@ export const grievanceService = {
       return [];
     }
 
-    let results = (data || []).map(mapRow);
+    let results = (await withStaff(data || [])).map(mapRow);
     if (location && location !== 'all') {
       results = results.filter((g: any) => g.location === location);
     }
