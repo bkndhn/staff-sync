@@ -202,11 +202,26 @@ const Dashboard: React.FC<DashboardProps> = ({
     setDragOverIdx(null);
   };
 
+  // Role hierarchy first (Manager → Accounts → Supervisor → Cashier → Biller →
+  // Salesman → Housekeeping → Others), then alphabetical by name within a role.
+  const roleRank = (designation?: string, name?: string) => {
+    const d = `${designation || ''} ${name || ''}`.toLowerCase();
+    if (/manager/.test(d)) return 0;
+    if (/account/.test(d)) return 1;
+    if (/supervisor/.test(d)) return 2;
+    if (/cashier/.test(d)) return 3;
+    if (/biller|billing/.test(d)) return 4;
+    if (/sales/.test(d)) return 5;
+    if (/house\s*keep|helper|cleaner/.test(d)) return 6;
+    return 7;
+  };
   const sortStaffIdsByOrder = (ids: string[]) => {
     return [...ids].sort((a, b) => {
-      const indexA = staff.findIndex(s => s.id === a);
-      const indexB = staff.findIndex(s => s.id === b);
-      return indexA - indexB;
+      const sa = allActiveStaff.find(s => s.id === a) || staff.find(s => s.id === a);
+      const sb = allActiveStaff.find(s => s.id === b) || staff.find(s => s.id === b);
+      const r = roleRank(sa?.designation, sa?.name) - roleRank(sb?.designation, sb?.name);
+      if (r !== 0) return r;
+      return (sa?.name || '').localeCompare(sb?.name || '', undefined, { sensitivity: 'base' });
     });
   };
 
