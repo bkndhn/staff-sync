@@ -268,7 +268,14 @@ export const attendanceService = {
       salary: attendance.salary,
       salary_override: attendance.salaryOverride,
       arrival_time: attendance.arrivalTime,
-      leaving_time: attendance.leavingTime,
+      // OUT time is always PM: 01:00–11:59 entered as AM is shifted to PM.
+      leaving_time: (() => {
+        const t = attendance.leavingTime;
+        const m = t?.match(/^(\d{1,2}):(\d{2})(:\d{2})?$/);
+        if (!m) return t;
+        const h = parseInt(m[1], 10);
+        return h > 0 && h < 12 ? `${String(h + 12).padStart(2, '0')}:${m[2]}${m[3] || ''}` : t;
+      })(),
       break_time_in: attendance.breakTimeIn,
       break_time_out: attendance.breakTimeOut,
       is_uninformed: attendance.isUninformed,
