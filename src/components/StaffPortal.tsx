@@ -931,6 +931,15 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               };
               
               return (
+                <>
+                <PunchResultDialog
+                  state={punchDialog}
+                  onClose={() => {
+                    const reload = punchDialog?.ok && navigator.onLine;
+                    setPunchDialog(null);
+                    if (reload) window.location.reload();
+                  }}
+                />
                 <div className={`mb-4 p-4 rounded-xl flex flex-col sm:flex-row items-center gap-4 border ${
                   hasIn && hasOut ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600' :
                   hasIn ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400' :
