@@ -998,6 +998,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                      )}
                   </div>
                 </div>
+                </>
               );
             })()}
 
