@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { EmptyState } from './ui/PageShell';
+import { PunchResultDialog, type PunchDialogState } from './ui/PunchResultDialog';
 import {
   User, Calendar, DollarSign, TrendingUp, Download, ChevronLeft, ChevronRight,
   CheckCircle, XCircle, Clock, Briefcase, MapPin, Phone, Home, IndianRupee,
@@ -80,6 +81,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [breakEvents, setBreakEvents] = useState<any[]>([]);
   const [punchingStatus, setPunchingStatus] = useState<string | null>(null);
+  const [punchDialog, setPunchDialog] = useState<PunchDialogState | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [expandedDayBreaks, setExpandedDayBreaks] = useState<string | null>(null);
   const [disbursements, setDisbursements] = useState<PayrollDisbursement[]>([]);
@@ -918,18 +920,14 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               
               const handleWebPunch = async (kind: 'in'|'out'|'break_out'|'break_in') => {
                  setPunchingStatus('Checking GPS...');
-                 const res = await handleQRScanSuccess({ kind });
-                 setPunchingStatus(null);
-                 if (res.ok) {
-                    if (!navigator.onLine) {
-                       alert(`${res.subtitle}\nSaved on this phone — it will sync automatically when you are back online.`);
-                    } else {
-                       alert(res.subtitle);
-                       window.location.reload();
-                    }
-                 } else {
-                    alert(`${res.title}: ${res.subtitle}`);
+                 let res: any;
+                 try {
+                   res = await handleQRScanSuccess({ kind });
+                 } catch (e: any) {
+                   res = { ok: false, title: 'Punch Failed', subtitle: e?.message || 'Please try again.' };
                  }
+                 setPunchingStatus(null);
+                 setPunchDialog({ ok: !!res.ok, title: res.title || (res.ok ? 'Done' : 'Punch Failed'), subtitle: res.subtitle || '', offline: res.ok && !navigator.onLine });
               };
               
               return (
