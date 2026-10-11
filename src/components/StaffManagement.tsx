@@ -1155,8 +1155,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
             <p className="text-white/50 text-sm">Manage your team members</p>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          <div className="relative flex-1 sm:min-w-[200px] md:min-w-[300px]">
+        <div className="flex flex-wrap gap-3 w-full min-w-0 md:max-w-full">
+          <div className="relative flex-1 min-w-[200px]">
             <input
               type="text"
               placeholder="Search by name or location..."
@@ -1165,8 +1165,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
               className="input-premium"
             />
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <div className="hidden lg:flex gap-2">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto min-w-0">
+            <div className="hidden lg:flex flex-wrap gap-2">
               <button onClick={() => setShowLocationManager(true)} className="btn-premium flex items-center gap-2 px-3 py-2 text-sm" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)' }} title="Manage Branchs">
                 <MapPin size={16} /><span className="hidden xl:inline">Branches</span>
               </button>
