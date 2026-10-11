@@ -919,6 +919,18 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               const hasBreakIn = !!(todayRec?.breakTimeIn);
               
               const handleWebPunch = async (kind: 'in'|'out'|'break_out'|'break_in') => {
+                 // Single-device binding: re-verify this phone at every punch, not just at login
+                 const bound = (staff as any)?.deviceId;
+                 if (bound) {
+                   setPunchingStatus('Checking phone...');
+                   const { generateDeviceFingerprint } = await import('../utils/deviceFingerprint');
+                   const fp = await generateDeviceFingerprint().catch(() => '');
+                   if (fp && fp !== bound) {
+                     setPunchingStatus(null);
+                     setPunchDialog({ ok: false, title: 'Wrong phone', subtitle: 'You can only punch from your registered phone. Ask your manager to reset your phone lock.', offline: false });
+                     return;
+                   }
+                 }
                  setPunchingStatus('Checking GPS...');
                  let res: any;
                  try {
