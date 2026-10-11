@@ -1392,6 +1392,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         }
     };
 
+    const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
     const handleDelete = (attendanceId: string) => {
         setShowDeleteModal(attendanceId);
     };
@@ -1405,6 +1406,25 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             }
             setShowDeleteModal(null);
         }
+    };
+
+    const toggleBulk = (id: string) => setBulkSelected(prev => {
+        const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n;
+    });
+    const selectDuplicates = () => {
+        const seen = new Set<string>(); const dup = new Set<string>();
+        filteredTodayAttendance.forEach(r => {
+            const k = `${(r.staffName || '').trim().toLowerCase()}|${r.location}`;
+            if (seen.has(k)) dup.add(r.id); else seen.add(k);
+        });
+        setBulkSelected(dup);
+        if (dup.size === 0) customAlert('No duplicate names found for this day.');
+    };
+    const bulkDelete = async () => {
+        if (bulkSelected.size === 0) return;
+        if (!(await customConfirm(`Delete ${bulkSelected.size} flex staff record(s)? This cannot be undone.`))) return;
+        bulkSelected.forEach(id => onDeletePartTimeAttendance(id));
+        setBulkSelected(new Set());
     };
 
     const handleExportExcel = () => {
@@ -1899,7 +1919,12 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {filteredTodayAttendance.map((record, index) => (
                                     <tr key={record.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" className="w-4 h-4" checked={bulkSelected.has(record.id)} onChange={() => toggleBulk(record.id)} aria-label={`Select ${record.staffName}`} />
+                                                {index + 1}
+                                            </label>
+                                        </td>
 
                                         <td className="sticky left-0 z-10 bg-white px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                                             {record.staffName}

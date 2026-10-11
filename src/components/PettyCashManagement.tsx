@@ -282,7 +282,9 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
       
       const locKey = (location || '').trim().toLowerCase();
       const locAttendances = attendances.filter(a => {
-        const locMatch = !locKey || (a.location && a.location.trim().toLowerCase() === locKey);
+        const aLoc = (a.location || '').trim().toLowerCase();
+        // Flex staff are often saved under "Godown"/"Pant Godown" etc. — match loosely.
+        const locMatch = !locKey || aLoc === locKey || (!!aLoc && (aLoc.includes(locKey) || locKey.includes(aLoc)));
         const statusStr = (a.status || '').trim().toLowerCase();
         const isPresent = statusStr === 'present' || statusStr === 'half day';
         return locMatch && isPresent;
@@ -319,7 +321,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
           newStaffMeals.push({
             staff_id: staffId,
             staff_name: a.staffName || staff?.name || 'Flex Staff',
-            designation: staff?.designation || 'Flex Staff',
+            designation: staff?.designation || (a as any).designation || 'Flex Staff',
             staff_type: 'part-time',
             attendance_status: attStatus,
             amount: existingMeal ? existingMeal.amount : 0

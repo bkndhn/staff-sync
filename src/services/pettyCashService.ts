@@ -178,12 +178,17 @@ export const pettyCashService = {
   },
 
   async getSheetHistory(location: string): Promise<PettyCashSheet[]> {
-    const { data, error } = await dataApi
+    // Case-insensitive so "Godown" / "godown " sheets are all found.
+    let { data, error } = await dataApi
       .from('petty_cash_sheets')
       .select('*')
-      .eq('location', location)
+      .ilike('location', `%${location.trim()}%`)
       .order('date', { ascending: false })
-      .limit(30);
+      .limit(60);
+    if (error || !data || (data as any[]).length === 0) {
+      const r = await dataApi.from('petty_cash_sheets').select('*').order('date', { ascending: false }).limit(60);
+      data = r.data; error = r.error;
+    }
 
     if (error || !data) return [];
 
