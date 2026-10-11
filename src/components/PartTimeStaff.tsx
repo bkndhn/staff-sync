@@ -1392,6 +1392,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         }
     };
 
+    const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
     const handleDelete = (attendanceId: string) => {
         setShowDeleteModal(attendanceId);
     };
@@ -1405,6 +1406,25 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
             }
             setShowDeleteModal(null);
         }
+    };
+
+    const toggleBulk = (id: string) => setBulkSelected(prev => {
+        const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n;
+    });
+    const selectDuplicates = () => {
+        const seen = new Set<string>(); const dup = new Set<string>();
+        filteredTodayAttendance.forEach(r => {
+            const k = `${(r.staffName || '').trim().toLowerCase()}|${r.location}`;
+            if (seen.has(k)) dup.add(r.id); else seen.add(k);
+        });
+        setBulkSelected(dup);
+        if (dup.size === 0) customAlert('No duplicate names found for this day.');
+    };
+    const bulkDelete = async () => {
+        if (bulkSelected.size === 0) return;
+        if (!(await customConfirm(`Delete ${bulkSelected.size} flex staff record(s)? This cannot be undone.`))) return;
+        bulkSelected.forEach(id => onDeletePartTimeAttendance(id));
+        setBulkSelected(new Set());
     };
 
     const handleExportExcel = () => {
