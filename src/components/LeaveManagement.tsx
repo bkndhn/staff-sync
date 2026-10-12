@@ -49,6 +49,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
   const [staffMeta, setStaffMeta] = useState<Record<string, { location: string; floor?: string }>>({});
 
   const [error, setError] = useState<string | null>(null);
+  const [planDay, setPlanDay] = useState(0);
 
   const loadLeaves = async () => {
     setLoading(true);
@@ -78,7 +79,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
   useEffect(() => {
     staffService.getAll().then(list => {
       const map: Record<string, { location: string; floor?: string }> = {};
-      list.forEach(s => { map[s.id] = { location: s.location, floor: s.floor }; });
+      list.filter(s => s.isActive !== false).forEach(s => { map[s.id] = { location: s.location, floor: s.floor }; });
       setStaffMeta(map);
     }).catch(() => {});
   }, []);
@@ -349,6 +350,66 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
                 </div>
               </div>
             ))}
+          </div>
+        );
+      })()}
+
+      {/* Backup planner — strength vs leave for upcoming days */}
+      {!loading && !error && (() => {
+        const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() + i); return d.toISOString().split('T')[0]; });
+        const day = days[planDay];
+        const strength: Record<string, number> = {};
+        Object.values(staffMeta).forEach(m => {
+          if (userRole !== 'admin' && userLocation && m.location !== userLocation) return;
+          const k = `${m.location}|${m.floor || 'No zone'}`; strength[k] = (strength[k] || 0) + 1;
+        });
+        const away = scopedLeaves.filter(l => (l.status === 'approved' || l.status === 'pending') && l.leaveDate <= day && (l.leaveEndDate || l.leaveDate) >= day);
+        const rows: Record<string, { approved: LeaveRequest[]; pending: LeaveRequest[] }> = {};
+        away.forEach(l => { const k = `${leaveBranch(l) || 'Unassigned'}|${leaveZone(l) || 'No zone'}`; (rows[k] ||= { approved: [], pending: [] })[l.status === 'approved' ? 'approved' : 'pending'].push(l); });
+        const keys = Array.from(new Set([...Object.keys(rows)])).sort();
+        const totalStrength = Object.values(strength).reduce((a, b) => a + b, 0);
+        const totalAway = away.length;
+        const label = (d: string, i: number) => i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : new Date(d + 'T00:00').toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit' });
+        return (
+          <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-2xl p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-bold text-sm text-[var(--text-primary)]">Backup planner</h3>
+              <span className="text-xs text-[var(--text-muted)]">Strength {totalStrength} · Away {totalAway} · Available {Math.max(0, totalStrength - totalAway)}</span>
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1">
+              {days.map((d, i) => {
+                const n = scopedLeaves.filter(l => (l.status === 'approved' || l.status === 'pending') && l.leaveDate <= d && (l.leaveEndDate || l.leaveDate) >= d).length;
+                return (
+                  <button key={d} onClick={() => setPlanDay(i)} className={`shrink-0 min-h-[40px] px-3 rounded-xl text-xs font-semibold border ${planDay === i ? 'bg-indigo-500 text-white border-indigo-500' : 'border-[var(--glass-border)] text-[var(--text-secondary)]'}`}>
+                    {label(d, i)}{n > 0 && <span className="ml-1 opacity-80">({n})</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {keys.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)]">No leave on {label(day, planDay).toLowerCase()} — full strength.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {keys.map(k => {
+                  const [branch, zone] = k.split('|');
+                  const r = rows[k]; const str = strength[k] || 0; const short = r.approved.length + r.pending.length;
+                  const pct = str ? short / str : 1;
+                  return (
+                    <div key={k} className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] p-3 space-y-2 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0"><p className="text-xs font-semibold text-[var(--text-primary)] truncate">{zone}</p><p className="text-[11px] text-[var(--text-muted)] truncate">{branch}</p></div>
+                        <span className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold ${pct >= 0.25 ? 'bg-red-500/15 text-red-500' : 'bg-amber-500/15 text-amber-600'}`}>Short {short}/{str}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {r.approved.map(l => <span key={l.id} className="px-2 py-1 rounded-lg text-xs bg-emerald-500/10 text-emerald-600">{l.staffName}</span>)}
+                        {r.pending.map(l => <span key={l.id} className="px-2 py-1 rounded-lg text-xs bg-amber-500/10 text-amber-600">{l.staffName} · pending</span>)}
+                      </div>
+                      <p className="text-[11px] text-[var(--text-muted)]">Arrange {short} backup{short > 1 ? 's' : ''} (flex pool or another zone).</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })()}
