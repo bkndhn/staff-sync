@@ -2142,6 +2142,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             </tbody>
                         </table>
                     </div>
+                    </>
                 )}
             </div>
 

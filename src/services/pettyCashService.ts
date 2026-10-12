@@ -185,10 +185,6 @@ export const pettyCashService = {
       .ilike('location', `%${location.trim()}%`)
       .order('date', { ascending: false })
       .limit(60);
-    if (error || !data || (data as any[]).length === 0) {
-      const r = await dataApi.from('petty_cash_sheets').select('*').order('date', { ascending: false }).limit(60);
-      data = r.data; error = r.error;
-    }
 
     if (error || !data) return [];
 

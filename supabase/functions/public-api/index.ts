@@ -88,7 +88,8 @@ Deno.serve(async (req) => {
     if (path === "/v1/staff") {
       if (!need("staff:read")) return json({ error: "Key lacks staff:read scope" }, 403);
       const { data, error } = await admin.from("staff")
-        .select("id, name, employee_code, location, floor, designation, type, is_active, joined_date, total_salary, pf_number, esi_number, email")
+        // Only what an integrating client needs — no salary, PF/ESI numbers or email.
+        .select("id, name, employee_code, location, floor, designation, type, is_active, joined_date")
         .eq("tenant_id", tenantId).order("name", { ascending: true }).limit(limit);
       if (error) throw error;
       return json({ data });
