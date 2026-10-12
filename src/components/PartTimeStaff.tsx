@@ -717,6 +717,16 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
     const recentNames = getRecentNames();
 
+    // Name → last known mobile number, so returning flex staff never re-enter it.
+    const savedPhones = React.useMemo(() => {
+        const m = new Map<string, string>();
+        [...attendance].filter(r => r.isPartTime && r.staffName && r.phone)
+            .sort((a, b) => a.date.localeCompare(b.date))
+            .forEach(r => m.set(r.staffName!.trim().toLowerCase(), r.phone!));
+        return m;
+    }, [attendance]);
+    const savedPhoneFor = (name: string) => savedPhones.get(name.trim().toLowerCase()) || '';
+
     // Get weeks in month (simplified date-based: always 7-day weeks, can span into next month)
     const getWeeksInMonth = (year: number, month: number) => {
         const weeks = [];
@@ -1082,13 +1092,21 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const targetLoc = userLocation || bulkLocation;
         const targetFlr = userZone || bulkFloor;
 
-        bulkStaffList.forEach((staffData, index) => {
-            if (!staffData.name.trim()) {
+        bulkStaffList.forEach((rawData, index) => {
+            if (!rawData.name.trim()) {
                 errors.push(`Row ${index + 1}: Name is required`);
                 return;
             }
+            // Returning flex staff: reuse the mobile number saved the first time.
+            const staffData = { ...rawData, phone: rawData.phone || savedPhoneFor(rawData.name) };
+            const nm = staffData.name.trim().toLowerCase();
+            if (attendance.some(r => r.isPartTime && r.date === selectedDate && (r.staffName || '').trim().toLowerCase() === nm)
+                || validEntries.some(v => v.name.trim().toLowerCase() === nm)) {
+                errors.push(`Row ${index + 1}: ${staffData.name.trim()} is already added for this day`);
+                return;
+            }
             if (!staffData.phone || staffData.phone.length !== 10) {
-                errors.push(`Row ${index + 1}: Valid 10-digit mobile number is required`);
+                errors.push(`Row ${index + 1}: New flex staff — enter a 10-digit mobile number once`);
                 return;
             }
 
@@ -1752,17 +1770,27 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                             </datalist>
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">Mobile No. (Required)</label>
-                                            <input
-                                                type="tel"
-                                                pattern="[0-9]{10}"
-                                                value={staffEntry.phone}
-                                                onChange={(e) => handleBulkRowChange(index, 'phone', e.target.value)}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                                placeholder="10 digit number"
-                                                required
-                                                maxLength={10}
-                                            />
+                                            {savedPhoneFor(staffEntry.name) && !staffEntry.phone ? (
+                                                <>
+                                                    <label className="block text-xs font-medium text-gray-700 mb-1">Mobile No.</label>
+                                                    <div className="w-full px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
+                                                        ✓ On file ••••••{savedPhoneFor(staffEntry.name).slice(-4)}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <label className="block text-xs font-medium text-gray-700 mb-1">Mobile No. (new staff only)</label>
+                                                    <input
+                                                        type="tel"
+                                                        pattern="[0-9]{10}"
+                                                        value={staffEntry.phone}
+                                                        onChange={(e) => handleBulkRowChange(index, 'phone', e.target.value)}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        placeholder="10 digit number"
+                                                        maxLength={10}
+                                                    />
+                                                </>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="block text-xs font-medium text-gray-700 mb-1">Shift</label>
@@ -1901,6 +1929,16 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                         <p className="text-gray-500">Add flex staff using the button above.</p>
                     </div>
                 ) : (
+                    <>
+                    <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-gray-100">
+                        <button type="button" onClick={() => setBulkSelected(bulkSelected.size === filteredTodayAttendance.length ? new Set() : new Set(filteredTodayAttendance.map(r => r.id)))} className="px-3 py-2 text-sm rounded-lg bg-gray-100 hover:bg-gray-200">
+                            {bulkSelected.size === filteredTodayAttendance.length ? 'Clear selection' : 'Select all'}
+                        </button>
+                        <button type="button" onClick={selectDuplicates} className="px-3 py-2 text-sm rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200">Select duplicates</button>
+                        <button type="button" disabled={bulkSelected.size === 0} onClick={bulkDelete} className="px-3 py-2 text-sm rounded-lg bg-red-600 !text-white disabled:opacity-40 flex items-center gap-1">
+                            <Trash2 size={14} /> Delete selected ({bulkSelected.size})
+                        </button>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-gray-50">
@@ -2104,6 +2142,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             </tbody>
                         </table>
                     </div>
+                    </>
                 )}
             </div>
 
