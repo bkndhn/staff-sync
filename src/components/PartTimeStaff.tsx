@@ -717,6 +717,16 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
     const recentNames = getRecentNames();
 
+    // Name → last known mobile number, so returning flex staff never re-enter it.
+    const savedPhones = React.useMemo(() => {
+        const m = new Map<string, string>();
+        [...attendance].filter(r => r.isPartTime && r.staffName && r.phone)
+            .sort((a, b) => a.date.localeCompare(b.date))
+            .forEach(r => m.set(r.staffName!.trim().toLowerCase(), r.phone!));
+        return m;
+    }, [attendance]);
+    const savedPhoneFor = (name: string) => savedPhones.get(name.trim().toLowerCase()) || '';
+
     // Get weeks in month (simplified date-based: always 7-day weeks, can span into next month)
     const getWeeksInMonth = (year: number, month: number) => {
         const weeks = [];
@@ -1082,13 +1092,21 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
         const targetLoc = userLocation || bulkLocation;
         const targetFlr = userZone || bulkFloor;
 
-        bulkStaffList.forEach((staffData, index) => {
-            if (!staffData.name.trim()) {
+        bulkStaffList.forEach((rawData, index) => {
+            if (!rawData.name.trim()) {
                 errors.push(`Row ${index + 1}: Name is required`);
                 return;
             }
+            // Returning flex staff: reuse the mobile number saved the first time.
+            const staffData = { ...rawData, phone: rawData.phone || savedPhoneFor(rawData.name) };
+            const nm = staffData.name.trim().toLowerCase();
+            if (attendance.some(r => r.isPartTime && r.date === selectedDate && (r.staffName || '').trim().toLowerCase() === nm)
+                || validEntries.some(v => v.name.trim().toLowerCase() === nm)) {
+                errors.push(`Row ${index + 1}: ${staffData.name.trim()} is already added for this day`);
+                return;
+            }
             if (!staffData.phone || staffData.phone.length !== 10) {
-                errors.push(`Row ${index + 1}: Valid 10-digit mobile number is required`);
+                errors.push(`Row ${index + 1}: New flex staff — enter a 10-digit mobile number once`);
                 return;
             }
 
