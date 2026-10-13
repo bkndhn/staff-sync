@@ -27,6 +27,13 @@ const config: CapacitorConfig = {
       enable: true,
       imageName: 'Splashscreen',
     },
+    // Capgo live updates: new web code downloads in the background and applies on next
+    // launch. The bundled copy stays on the phone, so offline punching keeps working.
+    CapacitorUpdater: {
+      autoUpdate: true,
+      resetWhenUpdate: false,
+      directUpdate: false,
+    },
   },
 };
 
