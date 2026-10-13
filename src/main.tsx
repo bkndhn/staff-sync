@@ -3,6 +3,14 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
+// Capgo live updates (Android app only): confirm this bundle booted fine so it isn't rolled back.
+import('@capacitor/core').then(({ Capacitor }) => {
+  if (!Capacitor.isNativePlatform()) return;
+  import('@capgo/capacitor-updater')
+    .then(({ CapacitorUpdater }) => CapacitorUpdater.notifyAppReady())
+    .catch(() => { /* offline or plugin missing — bundled app still runs */ });
+});
+
 // Error Boundary Component
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
   constructor(props: { children: ReactNode }) {
