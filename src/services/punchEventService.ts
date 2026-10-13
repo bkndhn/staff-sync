@@ -31,6 +31,8 @@ const fromDb = (d: any): PunchEvent => ({
   createdAt: d.created_at,
 });
 
+let syncInFlight: Promise<number> | null = null;
+
 export const punchEventService = {
   async insert(input: Omit<PunchEvent, 'id' | 'createdAt'>): Promise<PunchEvent | null> {
     const offlineId = `evt_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
@@ -162,30 +164,48 @@ export const punchEventService = {
    */
   async syncPending(): Promise<number> {
     if (!navigator.onLine) return 0;
-    const localEvents = await db.punchEvents.filter(e => e.id.startsWith('evt_')).toArray();
-    let synced = 0;
-    for (const evt of localEvents) {
-      try {
-        const { id, ...payload } = evt;
-        const { error } = await dataApi.from('punch_events' as any).insert([{
-          staff_id: payload.staffId,
-          staff_name: payload.staffName,
-          location: payload.location,
-          date: payload.date,
-          event_time: payload.eventTime,
-          kind: payload.kind,
-          source: payload.source,
-          match_distance: payload.matchDistance,
-          liveness_score: payload.livenessScore,
-          device_label: payload.deviceLabel,
-        }]);
-        if (!error) {
-          await db.punchEvents.delete(evt.id);
-          synced++;
-        }
-      } catch {}
-    }
-    return synced;
+    // Single-flight: the "online" event, interval timer and manual button can
+    // all fire at once — running two replays in parallel used to insert twice.
+    if (syncInFlight) return syncInFlight;
+    syncInFlight = (async () => {
+      const localEvents = await db.punchEvents.filter(e => e.id.startsWith('evt_')).toArray();
+      let synced = 0;
+      for (const evt of localEvents) {
+        try {
+          // Idempotent replay: if a previous attempt reached the server but the
+          // reply was lost, the row already exists — don't insert it again.
+          const { data: existing } = await dataApi.from('punch_events' as any)
+            .select('id')
+            .eq('staff_id', evt.staffId)
+            .eq('date', evt.date)
+            .eq('event_time', evt.eventTime)
+            .eq('kind', evt.kind)
+            .limit(1);
+          let ok = Array.isArray(existing) && existing.length > 0;
+          if (!ok) {
+            const { error } = await dataApi.from('punch_events' as any).insert([{
+              staff_id: evt.staffId,
+              staff_name: evt.staffName,
+              location: evt.location,
+              date: evt.date,
+              event_time: evt.eventTime,
+              kind: evt.kind,
+              source: evt.source,
+              match_distance: evt.matchDistance,
+              liveness_score: evt.livenessScore,
+              device_label: evt.deviceLabel,
+            }]);
+            ok = !error;
+          }
+          if (ok) {
+            await db.punchEvents.delete(evt.id);
+            synced++;
+          }
+        } catch {}
+      }
+      return synced;
+    })();
+    try { return await syncInFlight; } finally { syncInFlight = null; }
   },
 };
 
