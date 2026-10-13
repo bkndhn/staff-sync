@@ -146,13 +146,51 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     document.body.classList.toggle('kiosk-active', kioskMode);
     return () => document.body.classList.remove('kiosk-active');
   }, [kioskMode]);
-  const toggleKiosk = useCallback(async () => {
-    const next = !kioskMode;
+  // Kiosk lock: a manager PIN (stored only as a SHA-256 hash) is needed to leave kiosk mode.
+  const hashPin = async (pin: string) => {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`kiosk:${pin}`));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+  const [lockPrompt, setLockPrompt] = useState<null | 'set' | 'unlock'>(null);
+  const [lockPin, setLockPin] = useState('');
+  const [lockError, setLockError] = useState('');
+  const applyKiosk = async (next: boolean) => {
     setKioskMode(next);
     try {
       if (next && !document.fullscreenElement) await document.documentElement.requestFullscreen?.();
       if (!next && document.fullscreenElement) await document.exitFullscreen?.();
     } catch { /* fullscreen not allowed — overlay still works */ }
+  };
+  const toggleKiosk = useCallback(async () => {
+    setLockPin(''); setLockError('');
+    if (!kioskMode) {
+      setLockPrompt(localStorage.getItem('kioskPinHash') ? null : 'set');
+      if (localStorage.getItem('kioskPinHash')) await applyKiosk(true);
+    } else {
+      setLockPrompt(localStorage.getItem('kioskPinHash') ? 'unlock' : null);
+      if (!localStorage.getItem('kioskPinHash')) await applyKiosk(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kioskMode]);
+  const submitLockPin = async () => {
+    if (!/^\d{4,8}$/.test(lockPin)) { setLockError('Enter 4–8 digits'); return; }
+    const h = await hashPin(lockPin);
+    if (lockPrompt === 'set') {
+      localStorage.setItem('kioskPinHash', h);
+      setLockPrompt(null); await applyKiosk(true);
+    } else if (h === localStorage.getItem('kioskPinHash')) {
+      setLockPrompt(null); await applyKiosk(false);
+    } else {
+      setLockError('Wrong PIN'); setLockPin('');
+    }
+  };
+  // Block Android back / Escape from leaving kiosk without PIN
+  useEffect(() => {
+    if (!kioskMode) return;
+    const onPop = () => { history.pushState(null, '', location.href); };
+    history.pushState(null, '', location.href);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
   }, [kioskMode]);
   const kioskCounts = useMemo(() => {
     const today = localDateKey(new Date());
@@ -773,8 +811,29 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
         className="face-kiosk-toggle"
         aria-label={kioskMode ? 'Exit kiosk mode' : 'Start kiosk mode'}
       >
-        {kioskMode ? 'Exit Kiosk' : 'Kiosk Mode'}
+        {kioskMode ? '🔒 Exit Kiosk' : 'Kiosk Mode'}
       </button>
+      {lockPrompt && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-xs rounded-3xl border border-border bg-card p-6 shadow-2xl text-center">
+            <div className="text-3xl mb-2">🔒</div>
+            <h2 className="text-lg font-bold text-foreground">{lockPrompt === 'set' ? 'Set kiosk lock PIN' : 'Enter manager PIN'}</h2>
+            <p className="text-xs text-muted-foreground mt-1">{lockPrompt === 'set' ? 'Needed to leave kiosk mode on this device.' : 'Unlock to leave kiosk mode.'}</p>
+            <input
+              type="password" inputMode="numeric" autoFocus maxLength={8} value={lockPin}
+              onChange={e => setLockPin(e.target.value.replace(/\D/g, ''))}
+              onKeyDown={e => e.key === 'Enter' && submitLockPin()}
+              className="mt-4 w-full rounded-xl border border-input bg-background px-4 py-3 text-center text-2xl tracking-[0.5em] text-foreground"
+              aria-label="Kiosk PIN"
+            />
+            {lockError && <p className="mt-2 text-sm text-destructive">{lockError}</p>}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setLockPrompt(null)} className="rounded-xl border border-border py-3 text-sm font-semibold text-foreground">Cancel</button>
+              <button type="button" onClick={submitLockPin} className="rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground">{lockPrompt === 'set' ? 'Save & Start' : 'Unlock'}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {kioskMode && (
         <div className="face-kiosk-hud" aria-live="polite">
           <span className="face-kiosk-clock">{new Date(nowTick).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
