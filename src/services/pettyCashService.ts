@@ -178,11 +178,11 @@ export const pettyCashService = {
   },
 
   async getSheetHistory(location: string): Promise<PettyCashSheet[]> {
-    // Case-insensitive so "Godown" / "godown " sheets are all found.
-    let { data, error } = await dataApi
+    // Case-insensitive exact branch match: "Godown" must not pull in "Pant Godown" sheets.
+    const { data, error } = await dataApi
       .from('petty_cash_sheets')
       .select('*')
-      .ilike('location', `%${location.trim()}%`)
+      .ilike('location', location.trim().replace(/[%_]/g, '\\$&'))
       .order('date', { ascending: false })
       .limit(60);
 
