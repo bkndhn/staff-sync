@@ -7,6 +7,7 @@ import { floorService } from '../services/floorService';
 import { appSettingsService } from '../services/appSettingsService';
 import { getQRRefreshSeconds, setQRRefreshSeconds } from '../utils/qrCrypto';
 import ShiftWindowsPanel from './ShiftWindowsPanel';
+import HoursRuleSettings from './HoursRuleSettings';
 import AttendanceRulesPanel from './AttendanceRulesPanel';
 import DeviceIntegration from './DeviceIntegration';
 import PayrollOverridesPanel from './SalaryOverridesPanel';
@@ -631,6 +632,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
 
             {/* Shift Windows & Auto Half-Day Rules */}
             <ShiftWindowsPanel />
+            <HoursRuleSettings />
 
             {/* Attendance Rules (per-location + global kiosk settings) */}
             <div className="glass-card-static p-4 rounded-xl space-y-3 overflow-hidden min-w-0">
