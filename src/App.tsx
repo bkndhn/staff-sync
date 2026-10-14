@@ -1,3 +1,4 @@
+import { hoursToStatus } from './utils/hoursAttendance';
 import React, { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
 import Navigation from './components/Navigation';
 import SuperAdminConsole from './components/SuperAdminConsole';
@@ -751,6 +752,7 @@ function App() {
     const finalBranch = location || staffMember?.location;
     const finalZone = floor || staffMember?.floor;
 
+    const leavingWasAuto = !finalLeavingTime && (status === 'Present' || status === 'Half Day');
     if (!finalLeavingTime && (status === 'Present' || status === 'Half Day')) {
       const locToCheck = finalBranch || '';
       if (locToCheck.toLowerCase().includes('godown')) {
@@ -792,11 +794,29 @@ function App() {
       }
     }
 
+    // Hours-based rule: X hrs = full day, >=3/4 X = 3/4, >=1/2 X = half, no overtime.
+    let finalStatus: any = status;
+    let finalValue = attendanceValue;
+    if (!isPartTime && status !== 'Absent' && finalArrivalTime && finalLeavingTime) {
+      try {
+        const raw = await appSettingsService.getSetting('hours_based_attendance');
+        const rule = raw ? JSON.parse(raw) : null;
+        if (rule?.enabled) {
+          const toM = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
+          const r = hoursToStatus(toM(finalLeavingTime) - toM(finalArrivalTime), Number(rule.fullDayHours) || 8);
+          finalStatus = r.status; finalValue = r.value;
+          finalAppliedRuleType = 'hours_based';
+        }
+      } catch { /* keep manual status */ }
+    }
+    // Auto OUT is tagged so a later real device/kiosk punch replaces it (never duplicates).
+    finalAppliedRuleDetails = { ...(finalAppliedRuleDetails || {}), auto_out: leavingWasAuto };
+
     const attendanceRecord = {
       staffId,
       date,
-      status,
-      attendanceValue,
+      status: finalStatus,
+      attendanceValue: finalValue,
       isSunday: isSunday(date),
       isPartTime: !!isPartTime,
       staffName: finalStaffName,

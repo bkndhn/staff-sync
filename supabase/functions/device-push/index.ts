@@ -7,6 +7,7 @@
 //       OR `?token=<DEVICE_PUSH_TOKEN>` query param.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { mergeAttendance } from "../_shared/attendanceMerge.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -219,34 +220,7 @@ Deno.serve(async (req) => {
     for (const key of Array.from(affectedStaffDates)) {
       const [staffId, date, staffName, location, floor, tenantId] = key.split("|");
       try {
-        const { data: allPunches } = await admin.from("punch_events")
-          .select("event_time")
-          .eq("staff_id", staffId)
-          .eq("date", date)
-          .order("event_time", { ascending: true });
-
-        if (allPunches && allPunches.length > 0) {
-          const arrTime = allPunches[0].event_time.slice(0, 5);
-          const hasTwoPunches = allPunches.length > 1;
-          const leavTime = hasTwoPunches ? allPunches[allPunches.length - 1].event_time.slice(0, 5) : null;
-          const status = hasTwoPunches ? "Present" : "Pending Full Day";
-
-          // Upsert into attendance table
-          await admin.from("attendance").upsert({
-            staff_id: staffId,
-            staff_name: staffName,
-            date,
-            status,
-            attendance_value: 1.0,
-            location,
-            floor: floor || null,
-            arrival_time: arrTime,
-            leaving_time: leavTime,
-            is_part_time: false,
-            ...(tenantId ? { tenant_id: tenantId } : {}),
-          }, { onConflict: "staff_id,date,is_part_time" });
-          attendanceUpdated++;
-        }
+        if (await mergeAttendance(admin, { staffId, date, staffName, location, floor: floor || null, tenantId: tenantId || null })) attendanceUpdated++;
       } catch (ae) {
         console.error("Auto-attendance aggregation failed:", ae);
       }
