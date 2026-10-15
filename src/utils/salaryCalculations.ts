@@ -419,6 +419,7 @@ export const calculatePayroll = (
 
   monthlyAttendance.forEach(record => {
     if (record.status === 'Absent') return;
+    if (record.appliedRuleType === 'hours_based') return; // late/early ignored under hours rule
 
     // Retrieve active rules applied to this day's record
     let rulesToUse: any = null;
@@ -695,6 +696,7 @@ export const calculatePayroll = (
     const mins = minutesBetween(record.arrivalTime, record.leavingTime);
     if (!(mins > 0)) return;
     workedMinutes += mins;
+    if (record.appliedRuleType === 'hours_based') return; // full day is the cap: no overtime
     const extra = mins - otThreshold * 60;
     if (extra >= 15) overtimeMinutes += extra; // ignore <15 min spill-over
   });
