@@ -632,6 +632,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
 
             {/* Shift Windows & Auto Half-Day Rules */}
             <ShiftWindowsPanel />
+            <div className="mt-4"><HoursRuleSettings /></div>
             <HoursRuleSettings />
 
             {/* Attendance Rules (per-location + global kiosk settings) */}
