@@ -27,7 +27,7 @@ describe('hours-based attendance', () => {
   });
   it('mixed sources: manual IN + device OUT + kiosk double tap -> one row, 3/4 day', () => {
     const t = merge(['09:00', '09:02', '15:10']); // manual, kiosk double-tap, device
-    const r = applyHoursRuleTo({ staffId: 's1', status: 'Present', ...t }, cfg);
+    const r = applyHoursRuleTo<any>({ staffId: 's1', status: 'Present', ...t }, cfg);
     expect(t).toEqual({ arrivalTime: '09:00', leavingTime: '15:10' });
     expect(r.status).toBe('3/4 Day'); expect(r.attendanceValue).toBe(0.75);
   });
@@ -35,7 +35,7 @@ describe('hours-based attendance', () => {
     const once = merge(['09:00', '18:30']);
     const replay = merge(['09:00', '18:30', '09:00', '18:30', '18:30']);
     expect(replay).toEqual(once);
-    expect(applyHoursRuleTo({ staffId: 's1', ...replay }, cfg).status).toBe('Present');
+    expect(applyHoursRuleTo<any>({ staffId: 's1', ...replay }, cfg).status).toBe('Present');
   });
   it('salary-locked and part-time rows are untouched; standard override keeps shift result', () => {
     expect(applyHoursRuleTo({ staffId: 's1', status: 'Present', salaryOverride: true, arrivalTime: '09:00', leavingTime: '10:00' }, cfg).status).toBe('Present');
