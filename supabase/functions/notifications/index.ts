@@ -163,6 +163,27 @@ async function uninformedLeave(tenantId: string, payload: any) {
   return { recipients: recipients.length, pushed };
 }
 
+// Late arrival / early leave alert to the staff member themself. Wording is fixed server-side.
+async function punctuality(tenantId: string, payload: any) {
+  const kind = payload?.kind === "early_leave" ? "early_leave" : payload?.kind === "late_arrival" ? "late_arrival" : null;
+  const staffId = typeof payload?.staffId === "string" ? payload.staffId : null;
+  const time = typeof payload?.time === "string" && /^\d{2}:\d{2}/.test(payload.time) ? payload.time.slice(0, 5) : null;
+  const minutes = Math.max(0, Math.min(1440, Math.round(Number(payload?.minutes) || 0)));
+  const date = typeof payload?.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(payload.date) ? payload.date : null;
+  if (!kind || !staffId || !time || !date) return { skipped: true, reason: "invalid" };
+  const { data: s } = await admin.from("staff").select("id, name, tenant_id").eq("id", staffId).maybeSingle();
+  if (!s || s.tenant_id !== tenantId) return { skipped: true, reason: "not_found" };
+  const [h, m] = time.split(":").map(Number);
+  const t12 = `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+  const title = kind === "late_arrival" ? "Late arrival ⏰" : "Early leave 🚪";
+  const message = kind === "late_arrival"
+    ? `You punched IN at ${t12} on ${date}, ${minutes} min after shift start.`
+    : `You punched OUT at ${t12} on ${date}, ${minutes} min before shift end.`;
+  const pushed = await pushTo([{ staffId }], { title, body: message, actionUrl: "/?tab=attendance" });
+  await record(tenantId, kind, "staff", [{ staffId, title, message, type: kind, tabId: "attendance" }], pushed);
+  return { pushed };
+}
+
 async function dailyAttendanceForTenant(tenantId: string, dateStr: string) {
   const { data: rows } = await admin.from("attendance")
     .select("status, attendance_value, is_uninformed, location")
@@ -252,6 +273,8 @@ Deno.serve(async (req) => {
       }
       case "uninformed_leave":
         return json({ success: true, ...(await uninformedLeave(tenantId, body)) });
+      case "punctuality":
+        return json({ success: true, ...(await punctuality(tenantId, body)) });
       case "daily_attendance_test": {
         if (!["admin", "manager"].includes(caller.role)) return json({ error: "Forbidden" }, 403);
         const local = localParts(body.timezone || "Asia/Kolkata");
