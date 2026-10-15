@@ -160,8 +160,8 @@ export const calculateAttendanceMetrics = (
   const presentDays = presentDaysFromAttendance + presentDaysFromLeaves;
 
   const halfDays = monthlyAttendance
-    .filter(record => record.status === 'Half Day')
-    .reduce((sum, record) => sum + (record.attendanceValue || 0.5), 0);
+    .filter(record => record.status === 'Half Day' || (record.status as string) === '3/4 Day')
+    .reduce((sum, record) => sum + (record.attendanceValue || ((record.status as string) === '3/4 Day' ? 0.75 : 0.5)), 0);
 
   const totalPresentDays = presentDays + halfDays;
 
@@ -371,8 +371,12 @@ export const calculatePayroll = (
   let adjustedHalfDays = 0;
 
   monthlyAttendance.forEach(record => {
-    if (record.status === 'Present' || record.status === 'Pending Full Day' || record.status === 'Manual Override') {
+    if ((record.status as string) === '3/4 Day') {
+      adjustedHalfDays += 0.75; // hours-based: counts as 0.75 of a day's pay
+    } else if (record.status === 'Present' || record.status === 'Pending Full Day' || record.status === 'Manual Override') {
       adjustedPresentDays += record.attendanceValue || 1;
+    } else if (record.status === 'Half Day' && record.appliedRuleType === 'hours_based') {
+      adjustedHalfDays += 0.5; // worked-hours verdict, never upgraded
     } else if (record.status === 'Half Day') {
       const shiftKey = record.shift || staff.shift || 'Both';
       const baseWin = windows[shiftKey] || DEFAULT_SHIFT_WINDOWS[shiftKey];
