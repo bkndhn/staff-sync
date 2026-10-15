@@ -138,6 +138,15 @@ export const notificationAlertsService = {
   async sendDailySummaryNow(date?: string) {
     return callFunction({ action: 'daily_attendance_test', date });
   },
+
+  async notifyPunctuality(input: { staffId: string; kind: 'late_arrival' | 'early_leave'; minutes: number; time: string; date: string }) {
+    try {
+      return await callFunction({ action: 'punctuality', ...input });
+    } catch (err) {
+      console.warn('Punctuality alert failed', err);
+      return null;
+    }
+  },
 };
 
 export default notificationAlertsService;

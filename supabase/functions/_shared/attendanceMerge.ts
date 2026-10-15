@@ -64,11 +64,15 @@ export async function mergeAttendance(admin: any, p: {
   let outMin: number | null = candidatesOut.length ? Math.max(...candidatesOut) : null;
   let autoOut = false;
 
-  const rule = await loadHoursRule(admin, p.tenantId);
+  const cfg: any = await loadHoursRule(admin, p.tenantId);
+  const o = cfg.overrides?.[p.staffId];
+  const rule = o?.mode === "standard" ? { ...cfg, enabled: false }
+    : o?.mode === "hours" ? { ...cfg, enabled: true, fullDayHours: Number(o.fullDayHours) || cfg.fullDayHours }
+    : cfg;
   if (outMin === null && existingAutoOut && exOut !== null) { outMin = exOut; autoOut = true; }
 
-  let status = outMin === null ? "Pending Full Day" : "Present";
-  let value = 1;
+  let status = outMin === null ? "Pending Full Day" : (existing?.status && existing.status !== "Absent" ? existing.status : "Present");
+  let value = outMin === null ? 1 : (existing?.attendance_value ?? 1);
   if (rule.enabled && outMin !== null) {
     const worked = outMin - inMin - (existing?.break_minutes || 0);
     const r = hoursToStatus(worked, rule.fullDayHours);

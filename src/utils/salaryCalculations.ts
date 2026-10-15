@@ -160,8 +160,8 @@ export const calculateAttendanceMetrics = (
   const presentDays = presentDaysFromAttendance + presentDaysFromLeaves;
 
   const halfDays = monthlyAttendance
-    .filter(record => record.status === 'Half Day')
-    .reduce((sum, record) => sum + (record.attendanceValue || 0.5), 0);
+    .filter(record => record.status === 'Half Day' || (record.status as string) === '3/4 Day')
+    .reduce((sum, record) => sum + (record.attendanceValue || ((record.status as string) === '3/4 Day' ? 0.75 : 0.5)), 0);
 
   const totalPresentDays = presentDays + halfDays;
 
@@ -371,8 +371,12 @@ export const calculatePayroll = (
   let adjustedHalfDays = 0;
 
   monthlyAttendance.forEach(record => {
-    if (record.status === 'Present' || record.status === 'Pending Full Day' || record.status === 'Manual Override') {
+    if ((record.status as string) === '3/4 Day') {
+      adjustedHalfDays += 0.75; // hours-based: counts as 0.75 of a day's pay
+    } else if (record.status === 'Present' || record.status === 'Pending Full Day' || record.status === 'Manual Override') {
       adjustedPresentDays += record.attendanceValue || 1;
+    } else if (record.status === 'Half Day' && record.appliedRuleType === 'hours_based') {
+      adjustedHalfDays += 0.5; // worked-hours verdict, never upgraded
     } else if (record.status === 'Half Day') {
       const shiftKey = record.shift || staff.shift || 'Both';
       const baseWin = windows[shiftKey] || DEFAULT_SHIFT_WINDOWS[shiftKey];
@@ -415,6 +419,7 @@ export const calculatePayroll = (
 
   monthlyAttendance.forEach(record => {
     if (record.status === 'Absent') return;
+    if (record.appliedRuleType === 'hours_based') return; // late/early ignored under hours rule
 
     // Retrieve active rules applied to this day's record
     let rulesToUse: any = null;
@@ -691,6 +696,7 @@ export const calculatePayroll = (
     const mins = minutesBetween(record.arrivalTime, record.leavingTime);
     if (!(mins > 0)) return;
     workedMinutes += mins;
+    if (record.appliedRuleType === 'hours_based') return; // full day is the cap: no overtime
     const extra = mins - otThreshold * 60;
     if (extra >= 15) overtimeMinutes += extra; // ignore <15 min spill-over
   });

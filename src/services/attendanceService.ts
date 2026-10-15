@@ -5,6 +5,30 @@ import type { DatabaseAttendance } from '../lib/supabase';
 import { isSunday } from '../utils/salaryCalculations';
 import { offlineSyncService } from './offlineSyncService';
 import { notificationAlertsService } from './notificationAlertsService';
+import { applyHoursRuleTo, loadHoursRule } from '../utils/hoursAttendance';
+
+const hm = (t?: string | null) => {
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  return Number.isFinite(h) ? h * 60 + (m || 0) : null;
+};
+
+/** Push the staff member a late-arrival / early-leave alert once per day per kind. */
+const notifyPunctuality = (rec: Partial<Attendance>) => {
+  if (!navigator.onLine || !rec?.staffId || !rec.date || rec.isPartTime) return;
+  let rules: any = rec.appliedRuleDetails;
+  if (typeof rules === 'string') { try { rules = JSON.parse(rules); } catch { rules = null; } }
+  if (!rules) return;
+  const start = hm(rules.shiftStart || rules.start), end = hm(rules.shiftEnd || rules.end);
+  const arr = hm(rec.arrivalTime), lev = hm(rec.leavingTime);
+  const fire = (kind: 'late_arrival' | 'early_leave', minutes: number, time: string) => {
+    const key = `punct:${rec.staffId}:${rec.date}:${kind}`;
+    try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch { /* ignore */ }
+    void notificationAlertsService.notifyPunctuality({ staffId: rec.staffId!, kind, minutes, time, date: rec.date! });
+  };
+  if (arr !== null && start !== null && arr - start > (rules.graceLateMin ?? 15)) fire('late_arrival', arr - start, rec.arrivalTime!);
+  if (lev !== null && end !== null && end - lev > (rules.graceEarlyMin ?? 15) && !(rec.appliedRuleDetails as any)?.auto_out) fire('early_leave', end - lev, rec.leavingTime!);
+};
 
 /** Fire-and-forget alert to admins when a staff member is marked uninformed absent */
 const alertUninformed = (rec: Partial<Attendance>) => {
@@ -53,6 +77,9 @@ export const attendanceService = {
 
   /** Upsert attendance record with automatic Offline Queue fallback */
   async upsert(attendance: Omit<Attendance, 'id'>): Promise<Attendance> {
+    // One rule for every source (manual, kiosk, portal, biometric, offline replay).
+    attendance = applyHoursRuleTo(attendance as any, await loadHoursRule()) as any;
+    notifyPunctuality(attendance);
     // Check network connectivity upfront
     if (!navigator.onLine) {
       console.warn('[AttendanceService] Offline detected. Queuing punch locally.');
@@ -109,6 +136,7 @@ export const attendanceService = {
 
   /** Dedicated remote upsert invoked during background queue flushing to prevent infinite loops */
   async upsertRemoteOnly(attendance: Omit<Attendance, 'id'>): Promise<Attendance> {
+    attendance = applyHoursRuleTo(attendance as any, await loadHoursRule()) as any;
     const dbAttendance = this.mapToDatabase(attendance);
     const { id: _stripId, ...upsertPayload } = dbAttendance;
     const { data, error } = await dataApi
