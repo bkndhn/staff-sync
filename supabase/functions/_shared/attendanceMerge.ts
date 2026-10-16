@@ -95,5 +95,28 @@ export async function mergeAttendance(admin: any, p: {
     ...(p.tenantId ? { tenant_id: p.tenantId } : {}),
   }, { onConflict: "staff_id,date,is_part_time" });
   if (error) console.error("mergeAttendance upsert", error);
+  if (!error && !rule.enabled && p.tenantId) {
+    await dispatchPunctuality(p.tenantId, p.staffId, p.date, details, inMin, autoOut ? null : outMin);
+  }
   return !error;
+}
+
+// Server-side late/early alerts for device punches. The notifications function dedups per staff/date/kind.
+async function dispatchPunctuality(tenantId: string, staffId: string, date: string, d: any, inMin: number, outMin: number | null) {
+  const start = toMin(d?.shiftStart || d?.start), end = toMin(d?.shiftEnd || d?.end);
+  const graceL = Number(d?.graceLateMin ?? 15), graceE = Number(d?.graceEarlyMin ?? 15);
+  const jobs: any[] = [];
+  if (start !== null && inMin - start > graceL) jobs.push({ kind: "late_arrival", minutes: inMin - start, time: fromMin(inMin) });
+  if (end !== null && outMin !== null && end - outMin > graceE) jobs.push({ kind: "early_leave", minutes: end - outMin, time: fromMin(outMin) });
+  const url = Deno.env.get("SUPABASE_URL"), key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return;
+  for (const j of jobs) {
+    try {
+      await fetch(`${url}/functions/v1/notifications`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, apikey: key },
+        body: JSON.stringify({ action: "punctuality", tenantId, staffId, date, ...j }),
+      });
+    } catch (e) { console.error("punctuality dispatch", e); }
+  }
 }

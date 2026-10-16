@@ -173,6 +173,15 @@ async function punctuality(tenantId: string, payload: any) {
   if (!kind || !staffId || !time || !date) return { skipped: true, reason: "invalid" };
   const { data: s } = await admin.from("staff").select("id, name, tenant_id").eq("id", staffId).maybeSingle();
   if (!s || s.tenant_id !== tenantId) return { skipped: true, reason: "not_found" };
+  // Server-side idempotency: one alert per staff/date/kind across all sources & offline replays.
+  const dayStart = `${date}T00:00:00Z`;
+  const { data: prior } = await admin.from("staff_notifications").select("id, message")
+    .eq("tenant_id", tenantId).eq("staff_id", staffId).eq("type", kind).gte("created_at", dayStart).limit(20);
+  if ((prior || []).some((r: any) => String(r.message || "").includes(` on ${date},`))) return { skipped: true, reason: "duplicate" };
+  // Hours-based staff are exempt from punctuality alerts (pay is duration-based).
+  const { data: att } = await admin.from("attendance").select("applied_rule_type")
+    .eq("staff_id", staffId).eq("date", date).eq("is_part_time", false).maybeSingle();
+  if (att?.applied_rule_type === "hours_based") return { skipped: true, reason: "hours_based" };
   const [h, m] = time.split(":").map(Number);
   const t12 = `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
   const title = kind === "late_arrival" ? "Late arrival ⏰" : "Early leave 🚪";
@@ -260,7 +269,19 @@ Deno.serve(async (req) => {
     }
 
 
+    // Internal dispatch from device-push / device-pull / iclock (service role, server-to-server only).
+    const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+    if (action === "punctuality" && bearer && bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
+      if (typeof body.tenantId !== "string") return json({ error: "tenantId required" }, 400);
+      return json({ success: true, ...(await punctuality(body.tenantId, body)) });
+    }
+
     const caller = await getCaller(req);
+    // Punctuality: any active signed-in user of the tenant (incl. staff portal / kiosk); wording and
+    // recipient validation are fixed server-side, so it cannot be abused to message other tenants.
+    if (action === "punctuality" && caller?.is_active && caller.tenant_id) {
+      return json({ success: true, ...(await punctuality(caller.tenant_id, body)) });
+    }
     if (!caller?.is_active || !["admin", "manager", "supervisor", "floor_supervisor"].includes(caller.role)) {
       return json({ error: "Unauthorized" }, 401);
     }
