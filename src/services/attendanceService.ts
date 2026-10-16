@@ -14,6 +14,7 @@ const hm = (t?: string | null) => {
 };
 
 /** Push the staff member a late-arrival / early-leave alert once per day per kind. */
+export const __notifyPunctuality = (r: Partial<Attendance>) => notifyPunctuality(r);
 const notifyPunctuality = (rec: Partial<Attendance>) => {
   if (!navigator.onLine || !rec?.staffId || !rec.date || rec.isPartTime) return;
   // Hours-based staff are exempt; stale offline replays (not today) never buzz phones retroactively.
