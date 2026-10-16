@@ -43,3 +43,19 @@ describe('hours-based attendance', () => {
     expect(applyHoursRuleTo({ staffId: 's2', status: 'Half Day', arrivalTime: '09:00', leavingTime: '18:00' }, cfg).status).toBe('Half Day');
   });
 });
+
+describe('punctuality alert guards', () => {
+  it('fires once per staff/day/kind and skips hours-based rows', async () => {
+    const { vi } = await import('vitest');
+    const svc = (await import('../services/notificationAlertsService')).notificationAlertsService;
+    const spy = vi.spyOn(svc, 'notifyPunctuality').mockResolvedValue(null as any);
+    const mod: any = await import('../services/attendanceService');
+    const t = new Date(); const date = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+    localStorage.clear();
+    const rec = { staffId: 'S1', date, arrivalTime: '10:00', appliedRuleDetails: { shiftStart: '09:00', shiftEnd: '18:00' } };
+    mod.__notifyPunctuality?.(rec); mod.__notifyPunctuality?.(rec);
+    mod.__notifyPunctuality?.({ ...rec, staffId: 'S2', appliedRuleType: 'hours_based' });
+    mod.__notifyPunctuality?.({ ...rec, staffId: 'S3', date: '2020-01-01' });
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
