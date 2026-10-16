@@ -14,8 +14,13 @@ const hm = (t?: string | null) => {
 };
 
 /** Push the staff member a late-arrival / early-leave alert once per day per kind. */
+export const __notifyPunctuality = (r: Partial<Attendance>) => notifyPunctuality(r);
 const notifyPunctuality = (rec: Partial<Attendance>) => {
   if (!navigator.onLine || !rec?.staffId || !rec.date || rec.isPartTime) return;
+  // Hours-based staff are exempt; stale offline replays (not today) never buzz phones retroactively.
+  if ((rec as any).appliedRuleType === 'hours_based') return;
+  const today = new Date(); const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  if (rec.date !== ymd) return;
   let rules: any = rec.appliedRuleDetails;
   if (typeof rules === 'string') { try { rules = JSON.parse(rules); } catch { rules = null; } }
   if (!rules) return;
