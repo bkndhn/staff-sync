@@ -51,7 +51,9 @@ describe('punctuality alert guards', () => {
     const spy = vi.spyOn(svc, 'notifyPunctuality').mockResolvedValue(null as any);
     const mod: any = await import('../services/attendanceService');
     const t = new Date(); const date = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
-    localStorage.clear();
+    const store: Record<string,string> = {};
+    (globalThis as any).localStorage = { getItem: (k: string) => store[k] ?? null, setItem: (k: string, v: string) => { store[k] = v; }, clear: () => {} };
+    if (!(globalThis as any).navigator?.onLine) Object.defineProperty(globalThis, 'navigator', { value: { onLine: true }, configurable: true });
     const rec = { staffId: 'S1', date, arrivalTime: '10:00', appliedRuleDetails: { shiftStart: '09:00', shiftEnd: '18:00' } };
     mod.__notifyPunctuality?.(rec); mod.__notifyPunctuality?.(rec);
     mod.__notifyPunctuality?.({ ...rec, staffId: 'S2', appliedRuleType: 'hours_based' });
