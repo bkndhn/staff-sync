@@ -19,10 +19,18 @@ const admin = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
-const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY");
-const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY");
+// Normalise keys (people often paste standard base64 with padding/newlines).
+const b64url = (v?: string) => v ? v.trim().replace(/\s+/g, "").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") : undefined;
+let VAPID_PUBLIC_KEY = b64url(Deno.env.get("VAPID_PUBLIC_KEY"));
+let VAPID_PRIVATE_KEY = b64url(Deno.env.get("VAPID_PRIVATE_KEY"));
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-  webPush.setVapidDetails("mailto:admin@staffsync.app", VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  try {
+    webPush.setVapidDetails("mailto:admin@staffsync.app", VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  } catch (e) {
+    // Never crash the whole function on a bad key: alerts are still recorded in-app.
+    console.error("Invalid VAPID keys — push disabled:", (e as Error).message);
+    VAPID_PUBLIC_KEY = undefined; VAPID_PRIVATE_KEY = undefined;
+  }
 }
 
 type Recipient = { staffId?: string | null; appUserId?: string | null };
