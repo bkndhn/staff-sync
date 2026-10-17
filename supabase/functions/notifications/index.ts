@@ -266,7 +266,7 @@ Deno.serve(async (req) => {
 
   try {
     if (req.method === "GET") {
-      return VAPID_PUBLIC_KEY ? json({ publicKey: VAPID_PUBLIC_KEY }) : json({ error: "Push is not configured" }, 503);
+      return VAPID_PUBLIC_KEY ? json({ publicKey: VAPID_PUBLIC_KEY, protocol: "web-push-vapid" }) : json({ error: "Push is not configured", status: PUSH_STATUS }, 503);
     }
 
     const body = await req.json().catch(() => ({}));
