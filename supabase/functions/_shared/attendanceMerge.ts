@@ -96,15 +96,64 @@ export async function mergeAttendance(admin: any, p: {
   }, { onConflict: "staff_id,date,is_part_time" });
   if (error) console.error("mergeAttendance upsert", error);
   if (!error && !rule.enabled && p.tenantId) {
-    await dispatchPunctuality(p.tenantId, p.staffId, p.date, details, inMin, autoOut ? null : outMin);
+    const shift = await resolveShift(admin, p.tenantId, p.staffId, p.date, details);
+    if (shift && !shift.exempt) {
+      // Persist the resolved shift so later reads never depend on the caller supplying it.
+      await admin.from("attendance").update({
+        applied_rule_details: { ...details, auto_out: autoOut, merged_sources: true,
+          shiftStart: shift.start, shiftEnd: shift.end, graceLateMin: shift.graceLateMin,
+          graceEarlyMin: shift.graceEarlyMin, shiftSource: shift.source },
+      }).eq("staff_id", p.staffId).eq("date", p.date).eq("is_part_time", false);
+      await dispatchPunctuality(p.tenantId, p.staffId, p.date, shift, inMin, autoOut ? null : outMin);
+    }
   }
   return !error;
 }
 
+export interface ResolvedShift { start: string; end: string; graceLateMin: number; graceEarlyMin: number; source: string; exempt?: boolean }
+
+const DEFAULT_WINDOWS: Record<string, any> = {
+  Morning: { start: "10:00", end: "14:00", graceLateMin: 15, graceEarlyMin: 15 },
+  Evening: { start: "14:00", end: "21:00", graceLateMin: 15, graceEarlyMin: 15 },
+  Both: { start: "10:00", end: "21:00", graceLateMin: 20, graceEarlyMin: 20 },
+};
+
+/** Pure resolution: row details > roster shift > per-staff window > tenant window > default. */
+export function pickShift(input: { details?: any; rosterKey?: string | null; staff?: any; windows?: Record<string, any> | null }): ResolvedShift {
+  const d = input.details || {};
+  if (input.staff?.exempt_from_late_deduction) return { ...DEFAULT_WINDOWS.Both, source: "exempt", exempt: true };
+  const windows = { ...DEFAULT_WINDOWS, ...(input.windows || {}) };
+  if (toMin(d.shiftStart || d.start) !== null && toMin(d.shiftEnd || d.end) !== null) {
+    return { start: d.shiftStart || d.start, end: d.shiftEnd || d.end,
+      graceLateMin: Number(d.graceLateMin ?? 15), graceEarlyMin: Number(d.graceEarlyMin ?? 15), source: "attendance" };
+  }
+  const sw = input.staff?.shift_window || {};
+  const key = (input.rosterKey && windows[input.rosterKey]) ? input.rosterKey : (sw.shift && windows[sw.shift] ? sw.shift : "Both");
+  const base = windows[key];
+  const source = input.rosterKey && windows[input.rosterKey] ? "roster" : Object.keys(sw).length ? "staff" : "tenant";
+  const merged = { ...base, ...(input.rosterKey ? {} : sw) };
+  return { start: merged.start, end: merged.end, graceLateMin: Number(merged.graceLateMin ?? 15),
+    graceEarlyMin: Number(merged.graceEarlyMin ?? 15), source };
+}
+
+export async function resolveShift(admin: any, tenantId: string, staffId: string, date: string, details: any): Promise<ResolvedShift | null> {
+  try {
+    const [{ data: staff }, { data: roster }, { data: setting }] = await Promise.all([
+      admin.from("staff").select("shift_window, exempt_from_late_deduction, tenant_id").eq("id", staffId).maybeSingle(),
+      admin.from("shift_rosters").select("shift_key").eq("staff_id", staffId).eq("date", date).maybeSingle(),
+      admin.from("app_settings").select("value").eq("key", "shift_windows").eq("tenant_id", tenantId).limit(1).maybeSingle(),
+    ]);
+    if (staff && staff.tenant_id && staff.tenant_id !== tenantId) return null;
+    let windows: any = null;
+    if (setting?.value) windows = typeof setting.value === "string" ? JSON.parse(setting.value) : setting.value;
+    return pickShift({ details, rosterKey: roster?.shift_key, staff, windows });
+  } catch (e) { console.error("resolveShift", e); return null; }
+}
+
 // Server-side late/early alerts for device punches. The notifications function dedups per staff/date/kind.
-async function dispatchPunctuality(tenantId: string, staffId: string, date: string, d: any, inMin: number, outMin: number | null) {
-  const start = toMin(d?.shiftStart || d?.start), end = toMin(d?.shiftEnd || d?.end);
-  const graceL = Number(d?.graceLateMin ?? 15), graceE = Number(d?.graceEarlyMin ?? 15);
+async function dispatchPunctuality(tenantId: string, staffId: string, date: string, s: ResolvedShift, inMin: number, outMin: number | null) {
+  const start = toMin(s.start), end = toMin(s.end);
+  const graceL = s.graceLateMin, graceE = s.graceEarlyMin;
   const jobs: any[] = [];
   if (start !== null && inMin - start > graceL) jobs.push({ kind: "late_arrival", minutes: inMin - start, time: fromMin(inMin) });
   if (end !== null && outMin !== null && end - outMin > graceE) jobs.push({ kind: "early_leave", minutes: end - outMin, time: fromMin(outMin) });
