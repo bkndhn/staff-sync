@@ -23,13 +23,18 @@ const admin = createClient(
 const b64url = (v?: string) => v ? v.trim().replace(/\s+/g, "").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") : undefined;
 let VAPID_PUBLIC_KEY = b64url(Deno.env.get("VAPID_PUBLIC_KEY"));
 let VAPID_PRIVATE_KEY = b64url(Deno.env.get("VAPID_PRIVATE_KEY"));
+// Web Push (VAPID) needs a P-256 pair: public = 65 bytes (87 b64url chars, starts "B"), private = 32 bytes (43 chars).
+// Firebase server keys / service-account JSON are NOT valid here. Never log key material.
+let PUSH_STATUS = "missing";
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  const shapeOk = VAPID_PUBLIC_KEY.length === 87 && VAPID_PUBLIC_KEY.startsWith("B") && VAPID_PRIVATE_KEY.length === 43;
   try {
+    if (!shapeOk) throw new Error("keys are not a P-256 VAPID pair");
     webPush.setVapidDetails("mailto:admin@staffsync.app", VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+    PUSH_STATUS = "ok";
   } catch (e) {
-    // Never crash the whole function on a bad key: alerts are still recorded in-app.
     console.error("Invalid VAPID keys — push disabled:", (e as Error).message);
-    VAPID_PUBLIC_KEY = undefined; VAPID_PRIVATE_KEY = undefined;
+    VAPID_PUBLIC_KEY = undefined; VAPID_PRIVATE_KEY = undefined; PUSH_STATUS = "invalid";
   }
 }
 
@@ -261,7 +266,7 @@ Deno.serve(async (req) => {
 
   try {
     if (req.method === "GET") {
-      return VAPID_PUBLIC_KEY ? json({ publicKey: VAPID_PUBLIC_KEY }) : json({ error: "Push is not configured" }, 503);
+      return VAPID_PUBLIC_KEY ? json({ publicKey: VAPID_PUBLIC_KEY, protocol: "web-push-vapid" }) : json({ error: "Push is not configured", status: PUSH_STATUS }, 503);
     }
 
     const body = await req.json().catch(() => ({}));
