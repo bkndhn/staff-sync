@@ -2,6 +2,8 @@
 // iclock ADMS, device-pull). Guarantees ONE attendance row per staff/day and
 // merges device punches with manual / kiosk / auto-OUT times without duplication.
 // deno-lint-ignore-file no-explicit-any
+// Lets the web app's tests import the pure helpers without Deno types.
+declare const Deno: { env: { get(name: string): string | undefined } };
 
 export interface HoursRule { enabled: boolean; fullDayHours: number; autoOut: boolean }
 
