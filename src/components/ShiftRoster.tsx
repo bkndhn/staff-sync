@@ -29,6 +29,8 @@ export const ShiftRoster: React.FC<ShiftRosterProps> = ({ staff, userLocation, u
   const [roster, setRoster] = useState<ShiftRosterModel[]>([]);
   const [localChanges, setLocalChanges] = useState<Record<string, string>>({}); // "staffId_date" -> "shiftKey"
   const [saving, setSaving] = useState(false);
+  const [minCover, setMinCover] = useState<number>(() => Number(localStorage.getItem('roster:minCover') || 0));
+  useEffect(() => { localStorage.setItem('roster:minCover', String(minCover)); }, [minCover]);
 
   // Filter staff by location
   const activeStaff = useMemo(() => {
@@ -245,6 +247,31 @@ export const ShiftRoster: React.FC<ShiftRosterProps> = ({ staff, userLocation, u
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr className="bg-white/5 border-t border-white/10">
+              <td className="p-3 sticky left-0 bg-[var(--bg-card)] z-10 text-xs font-semibold text-white/70">
+                Working / Off
+                <label className="mt-1 flex items-center gap-1 text-[11px] text-white/50">
+                  Min needed
+                  <input type="number" min={0} value={minCover || ''} onChange={e => setMinCover(Math.max(0, Number(e.target.value)))}
+                    className="w-14 px-1 py-0.5 rounded bg-white/10 border border-white/10 text-white" placeholder="0" />
+                </label>
+              </td>
+              {weekDates.map(d => {
+                const dStr = d.toISOString().split('T')[0];
+                const vals = activeStaff.map(m => getShiftForCell(m.id, dStr));
+                const off = vals.filter(v => v === 'Off' || v === 'Leave').length;
+                const working = vals.length - off;
+                const gap = minCover > 0 && working < minCover;
+                return (
+                  <td key={dStr} className={`p-2 text-center text-xs font-bold ${gap ? 'bg-red-500/20 text-red-300' : 'text-emerald-300'}`}>
+                    {working} / {off}
+                    {gap && <div className="text-[10px] font-semibold">Short by {minCover - working}</div>}
+                  </td>
+                );
+              })}
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
