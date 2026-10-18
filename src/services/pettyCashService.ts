@@ -43,6 +43,7 @@ export interface CustomExpense {
   label: string;
   amount: number;
   notes?: string;
+  voucher_image?: string | null;
   display_order?: number;
 }
 
@@ -154,6 +155,7 @@ export const pettyCashService = {
         label: e.label,
         amount: e.amount,
         notes: e.notes || null,
+        voucher_image: e.voucher_image || null,
         display_order: idx,
       }));
       await dataApi.from('petty_cash_expenses').insert(expsToInsert);

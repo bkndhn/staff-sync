@@ -2170,6 +2170,7 @@ export type Database = {
           notes: string | null
           sheet_id: string
           tenant_id: string
+          voucher_image: string | null
         }
         Insert: {
           amount?: number
@@ -2181,6 +2182,7 @@ export type Database = {
           notes?: string | null
           sheet_id: string
           tenant_id?: string
+          voucher_image?: string | null
         }
         Update: {
           amount?: number
@@ -2192,6 +2194,7 @@ export type Database = {
           notes?: string | null
           sheet_id?: string
           tenant_id?: string
+          voucher_image?: string | null
         }
         Relationships: [
           {

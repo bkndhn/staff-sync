@@ -17,6 +17,7 @@ export interface BankExportResult {
   csv: string;
   rowCount: number;
   totalAmount: number;
+  payees: { code: string; name: string; account: string; ifsc: string; amount: number; mode: string }[];
   skipped: { staffId: string; name: string; reason: string }[];
 }
 
@@ -24,6 +25,11 @@ const n = (v: unknown): number => (typeof v === 'number' && isFinite(v) ? v : 0)
 const net = (d: PayrollDetail) => Math.round(n(d.netPayroll ?? d.netSalary));
 const clean = (v?: string | null) => (v || '').replace(/[",\r\n]/g, ' ').trim();
 const acc = (v?: string | null) => (v || '').replace(/\s|-/g, '').toUpperCase();
+
+/** Indian IFSC: 4 letters, a zero, then 6 letters/digits (e.g. HDFC0001234). */
+export const isValidIfsc = (v?: string | null) => /^[A-Z]{4}0[A-Z0-9]{6}$/.test(acc(v));
+/** Indian bank account numbers are 9–18 digits. */
+export const isValidAccount = (v?: string | null) => /^\d{9,18}$/.test(acc(v));
 
 const ddmmyyyy = (iso: string) => {
   const [y, m, d] = iso.split('-');
@@ -71,6 +77,14 @@ export const buildBankPaymentFile = (
       skipped.push({ staffId: d.staffId, name, reason: 'Missing account number or IFSC' });
       return;
     }
+    if (!isValidIfsc(member.ifscCode)) {
+      skipped.push({ staffId: d.staffId, name, reason: `Invalid IFSC "${acc(member.ifscCode)}"` });
+      return;
+    }
+    if (!isValidAccount(member.bankAccountNumber)) {
+      skipped.push({ staffId: d.staffId, name, reason: 'Account number must be 9–18 digits' });
+      return;
+    }
     payable.push({ member, amount });
   });
 
@@ -103,6 +117,7 @@ export const buildBankPaymentFile = (
   }
 
   return {
+    payees: payable.map(({ member, amount }) => ({ code: member.employeeCode || '', name: member.name, account: acc(member.bankAccountNumber), ifsc: acc(member.ifscCode), amount, mode: mode(amount) })),
     filename: `bank-payment-${format}-${year}-${String(month).padStart(2, '0')}.csv`,
     csv: toCsv(rows),
     rowCount: payable.length,
@@ -121,4 +136,33 @@ export const downloadBankPaymentFile = (result: BankExportResult) => {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+};
+
+
+/** Printable disbursement authorization sheet (PDF) for signatories. Uses "Rs." for the rupee. */
+export const downloadDisbursementAuthorization = async (result: BankExportResult, month: number, year: number, debitAccount?: string) => {
+  const { default: jsPDF } = await import('jspdf');
+  const autoTable = (await import('jspdf-autotable')).default;
+  const doc = new jsPDF();
+  const rs = (v: number) => `Rs. ${v.toLocaleString('en-IN')}`;
+  doc.setFontSize(14);
+  doc.text(`Salary Disbursement Authorization - ${MONTHS[month - 1]} ${year}`, 14, 16);
+  doc.setFontSize(10);
+  doc.text(`Debit account: ${debitAccount || '-'}    Payees: ${result.rowCount}    Total: ${rs(result.totalAmount)}`, 14, 24);
+  autoTable(doc, {
+    startY: 30,
+    head: [['#', 'Code', 'Name', 'Account', 'IFSC', 'Mode', 'Amount']],
+    body: result.payees.map((p, i) => [i + 1, p.code, p.name, `XXXX${p.account.slice(-4)}`, p.ifsc, p.mode, rs(p.amount)]),
+    foot: [['', '', 'TOTAL', '', '', '', rs(result.totalAmount)]],
+    styles: { fontSize: 8 },
+  });
+  const y = ((doc as any).lastAutoTable?.finalY || 40) + 10;
+  if (result.skipped.length) {
+    doc.text(`Excluded (${result.skipped.length}): ` + result.skipped.map(s => `${s.name} (${s.reason})`).join('; ').slice(0, 400), 14, y, { maxWidth: 180 });
+  }
+  const sy = y + 30;
+  doc.text('Prepared by: ____________', 14, sy);
+  doc.text('Checked by: ____________', 80, sy);
+  doc.text('Authorized by: ____________', 140, sy);
+  doc.save(`disbursement-authorization-${year}-${String(month).padStart(2, '0')}.pdf`);
 };

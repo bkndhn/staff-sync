@@ -25,15 +25,44 @@ const BreakControls: React.FC<Props> = ({ staff, source = 'web', performedBy, co
 
   useEffect(() => {
     if (!openBreak) return;
-    const t = setInterval(() => setElapsedTick(x => x + 1), 30 * 1000);
+    const t = setInterval(() => setElapsedTick(x => x + 1), 1000);
     return () => clearInterval(t);
   }, [openBreak]);
 
-  const elapsedMin = openBreak
-    ? Math.floor((Date.now() - new Date(`${openBreak.date}T${openBreak.startTime}`).getTime()) / 60000)
+  void elapsedTick;
+  const elapsedSec = openBreak
+    ? Math.max(0, Math.floor((Date.now() - new Date(`${openBreak.date}T${openBreak.startTime}`).getTime()) / 1000))
     : 0;
+  const elapsedMin = Math.floor(elapsedSec / 60);
   const activeType = openBreak ? types.find(t => t.id === openBreak.breakTypeId) : null;
-  const overLimit = activeType ? elapsedMin > activeType.maxMinutes : false;
+  const limitSec = (activeType?.maxMinutes || 0) * 60;
+  const overLimit = activeType ? elapsedMin >= activeType.maxMinutes : false;
+  const remainSec = limitSec - elapsedSec;
+  const fmt = (sec: number) => `${Math.floor(Math.abs(sec) / 60)}:${String(Math.abs(sec) % 60).padStart(2, '0')}`;
+  const pct = limitSec ? Math.min(100, (elapsedSec / limitSec) * 100) : 0;
+
+  // Chime at 5 minutes left and when the limit is reached (once each per break).
+  useEffect(() => {
+    if (!openBreak || !limitSec) return;
+    const fire = (kind: string, freq: number) => {
+      const key = `brk:${openBreak.id}:${kind}`;
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        [0, 0.35].forEach(t => {
+          const o = ctx.createOscillator(); const g = ctx.createGain();
+          o.frequency.value = freq; o.connect(g); g.connect(ctx.destination);
+          g.gain.setValueAtTime(0.25, ctx.currentTime + t);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.3);
+          o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.3);
+        });
+        navigator.vibrate?.([200, 100, 200]);
+      } catch { /* audio unavailable */ }
+    };
+    if (remainSec <= 300 && remainSec > 0 && limitSec > 300) fire('warn', 660);
+    if (remainSec <= 0) fire('over', 880);
+  }, [openBreak, limitSec, remainSec]);
 
   const startBreak = async (type: BreakType) => {
     setLoading(true);
@@ -69,9 +98,14 @@ const BreakControls: React.FC<Props> = ({ staff, source = 'web', performedBy, co
             <div>
               <div className="text-sm font-semibold">On break: {activeType?.name || 'Break'}</div>
               <div className="text-xs text-[var(--text-muted)]">
-                Started {openBreak.startTime.slice(0, 5)} · {elapsedMin}m elapsed
+                Started {openBreak.startTime.slice(0, 5)} · {fmt(elapsedSec)} elapsed
                 {activeType && ` / ${activeType.maxMinutes}m max`}
               </div>
+              {limitSec > 0 && (
+                <div className={`text-2xl font-black tabular-nums ${overLimit ? 'text-red-500' : remainSec <= 300 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                  {overLimit ? `+${fmt(remainSec)} over` : `${fmt(remainSec)} left`}
+                </div>
+              )}
             </div>
           </div>
           <button
@@ -83,6 +117,11 @@ const BreakControls: React.FC<Props> = ({ staff, source = 'web', performedBy, co
             End Break
           </button>
         </div>
+        {limitSec > 0 && (
+          <div className="h-1.5 rounded-full bg-black/10 overflow-hidden mt-2">
+            <div className={`h-full transition-all ${overLimit ? 'bg-red-500' : pct > 80 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
+          </div>
+        )}
         {overLimit && (
           <div className="flex items-center gap-1.5 text-xs text-red-500">
             <AlertTriangle size={12} /> Break limit exceeded — will be flagged as violation.

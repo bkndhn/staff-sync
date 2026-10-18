@@ -12,7 +12,7 @@ import {
 import { PayrollDetail, Staff } from '../types';
 import { detectPayrollAnomalies, type AnomalyReport } from '../utils/payrollAnomalies';
 import { buildPayrollVariance, type VarianceReport } from '../utils/payrollVariance';
-import { buildBankPaymentFile, downloadBankPaymentFile, type BankFormat } from '../utils/bankExport';
+import { buildBankPaymentFile, downloadBankPaymentFile, downloadDisbursementAuthorization, type BankFormat } from '../utils/bankExport';
 import { payrollService } from '../services/payrollService';
 import { customAlert } from './CustomDialog';
 
@@ -267,9 +267,16 @@ export const PayrollInsightsPanel: React.FC<Props> = ({ details, staff, month, y
             >
               Download CSV
             </button>
+            <button
+              type="button"
+              onClick={() => bankPreview.rowCount ? downloadDisbursementAuthorization(bankPreview, month + 1, year, debitAccount) : customAlert('No eligible payees this period.')}
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-blue-600 text-blue-700 hover:bg-blue-50 transition-colors"
+            >
+              Authorization PDF
+            </button>
           </div>
           <p className="text-xs text-gray-500">
-            Amounts up to ₹2,00,000 are marked IMPS, above that NEFT. Only staff set to bank payout with a valid account and IFSC are included.
+            Amounts up to ₹2,00,000 are marked IMPS, above that NEFT. Only staff set to bank payout with a valid account (9–18 digits) and IFSC (e.g. HDFC0001234) are included.
           </p>
           {bankPreview.skipped.length > 0 && (
             <details className="text-xs text-gray-600">

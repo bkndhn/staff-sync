@@ -1,0 +1,1 @@
+ALTER TABLE public.petty_cash_expenses ADD COLUMN IF NOT EXISTS voucher_image text;
