@@ -7,6 +7,7 @@ import { staffService } from '../services/staffService';
 import { locationService } from '../services/locationService';
 import { exportPettyCashPdf, exportPettyCashExcel, sharePettyCashWhatsApp, formatPunchRange, type PunchTimes } from '../utils/pettyCashExport';
 import { Location } from '../types';
+import VoucherPhotoButton from './VoucherPhotoButton';
 
 const getYesterdayKey = () => {
   const d = new Date();
@@ -1068,6 +1069,9 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                             />
                           )}
                         </div>
+                        {e.label !== 'MEAL TOTAL' && (
+                          <VoucherPhotoButton value={e.voucher_image} disabled={!canEdit} onChange={v => updateExpense(e.id!, 'voucher_image', v)} />
+                        )}
                         {e.category !== 'fixed' && canEdit && (
                           <button
                             onClick={() => removeExpense(e.id!)}
@@ -1116,7 +1120,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                         <th className="px-4 py-3 w-12">S.NO</th>
                         <th className="px-4 py-3">PARTICULARS</th>
                         <th className="px-4 py-3 text-right w-32">AMOUNT</th>
-                        <th className="px-4 py-3 w-12"></th>
+                        <th className="px-4 py-3 w-24 text-center">VOUCHER</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1149,11 +1153,16 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                             />
                           </td>
                           <td className="px-4 py-2.5 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                            {e.label !== 'MEAL TOTAL' && (
+                              <VoucherPhotoButton value={e.voucher_image} disabled={!canEdit} onChange={v => updateExpense(e.id!, 'voucher_image', v)} />
+                            )}
                             {e.category !== 'fixed' && canEdit && (
                               <button onClick={() => removeExpense(e.id!)} className="text-red-400 hover:text-red-600 p-1">
                                 <Trash2 size={16} />
                               </button>
                             )}
+                            </div>
                           </td>
                         </tr>
                       ))}
