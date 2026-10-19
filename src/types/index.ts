@@ -201,6 +201,10 @@ export interface PayrollSnapshot {
   staffId: string;
   staffSnapshot: Staff;
   salaryDetail: PayrollDetail;
+  /** Server-stamped SHA-256 seal taken when the line was generated. */
+  seal?: string | null;
+  /** Server-computed hash of the data as stored right now. */
+  currentHash?: string | null;
 }
 
 export interface PartTimeSalaryDetail {

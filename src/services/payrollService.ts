@@ -78,6 +78,8 @@ export const payrollService = {
       staffId: row.staff_id,
       staffSnapshot: row.staff_snapshot as Staff,
       salaryDetail: row.salary_detail as PayrollDetail,
+      seal: row.seal ?? null,
+      currentHash: row.current_hash ?? null,
     }));
   },
 
