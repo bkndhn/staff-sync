@@ -2010,25 +2010,31 @@ export type Database = {
       }
       payroll_snapshots: {
         Row: {
+          current_hash: string | null
           id: string
           run_id: string
           salary_detail: Json
+          seal: string | null
           staff_id: string
           staff_snapshot: Json
           tenant_id: string | null
         }
         Insert: {
+          current_hash?: string | null
           id?: string
           run_id: string
           salary_detail: Json
+          seal?: string | null
           staff_id: string
           staff_snapshot: Json
           tenant_id?: string | null
         }
         Update: {
+          current_hash?: string | null
           id?: string
           run_id?: string
           salary_detail?: Json
+          seal?: string | null
           staff_id?: string
           staff_snapshot?: Json
           tenant_id?: string | null
