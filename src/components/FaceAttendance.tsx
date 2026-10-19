@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity, Zap, QrCode, UserPlus, RefreshCw, WifiOff, Sun } from 'lucide-react';
-import { Staff, Attendance, Designation, BranchDesignationShiftConfig, type LocationDesignationShiftConfig, type LocationShiftConfig } from '../types';
+import { Staff, Attendance, Designation, BranchDesignationShiftConfig, type LocationDesignationShiftConfig, type LocationShiftConfig, type BreakType } from '../types';
+import { breakTypeService, breakEventService } from '../services/breakService';
 import { useFaceEngine } from '../hooks/useFaceEngine';
 import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
 import { attendanceService } from '../services/attendanceService';
@@ -236,6 +237,34 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const [message, setMessage] = useState<{ kind: 'ok' | 'err' | 'warn'; text: string } | null>(null);
   // eSSL-style result card shown for ~2.5s after each punch (does not block scanning)
   const [punchCard, setPunchCard] = useState<{ name: string; designation?: string; kind: 'in' | 'out' | 'dup'; time: string; ts: number } | null>(null);
+  // ── Kiosk break mode ──
+  const [breakTypes, setBreakTypes] = useState<BreakType[]>([]);
+  const [selectedBreakTypeId, setSelectedBreakTypeId] = useState<string>('');
+  const [breakMode, setBreakMode] = useState(false);
+  const breakModeRef = useRef(false);
+  useEffect(() => { breakModeRef.current = breakMode; }, [breakMode]);
+  const onBreakRef = useRef<Map<string, string>>(new Map());
+  const breakTypeOf = useRef<Map<string, string>>(new Map());
+  const [onBreakList, setOnBreakList] = useState<{ staffId: string; name: string; type: string; maxMinutes: number; startedAt: number }[]>([]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const [types, events] = await Promise.all([
+        breakTypeService.list(true),
+        breakEventService.list({ date: localDateKey(new Date()) }),
+      ]);
+      if (!alive) return;
+      setBreakTypes(types);
+      if (types[0]) setSelectedBreakTypeId(id => id || types[0].id);
+      const open = events.filter(e => !e.endTime);
+      open.forEach(e => { onBreakRef.current.set(e.staffId, e.id); if (e.breakTypeId) breakTypeOf.current.set(e.staffId, e.breakTypeId); });
+      setOnBreakList(open.map(e => {
+        const t = types.find(x => x.id === e.breakTypeId);
+        return { staffId: e.staffId, name: e.staffName || 'Staff', type: t?.name || 'Break', maxMinutes: t?.maxMinutes || 0, startedAt: new Date(`${e.date}T${e.startTime}`).getTime() };
+      }));
+    })().catch(() => undefined);
+    return () => { alive = false; };
+  }, []);
   // Per-person acknowledgement cooldown so the next person in line scans instantly
   const ackRef = useRef<Record<string, number>>({});
   // Local punch queue: auto-sync on reconnect + every 30s
@@ -583,6 +612,40 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       }
     }
 
+    // ── Break handling: a staff on break is returned on any scan; break mode starts one ──
+    const openBreakId = onBreakRef.current.get(s.id);
+    if (openBreakId || breakModeRef.current) {
+      const last0 = lastPunchRef.current[s.id];
+      if (last0 && Date.now() - last0.ts < 10_000) return; // ignore rapid re-scans
+      lastPunchRef.current[s.id] = { ts: Date.now(), kind: last0?.kind || 'in' };
+      try {
+        if (openBreakId) {
+          const type = breakTypes.find(t => t.id === breakTypeOf.current.get(s.id));
+          const ended = await breakEventService.end({ eventId: openBreakId, staffId: s.id, staffName: s.name, breakType: type, createdBy: 'Face Kiosk' });
+          onBreakRef.current.delete(s.id); breakTypeOf.current.delete(s.id);
+          setOnBreakList(prev => prev.filter(b => b.staffId !== s.id));
+          playChime('in'); haptics.success();
+          speak(`Welcome back, ${spokenName(s.name)}`);
+          setMessage({ kind: ended?.isViolation ? 'warn' : 'ok', text: `${s.name} back from break (${ended?.durationMinutes ?? 0} min)${ended?.isViolation ? ' — over limit' : ''}` });
+        } else {
+          const type = breakTypes.find(t => t.id === selectedBreakTypeId) || breakTypes[0];
+          if (!type) { setMessage({ kind: 'err', text: 'No break types set up. Add them in Settings.' }); return; }
+          const ev = await breakEventService.start({ staffId: s.id, staffName: s.name, location: s.location, breakType: type, source: 'mobile', deviceLabel: 'Face Kiosk', createdBy: 'Face Kiosk' });
+          if (!ev) throw new Error('Could not start break');
+          onBreakRef.current.set(s.id, ev.id); breakTypeOf.current.set(s.id, type.id);
+          setOnBreakList(prev => [...prev.filter(b => b.staffId !== s.id), { staffId: s.id, name: s.name, type: type.name, maxMinutes: type.maxMinutes, startedAt: Date.now() }]);
+          playChime('out'); haptics.success();
+          speak(`${type.name} started, ${spokenName(s.name)}`);
+          setMessage({ kind: 'ok', text: `${s.name} on ${type.name} (max ${type.maxMinutes} min)` });
+          setBreakMode(false);
+        }
+      } catch (e: any) {
+        haptics.error();
+        setMessage({ kind: 'err', text: `Break not saved: ${navigator.onLine ? (e?.message || 'error') : 'needs internet'}` });
+      }
+      return;
+    }
+
     const time = formatNow();
     const last = lastPunchRef.current[s.id];
     const existing = attendance.find(a => a.staffId === s.id && a.date === today && !a.isPartTime);
@@ -853,7 +916,38 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           <div className="face-mobile-tabs">
             <button data-active={mobileTab === 'camera'} onClick={() => setMobileTab('camera')}>
               <Camera size={14} /> Live
+      </button>
+      {breakTypes.length > 0 && (
+        <div className="fixed right-3 z-[70] flex flex-col items-end gap-2" style={{ top: 'calc(env(safe-area-inset-top) + 58px)' }}>
+          <div className="flex items-center gap-1 rounded-full bg-card/95 border border-border shadow-lg p-1">
+            {breakMode && (
+              <select value={selectedBreakTypeId} onChange={e => setSelectedBreakTypeId(e.target.value)} aria-label="Break type"
+                className="rounded-full bg-background text-foreground text-xs font-semibold px-2 py-2 border border-input">
+                {breakTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            )}
+            <button type="button" onClick={() => setBreakMode(b => !b)} aria-pressed={breakMode}
+              className={`rounded-full px-3 py-2 text-xs font-bold ${breakMode ? 'bg-amber-500 text-white' : 'text-foreground'}`}>
+              ☕ {breakMode ? 'Scan to start break' : 'Break'}
             </button>
+          </div>
+          {onBreakList.length > 0 && (
+            <div className="w-56 max-h-48 overflow-y-auto rounded-2xl bg-card/95 border border-border shadow-lg p-2 space-y-1">
+              <div className="text-[11px] font-bold text-muted-foreground px-1">On break · scan face to return</div>
+              {onBreakList.map(b => {
+                const sec = Math.max(0, Math.floor((nowTick - b.startedAt) / 1000));
+                const over = b.maxMinutes > 0 && sec > b.maxMinutes * 60;
+                return (
+                  <div key={b.staffId} className="flex items-center justify-between gap-2 text-xs px-1">
+                    <span className="truncate text-foreground">{b.name} <span className="text-muted-foreground">· {b.type}</span></span>
+                    <span className={`tabular-nums font-bold ${over ? 'text-red-500' : 'text-amber-500'}`}>{Math.floor(sec / 60)}:{String(sec % 60).padStart(2, '0')}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
             <button data-active={mobileTab === 'recent'} onClick={() => setMobileTab('recent')}>
               <Activity size={14} /> Recent
             </button>
