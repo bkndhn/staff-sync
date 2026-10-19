@@ -12,6 +12,7 @@ import { floorService, Zone, type Floor } from '../services/floorService';
 import { PartTimeAdvanceRecord } from '../types';
 import { customAlert, customConfirm } from './CustomDialog';
 import { AIPredictor } from './AIPredictor';
+import FlexShiftBroadcast from './FlexShiftBroadcast';
 
 import { useUserPreference } from '../hooks/useUserPreference';
 
@@ -1579,6 +1580,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                         )}
                     </div>
                     <div className="flex flex-wrap gap-2 md:gap-3">
+                        <FlexShiftBroadcast locations={availableLocations} defaultLocation={userLocation || undefined} />
                         <button
                             onClick={handleExportExcel}
                             className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm"
