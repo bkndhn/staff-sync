@@ -6,3 +6,7 @@
 - [x] Petty Cash Handler zone-scoped view/edit; admin sees all
 - [x] Staff portal 5 tabs + More bottom bar
 - [x] Premium mobile feel + high-contrast dark mode (global)
+- [ ] Tamper-proof salary: sealed payroll lines, tamper warning, locked months
+- [ ] Face kiosk break mode
+- [ ] Flex WhatsApp shift broadcast + instant settlement receipt
+- [ ] Petty cash receipt photo viewer
