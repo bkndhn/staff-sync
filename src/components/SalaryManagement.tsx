@@ -28,6 +28,7 @@ import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/ro
 import { useUserPreference } from '../hooks/useUserPreference';
 import { shiftService, DEFAULT_SHIFT_WINDOWS } from '../services/shiftService';
 import PayrollInsightsPanel from './PayrollInsightsPanel';
+import { findTamperedSnapshots } from '../utils/salaryTamperProof';
 import CompliancePanel from './CompliancePanel';
 import { currentActor } from '../lib/currentActor';
 import type { AnomalyReport } from '../utils/payrollAnomalies';
@@ -76,6 +77,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
   
   const [payrollRun, setPayrollRun] = useState<PayrollRun | null>(null);
   const [snapshots, setSnapshots] = useState<PayrollSnapshot[]>([]);
+  const sealCheck = React.useMemo(() => findTamperedSnapshots(snapshots), [snapshots]);
   const [workflowBusy, setWorkflowBusy] = useState(false);
   const [generatingPayroll, setGeneratingPayroll] = useState(false);
   const [approvedLeaves, setApprovedLeaves] = useState<LeaveRequest[]>([]);
@@ -921,6 +923,7 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
 
   const handleLockRun = async () => {
     if (!payrollRun) return;
+    if (sealCheck.tampered.length > 0) return customAlert('Salary lines were changed after generation. Regenerate payroll before disbursing.');
     if (!await customConfirm('Lock & Disburse', 'Lock this payroll run permanently for disbursement? This cannot be undone.')) return;
     runWorkflow(() => payrollService.lockRun(payrollRun.id), 'Payroll locked for disbursement.');
   };
@@ -1154,6 +1157,15 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
                 <span>{runBadge.label}</span>
                 <span className="text-xs opacity-75">({new Date(payrollRun.generatedAt).toLocaleDateString()})</span>
               </div>
+              {snapshots.length > 0 && (sealCheck.ok ? (
+                <span className="text-xs text-emerald-700 pl-1">🔒 All {snapshots.length} salary lines sealed & verified</span>
+              ) : sealCheck.tampered.length > 0 ? (
+                <span className="text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+                  ⚠ Tamper alert: {sealCheck.tampered.length} salary line(s) changed after generation — {sealCheck.tampered.map(s => s.staffSnapshot?.name).filter(Boolean).slice(0, 3).join(', ')}. Disbursement blocked.
+                </span>
+              ) : (
+                <span className="text-xs text-amber-700 pl-1">{sealCheck.unsealed.length} older line(s) have no seal — regenerate to seal</span>
+              ))}
               {payrollRun.status === 'PendingApproval' && payrollRun.submittedBy && (
                 <span className="text-xs text-gray-500 pl-1">Submitted by {payrollRun.submittedBy}</span>
               )}
