@@ -13,6 +13,7 @@ import { PartTimeAdvanceRecord } from '../types';
 import { customAlert, customConfirm } from './CustomDialog';
 import { AIPredictor } from './AIPredictor';
 import FlexShiftBroadcast from './FlexShiftBroadcast';
+import { buildSettlementReceipt } from '../utils/flexBroadcast';
 
 import { useUserPreference } from '../hooks/useUserPreference';
 
@@ -286,7 +287,9 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
     const [editingFlexStaff, setEditingFlexStaff] = useState<FlexDirectoryEntry | null>(null);
     const [editFlexName, setEditFlexName] = useState('');
     const [editFlexPhone, setEditFlexPhone] = useState('');
-    const [mockSettledIds, setMockSettledIds] = useState<Set<string>>(new Set());
+    const [mockSettledIds, setMockSettledIds] = useState<Set<string>>(() => {
+        try { return new Set(JSON.parse(localStorage.getItem('flex:paidShifts') || '[]')); } catch { return new Set(); }
+    });
     const [partTimeRates, setPartTimeRates] = useState<PartTimeRates>(DEFAULT_PART_TIME_RATES);
 
     useEffect(() => {
@@ -1402,13 +1405,26 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
     const handleSettleNow = async (record: Attendance) => {
         const amount = record.salary || getPartTimeDailyPayroll(record.date, partTimeRates);
-        if (confirm(`Process instant UPI transfer of ₹${amount} for ${record.staffName}?`)) {
-            // Simulate API call
-            setTimeout(() => {
-                setMockSettledIds(prev => new Set(prev).add(record.id));
-                alert(`✅ Successfully transferred ₹${amount} to ${record.staffName} via UPI.`);
-            }, 600);
-        }
+        const ok = await customConfirm(`Mark Rs. ${amount} as paid to ${record.staffName} and send a WhatsApp receipt?`);
+        if (!ok) return;
+        const fmt = (t?: string) => {
+            if (!t) return undefined;
+            const [h, m] = t.split(':').map(Number);
+            if (Number.isNaN(h)) return t;
+            return `${((h + 11) % 12) + 1}:${String(m || 0).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+        };
+        const text = buildSettlementReceipt({
+            name: record.staffName || 'Flex staff', date: record.date, location: record.location || '',
+            shift: record.shift, inTime: fmt(record.arrivalTime), outTime: fmt(record.leavingTime),
+            amount: Number(amount) || 0, method: 'Cash/UPI',
+            receiptNo: `FX-${record.date.replace(/-/g, '')}-${record.id.slice(0, 4).toUpperCase()}`,
+        });
+        setMockSettledIds(prev => {
+            const n = new Set(prev).add(record.id);
+            try { localStorage.setItem('flex:paidShifts', JSON.stringify([...n].slice(-500))); } catch { /* storage full */ }
+            return n;
+        });
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
 
     const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
@@ -1688,15 +1704,6 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             >
                                 <Users size={14} className="text-blue-600" />
                                 Flex Pool Hub
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('URGENT: Need 3 Flex Workers for Evening Shift today at ' + (userLocation || bulkLocation) + '. Reply YES to confirm!')}`, '_blank')}
-                                className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 active:scale-95 ml-auto"
-                                title="Broadcast request to flex staff via WhatsApp"
-                            >
-                                <MessageCircle size={14} />
-                                WhatsApp Broadcast
                             </button>
                         </div>
                     </div>
@@ -2119,7 +2126,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                             title="Settle with Instant UPI"
                                                         >
                                                             <Zap size={12} className="text-amber-500" />
-                                                            Settle Now
+                                                            Paid + Receipt
                                                         </button>
                                                     )}
                                                     <button

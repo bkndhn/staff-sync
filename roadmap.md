@@ -7,6 +7,6 @@
 - [x] Staff portal 5 tabs + More bottom bar
 - [x] Premium mobile feel + high-contrast dark mode (global)
 - [x] Tamper-proof salary: sealed payroll lines, tamper warning, locked months
-- [ ] Face kiosk break mode
-- [ ] Flex WhatsApp shift broadcast + instant settlement receipt
-- [ ] Petty cash receipt photo viewer
+- [x] Face kiosk break mode
+- [x] Flex WhatsApp shift broadcast + instant settlement receipt
+- [x] Petty cash receipt photo viewer + photos in PDF
