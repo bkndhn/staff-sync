@@ -1705,15 +1705,6 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                 <Users size={14} className="text-blue-600" />
                                 Flex Pool Hub
                             </button>
-                            <button
-                                type="button"
-                                onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('URGENT: Need 3 Flex Workers for Evening Shift today at ' + (userLocation || bulkLocation) + '. Reply YES to confirm!')}`, '_blank')}
-                                className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 active:scale-95 ml-auto"
-                                title="Broadcast request to flex staff via WhatsApp"
-                            >
-                                <MessageCircle size={14} />
-                                WhatsApp Broadcast
-                            </button>
                         </div>
                     </div>
 
