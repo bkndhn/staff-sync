@@ -908,7 +908,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       )}
 
 
-      {breakTypes.length > 0 && (
+      {breakTypes.length > 0 && viewMode === 'camera' && (
         <div className="fixed right-3 z-[70] flex flex-col items-end gap-2" style={{ top: 'calc(env(safe-area-inset-top) + 58px)' }}>
           <div className="flex items-center gap-1 rounded-full bg-card/95 border border-border shadow-lg p-1">
             {breakMode && (
