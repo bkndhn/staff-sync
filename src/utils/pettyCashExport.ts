@@ -313,6 +313,24 @@ export const generatePettyCashPdfDoc = (sheet: PettyCashSheet, times?: PunchTime
   doc.text('________________________________', pageWidth - 40, sigY - 8, { align: 'right' });
   doc.text('VERIFIED BY / VOU-BILL VERIFICATION', pageWidth - 40, sigY + 6, { align: 'right' });
 
+  // Receipt photos appendix — two per page, captioned with the expense line.
+  const photos = (sheet.expenses || []).filter(e => typeof e.voucher_image === 'string' && e.voucher_image.startsWith('data:image'));
+  photos.forEach((e, i) => {
+    if (i % 2 === 0) { doc.addPage(); drawPageHeader(); }
+    const slotTop = i % 2 === 0 ? 110 : 110 + (pageHeight - 150) / 2;
+    const slotH = (pageHeight - 150) / 2 - 30;
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 41, 59);
+    doc.text(`Receipt ${i + 1}: ${e.label} — Rs. ${Number(e.amount || 0).toLocaleString('en-IN')}`, 40, slotTop);
+    try {
+      const props = doc.getImageProperties(e.voucher_image as string);
+      const maxW = pageWidth - 80;
+      const scale = Math.min(maxW / props.width, slotH / props.height);
+      doc.addImage(e.voucher_image as string, 'JPEG', 40, slotTop + 10, props.width * scale, props.height * scale);
+    } catch {
+      doc.setFont('helvetica', 'normal'); doc.text('(photo could not be added)', 40, slotTop + 24);
+    }
+  });
+
   // Page numbering in footer: Page X of Y on all pages
   const totalPages = (doc as any).internal.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
