@@ -2126,7 +2126,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                                                             title="Settle with Instant UPI"
                                                         >
                                                             <Zap size={12} className="text-amber-500" />
-                                                            Settle Now
+                                                            Paid + Receipt
                                                         </button>
                                                     )}
                                                     <button
