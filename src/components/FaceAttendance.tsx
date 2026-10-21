@@ -908,15 +908,6 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       )}
 
 
-      <PerfOverlay />
-      {/* ── Left Side: Full Height Camera Feed ── */}
-      <div className="face-camera-panel flex-1 h-[65vh] min-h-[300px] md:h-auto md:min-h-[600px] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
-        {/* Mobile tabs — inside camera panel so position:absolute works */}
-        {isMobile && viewMode === 'camera' && (
-          <div className="face-mobile-tabs">
-            <button data-active={mobileTab === 'camera'} onClick={() => setMobileTab('camera')}>
-              <Camera size={14} /> Live
-      </button>
       {breakTypes.length > 0 && (
         <div className="fixed right-3 z-[70] flex flex-col items-end gap-2" style={{ top: 'calc(env(safe-area-inset-top) + 58px)' }}>
           <div className="flex items-center gap-1 rounded-full bg-card/95 border border-border shadow-lg p-1">
@@ -948,6 +939,15 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
           )}
         </div>
       )}
+      <PerfOverlay />
+      {/* ── Left Side: Full Height Camera Feed ── */}
+      <div className="face-camera-panel flex-1 h-[65vh] min-h-[300px] md:h-auto md:min-h-[600px] lg:min-h-[calc(100vh-120px)] rounded-2xl bg-[var(--bg-card)] border border-[var(--glass-border)] flex flex-col overflow-hidden relative">
+        {/* Mobile tabs — inside camera panel so position:absolute works */}
+        {isMobile && viewMode === 'camera' && (
+          <div className="face-mobile-tabs">
+            <button data-active={mobileTab === 'camera'} onClick={() => setMobileTab('camera')}>
+              <Camera size={14} /> Live
+      </button>
             <button data-active={mobileTab === 'recent'} onClick={() => setMobileTab('recent')}>
               <Activity size={14} /> Recent
             </button>
