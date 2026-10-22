@@ -12,9 +12,9 @@ const sheet = (photos: number): any => ({
 
 describe('petty cash PDF receipt photos', () => {
   it('adds one page per two receipt photos', () => {
-    const base = generatePettyCashPdfDoc(sheet(0)).internal.getNumberOfPages();
-    expect(generatePettyCashPdfDoc(sheet(1)).internal.getNumberOfPages()).toBe(base + 1);
-    expect(generatePettyCashPdfDoc(sheet(3)).internal.getNumberOfPages()).toBe(base + 2);
+    const base = generatePettyCashPdfDoc(sheet(0)).getNumberOfPages();
+    expect(generatePettyCashPdfDoc(sheet(1)).getNumberOfPages()).toBe(base + 1);
+    expect(generatePettyCashPdfDoc(sheet(3)).getNumberOfPages()).toBe(base + 2);
   });
   it('captions each photo with Rs. amount and never the rupee glyph', () => {
     const out = generatePettyCashPdfDoc(sheet(2)).output();
