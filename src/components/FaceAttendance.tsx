@@ -935,6 +935,24 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       )}
 
 
+      {flashOn && viewMode === 'camera' && (
+        <div className="fixed inset-0 z-[5] pointer-events-none" style={{ boxShadow: 'inset 0 0 0 28px hsl(0 0% 100%)' }} />
+      )}
+      {viewMode === 'camera' && (
+        <div className="fixed left-3 z-[70] flex gap-2" style={{ top: 'calc(env(safe-area-inset-top) + 58px)' }}>
+          <button onClick={() => setFlashOn(v => !v)} title="Screen light for dark areas"
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border border-border shadow-lg ${flashOn ? 'bg-accent text-accent-foreground' : 'bg-card/95 text-foreground'}`}>
+            💡 Light
+          </button>
+          <select value={voiceLang} onChange={e => { setVoiceLang(e.target.value as VoiceLang); localStorage.setItem('kioskVoiceLang', e.target.value); }}
+            title="Voice language" className="px-2 py-1.5 rounded-full text-xs border border-border shadow-lg bg-card/95 text-foreground">
+            <option value="en">🔊 English</option>
+            <option value="hi">🔊 हिंदी</option>
+            <option value="ta">🔊 தமிழ்</option>
+            <option value="off">🔇 Off</option>
+          </select>
+        </div>
+      )}
       {breakTypes.length > 0 && viewMode === 'camera' && (
         <div className="fixed right-3 z-[70] flex flex-col items-end gap-2" style={{ top: 'calc(env(safe-area-inset-top) + 58px)' }}>
           <div className="flex items-center gap-1 rounded-full bg-card/95 border border-border shadow-lg p-1">

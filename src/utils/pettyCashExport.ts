@@ -377,7 +377,7 @@ export const sharePettyCashWhatsApp = async (sheet: PettyCashSheet, times?: Punc
     `Logistics: Rs. ${trTotal.toLocaleString('en-IN')}\n` +
     `*Grand Total:* Rs. ${totalExpenses.toLocaleString('en-IN')}\n` +
     `*Balance to Return:* Rs. ${balance.toLocaleString('en-IN')}\n\n` +
-    `_Detailed PDF voucher generated from StaffSync._`;
+    `_Detailed PDF voucher generated from ZenHRMS._`;
 
   // Attempt Web Share API (native WhatsApp file attachment on mobile)
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
