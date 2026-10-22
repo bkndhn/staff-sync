@@ -140,7 +140,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               </div>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-gradient mb-2">
-              Staff Management
+              ZenHRMS
             </h1>
             <p className="text-[var(--text-muted)]">Sign in to your account</p>
           </div>
