@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.staffsync.app',
-  appName: 'Staff Sync',
+  appName: 'ZenHRMS',
   webDir: 'dist',
   // HTTPS scheme lets crypto.subtle and service workers work inside WebView
   android: {

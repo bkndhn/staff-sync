@@ -1,6 +1,6 @@
 {
-  "name": "Staff Management System",
-  "short_name": "StaffMgmt",
+  "name": "ZenHRMS",
+  "short_name": "ZenHRMS",
   "description": "Comprehensive Staff Management System for tracking attendance, salaries, and part-time staff",
   "start_url": "/",
   "display": "standalone",
@@ -36,15 +36,15 @@
   "screenshots": [],
   "shortcuts": [
     {
-      "name": "Dashboard",
-      "short_name": "Dashboard",
+      "name": "ZenHRMS",
+      "short_name": "ZenHRMS",
       "description": "View dashboard overview",
       "url": "/?tab=dashboard",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Attendance",
-      "short_name": "Attendance",
+      "name": "ZenHRMS",
+      "short_name": "ZenHRMS",
       "description": "Mark attendance",
       "url": "/?tab=attendance",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
