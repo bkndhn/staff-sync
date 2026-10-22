@@ -117,12 +117,39 @@ const speak = (text: string) => {
   } catch {}
 };
 
+type VoiceLang = 'en' | 'hi' | 'ta' | 'off';
+const PUNCH_PHRASES: Record<Exclude<VoiceLang, 'off'>, { in: (n: string) => string; out: (n: string) => string; bcp: string }> = {
+  en: { in: n => `Welcome ${n}, punched in`, out: n => `Thank you ${n}, punched out`, bcp: 'en-IN' },
+  hi: { in: n => `नमस्ते ${n}, आपकी हाज़िरी लग गई`, out: n => `धन्यवाद ${n}, आपका आउट दर्ज हो गया`, bcp: 'hi-IN' },
+  ta: { in: n => `வணக்கம் ${n}, வருகை பதிவு செய்யப்பட்டது`, out: n => `நன்றி ${n}, வெளியேற்றம் பதிவு செய்யப்பட்டது`, bcp: 'ta-IN' },
+};
+/** Spoken punch confirmation in the kiosk's chosen language (falls back to English if no voice installed). */
+const speakPunch = (kind: 'in' | 'out', name: string, lang: VoiceLang) => {
+  if (lang === 'off') return;
+  try {
+    if (!('speechSynthesis' in window)) return;
+    const p = PUNCH_PHRASES[lang];
+    const voices = window.speechSynthesis.getVoices();
+    const voice = voices.find(v => v.lang === p.bcp) || voices.find(v => v.lang.startsWith(lang));
+    const phrases = voice ? p : PUNCH_PHRASES.en;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(phrases[kind](name));
+    if (voice) { u.voice = voice; u.lang = voice.lang; } else u.lang = 'en-IN';
+    u.rate = 1.05;
+    window.speechSynthesis.speak(u);
+  } catch {}
+};
+
 const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole, userLocation }) => {
   const { ready, loading, error, detect } = useFaceEngine(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const lastPunchRef = useRef<Record<string, { ts: number; kind: 'in' | 'out' }>>({});
   const isMobile = useIsMobile();
+  const [flashOn, setFlashOn] = useState(false);
+  const [voiceLang, setVoiceLang] = useState<VoiceLang>(() => (localStorage.getItem('kioskVoiceLang') as VoiceLang) || 'en');
+  const voiceLangRef = useRef(voiceLang);
+  useEffect(() => { voiceLangRef.current = voiceLang; }, [voiceLang]);
 
   // ── Standalone kiosk mode: full screen, nav hidden, live role counts ──
   // Opens straight into kiosk when launched with ?kiosk=1 (home-screen kiosk icon)
@@ -679,7 +706,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     setPunchCard({ name: s.name, designation: (s as any).designation, kind, time, ts: Date.now() });
     playChime(kind);
     haptics.success();
-    speak(`${kind === 'in' ? 'Welcome' : 'Thank you'}, ${spokenName(s.name)}`);
+    speakPunch(kind, spokenName(s.name), voiceLangRef.current);
 
     // Save audit event (local-first, syncs in background)
     await punchEventService.insert({
