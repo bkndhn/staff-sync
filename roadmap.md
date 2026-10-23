@@ -10,3 +10,7 @@
 - [x] Face kiosk break mode
 - [x] Flex WhatsApp shift broadcast + instant settlement receipt
 - [x] Petty cash receipt photo viewer + photos in PDF
+- [x] Punch audit photos on kiosk (kept on device only)
+- [x] Loan EMI in payroll (already built: approved loan → monthly deduction)
+- [x] New ZenHRMS logo everywhere + small-phone polish
+- [ ] Kiosk voices/offline sync on a real phone (needs device)
