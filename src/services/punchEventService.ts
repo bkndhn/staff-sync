@@ -13,6 +13,8 @@ export interface PunchEvent {
   matchDistance?: number;
   livenessScore?: number;
   deviceLabel?: string;
+  /** Local-only audit thumbnail (data URL). Never sent to the server. */
+  photo?: string;
   createdAt: string;
 }
 
