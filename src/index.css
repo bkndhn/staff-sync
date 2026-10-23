@@ -3517,3 +3517,14 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 input[type="time"]::-webkit-datetime-edit,
 input[type="date"]::-webkit-datetime-edit { padding: 0; overflow: visible; }
+
+/* Very small phones (320–360px): tighter spacing, no sideways scroll */
+@media (max-width: 360px) {
+  html, body { overflow-x: hidden; }
+  .glass-card-static, .glass-card { padding: 0.875rem !important; }
+  .mobile-nav span { font-size: 9px; }
+  h1 { word-break: break-word; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

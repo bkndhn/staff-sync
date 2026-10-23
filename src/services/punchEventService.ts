@@ -13,6 +13,8 @@ export interface PunchEvent {
   matchDistance?: number;
   livenessScore?: number;
   deviceLabel?: string;
+  /** Local-only audit thumbnail (data URL). Never sent to the server. */
+  photo?: string;
   createdAt: string;
 }
 
@@ -79,7 +81,7 @@ export const punchEventService = {
       // Replace offline placeholder with real one
       try {
         await db.punchEvents.delete(offlineId);
-        await db.punchEvents.put(realEvent);
+        await db.punchEvents.put({ ...realEvent, photo: input.photo });
       } catch {}
       
       return realEvent;

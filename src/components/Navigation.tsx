@@ -10,6 +10,7 @@ import { SyncBadge } from './SyncBadge';
 import { statutoryPortalService, StatutoryPortalConfig, DEFAULT_STATUTORY_CONFIG } from '../services/statutoryPortalService';
 import { hardResetAppCache } from '../lib/cacheService';
 import { useUserPreference } from '../hooks/useUserPreference';
+import zenLogo from '../assets/zenhrms-mark.png';
 
 interface NavigationProps {
   activeTab: NavigationTab;
@@ -215,7 +216,7 @@ const Navigation: React.FC<NavigationProps> = ({
         className={`hidden md:flex fixed top-0 left-0 h-screen z-40 flex-col nav-premium border-r border-white/10 transition-[width] duration-200 ${collapsed ? 'w-[68px]' : 'w-[232px]'}`}
       >
         <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'} px-3 h-16 border-b border-white/10`}>
-          {!collapsed && <span className="text-sm font-bold text-gradient truncate">Staff Mgmt</span>}
+          {!collapsed && <span className="flex items-center gap-2 text-sm font-bold text-gradient truncate"><img src={zenLogo} alt="ZenHRMS logo" width={28} height={28} className="w-7 h-7 rounded-lg" />ZenHRMS</span>}
           <button
             onClick={() => setCollapsed(v => !v)}
             className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-all"
@@ -281,7 +282,7 @@ const Navigation: React.FC<NavigationProps> = ({
       {/* ── Mobile Top Bar ─────────────────────────────────────────────── */}
       <nav className="md:hidden sticky top-0 z-40 px-3 py-2.5 nav-premium border-b border-slate-200/80 dark:border-white/10">
         <div className="flex items-center justify-between gap-2">
-          <h1 className="text-base font-bold text-gradient truncate">Staff Mgmt</h1>
+          <h1 className="flex items-center gap-2 min-w-0 text-base font-bold text-gradient truncate"><img src={zenLogo} alt="" width={28} height={28} className="w-7 h-7 rounded-lg shrink-0" /><span className="truncate">ZenHRMS</span></h1>
           <div className="flex items-center gap-1">
             <SyncBadge />
             <button

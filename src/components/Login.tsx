@@ -11,6 +11,7 @@ import {
 import { userService } from '../services/userService';
 import { supabase } from '../lib/supabase';
 import { hardResetAppCache } from '../lib/cacheService';
+import zenLogo from '../assets/zenhrms-mark.png';
 
 interface LoginProps {
   onLogin: (user: { id?: string; email: string; role: string; location?: string; floor?: string; floorId?: string; staffId?: string; staffName?: string; staffRecord?: any }) => void;
@@ -133,12 +134,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         <div className="glass-card-static p-5 md:p-10">
           {/* Header */}
           <div className="text-center mb-6">
-            <div className="w-20 h-20 mx-auto mb-6 relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl rotate-6 opacity-40" />
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center">
-                <Sparkles className="text-white" size={36} />
-              </div>
-            </div>
+            <img src={zenLogo} alt="ZenHRMS logo" width={80} height={80} className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-5 rounded-2xl shadow-lg" />
             <h1 className="text-2xl md:text-3xl font-bold text-gradient mb-2">
               ZenHRMS
             </h1>

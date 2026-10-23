@@ -50,7 +50,20 @@ const TOGGLE_MIN_SECONDS = 5 * 60;     // 5 minutes
 // Cooldown for the same kind (prevents double-IN flooding)
 const SAME_KIND_COOLDOWN = 60;         // 1 minute
 
+function captureAuditThumb(video: HTMLVideoElement | null): string | undefined {
+  try {
+    if (!video || !video.videoWidth) return undefined;
+    const size = 96;
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    const side = Math.min(video.videoWidth, video.videoHeight);
+    c.getContext('2d')?.drawImage(video, (video.videoWidth - side) / 2, (video.videoHeight - side) / 2, side, side, 0, 0, size, size);
+    return c.toDataURL('image/jpeg', 0.6);
+  } catch { return undefined; }
+}
+
 type RecentEvent = {
+  photo?: string;
   staffId: string;
   staffName: string;
   kind: 'in' | 'out';
@@ -708,11 +721,13 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     haptics.success();
     speakPunch(kind, spokenName(s.name), voiceLangRef.current);
 
+    // Small audit photo (~96px JPEG) kept only on this device, never uploaded.
+    const auditPhoto = captureAuditThumb(videoRef.current);
     // Save audit event (local-first, syncs in background)
     await punchEventService.insert({
       staffId: s.id, staffName: s.name, location: s.location,
       date: today, eventTime: time, kind, source: 'face',
-      matchDistance: distance, livenessScore,
+      matchDistance: distance, livenessScore, photo: auditPhoto,
     });
 
     // Refresh attendance row using ALL today's events for this staff
@@ -746,7 +761,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
       // ── Instant zero-latency patch into App state ──
       onAttendancePatch?.(saved);
       lastPunchRef.current[s.id] = { ts: Date.now(), kind };
-      setRecent(prev => [{ staffId: s.id, staffName: s.name, kind, time, distance }, ...prev].slice(0, 20));
+      setRecent(prev => [{ staffId: s.id, staffName: s.name, kind, time, distance, photo: auditPhoto }, ...prev].slice(0, 20));
       if (navigator.onLine) runSync?.(); else refreshPendingCount?.();
       playChime(kind);
       haptics.success();
@@ -1385,6 +1400,9 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
               {recent.map((r, idx) => (
                 <div key={idx} className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-black/10 border border-[var(--glass-border)]">
                   <div className="flex items-center gap-2">
+                    {r.photo && (
+                      <img src={r.photo} alt={`Punch photo of ${r.staffName}`} width={36} height={36} className="w-9 h-9 rounded-lg object-cover border border-[var(--glass-border)] shrink-0" title="Audit photo (kept on this device only)" />
+                    )}
                     {r.kind === 'in'
                       ? <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400"><LogIn size={14} /></span>
                       : <span className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400"><LogOut size={14} /></span>}
