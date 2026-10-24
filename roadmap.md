@@ -14,3 +14,7 @@
 - [x] Loan EMI in payroll (already built: approved loan → monthly deduction)
 - [x] New ZenHRMS logo everywhere + small-phone polish
 - [ ] Kiosk voices/offline sync on a real phone (needs device)
+- [ ] Rename app to ZenHR (from ZenHRMS)
+- [ ] Blue-theme logo
+- [ ] Kiosk voice/language/light/offline tests (mocked)
+- [ ] Private punch-photo storage with manager-only expiring links

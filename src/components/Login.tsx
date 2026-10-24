@@ -134,9 +134,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         <div className="glass-card-static p-5 md:p-10">
           {/* Header */}
           <div className="text-center mb-6">
-            <img src={zenLogo} alt="ZenHRMS logo" width={80} height={80} className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-5 rounded-2xl shadow-lg" />
+            <img src={zenLogo} alt="ZenHR logo" width={80} height={80} className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-5 rounded-2xl shadow-lg" />
             <h1 className="text-2xl md:text-3xl font-bold text-gradient mb-2">
-              ZenHRMS
+              ZenHR
             </h1>
             <p className="text-[var(--text-muted)]">Sign in to your account</p>
           </div>
