@@ -1,0 +1,1 @@
+- Kiosk punch photos go through the punch-photo edge function only (private bucket, no browser storage policies) because most users sign in with app sessions, not Supabase Auth.
