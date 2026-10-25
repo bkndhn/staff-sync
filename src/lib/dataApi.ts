@@ -192,3 +192,27 @@ export const dataApi = {
     return new QueryBuilder<T>({ table: "", op, filters: [], ...extra });
   },
 };
+
+/** Headers for calling other server functions with the current sign-in (Supabase or staff session). */
+export async function functionAuthHeaders(): Promise<Record<string, string> | null> {
+  let token: string | null = null;
+  try { token = (await supabase.auth.getSession()).data.session?.access_token ?? null; } catch { /* ignore */ }
+  if (!token) {
+    try {
+      token = localStorage.getItem("sessionToken");
+      if (!token) {
+        const saved = localStorage.getItem("staffManagementLogin");
+        token = saved ? (JSON.parse(saved)?.sessionToken || JSON.parse(saved)?.user?.token || null) : null;
+      }
+    } catch { /* ignore */ }
+  }
+  if (!token) return null;
+  return {
+    "Content-Type": "application/json",
+    apikey: SUPABASE_PUBLISHABLE_KEY,
+    "x-session-token": token,
+    ...(token.split(".").length === 3 ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+export const FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
