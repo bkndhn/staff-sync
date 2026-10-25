@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Banknote, CalendarDays, Clock3, Loader2, RefreshCw } from 'lucide-react';
 import { leaveService, type LeaveRequest } from '../services/leaveService';
 import { punchEventService, type PunchEvent } from '../services/punchEventService';
+import { punchPhotoService } from '../services/punchPhotoService';
 import { salaryDisbursementService, type SalaryDisbursement } from '../services/salaryDisbursementService';
 
 type ActivityFilter = 'all' | 'punch' | 'leave' | 'salary';
@@ -14,6 +15,7 @@ interface ActivityItem {
   detail: string;
   meta?: string;
   tone: string;
+  photoUrl?: string;
 }
 
 interface StaffActivityLogProps {
@@ -40,6 +42,7 @@ export const StaffActivityLog: React.FC<StaffActivityLogProps> = ({ staffId }) =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [photoLinks, setPhotoLinks] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let active = true;
@@ -54,6 +57,9 @@ export const StaffActivityLog: React.FC<StaffActivityLogProps> = ({ staffId }) =
       .then(([nextPunches, nextLeaves, nextPayments]) => {
         if (!active) return;
         setPunches(nextPunches);
+        // Managers only (checked on the server); links expire after 15 minutes.
+        const withPhoto = nextPunches.filter(p => p.photoPath).map(p => p.id);
+        if (withPhoto.length) punchPhotoService.viewLinks(withPhoto).then(l => { if (active) setPhotoLinks(l); });
         setLeaves(nextLeaves);
         setPayments(nextPayments);
       })
@@ -76,6 +82,7 @@ export const StaffActivityLog: React.FC<StaffActivityLogProps> = ({ staffId }) =
       detail: `${punch.date} at ${punch.eventTime.slice(0, 5)}`,
       meta: [punch.location, punch.source].filter(Boolean).join(' · '),
       tone: punch.kind === 'in' ? 'text-emerald-500 bg-emerald-500/10' : 'text-blue-500 bg-blue-500/10',
+      photoUrl: photoLinks[punch.id],
     }));
 
     const leaveItems = leaves.map((leave) => ({
@@ -92,7 +99,7 @@ export const StaffActivityLog: React.FC<StaffActivityLogProps> = ({ staffId }) =
       id: `salary-${payment.id}`,
       type: 'salary' as const,
       occurredAt: payment.disbursedAt,
-      title: `Salary credited · ₹${Number(payment.amount).toLocaleString('en-IN')}`,
+      title: `Salary credited · Rs. ${Number(payment.amount).toLocaleString('en-IN')}`,
       detail: payment.monthYear,
       meta: [payment.paymentMode?.toUpperCase(), payment.transactionRef].filter(Boolean).join(' · '),
       tone: 'text-violet-500 bg-violet-500/10',
@@ -101,7 +108,7 @@ export const StaffActivityLog: React.FC<StaffActivityLogProps> = ({ staffId }) =
     return [...punchItems, ...leaveItems, ...paymentItems]
       .filter((item) => filter === 'all' || item.type === filter)
       .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
-  }, [filter, leaves, payments, punches]);
+  }, [filter, leaves, payments, punches, photoLinks]);
 
   const filters: Array<{ key: ActivityFilter; label: string }> = [
     { key: 'all', label: 'All' },
@@ -156,6 +163,11 @@ export const StaffActivityLog: React.FC<StaffActivityLogProps> = ({ staffId }) =
                   <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.detail}</p>
                   {item.meta && <p className="text-[11px] text-[var(--text-muted)] mt-1 break-words">{item.meta}</p>}
                 </div>
+                {item.photoUrl && (
+                  <a href={item.photoUrl} target="_blank" rel="noopener noreferrer" title="Punch photo (link expires in 15 min)" className="shrink-0">
+                    <img src={item.photoUrl} alt="Punch photo" width={44} height={44} loading="lazy" className="w-11 h-11 rounded-md object-cover border border-[var(--glass-border)]" />
+                  </a>
+                )}
               </article>
             );
           })}

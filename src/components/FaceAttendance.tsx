@@ -721,7 +721,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     haptics.success();
     speakPunch(kind, spokenName(s.name), voiceLangRef.current);
 
-    // Small audit photo (~96px JPEG) kept only on this device, never uploaded.
+    // Small audit photo (~96px JPEG); uploaded to private storage once the punch is saved.
     const auditPhoto = captureAuditThumb(videoRef.current);
     // Save audit event (local-first, syncs in background)
     await punchEventService.insert({
@@ -1401,7 +1401,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                 <div key={idx} className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-black/10 border border-[var(--glass-border)]">
                   <div className="flex items-center gap-2">
                     {r.photo && (
-                      <img src={r.photo} alt={`Punch photo of ${r.staffName}`} width={36} height={36} className="w-9 h-9 rounded-lg object-cover border border-[var(--glass-border)] shrink-0" title="Audit photo (kept on this device only)" />
+                      <img src={r.photo} alt={`Punch photo of ${r.staffName}`} width={36} height={36} className="w-9 h-9 rounded-lg object-cover border border-[var(--glass-border)] shrink-0" title="Audit photo (stored privately, managers only)" />
                     )}
                     {r.kind === 'in'
                       ? <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400"><LogIn size={14} /></span>

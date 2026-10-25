@@ -1,5 +1,6 @@
 import { dataApi } from '../lib/dataApi';
 import { db } from '../lib/db';
+import { punchPhotoService } from './punchPhotoService';
 
 export interface PunchEvent {
   id: string;
@@ -13,8 +14,10 @@ export interface PunchEvent {
   matchDistance?: number;
   livenessScore?: number;
   deviceLabel?: string;
-  /** Local-only audit thumbnail (data URL). Never sent to the server. */
+  /** Audit thumbnail (data URL) kept on the device until uploaded to private storage. */
   photo?: string;
+  /** Set once the photo is stored privately on the server. */
+  photoPath?: string;
   createdAt: string;
 }
 
@@ -28,6 +31,7 @@ const fromDb = (d: any): PunchEvent => ({
   kind: d.kind,
   source: d.source,
   matchDistance: d.match_distance ?? undefined,
+  photoPath: d.photo_path ?? undefined,
   livenessScore: d.liveness_score ?? undefined,
   deviceLabel: d.device_label ?? undefined,
   createdAt: d.created_at,
@@ -83,6 +87,8 @@ export const punchEventService = {
         await db.punchEvents.delete(offlineId);
         await db.punchEvents.put({ ...realEvent, photo: input.photo });
       } catch {}
+      // Upload the audit photo privately in the background (never blocks the punch).
+      if (input.photo) void punchPhotoService.upload(realEvent.id, input.photo);
       
       return realEvent;
     } catch {
@@ -183,9 +189,10 @@ export const punchEventService = {
             .eq('event_time', evt.eventTime)
             .eq('kind', evt.kind)
             .limit(1);
-          let ok = Array.isArray(existing) && existing.length > 0;
+          let serverId: string | undefined = Array.isArray(existing) && existing.length > 0 ? (existing[0] as any).id : undefined;
+          let ok = !!serverId;
           if (!ok) {
-            const { error } = await dataApi.from('punch_events' as any).insert([{
+            const { data: inserted, error } = await dataApi.from('punch_events' as any).insert([{
               staff_id: evt.staffId,
               staff_name: evt.staffName,
               location: evt.location,
@@ -196,10 +203,12 @@ export const punchEventService = {
               match_distance: evt.matchDistance,
               liveness_score: evt.livenessScore,
               device_label: evt.deviceLabel,
-            }]);
+            }]).select().single();
             ok = !error;
+            serverId = (inserted as any)?.id;
           }
           if (ok) {
+            if (serverId && evt.photo) await punchPhotoService.upload(serverId, evt.photo);
             await db.punchEvents.delete(evt.id);
             synced++;
           }
