@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, ScanFace, LogIn, LogOut, Pencil, Trash2, Save, ShieldCheck, Activity, Zap, QrCode, UserPlus, RefreshCw, WifiOff, Sun } from 'lucide-react';
 import { Staff, Attendance, Designation, BranchDesignationShiftConfig, type LocationDesignationShiftConfig, type LocationShiftConfig, type BreakType } from '../types';
+import { speakPunch, readVoiceLang, type VoiceLang } from '../lib/kioskVoice';
 import { breakTypeService, breakEventService } from '../services/breakService';
 import { useFaceEngine } from '../hooks/useFaceEngine';
 import { faceEmbeddingService, FaceEmbedding } from '../services/faceEmbeddingService';
@@ -130,29 +131,6 @@ const speak = (text: string) => {
   } catch {}
 };
 
-type VoiceLang = 'en' | 'hi' | 'ta' | 'off';
-const PUNCH_PHRASES: Record<Exclude<VoiceLang, 'off'>, { in: (n: string) => string; out: (n: string) => string; bcp: string }> = {
-  en: { in: n => `Welcome ${n}, punched in`, out: n => `Thank you ${n}, punched out`, bcp: 'en-IN' },
-  hi: { in: n => `नमस्ते ${n}, आपकी हाज़िरी लग गई`, out: n => `धन्यवाद ${n}, आपका आउट दर्ज हो गया`, bcp: 'hi-IN' },
-  ta: { in: n => `வணக்கம் ${n}, வருகை பதிவு செய்யப்பட்டது`, out: n => `நன்றி ${n}, வெளியேற்றம் பதிவு செய்யப்பட்டது`, bcp: 'ta-IN' },
-};
-/** Spoken punch confirmation in the kiosk's chosen language (falls back to English if no voice installed). */
-const speakPunch = (kind: 'in' | 'out', name: string, lang: VoiceLang) => {
-  if (lang === 'off') return;
-  try {
-    if (!('speechSynthesis' in window)) return;
-    const p = PUNCH_PHRASES[lang];
-    const voices = window.speechSynthesis.getVoices();
-    const voice = voices.find(v => v.lang === p.bcp) || voices.find(v => v.lang.startsWith(lang));
-    const phrases = voice ? p : PUNCH_PHRASES.en;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(phrases[kind](name));
-    if (voice) { u.voice = voice; u.lang = voice.lang; } else u.lang = 'en-IN';
-    u.rate = 1.05;
-    window.speechSynthesis.speak(u);
-  } catch {}
-};
-
 const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch, onAttendanceUpdated, userRole, userLocation }) => {
   const { ready, loading, error, detect } = useFaceEngine(true);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -160,7 +138,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
   const lastPunchRef = useRef<Record<string, { ts: number; kind: 'in' | 'out' }>>({});
   const isMobile = useIsMobile();
   const [flashOn, setFlashOn] = useState(false);
-  const [voiceLang, setVoiceLang] = useState<VoiceLang>(() => (localStorage.getItem('kioskVoiceLang') as VoiceLang) || 'en');
+  const [voiceLang, setVoiceLang] = useState<VoiceLang>(readVoiceLang);
   const voiceLangRef = useRef(voiceLang);
   useEffect(() => { voiceLangRef.current = voiceLang; }, [voiceLang]);
 
@@ -721,7 +699,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
     haptics.success();
     speakPunch(kind, spokenName(s.name), voiceLangRef.current);
 
-    // Small audit photo (~96px JPEG) kept only on this device, never uploaded.
+    // Small audit photo (~96px JPEG); uploaded to private storage once the punch is saved.
     const auditPhoto = captureAuditThumb(videoRef.current);
     // Save audit event (local-first, syncs in background)
     await punchEventService.insert({
@@ -1401,7 +1379,7 @@ const FaceAttendance: React.FC<Props> = ({ staff, attendance, onAttendancePatch,
                 <div key={idx} className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-black/10 border border-[var(--glass-border)]">
                   <div className="flex items-center gap-2">
                     {r.photo && (
-                      <img src={r.photo} alt={`Punch photo of ${r.staffName}`} width={36} height={36} className="w-9 h-9 rounded-lg object-cover border border-[var(--glass-border)] shrink-0" title="Audit photo (kept on this device only)" />
+                      <img src={r.photo} alt={`Punch photo of ${r.staffName}`} width={36} height={36} className="w-9 h-9 rounded-lg object-cover border border-[var(--glass-border)] shrink-0" title="Audit photo (stored privately, managers only)" />
                     )}
                     {r.kind === 'in'
                       ? <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400"><LogIn size={14} /></span>

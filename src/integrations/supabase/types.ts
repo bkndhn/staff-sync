@@ -2475,6 +2475,7 @@ export type Database = {
           liveness_score: number | null
           location: string | null
           match_distance: number | null
+          photo_path: string | null
           source: string
           staff_id: string
           staff_name: string | null
@@ -2490,6 +2491,7 @@ export type Database = {
           liveness_score?: number | null
           location?: string | null
           match_distance?: number | null
+          photo_path?: string | null
           source?: string
           staff_id: string
           staff_name?: string | null
@@ -2505,6 +2507,7 @@ export type Database = {
           liveness_score?: number | null
           location?: string | null
           match_distance?: number | null
+          photo_path?: string | null
           source?: string
           staff_id?: string
           staff_name?: string | null
