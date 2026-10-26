@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { EmptyState } from './ui/PageShell';
 import { PunchResultDialog, type PunchDialogState } from './ui/PunchResultDialog';
+import LocationCheckCard from './portal/LocationCheckCard';
 import {
   User, Calendar, DollarSign, TrendingUp, Download, ChevronLeft, ChevronRight,
   CheckCircle, XCircle, Clock, Briefcase, MapPin, Phone, Home, IndianRupee,
@@ -909,6 +910,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               )}
             </div>
 
+            {!isLeftStaff && <LocationCheckCard branch={staff.location} />}
             {/* Today's Punch Status Banner & Actions */}
             {!isLeftStaff && (() => {
               const today = localDateKey(serverNow());
@@ -946,6 +948,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                    res = { ok: false, title: 'Punch Failed', subtitle: e?.message || 'Please try again.' };
                  }
                  setPunchingStatus(null);
+                 if (res?.ok) localStorage.setItem(lastKey, String(Date.now()));
                  setPunchDialog({ ok: !!res.ok, title: res.title || (res.ok ? 'Done' : 'Punch Failed'), subtitle: res.subtitle || '', offline: res.ok && !navigator.onLine });
               };
               
