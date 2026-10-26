@@ -56,6 +56,7 @@ const LoanManagement = React.lazy(() => import('./components/LoanManagement'));
 const ExpenseClaims = React.lazy(() => import('./components/ExpenseClaims'));
 const PettyCashManagement = React.lazy(() => import('./components/PettyCashManagement').then(m => ({ default: m.PettyCashManagement })));
 const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
+const FingerprintStation = React.lazy(() => import('./components/FingerprintStation'));
 const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
 const ActionCenter = React.lazy(() => import('./components/ActionCenter'));
@@ -1619,6 +1620,12 @@ function App() {
                 }}
                 userRole={user?.role as 'admin' | 'manager'}
                 userLocation={user?.location}
+              />
+              <FingerprintStation
+                staff={filteredStaffData}
+                attendance={filteredAttendanceData}
+                userLocation={user?.role === 'manager' ? user?.location : undefined}
+                onAttendanceUpdated={() => cacheService.invalidate(CACHE_KEYS.ATTENDANCE)}
               />
             </Suspense>
           </ErrorBoundary>
