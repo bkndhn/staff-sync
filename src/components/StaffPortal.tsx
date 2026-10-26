@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { EmptyState } from './ui/PageShell';
 import { PunchResultDialog, type PunchDialogState } from './ui/PunchResultDialog';
+import LocationCheckCard from './portal/LocationCheckCard';
 import {
   User, Calendar, DollarSign, TrendingUp, Download, ChevronLeft, ChevronRight,
   CheckCircle, XCircle, Clock, Briefcase, MapPin, Phone, Home, IndianRupee,
@@ -909,6 +910,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               )}
             </div>
 
+            {!isLeftStaff && <LocationCheckCard branch={staff.location} />}
             {/* Today's Punch Status Banner & Actions */}
             {!isLeftStaff && (() => {
               const today = localDateKey(serverNow());
@@ -919,6 +921,13 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
               const hasBreakIn = !!(todayRec?.breakTimeIn);
               
               const handleWebPunch = async (kind: 'in'|'out'|'break_out'|'break_in') => {
+                 // Anti-abuse: block rapid repeat taps (60s) on the same phone.
+                 const lastKey = `portal:lastPunch:${staff.id}`;
+                 const lastAt = Number(localStorage.getItem(lastKey) || 0);
+                 if (Date.now() - lastAt < 60_000) {
+                   setPunchDialog({ ok: false, title: 'Please wait', subtitle: 'You just punched. Try again in a minute.', offline: false });
+                   return;
+                 }
                  // Single-device binding: re-verify this phone at every punch, not just at login
                  const bound = (staff as any)?.deviceId;
                  if (bound) {
@@ -939,6 +948,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                    res = { ok: false, title: 'Punch Failed', subtitle: e?.message || 'Please try again.' };
                  }
                  setPunchingStatus(null);
+                 if (res?.ok) localStorage.setItem(lastKey, String(Date.now()));
                  setPunchDialog({ ok: !!res.ok, title: res.title || (res.ok ? 'Done' : 'Punch Failed'), subtitle: res.subtitle || '', offline: res.ok && !navigator.onLine });
               };
               
