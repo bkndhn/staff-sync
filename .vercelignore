@@ -1,0 +1,11 @@
+android/
+ios/
+local-bridge-agent/
+mobile-app/
+supabase/
+scripts/test-suite-*.mjs
+scripts/e2e-runner.mjs
+src/test/
+*.md
+!README.md
+.lovable/

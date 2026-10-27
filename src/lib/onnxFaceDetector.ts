@@ -37,7 +37,7 @@ const loadSession = async (): Promise<ort.InferenceSession | null> => {
   loading = true;
   try {
     // Use WASM backend — works everywhere without WebGL
-    ort.env.wasm.wasmPaths = '/';
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0/dist/';
     session = await ort.InferenceSession.create(MODEL_URL, {
       executionProviders: ['wasm'],
       graphOptimizationLevel: 'all',
