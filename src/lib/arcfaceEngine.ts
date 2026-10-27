@@ -22,7 +22,7 @@ let loadError: string | null = null;
 
 const configureRuntime = () => {
   try {
-    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0/dist/';
     ort.env.wasm.numThreads = Math.min(4, Math.max(1, navigator.hardwareConcurrency || 2));
     ort.env.wasm.simd = true;
     ort.env.logLevel = 'error';
