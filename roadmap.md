@@ -18,3 +18,6 @@
 - [x] Blue-theme logo
 - [x] Kiosk voice/language/light/offline tests (mocked)
 - [x] Private punch-photo storage with manager-only expiring links
+- [x] Staff portal location card: auto-check, distance bar
+- [x] Master-phone fingerprint station: GPS lock, wrong-touch lockout, PIN-locked enrolment, offline sync
+- [ ] Fingerprint station on a real Android phone (needs device)
