@@ -62,7 +62,8 @@ self.addEventListener('activate', (event) => {
 // Fetch: serve /models/* from dedicated cache (cache-first, long-lived)
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  if (url.pathname.startsWith('/models/') || url.pathname.startsWith('/models-v2/')) {
+  const isOrtCdn = url.hostname === 'cdn.jsdelivr.net' && url.pathname.startsWith('/npm/onnxruntime-web@');
+  if (isOrtCdn || url.pathname.startsWith('/models/') || url.pathname.startsWith('/models-v2/')) {
     event.respondWith(
       caches.open(MODELS_CACHE).then(async (cache) => {
         const cached = await cache.match(event.request);
