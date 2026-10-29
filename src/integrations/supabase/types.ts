@@ -1191,6 +1191,42 @@ export type Database = {
           },
         ]
       }
+      fcm_tokens: {
+        Row: {
+          app_user_id: string | null
+          created_at: string
+          device_name: string | null
+          id: string
+          platform: string
+          staff_id: string | null
+          tenant_id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          app_user_id?: string | null
+          created_at?: string
+          device_name?: string | null
+          id?: string
+          platform?: string
+          staff_id?: string | null
+          tenant_id: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          app_user_id?: string | null
+          created_at?: string
+          device_name?: string | null
+          id?: string
+          platform?: string
+          staff_id?: string | null
+          tenant_id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       floors: {
         Row: {
           created_at: string | null
