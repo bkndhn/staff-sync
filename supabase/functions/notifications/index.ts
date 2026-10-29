@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webPush from "npm:web-push@3.6.7";
+import { fcmSendTo, fcmConfigured } from "../_shared/fcm.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,6 +42,11 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 type Recipient = { staffId?: string | null; appUserId?: string | null };
 
 async function pushTo(recipients: Recipient[], payload: { title: string; body: string; actionUrl?: string }) {
+  const fcmCount = await fcmSendTo(admin, null, recipients, payload).catch(() => 0);
+  return fcmCount + await webPushTo(recipients, payload);
+}
+
+async function webPushTo(recipients: Recipient[], payload: { title: string; body: string; actionUrl?: string }) {
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY || recipients.length === 0) return 0;
 
   const staffIds = recipients.map((r) => r.staffId).filter(Boolean) as string[];
@@ -261,10 +267,66 @@ async function runScheduler() {
   return results;
 }
 
+// Resolves either a staff portal session (app_sessions.role = 'staff' -> staff row) or an app user.
+async function getStaffOrUser(req: Request): Promise<{ tenantId: string; staffId?: string; appUserId?: string } | null> {
+  const legacyToken = req.headers.get("x-session-token");
+  if (legacyToken && !legacyToken.startsWith("eyJ")) {
+    const { data: session } = await admin.from("app_sessions").select("user_id, role, expires_at, is_valid")
+      .eq("token", legacyToken).eq("is_valid", true).maybeSingle();
+    if (session && new Date(session.expires_at).getTime() > Date.now() && session.role === "staff") {
+      const { data: s } = await admin.from("staff").select("id, tenant_id, is_active").eq("id", session.user_id).maybeSingle();
+      if (s?.is_active && s.tenant_id) return { tenantId: s.tenant_id, staffId: s.id };
+      return null;
+    }
+  }
+  const caller = await getCaller(req);
+  if (caller?.is_active && caller.tenant_id) return { tenantId: caller.tenant_id, appUserId: caller.id };
+  return null;
+}
+
+async function registerFcm(who: { tenantId: string; staffId?: string; appUserId?: string }, body: any) {
+  const token = typeof body?.token === "string" ? body.token.trim() : "";
+  if (!/^[A-Za-z0-9_:\-]{100,4096}$/.test(token)) return { error: "Invalid token", status: 400 };
+  const platform = ["web", "android", "ios"].includes(body?.platform) ? body.platform : "web";
+  const deviceName = typeof body?.deviceName === "string" ? body.deviceName.slice(0, 200) : null;
+  const { error } = await admin.from("fcm_tokens").upsert({
+    token, tenant_id: who.tenantId, staff_id: who.staffId ?? null, app_user_id: who.appUserId ?? null,
+    platform, device_name: deviceName, updated_at: new Date().toISOString(),
+  }, { onConflict: "token" });
+  if (error) return { error: error.message, status: 500 };
+  return { registered: true };
+}
+
+// Punch confirmation: built only from a real punch row saved in the last 15 minutes.
+async function punchConfirm(tenantId: string, body: any) {
+  const staffId = typeof body?.staffId === "string" ? body.staffId : null;
+  if (!staffId) return { skipped: true, reason: "invalid" };
+  const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const { data: ev } = await admin.from("punch_events").select("id, staff_id, tenant_id, punch_type, punch_time, created_at")
+    .eq("staff_id", staffId).eq("tenant_id", tenantId).gte("created_at", since)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!ev) return { skipped: true, reason: "no_recent_punch" };
+  const marker = `[#${String(ev.id).slice(0, 8)}]`;
+  const { data: prior } = await admin.from("staff_notifications").select("id")
+    .eq("tenant_id", tenantId).eq("staff_id", staffId).eq("type", "punch_confirm").like("message", `%${marker}%`).limit(1);
+  if (prior && prior.length) return { skipped: true, reason: "duplicate" };
+  const isIn = String(ev.punch_type || "").toUpperCase().includes("IN");
+  const when = new Date(ev.punch_time || ev.created_at);
+  const t = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true, day: "2-digit", month: "short" }).format(when);
+  const title = isIn ? "Punched IN ✅" : "Punched OUT 👋";
+  const message = `Your punch ${isIn ? "in" : "out"} was recorded at ${t}. ${marker}`;
+  const pushed = await pushTo([{ staffId }], { title, body: message, actionUrl: "/?tab=attendance" });
+  await record(tenantId, "punch_confirm", "staff", [{ staffId, title, message, type: "punch_confirm", tabId: "attendance" }], pushed);
+  return { pushed };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    if (req.method === "GET" && new URL(req.url).searchParams.get("fcm") === "status") {
+      return json({ fcm: fcmConfigured() ? "configured" : "missing" });
+    }
     if (req.method === "GET") {
       return VAPID_PUBLIC_KEY ? json({ publicKey: VAPID_PUBLIC_KEY, protocol: "web-push-vapid" }) : json({ error: "Push is not configured", status: PUSH_STATUS }, 503);
     }
@@ -287,6 +349,22 @@ Deno.serve(async (req) => {
     if (action === "punctuality" && bearer && bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
       if (typeof body.tenantId !== "string") return json({ error: "tenantId required" }, 400);
       return json({ success: true, ...(await punctuality(body.tenantId, body)) });
+    }
+
+    if (action === "register_fcm" || action === "punch_confirm") {
+      const who = await getStaffOrUser(req);
+      if (!who) return json({ error: "Unauthorized" }, 401);
+      if (action === "register_fcm") {
+        const r: any = await registerFcm(who, body);
+        return r.error ? json({ error: r.error }, r.status) : json({ success: true, ...r });
+      }
+      // Staff may only confirm their own punch; kiosk/manager sessions may confirm any staff in their tenant.
+      if (who.staffId && body?.staffId !== who.staffId) return json({ error: "Forbidden" }, 403);
+      return json({ success: true, ...(await punchConfirm(who.tenantId, body)) });
+    }
+    if (action === "punch_confirm" && bearer && bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
+      if (typeof body.tenantId !== "string") return json({ error: "tenantId required" }, 400);
+      return json({ success: true, ...(await punchConfirm(body.tenantId, body)) });
     }
 
     const caller = await getCaller(req);

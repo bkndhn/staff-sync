@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webPush from "npm:web-push@3.6.7";
+import { fcmSendTo } from "../_shared/fcm.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,16 +67,6 @@ Deno.serve(async (req) => {
       return json({ error: "Missing recipient (staffId or userId required)" }, 400);
     }
 
-    if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-      return json({ error: "VAPID keys not configured on server" }, 500);
-    }
-
-    webPush.setVapidDetails(
-      'mailto:admin@staffsync.app',
-      VAPID_PUBLIC_KEY,
-      VAPID_PRIVATE_KEY
-    );
-
     if (staffId) {
       const { data: recipient } = await admin.from("staff").select("id, tenant_id").eq("id", staffId).maybeSingle();
       if (!recipient || recipient.tenant_id !== caller.tenant_id) return json({ error: "Recipient not found" }, 404);
@@ -83,6 +74,14 @@ Deno.serve(async (req) => {
       const { data: recipient } = await admin.from("app_users").select("id, tenant_id").eq("id", userId).maybeSingle();
       if (!recipient || recipient.tenant_id !== caller.tenant_id) return json({ error: "Recipient not found" }, 404);
     }
+
+    const fcmCount = await fcmSendTo(admin, caller.tenant_id, [{ staffId: staffId || null, appUserId: staffId ? null : userId }], {
+      title: title || "New Notification", body: body || "", actionUrl,
+    }).catch(() => 0);
+    if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+      return json({ success: true, count: fcmCount, fcm: fcmCount });
+    }
+    webPush.setVapidDetails('mailto:admin@staffsync.app', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
     let query = admin.from("push_subscriptions").select("*");
     
@@ -99,7 +98,7 @@ Deno.serve(async (req) => {
     }
 
     if (!subs || subs.length === 0) {
-      return json({ success: true, message: "No active subscriptions for recipient", count: 0 });
+      return json({ success: true, message: "No web-push subscriptions for recipient", count: fcmCount, fcm: fcmCount });
     }
 
     const notificationPayload = JSON.stringify({
@@ -136,7 +135,8 @@ Deno.serve(async (req) => {
 
     return json({ 
       success: true, 
-      count: successCount,
+      count: successCount + fcmCount,
+      fcm: fcmCount,
       errors: errors.length > 0 ? errors : undefined
     });
   } catch (err) {
