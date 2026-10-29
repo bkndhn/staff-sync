@@ -33,7 +33,7 @@ const statusDot: Record<CheckStatus, string> = {
   pass: 'bg-emerald-500', warn: 'bg-amber-500', fail: 'bg-rose-500',
 };
 
-const inr = (v: number) => `₹${Math.round(v).toLocaleString('en-IN')}`;
+const inr = (v: number) => `Rs. ${Math.round(v).toLocaleString('en-IN')}`;
 
 const Card: React.FC<{
   icon: React.ReactNode;
@@ -120,8 +120,8 @@ export const CompliancePanel: React.FC<Props> = ({ details, staff, month, year, 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card icon={<Landmark size={16} className="text-indigo-600" />} title="EPFO ECR" subtitle="Provident Fund challan return (.txt, #~# format)" file={epfo} />
-        <Card icon={<HeartPulse size={16} className="text-rose-600" />} title="ESIC return" subtitle="Monthly contribution upload (CSV)" file={esic} />
+        <Card icon={<Landmark size={16} className="text-indigo-600" />} title="EPFO ECR" subtitle="Unified Portal ECR 2.0 (.txt, #~#)" file={epfo} />
+        <Card icon={<HeartPulse size={16} className="text-rose-600" />} title="ESIC return" subtitle="Official 6-column portal upload (CSV)" file={esic} />
         <Card icon={<Receipt size={16} className="text-emerald-600" />} title="Form 24Q" subtitle="Quarterly TDS statement, Annexure I" file={form24q} />
         <Card icon={<FileText size={16} className="text-blue-600" />} title="TDS register" subtitle="Internal computation audit copy" file={register} />
       </div>
