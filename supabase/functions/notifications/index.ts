@@ -302,7 +302,7 @@ async function punchConfirm(tenantId: string, body: any) {
   const staffId = typeof body?.staffId === "string" ? body.staffId : null;
   if (!staffId) return { skipped: true, reason: "invalid" };
   const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-  const { data: ev } = await admin.from("punch_events").select("id, staff_id, tenant_id, punch_type, punch_time, created_at")
+  const { data: ev } = await admin.from("punch_events").select("id, staff_id, tenant_id, kind, event_time, created_at")
     .eq("staff_id", staffId).eq("tenant_id", tenantId).gte("created_at", since)
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (!ev) return { skipped: true, reason: "no_recent_punch" };
@@ -310,8 +310,8 @@ async function punchConfirm(tenantId: string, body: any) {
   const { data: prior } = await admin.from("staff_notifications").select("id")
     .eq("tenant_id", tenantId).eq("staff_id", staffId).eq("type", "punch_confirm").like("message", `%${marker}%`).limit(1);
   if (prior && prior.length) return { skipped: true, reason: "duplicate" };
-  const isIn = String(ev.punch_type || "").toUpperCase().includes("IN");
-  const when = new Date(ev.punch_time || ev.created_at);
+  const isIn = String(ev.kind || "").toUpperCase().includes("IN");
+  const when = new Date(ev.event_time || ev.created_at);
   const t = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true, day: "2-digit", month: "short" }).format(when);
   const title = isIn ? "Punched IN ✅" : "Punched OUT 👋";
   const message = `Your punch ${isIn ? "in" : "out"} was recorded at ${t}. ${marker}`;
