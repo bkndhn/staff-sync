@@ -28,7 +28,7 @@ export interface ValidationReport {
 }
 
 const r = (v: unknown) => Math.round(Number(v) || 0);
-const inr = (v: number) => `₹${Math.round(v).toLocaleString('en-IN')}`;
+const inr = (v: number) => `Rs. ${Math.round(v).toLocaleString('en-IN')}`;
 /** Rupee rounding across many rows can drift; a rupee per employee is fine. */
 const tolerance = (rows: number) => Math.max(1, rows);
 
@@ -95,11 +95,11 @@ export const validateComplianceExports = ({ details, staff, month, year, files }
     check('epfo_total', 'EPFO ECR — employee PF total', expectedPf, r(files.epfo.totalAmount), files.epfo.rowCount),
     check('epfo_rows', 'EPFO ECR — employee count',
       runDetails.length - epfoSkipped.size, files.epfo.rowCount, 1,
-      `${files.epfo.rowCount} of ${runDetails.length} employees included, ${epfoSkipped.size} excluded (no UAN / not PF-eligible).`),
+      `${files.epfo.rowCount} of ${runDetails.length} employees included, ${epfoSkipped.size} excluded (missing/invalid UAN or not PF-eligible).`),
     check('esic_total', 'ESIC return — contribution total', expectedEsi, r(files.esic.totalAmount), files.esic.rowCount),
     check('esic_rows', 'ESIC return — employee count',
       runDetails.length - esicSkipped.size, files.esic.rowCount, 1,
-      `${files.esic.rowCount} of ${runDetails.length} employees included, ${esicSkipped.size} above the ₹21,000 wage ceiling or without an ESI number.`),
+      `${files.esic.rowCount} of ${runDetails.length} employees included, ${esicSkipped.size} above the Rs. 21,000 wage ceiling or without an ESI number.`),
     check('form24q_total', 'Form 24Q — TDS deducted total', expectedTds, r(files.form24q.totalAmount), files.form24q.rowCount),
     check('register_total', 'TDS register — monthly TDS total', expectedRegisterTds, r(files.register.totalAmount), files.register.rowCount),
     check('register_vs_24q', 'TDS register reconciles with Form 24Q',

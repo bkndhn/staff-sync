@@ -37,13 +37,13 @@ const statutory = (d: PayrollDetail, key: string): number =>
 
 const gross = (d: PayrollDetail) => r0(n(d.grossPayroll ?? d.grossSalary));
 
-/** PF wage is capped at the statutory ceiling of ₹15,000. */
+/** PF wage is capped at the statutory ceiling of Rs. 15,000. */
 export const PF_WAGE_CEILING = 15000;
-/** ESI applies only when monthly gross is at or below ₹21,000. */
+/** ESI applies only when monthly gross is at or below Rs. 21,000. */
 export const ESI_GROSS_CEILING = 21000;
 
 export const download = (file: ComplianceFile) => {
-  const blob = new Blob(['\uFEFF' + file.content], { type: `${file.mime};charset=utf-8;` });
+  const blob = new Blob([(file.mime === 'text/plain' ? '' : '\uFEFF') + file.content], { type: `${file.mime};charset=utf-8;` });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -54,10 +54,26 @@ export const download = (file: ComplianceFile) => {
   URL.revokeObjectURL(url);
 };
 
+/** Age in completed years on a given date (null when DOB missing/invalid). */
+export const ageOn = (dob: string | undefined, on: Date): number | null => {
+  if (!dob) return null;
+  const d = new Date(dob);
+  if (isNaN(d.getTime())) return null;
+  let age = on.getFullYear() - d.getFullYear();
+  const m = on.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && on.getDate() < d.getDate())) age--;
+  return age;
+};
+
+/** EPFO portal accepts only A-Z, space and dot in member names. */
+const ecrName = (v?: string | null) => (v || '').toUpperCase().replace(/[^A-Z .]/g, ' ').replace(/\s+/g, ' ').trim();
+
 /**
- * EPFO Electronic Challan-cum-Return (ECR 2.0) text file.
+ * EPFO Electronic Challan-cum-Return (ECR 2.0) text file for the Unified Portal.
  * Layout: UAN#~#Name#~#GrossWages#~#EPFWages#~#EPSWages#~#EDLIWages#~#EPFContriRemitted
  *         #~#EPSContriRemitted#~#EPFEPSDiffRemitted#~#NCPDays#~#RefundOfAdvances
+ * Rules: 12-digit UAN, wages capped at Rs. 15,000, no EPS at age 58+ (full 12%
+ * employer share goes to EPF), NCP days never above days in the month.
  */
 export const buildEpfoEcr = (
   details: PayrollDetail[],
@@ -69,6 +85,8 @@ export const buildEpfoEcr = (
   const lines: string[] = [];
   const skipped: ComplianceFile['skipped'] = [];
   let total = 0;
+  const monthEnd = new Date(year, month + 1, 0);
+  const daysInMonth = monthEnd.getDate();
 
   details.forEach(d => {
     const member = byId.get(d.staffId);
@@ -78,39 +96,34 @@ export const buildEpfoEcr = (
       skipped.push({ staffId: d.staffId, name: member.name, reason: 'No PF deduction this period' });
       return;
     }
-    const uan = clean(member.pfNumber);
+    const uan = (member.pfNumber || '').replace(/\s/g, '');
     if (!uan) {
-      skipped.push({ staffId: d.staffId, name: member.name, reason: 'Missing UAN / PF number' });
+      skipped.push({ staffId: d.staffId, name: member.name, reason: 'Missing UAN' });
+      return;
+    }
+    if (!/^\d{12}$/.test(uan)) {
+      skipped.push({ staffId: d.staffId, name: member.name, reason: 'UAN must be exactly 12 digits' });
       return;
     }
     const grossWages = gross(d);
     const epfWages = Math.min(r0(n(d.basicEarned) + n(d.hraEarned)), PF_WAGE_CEILING);
-    const epsWages = epfWages;
-    const epsContrib = r0((epsWages * 8.33) / 100);
-    const epfDiff = Math.max(0, employeePf - epsContrib);
-    const ncpDays = Math.max(0, Math.round(n(d.leaveDays)));
+    const age = ageOn(member.dob, monthEnd);
+    const epsEligible = age === null || age < 58;
+    const epsWages = epsEligible ? epfWages : 0;
+    const employerShare = r0((epfWages * 12) / 100);
+    const epsContrib = epsEligible ? r0((epsWages * 8.33) / 100) : 0;
+    const epfDiff = Math.max(0, employerShare - epsContrib);
+    const ncpDays = Math.min(daysInMonth, Math.max(0, Math.round(n(d.leaveDays))));
 
     lines.push(
-      [
-        uan,
-        clean(member.name).toUpperCase(),
-        grossWages,
-        epfWages,
-        epsWages,
-        epfWages,
-        employeePf,
-        epsContrib,
-        epfDiff,
-        ncpDays,
-        0,
-      ].join('#~#'),
+      [uan, ecrName(member.name), grossWages, epfWages, epsWages, epfWages, employeePf, epsContrib, epfDiff, ncpDays, 0].join('#~#'),
     );
     total += employeePf;
   });
 
   return {
     filename: `epfo-ecr-${period(month, year)}.txt`,
-    content: lines.join('\r\n'),
+    content: lines.join('\n'),
     mime: 'text/plain',
     rowCount: lines.length,
     totalAmount: total,
@@ -119,17 +132,21 @@ export const buildEpfoEcr = (
 };
 
 /**
- * ESIC monthly contribution upload (IP number, name, days, wages, contribution).
+ * ESIC monthly contribution upload — official 6-column portal template.
+ * The portal computes contributions itself, so no contribution column is sent.
+ * Reason code for zero days: 1 = on leave, 2 = left service (needs last working day).
+ * totalAmount still reports the employee contribution for internal validation.
  */
 export const buildEsicReturn = (
   details: PayrollDetail[],
   staff: Staff[],
   month: number,
   year: number,
+  exits: Record<string, string> = {},
 ): ComplianceFile => {
   const byId = new Map(staff.map(s => [s.id, s]));
   const rows: (string | number)[][] = [
-    ['IP Number', 'IP Name', 'No of Days for which wages paid', 'Total Monthly Wages', 'Reason Code for Zero workings days', 'Last Working Day', 'Employee Contribution'],
+    ['IP Number', 'IP Name', 'No of Days for which wages paid/payable during the month', 'Total Monthly Wages', 'Reason Code for Zero workings days', 'Last Working Day'],
   ];
   const skipped: ComplianceFile['skipped'] = [];
   let total = 0;
@@ -140,20 +157,36 @@ export const buildEsicReturn = (
     const contribution = r0(statutory(d, 'esi'));
     const wages = gross(d);
     if (wages > ESI_GROSS_CEILING) {
-      skipped.push({ staffId: d.staffId, name: member.name, reason: 'Gross above ₹21,000 ESI ceiling' });
+      skipped.push({ staffId: d.staffId, name: member.name, reason: 'Gross above Rs. 21,000 ESI ceiling' });
       return;
     }
     if (contribution <= 0) {
       skipped.push({ staffId: d.staffId, name: member.name, reason: 'No ESI deduction this period' });
       return;
     }
-    const ip = clean(member.esiNumber);
+    const ip = (member.esiNumber || '').replace(/\s/g, '');
     if (!ip) {
       skipped.push({ staffId: d.staffId, name: member.name, reason: 'Missing ESIC IP number' });
       return;
     }
+    if (!/^\d{10}$/.test(ip)) {
+      skipped.push({ staffId: d.staffId, name: member.name, reason: 'ESIC IP number must be exactly 10 digits' });
+      return;
+    }
     const days = Math.round(n(d.presentDays) + n(d.halfDays) / 2);
-    rows.push([ip, clean(member.name).toUpperCase(), days, wages, days === 0 ? '2' : '0', '', contribution]);
+    let reason = '';
+    let lastDay = '';
+    if (days === 0) {
+      const left = !member.isActive;
+      reason = left ? '2' : '1';
+      if (left && exits[member.id]) {
+        const dt = new Date(exits[member.id]);
+        if (!isNaN(dt.getTime())) {
+          lastDay = `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
+        }
+      }
+    }
+    rows.push([ip, clean(member.name).toUpperCase(), days, days === 0 ? 0 : wages, reason, lastDay]);
     total += contribution;
   });
 
@@ -258,7 +291,7 @@ export const buildTdsRegister = (
   };
 };
 
-const inr = (v: number) => `₹${r0(v).toLocaleString('en-IN')}`;
+const inr = (v: number) => `Rs. ${r0(v).toLocaleString('en-IN')}`;
 
 /** Form-16 Part B (annual tax computation statement) as a printable HTML file. */
 export const buildForm16PartB = (
