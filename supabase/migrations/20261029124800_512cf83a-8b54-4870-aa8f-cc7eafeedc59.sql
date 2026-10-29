@@ -1,0 +1,1 @@
+CREATE POLICY "No direct browser access to alert addresses" ON public.fcm_tokens AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false) WITH CHECK (false);
