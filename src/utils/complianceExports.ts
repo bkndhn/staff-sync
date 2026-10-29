@@ -291,7 +291,7 @@ export const buildTdsRegister = (
   };
 };
 
-const inr = (v: number) => `₹${r0(v).toLocaleString('en-IN')}`;
+const inr = (v: number) => `Rs. ${r0(v).toLocaleString('en-IN')}`;
 
 /** Form-16 Part B (annual tax computation statement) as a printable HTML file. */
 export const buildForm16PartB = (

@@ -28,7 +28,7 @@ export interface ValidationReport {
 }
 
 const r = (v: unknown) => Math.round(Number(v) || 0);
-const inr = (v: number) => `₹${Math.round(v).toLocaleString('en-IN')}`;
+const inr = (v: number) => `Rs. ${Math.round(v).toLocaleString('en-IN')}`;
 /** Rupee rounding across many rows can drift; a rupee per employee is fine. */
 const tolerance = (rows: number) => Math.max(1, rows);
 
