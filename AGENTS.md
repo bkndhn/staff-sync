@@ -1,1 +1,2 @@
 - Kiosk punch photos go through the punch-photo edge function only (private bucket, no browser storage policies) because most users sign in with app sessions, not Supabase Auth.
+- Phone alerts use Firebase via the connector gateway (supabase/functions/_shared/fcm.ts); device addresses live in server-only fcm_tokens, registered through the notifications function, and the browser worker is public/firebase-messaging-sw.js in its own scope so it never clashes with the main offline sw.js.
