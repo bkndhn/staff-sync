@@ -21,3 +21,8 @@
 - [x] Staff portal location card: auto-check, distance bar
 - [x] Master-phone fingerprint station: GPS lock, wrong-touch lockout, PIN-locked enrolment, offline sync
 - [ ] Fingerprint station on a real Android phone (needs device)
+- [x] EPFO ECR / ESIC portal upload formats
+- [x] Firebase phone alerts: server sending (punch, payslip, leave, salary, absence) + phone sign-up button
+- [ ] Phone sign-up for Firebase alerts (needs "Include web push" keys on the Firebase connection)
+- [ ] Employee tax declaration portal (Form 16 / 80C / 80D)
+- [ ] Direct bank salary payouts
