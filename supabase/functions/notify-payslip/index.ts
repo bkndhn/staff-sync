@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fcmSendTo } from "../_shared/fcm.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -90,6 +91,14 @@ Deno.serve(async (req) => {
       inApp = !error;
     } catch { /* table may not exist in every environment */ }
 
+    // --- phone alert via Firebase (best effort; link stays inside the app) ------
+    let pushed = 0;
+    try {
+      pushed = await fcmSendTo(admin, recipient.tenant_id, [{ staffId: recipient.id }], {
+        title, body: message, actionUrl: "/?tab=salary",
+      });
+    } catch { /* never block the payslip notice */ }
+
     // --- email ---------------------------------------------------------------
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     const FROM = Deno.env.get("PAYSLIP_EMAIL_FROM") || "Payroll <onboarding@resend.dev>";
@@ -114,7 +123,7 @@ Deno.serve(async (req) => {
       email = res.ok ? "sent" : "failed";
     }
 
-    return json({ ok: true, inApp, email });
+    return json({ ok: true, inApp, email, pushed });
   } catch {
     return json({ error: "Unexpected error" }, 500);
   }
