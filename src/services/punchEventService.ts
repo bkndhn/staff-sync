@@ -89,6 +89,8 @@ export const punchEventService = {
       } catch {}
       // Upload the audit photo privately in the background (never blocks the punch).
       if (input.photo) void punchPhotoService.upload(realEvent.id, input.photo);
+      // Phone alert to the staff member (server builds it from this saved punch; never blocks).
+      if (input.staffId) void requestPunchConfirmation(input.staffId);
       
       return realEvent;
     } catch {

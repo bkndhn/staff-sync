@@ -188,7 +188,7 @@ self.addEventListener('push', (event) => {
     data = { body: event.data?.text() };
   }
 
-  const title = data.title || 'Staff Management';
+  const title = data.title || 'ZenHR';
   const options = {
     body: data.body || 'New notification',
     icon: data.icon || '/image.png',
