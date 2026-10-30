@@ -32,6 +32,7 @@ import autoTable from 'jspdf-autotable';
 import { db } from '../lib/db';
 import { appSettingsService } from '../services/appSettingsService';
 import { pushService } from '../services/pushService';
+import { enableFcmPush, fcmConfigured, isFcmRegisteredHere, PUSH_MESSAGES } from '../services/fcmPushService';
 import { resolveActiveRule, calculateAttendanceStatus } from '../utils/attendanceRules';
 import BreakControls from './BreakControls';
 import { breakEventService } from '../services/breakService';
@@ -103,7 +104,14 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     });
   }, []);
 
+  const [fcmOn, setFcmOn] = useState(() => isFcmRegisteredHere());
   const handleSubscribePush = async () => {
+    if (fcmConfigured()) {
+      const r = await enableFcmPush();
+      if (r.status === 'registered') { setFcmOn(true); setPushStatus('granted'); }
+      alert(PUSH_MESSAGES[r.status]);
+      return;
+    }
     const success = await pushService.subscribe(staff.id, undefined);
     if (success) {
       setPushStatus('granted');
@@ -890,7 +898,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                     Edit
                   </button>
                   {/* Push Notifications Enable */}
-                  {pushSupported && pushStatus !== 'granted' && pushStatus !== 'denied' && (
+                  {pushSupported && pushStatus !== 'denied' && (fcmConfigured() ? !fcmOn : pushStatus !== 'granted') && (
                     <button
                       onClick={handleSubscribePush}
                       className="flex items-center gap-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-500/30 transition-colors"

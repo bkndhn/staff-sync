@@ -5,6 +5,7 @@ import {
   type NotificationPreferences,
   type NotificationLogEntry,
 } from '../services/notificationAlertsService';
+import { enableFcmPush, fcmConfigured, isFcmRegisteredHere, PUSH_MESSAGES } from '../services/fcmPushService';
 
 const TIMEZONES = ['Asia/Kolkata', 'Asia/Dubai', 'Asia/Singapore', 'Europe/London', 'America/New_York', 'UTC'];
 
@@ -44,6 +45,14 @@ export const NotificationSettingsPanel: React.FC = () => {
   const [logs, setLogs] = useState<NotificationLogEntry[]>([]);
   const [showLog, setShowLog] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deviceMsg, setDeviceMsg] = useState<string | null>(isFcmRegisteredHere() ? PUSH_MESSAGES.registered : null);
+
+  const enableThisDevice = async () => {
+    setBusy('device');
+    const r = await enableFcmPush();
+    setDeviceMsg(PUSH_MESSAGES[r.status]);
+    setBusy(null);
+  };
 
   useEffect(() => {
     notificationAlertsService.getPreferences().then((p) => {
@@ -106,6 +115,23 @@ export const NotificationSettingsPanel: React.FC = () => {
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-card)] border border-[var(--glass-border)] gap-3">
+        <div className="flex-1">
+          <p className="text-sm font-medium text-[var(--text-primary)]">Phone alerts on this device</p>
+          <p className="text-xs text-[var(--text-muted)]">
+            {deviceMsg || (fcmConfigured() ? 'Get absence and summary alerts on this phone.' : PUSH_MESSAGES['not-configured'])}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={enableThisDevice}
+          disabled={busy === 'device'}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/15 text-blue-500 hover:bg-blue-500/25 disabled:opacity-50 shrink-0"
+        >
+          {busy === 'device' ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
+          Turn on
+        </button>
+      </div>
       <Toggle
         label="Daily attendance summary"
         hint="Send a push summary of today's attendance to admins and managers."
