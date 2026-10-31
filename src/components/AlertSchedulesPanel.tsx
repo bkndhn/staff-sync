@@ -19,7 +19,7 @@ const to12h = (t: string) => {
 const chip = (on: boolean) =>
   `px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${
     on
-      ? 'bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] border-[hsl(var(--primary)/0.4)]'
+      ? 'bg-blue-500/15 text-blue-500 border-blue-500/40'
       : 'bg-transparent text-[var(--text-muted)] border-[var(--glass-border)]'
   }`;
 
@@ -52,11 +52,11 @@ const ScheduleCard: React.FC<{
             aria-checked={s.enabled}
             aria-label={`${info.title} on or off`}
             onClick={() => onSave({ ...s, enabled: !s.enabled })}
-            className={`relative w-11 h-6 rounded-full transition-colors ${s.enabled ? 'bg-[hsl(var(--primary))]' : 'bg-[var(--glass-border)]'}`}
+            className={`relative w-11 h-6 rounded-full transition-colors ${s.enabled ? 'bg-blue-500' : 'bg-gray-400/40'}`}
           >
-            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-[hsl(var(--background))] shadow transition-transform ${s.enabled ? 'translate-x-5' : ''}`} />
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${s.enabled ? 'translate-x-5' : ''}`} />
           </button>
-          <button type="button" aria-label="Delete alert" onClick={onDelete} className="p-1.5 rounded-md text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.1)]">
+          <button type="button" aria-label="Delete alert" onClick={onDelete} className="p-1.5 rounded-md text-red-500 hover:bg-red-500/10">
             <Trash2 size={14} />
           </button>
         </div>
@@ -92,7 +92,7 @@ const ScheduleCard: React.FC<{
           <div className="flex flex-wrap gap-1.5">
             {s.times.length === 0 && <span className="text-xs text-[var(--text-muted)]">No times yet — add one.</span>}
             {[...s.times].sort().map((t) => (
-              <span key={t} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]">
+              <span key={t} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-blue-500/10 text-blue-500">
                 <Clock size={11} /> {to12h(t)}
                 <button type="button" aria-label={`Remove ${to12h(t)}`} onClick={() => set({ times: s.times.filter((x) => x !== t) })}>
                   <X size={11} />
@@ -106,7 +106,7 @@ const ScheduleCard: React.FC<{
               type="button"
               disabled={!newTime || s.times.includes(newTime) || s.times.length >= 12}
               onClick={() => set({ times: [...s.times, newTime.slice(0, 5)] })}
-              className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-50"
+              className="btn-ghost text-xs flex items-center gap-1 disabled:opacity-50"
             >
               <Plus size={12} /> Add time
             </button>
@@ -152,8 +152,8 @@ const ScheduleCard: React.FC<{
 
       {dirty && (
         <div className="flex gap-2">
-          <button type="button" onClick={() => onSave(s)} className="btn-primary text-xs px-3 py-1.5">Save</button>
-          <button type="button" onClick={() => setS(value)} className="btn-secondary text-xs">Cancel</button>
+          <button type="button" onClick={() => onSave(s)} className="btn-premium text-xs px-3 py-1.5">Save</button>
+          <button type="button" onClick={() => setS(value)} className="btn-ghost text-xs">Cancel</button>
         </div>
       )}
     </div>
@@ -201,7 +201,7 @@ export const AlertSchedulesPanel: React.FC = () => {
       </div>
 
       {items.length === 0 && (
-        <button type="button" onClick={addRecommended} disabled={busy} className="btn-primary text-xs flex items-center gap-1.5 px-3 py-2 disabled:opacity-50">
+        <button type="button" onClick={addRecommended} disabled={busy} className="btn-premium text-xs flex items-center gap-1.5 px-3 py-2 disabled:opacity-50">
           {busy ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} Add recommended alerts
         </button>
       )}
@@ -221,10 +221,10 @@ export const AlertSchedulesPanel: React.FC = () => {
             <option key={k} value={k}>{ALERT_KIND_INFO[k].title}</option>
           ))}
         </select>
-        <button type="button" onClick={addOne} className="btn-secondary text-xs flex items-center gap-1"><Plus size={12} /> Add alert</button>
+        <button type="button" onClick={addOne} className="btn-ghost text-xs flex items-center gap-1"><Plus size={12} /> Add alert</button>
       </div>
 
-      {error && <p className="text-xs text-[hsl(var(--destructive))]">{error}</p>}
+      {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
 };
