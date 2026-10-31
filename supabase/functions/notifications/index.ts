@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webPush from "npm:web-push@3.6.7";
-import { fcmSendTo, fcmConfigured } from "../_shared/fcm.ts";
+import { fcmSendTo, fcmConfigured, type MuteKind } from "../_shared/fcm.ts";
+import { runAlertSchedules } from "./scheduled.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,8 +42,8 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 
 type Recipient = { staffId?: string | null; appUserId?: string | null };
 
-async function pushTo(recipients: Recipient[], payload: { title: string; body: string; actionUrl?: string }) {
-  const fcmCount = await fcmSendTo(admin, null, recipients, payload).catch(() => 0);
+async function pushTo(recipients: Recipient[], payload: { title: string; body: string; actionUrl?: string }, kind?: MuteKind) {
+  const fcmCount = await fcmSendTo(admin, null, recipients, payload, kind).catch(() => 0);
   return fcmCount + await webPushTo(recipients, payload);
 }
 
@@ -306,6 +307,8 @@ async function punchConfirm(tenantId: string, body: any) {
     .eq("staff_id", staffId).eq("tenant_id", tenantId).gte("created_at", since)
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (!ev) return { skipped: true, reason: "no_recent_punch" };
+  const { data: pref } = await admin.from("notification_preferences").select("punch_alerts_enabled").eq("tenant_id", tenantId).maybeSingle();
+  if (pref && pref.punch_alerts_enabled === false) return { skipped: true, reason: "punch_alerts_off" };
   const marker = `[#${String(ev.id).slice(0, 8)}]`;
   const { data: prior } = await admin.from("staff_notifications").select("id")
     .eq("tenant_id", tenantId).eq("staff_id", staffId).eq("type", "punch_confirm").like("message", `%${marker}%`).limit(1);
@@ -315,7 +318,7 @@ async function punchConfirm(tenantId: string, body: any) {
   const t = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true, day: "2-digit", month: "short" }).format(when);
   const title = isIn ? "Punched IN ✅" : "Punched OUT 👋";
   const message = `Your punch ${isIn ? "in" : "out"} was recorded at ${t}. ${marker}`;
-  const pushed = await pushTo([{ staffId }], { title, body: message, actionUrl: "/?tab=attendance" });
+  const pushed = await pushTo([{ staffId }], { title, body: message, actionUrl: "/?tab=attendance" }, "punch");
   await record(tenantId, "punch_confirm", "staff", [{ staffId, title, message, type: "punch_confirm", tabId: "attendance" }], pushed);
   return { pushed };
 }
@@ -340,7 +343,9 @@ Deno.serve(async (req) => {
       if (!secret || !allowed.includes(secret)) {
         return json({ error: "Unauthorized" }, 401);
       }
-      return json({ success: true, results: await runScheduler() });
+      const daily = await runScheduler();
+      const timed = await runAlertSchedules(admin, pushTo, record);
+      return json({ success: true, results: daily, timed });
     }
 
 
@@ -349,6 +354,23 @@ Deno.serve(async (req) => {
     if (action === "punctuality" && bearer && bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
       if (typeof body.tenantId !== "string") return json({ error: "tenantId required" }, 400);
       return json({ success: true, ...(await punctuality(body.tenantId, body)) });
+    }
+
+    // Per-person mute of alert groups on all of their phones.
+    if (action === "get_alert_mutes" || action === "set_alert_mute") {
+      const who = await getStaffOrUser(req);
+      if (!who) return json({ error: "Unauthorized" }, 401);
+      const col = who.staffId ? "staff_id" : "app_user_id";
+      const id = who.staffId ?? who.appUserId;
+      const { data: rows } = await admin.from("fcm_tokens").select("id, muted").eq("tenant_id", who.tenantId).eq(col, id);
+      const current = new Set<string>((rows || []).flatMap((r: any) => r.muted || []));
+      if (action === "get_alert_mutes") return json({ success: true, muted: [...current], devices: (rows || []).length });
+      const kind = body?.kind;
+      if (!["punch", "reminder", "report"].includes(kind) || typeof body?.muted !== "boolean") return json({ error: "Invalid request" }, 400);
+      if (body.muted) current.add(kind); else current.delete(kind);
+      await admin.from("fcm_tokens").update({ muted: [...current], updated_at: new Date().toISOString() })
+        .eq("tenant_id", who.tenantId).eq(col, id);
+      return json({ success: true, muted: [...current], devices: (rows || []).length });
     }
 
     if (action === "register_fcm" || action === "punch_confirm") {

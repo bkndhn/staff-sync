@@ -14,7 +14,7 @@ import type { MuteKind } from "../_shared/fcm.ts";
 
 type Recipient = { staffId?: string | null; appUserId?: string | null };
 type Push = (r: Recipient[], p: { title: string; body: string; actionUrl?: string }, kind?: MuteKind) => Promise<number>;
-type Record = (
+type RecordFn = (
   tenantId: string, category: string, audience: string,
   rows: Array<{ staffId?: string | null; appUserId?: string | null; title: string; message: string; type: string; actionUrl?: string; tabId?: string }>,
   pushCount: number,
@@ -136,10 +136,10 @@ async function sendStaffReminder(ctx: Ctx, s: AlertSchedule, slot: DueSlot) {
 
 type Ctx = {
   admin: any; tenantId: string; tz: string; now: ReturnType<typeof localNow>;
-  push: Push; record: Record; shiftOf: (loc: string | null) => { start: string; end: string };
+  push: Push; record: RecordFn; shiftOf: (loc: string | null) => { start: string; end: string };
 };
 
-export async function runAlertSchedules(admin: any, push: Push, record: Record) {
+export async function runAlertSchedules(admin: any, push: Push, record: RecordFn) {
   const { data: schedules, error } = await admin.from("alert_schedules").select("*").eq("enabled", true).limit(2000);
   if (error) { console.error("alert_schedules read failed:", error.message); return []; }
   const byTenant = new Map<string, any[]>();
