@@ -6,6 +6,8 @@ const GATEWAY_URL = "https://connector-gateway.lovable.dev/firebase_messaging";
 
 export type FcmRecipient = { staffId?: string | null; appUserId?: string | null };
 export type FcmPayload = { title: string; body: string; actionUrl?: string };
+/** Alert groups a person can mute on their phones (stored in fcm_tokens.muted). */
+export type MuteKind = "punch" | "reminder" | "report";
 
 export function fcmConfigured(): boolean {
   return Boolean(Deno.env.get("LOVABLE_API_KEY") && Deno.env.get("FIREBASE_MESSAGING_API_KEY"));
@@ -38,29 +40,47 @@ async function sendOne(token: string, p: FcmPayload): Promise<"ok" | "stale" | "
   return "error";
 }
 
-/** Sends to every registered device of the recipients. Returns delivered-to-Firebase count. */
-export async function fcmSendTo(admin: any, tenantId: string | null, recipients: FcmRecipient[], payload: FcmPayload): Promise<number> {
+const chunk = <T>(list: T[], size: number): T[][] => {
+  const out: T[][] = [];
+  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+  return out;
+};
+
+/**
+ * Sends to every registered device of the recipients (skipping phones that muted `kind`).
+ * Returns how many devices Firebase accepted the alert for.
+ */
+export async function fcmSendTo(
+  admin: any,
+  tenantId: string | null,
+  recipients: FcmRecipient[],
+  payload: FcmPayload,
+  kind?: MuteKind,
+): Promise<number> {
   if (!fcmConfigured() || recipients.length === 0) return 0;
-  const staffIds = recipients.map((r) => r.staffId).filter(Boolean) as string[];
-  const userIds = recipients.map((r) => r.appUserId).filter(Boolean) as string[];
+  const staffIds = [...new Set(recipients.map((r) => r.staffId).filter(Boolean) as string[])];
+  const userIds = [...new Set(recipients.map((r) => r.appUserId).filter(Boolean) as string[])];
   const rows: any[] = [];
   const base = () => {
-    let q = admin.from("fcm_tokens").select("id, token");
+    let q = admin.from("fcm_tokens").select("id, token, muted");
     if (tenantId) q = q.eq("tenant_id", tenantId);
     return q;
   };
-  if (staffIds.length) rows.push(...((await base().in("staff_id", staffIds)).data || []));
-  if (userIds.length) rows.push(...((await base().in("app_user_id", userIds)).data || []));
+  for (const ids of chunk(staffIds, 200)) rows.push(...((await base().in("staff_id", ids)).data || []));
+  for (const ids of chunk(userIds, 200)) rows.push(...((await base().in("app_user_id", ids)).data || []));
+  const targets = rows.filter((r) => !(kind && Array.isArray(r.muted) && r.muted.includes(kind)));
 
   let count = 0;
-  for (const row of rows) {
-    try {
-      const r = await sendOne(row.token, payload);
-      if (r === "ok") count++;
-      else if (r === "stale") await admin.from("fcm_tokens").delete().eq("id", row.id);
-    } catch (e) {
-      console.error("FCM send error:", (e as Error).message);
-    }
+  for (const batch of chunk(targets, 20)) {
+    await Promise.all(batch.map(async (row) => {
+      try {
+        const r = await sendOne(row.token, payload);
+        if (r === "ok") count++;
+        else if (r === "stale") await admin.from("fcm_tokens").delete().eq("id", row.id);
+      } catch (e) {
+        console.error("FCM send error:", (e as Error).message);
+      }
+    }));
   }
   return count;
 }
