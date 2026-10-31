@@ -6,6 +6,8 @@ import {
   type NotificationLogEntry,
 } from '../services/notificationAlertsService';
 import { enableFcmPush, fcmConfigured, isFcmRegisteredHere, PUSH_MESSAGES } from '../services/fcmPushService';
+import AlertSchedulesPanel from './AlertSchedulesPanel';
+import PhoneAlertSwitches from './PhoneAlertSwitches';
 
 const TIMEZONES = ['Asia/Kolkata', 'Asia/Dubai', 'Asia/Singapore', 'Europe/London', 'America/New_York', 'UTC'];
 
@@ -132,6 +134,13 @@ export const NotificationSettingsPanel: React.FC = () => {
           Turn on
         </button>
       </div>
+      <PhoneAlertSwitches kinds={['report']} />
+      <Toggle
+        label="Punch IN / OUT alerts to staff"
+        hint="Each staff member gets a phone alert when their punch is saved. Staff can also turn it off on their own phone."
+        checked={prefs.punchAlertsEnabled}
+        onChange={(v) => update({ punchAlertsEnabled: v })}
+      />
       <Toggle
         label="Daily attendance summary"
         hint="Send a push summary of today's attendance to admins and managers."
@@ -205,6 +214,10 @@ export const NotificationSettingsPanel: React.FC = () => {
         >
           <History size={12} /> {showLog ? 'Hide' : 'View'} notification log
         </button>
+      </div>
+
+      <div className="pt-2 border-t border-[var(--glass-border)]">
+        <AlertSchedulesPanel />
       </div>
 
       {saved && (

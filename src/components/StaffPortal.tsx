@@ -33,6 +33,7 @@ import { db } from '../lib/db';
 import { appSettingsService } from '../services/appSettingsService';
 import { pushService } from '../services/pushService';
 import { enableFcmPush, fcmConfigured, isFcmRegisteredHere, PUSH_MESSAGES } from '../services/fcmPushService';
+import PhoneAlertSwitches from './PhoneAlertSwitches';
 import { resolveActiveRule, calculateAttendanceStatus } from '../utils/attendanceRules';
 import BreakControls from './BreakControls';
 import { breakEventService } from '../services/breakService';
@@ -919,6 +920,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
             </div>
 
             {!isLeftStaff && <LocationCheckCard branch={staff.location} />}
+            {!isLeftStaff && fcmOn && <PhoneAlertSwitches kinds={['punch', 'reminder']} />}
             {/* Today's Punch Status Banner & Actions */}
             {!isLeftStaff && (() => {
               const today = localDateKey(serverNow());
