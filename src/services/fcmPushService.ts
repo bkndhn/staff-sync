@@ -2,12 +2,14 @@
 // on the server (notifications edge function, action "register_fcm"). The address table is
 // server-only, so the browser never reads or writes it directly.
 import { FUNCTIONS_BASE, functionAuthHeaders } from '../lib/dataApi';
+import { FIREBASE_WEB } from '../config/firebaseWeb';
 
-const appId = import.meta.env.VITE_LOVABLE_CONNECTOR_FIREBASE_MESSAGING_APP_ID as string | undefined;
-const vapidKey = import.meta.env.VITE_LOVABLE_CONNECTOR_FIREBASE_MESSAGING_VAPID_KEY as string | undefined;
+const env = import.meta.env;
+const appId = (env.VITE_LOVABLE_CONNECTOR_FIREBASE_MESSAGING_APP_ID as string | undefined) || FIREBASE_WEB.appId;
+const vapidKey = (env.VITE_LOVABLE_CONNECTOR_FIREBASE_MESSAGING_VAPID_KEY as string | undefined) || FIREBASE_WEB.vapidKey;
 const firebaseConfig = {
-  apiKey: (import.meta.env.VITE_LOVABLE_CONNECTOR_FIREBASE_MESSAGING_WEB_API_KEY as string | undefined) || '',
-  projectId: (import.meta.env.VITE_LOVABLE_CONNECTOR_FIREBASE_MESSAGING_PROJECT_ID as string | undefined) || '',
+  apiKey: (env.VITE_LOVABLE_CONNECTOR_FIREBASE_MESSAGING_WEB_API_KEY as string | undefined) || FIREBASE_WEB.apiKey,
+  projectId: (env.VITE_LOVABLE_CONNECTOR_FIREBASE_MESSAGING_PROJECT_ID as string | undefined) || FIREBASE_WEB.projectId,
   appId: appId || '',
   messagingSenderId: appId?.split(':')[1] ?? '',
 };
