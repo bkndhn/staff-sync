@@ -93,3 +93,20 @@ export async function requestPunchConfirmation(staffId: string): Promise<void> {
     });
   } catch { /* alerts never block a punch */ }
 }
+
+export type MuteKind = 'punch' | 'reminder' | 'report';
+
+async function muteCall(payload: Record<string, unknown>): Promise<{ muted: MuteKind[]; devices: number } | null> {
+  try {
+    const headers = await functionAuthHeaders();
+    if (!headers) return null;
+    const res = await fetch(`${FUNCTIONS_BASE}/notifications`, { method: 'POST', headers, body: JSON.stringify(payload) });
+    if (!res.ok) return null;
+    const j = await res.json();
+    return { muted: (j.muted || []) as MuteKind[], devices: Number(j.devices) || 0 };
+  } catch { return null; }
+}
+
+/** Which alert groups this person has turned off on their phones. */
+export const getAlertMutes = () => muteCall({ action: 'get_alert_mutes' });
+export const setAlertMute = (kind: MuteKind, muted: boolean) => muteCall({ action: 'set_alert_mute', kind, muted });

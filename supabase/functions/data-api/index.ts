@@ -123,6 +123,7 @@ const ACL: Record<string, TableAcl> = {
 
   // ── Notification alerts ───────────────────────────────────────────────
   notification_preferences:     { read: ["admin","manager","super_admin"], write: ["admin","manager","super_admin"] },
+  alert_schedules:              { read: ["admin","manager","super_admin"], write: ["admin","manager","super_admin"] },
   notification_log:             { read: ["admin","manager","super_admin"], write: ["admin","super_admin"] },
 };
 

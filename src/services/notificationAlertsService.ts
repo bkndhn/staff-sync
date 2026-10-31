@@ -12,6 +12,7 @@ export interface NotificationPreferences {
   timezone: string;
   uninformedLeaveEnabled: boolean;
   salaryCreditEnabled: boolean;
+  punchAlertsEnabled: boolean;
   lastDailySentDate?: string | null;
 }
 
@@ -32,6 +33,7 @@ const DEFAULT_PREFS: NotificationPreferences = {
   timezone: 'Asia/Kolkata',
   uninformedLeaveEnabled: true,
   salaryCreditEnabled: true,
+  punchAlertsEnabled: true,
 };
 
 const getSessionToken = (): string | null => {
@@ -81,6 +83,7 @@ export const notificationAlertsService = {
       timezone: row.timezone || 'Asia/Kolkata',
       uninformedLeaveEnabled: row.uninformed_leave_enabled !== false,
       salaryCreditEnabled: row.salary_credit_enabled !== false,
+      punchAlertsEnabled: row.punch_alerts_enabled !== false,
       lastDailySentDate: row.last_daily_sent_date,
     };
   },
@@ -92,6 +95,7 @@ export const notificationAlertsService = {
       timezone: prefs.timezone,
       uninformed_leave_enabled: prefs.uninformedLeaveEnabled,
       salary_credit_enabled: prefs.salaryCreditEnabled,
+      punch_alerts_enabled: prefs.punchAlertsEnabled,
     };
 
     if (prefs.id) {

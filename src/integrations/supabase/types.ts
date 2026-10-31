@@ -193,6 +193,107 @@ export type Database = {
           },
         ]
       }
+      alert_runs: {
+        Row: {
+          created_at: string
+          id: string
+          pushed: number
+          recipients: number
+          schedule_id: string
+          slot_key: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pushed?: number
+          recipients?: number
+          schedule_id: string
+          slot_key: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pushed?: number
+          recipients?: number
+          schedule_id?: string
+          slot_key?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_runs_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "alert_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alert_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alert_schedules: {
+        Row: {
+          audience_roles: string[]
+          created_at: string
+          day_of_month: number | null
+          days: number[]
+          enabled: boolean
+          id: string
+          kind: string
+          label: string | null
+          offset_minutes: number
+          tenant_id: string
+          times: string[]
+          timing: string
+          updated_at: string
+        }
+        Insert: {
+          audience_roles?: string[]
+          created_at?: string
+          day_of_month?: number | null
+          days?: number[]
+          enabled?: boolean
+          id?: string
+          kind: string
+          label?: string | null
+          offset_minutes?: number
+          tenant_id: string
+          times?: string[]
+          timing?: string
+          updated_at?: string
+        }
+        Update: {
+          audience_roles?: string[]
+          created_at?: string
+          day_of_month?: number | null
+          days?: number[]
+          enabled?: boolean
+          id?: string
+          kind?: string
+          label?: string | null
+          offset_minutes?: number
+          tenant_id?: string
+          times?: string[]
+          timing?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_schedules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcements: {
         Row: {
           content: string
@@ -1197,6 +1298,7 @@ export type Database = {
           created_at: string
           device_name: string | null
           id: string
+          muted: string[]
           platform: string
           staff_id: string | null
           tenant_id: string
@@ -1208,6 +1310,7 @@ export type Database = {
           created_at?: string
           device_name?: string | null
           id?: string
+          muted?: string[]
           platform?: string
           staff_id?: string | null
           tenant_id: string
@@ -1219,6 +1322,7 @@ export type Database = {
           created_at?: string
           device_name?: string | null
           id?: string
+          muted?: string[]
           platform?: string
           staff_id?: string | null
           tenant_id?: string
@@ -1744,6 +1848,7 @@ export type Database = {
           daily_attendance_time: string
           id: string
           last_daily_sent_date: string | null
+          punch_alerts_enabled: boolean
           salary_credit_enabled: boolean
           tenant_id: string
           timezone: string
@@ -1756,6 +1861,7 @@ export type Database = {
           daily_attendance_time?: string
           id?: string
           last_daily_sent_date?: string | null
+          punch_alerts_enabled?: boolean
           salary_credit_enabled?: boolean
           tenant_id: string
           timezone?: string
@@ -1768,6 +1874,7 @@ export type Database = {
           daily_attendance_time?: string
           id?: string
           last_daily_sent_date?: string | null
+          punch_alerts_enabled?: boolean
           salary_credit_enabled?: boolean
           tenant_id?: string
           timezone?: string
