@@ -23,6 +23,9 @@
 - [ ] Fingerprint station on a real Android phone (needs device)
 - [x] EPFO ECR / ESIC portal upload formats
 - [x] Firebase phone alerts: server sending (punch, payslip, leave, salary, absence) + phone sign-up button
-- [ ] Phone sign-up for Firebase alerts (needs "Include web push" keys on the Firebase connection)
+- [x] Phone sign-up for Firebase alerts (browser keys loaded in app; no reconnect needed)
+- [x] Timed phone alerts: attendance reports / check-attendance / leave waiting / salary prep to chosen roles at many custom times; staff punch IN/OUT reminders before shift
+- [x] Punch IN/OUT alert on/off (company switch + per-person phone switches)
+- [ ] Real phone delivery test (needs a phone to tap "Turn on" alerts in the published app)
 - [ ] Employee tax declaration portal (Form 16 / 80C / 80D)
 - [ ] Direct bank salary payouts
