@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { findAppUserForAuth } from "../_shared/caller.ts";
 import bcrypt from "npm:bcryptjs@2.4.3";
 
 const corsHeaders = {
@@ -28,10 +29,7 @@ async function validateSession(
     if (authErr || !authUser) return { valid: false, error: 'Invalid JWT' };
 
     // Find the app_user role and id
-    const { data: uRow } = await supabase.from('app_users')
-      .select('id, role')
-      .or(`auth_id.eq.${authUser.id},email.eq.${authUser.email}`)
-      .maybeSingle();
+    const uRow = await findAppUserForAuth(supabase, authUser, "id, role");
 
     if (uRow) return { valid: true, userId: uRow.id, role: uRow.role };
     return { valid: false, error: 'User not found in app_users' };
