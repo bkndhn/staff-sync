@@ -11,6 +11,7 @@
 // Reuses the same session-token verification pattern as auth-update-password.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { findAppUserForAuth } from "../_shared/caller.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,10 +57,7 @@ Deno.serve(async (req) => {
       const { data: { user: authUser }, error: authErr } = await admin.auth.getUser(jwt);
       if (authErr || !authUser) return json({ error: "unauthorized" }, 401);
 
-      const { data: uRow } = await admin.from('app_users')
-        .select('id')
-        .or(`auth_id.eq.${authUser.id},email.eq.${authUser.email}`)
-        .maybeSingle();
+      const uRow = await findAppUserForAuth(admin, authUser, "id");
 
       if (!uRow) return json({ error: "unauthorized" }, 401);
       callerUserId = uRow.id;

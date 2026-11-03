@@ -1017,53 +1017,42 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     }
   };
 
+  // Verified password reset: the staff member starts it on their own phone and
+  // shows a 6-digit code; the manager checks the person and types that code.
   const handleGenerateResetPin = async (staffId: string, staffName: string) => {
-    if (!await customConfirm(`Generate a secure 6-digit reset PIN for ${staffName}? You must read this PIN to them.`)) return;
+    const code = window.prompt(
+      `Approve a password reset for ${staffName}.\n\nAsk them to tap "Forgot password" on their own phone, check it is really them, then type the 6-digit code shown on their screen:`,
+    );
+    if (code === null) return;
+    const clean = code.replace(/\D/g, '');
+    if (clean.length !== 6) {
+      await customAlert('Please enter the 6-digit code shown on the staff member\'s phone.');
+      return;
+    }
     try {
-      const pin = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
-      // valid for 10 mins
-      const expiresAt = new Date(Date.now() + 10 * 60000).toISOString();
-      
       const sessionToken = await userService.getSessionToken();
       const isJwt = sessionToken && sessionToken.startsWith('eyJ');
-
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://nsmppwnpdxomjmgrtqka.supabase.co';
       const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_KEY,
-      };
+      const headers: Record<string, string> = { 'Content-Type': 'application/json', apikey: SUPABASE_KEY };
       if (sessionToken) {
         headers['x-session-token'] = sessionToken;
         if (isJwt) headers['Authorization'] = `Bearer ${sessionToken}`;
       }
-
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/data-api`, {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/staff-password-reset`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          table: 'staff',
-          op: 'update',
-          values: {
-            reset_pin: pin,
-            reset_pin_expires_at: expiresAt
-          },
-          filters: [{ col: 'id', op: 'eq', val: staffId }],
-        }),
+        body: JSON.stringify({ action: 'approve', staffId, code: clean }),
       });
-
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        console.error('Failed to save PIN:', res.status, errBody);
-        await customAlert('Failed to generate PIN.');
+        await customAlert(body?.error || 'Could not approve the reset.');
         return;
       }
-      
-      await customAlert(`PIN Generated: ${pin}\n\nThis PIN is valid for 10 minutes. Please read this to ${staffName}.`);
+      await customAlert(`Approved. ${staffName} can now set a new password on their phone.`);
     } catch (err: any) {
-      console.error("Error generating reset PIN:", err);
-      await customAlert(`Failed to generate PIN: ${err.message || 'Unknown error'}`);
+      console.error('Error approving reset:', err);
+      await customAlert('Could not approve the reset. Please try again.');
     }
   };
 
@@ -2106,7 +2095,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                       <button onClick={(e) => { e.stopPropagation(); handleResetStaffPassword(member.id, member.name); }} className="p-2 rounded-lg bg-amber-500/15 text-amber-400 active:bg-amber-500/30" title="Reset Password">
                         <RotateCcw size={14} />
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleGenerateResetPin(member.id, member.name); }} className="p-2 rounded-lg bg-emerald-500/15 text-emerald-400 active:bg-emerald-500/30" title="Generate Reset PIN">
+                      <button onClick={(e) => { e.stopPropagation(); handleGenerateResetPin(member.id, member.name); }} className="p-2 rounded-lg bg-emerald-500/15 text-emerald-400 active:bg-emerald-500/30" title="Approve password reset">
                         <Key size={14} />
                       </button>
                       <button onClick={(e) => { e.stopPropagation(); handleDelete(member); }} className="p-2 rounded-lg bg-red-500/15 text-red-300 active:bg-red-500/30" title="Archive">
@@ -2325,7 +2314,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                         <button onClick={() => handleResetStaffPassword(member.id, member.name)} className="text-amber-600 hover:text-amber-800 p-1 rounded hover:bg-amber-50" title="Reset Password">
                           <RotateCcw size={16} />
                         </button>
-                        <button onClick={() => handleGenerateResetPin(member.id, member.name)} className="text-emerald-600 hover:text-emerald-800 p-1 rounded hover:bg-emerald-50" title="Generate Reset PIN">
+                        <button onClick={() => handleGenerateResetPin(member.id, member.name)} className="text-emerald-600 hover:text-emerald-800 p-1 rounded hover:bg-emerald-50" title="Approve password reset">
                           <Key size={16} />
                         </button>
                         <button onClick={() => handleDelete(member)} className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50" title="Archive">

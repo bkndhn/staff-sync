@@ -3031,8 +3031,13 @@ export type Database = {
           payment_mode: string | null
           pf_number: string | null
           photo_url: string | null
+          reset_approved_at: string | null
+          reset_approved_by: string | null
           reset_pin: string | null
           reset_pin_expires_at: string | null
+          reset_request_code_hash: string | null
+          reset_request_expires_at: string | null
+          reset_request_hash: string | null
           salary_calculation_days: number | null
           salary_supplements: Json | null
           shift_window: Json | null
@@ -3081,8 +3086,13 @@ export type Database = {
           payment_mode?: string | null
           pf_number?: string | null
           photo_url?: string | null
+          reset_approved_at?: string | null
+          reset_approved_by?: string | null
           reset_pin?: string | null
           reset_pin_expires_at?: string | null
+          reset_request_code_hash?: string | null
+          reset_request_expires_at?: string | null
+          reset_request_hash?: string | null
           salary_calculation_days?: number | null
           salary_supplements?: Json | null
           shift_window?: Json | null
@@ -3131,8 +3141,13 @@ export type Database = {
           payment_mode?: string | null
           pf_number?: string | null
           photo_url?: string | null
+          reset_approved_at?: string | null
+          reset_approved_by?: string | null
           reset_pin?: string | null
           reset_pin_expires_at?: string | null
+          reset_request_code_hash?: string | null
+          reset_request_expires_at?: string | null
+          reset_request_hash?: string | null
           salary_calculation_days?: number | null
           salary_supplements?: Json | null
           shift_window?: Json | null
