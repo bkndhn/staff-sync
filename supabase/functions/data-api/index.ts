@@ -17,6 +17,7 @@ import {
   parseThresholds,
   sanitizeLoanInsert,
 } from "./loanPolicy.ts";
+import { restrictToAllowlist } from "./writableFields.ts";
 
 
 const corsHeaders = {
@@ -170,6 +171,7 @@ function applyFilters(query: any, filters: Filter[] | undefined) {
 // Columns that must never be returned to any client.
 const SECRET_COLUMNS = new Set([
   "password_hash", "reset_pin", "reset_pin_hash", "pin_hash", "key_hash", "secret", "secret_hash",
+  "reset_request_hash", "reset_request_code_hash",
 ]);
 
 function stripSecrets(v: any): any {
@@ -223,7 +225,7 @@ function assertSafeColumns(columns: string | undefined, role?: string) {
 
 // Fields a non-super-admin may never set, per table.
 const PROTECTED_WRITE_FIELDS: Record<string, string[]> = {
-  app_users: ["auth_id", "tenant_id", "password_hash", "email_verified"],
+  app_users: ["auth_id", "tenant_id", "password_hash", "email_verified", "super_admin_role"],
   tenants: ["id", "staff_limit", "location_limit", "sub_user_limit", "plan", "status", "is_active", "slug", "expires_at", "trial_ends_at", "subscription_status"],
 };
 // Fields nobody but super_admin may set on any table (tenant is server-stamped).
@@ -240,6 +242,7 @@ const STAFF_DECISION_FIELDS = [
   "approved_by", "approved_at", "rejected_by", "rejected_at", "reviewed_by", "reviewed_at",
   "resolved_by", "resolved_at", "resolution", "resolution_note", "manager_comment", "admin_comment",
   "current_level", "approval_history", "paid_at", "paid_by", "approved_amount", "disbursed_at",
+  "resolution_notes", "review_notes", "document_url",
 ];
 const STAFF_ALLOWED_STATUS = new Set(["pending", "withdrawn", "cancelled", "Pending", "Withdrawn", "Cancelled"]);
 
@@ -339,18 +342,20 @@ Deno.serve(async (req) => {
         .eq("auth_id", authUser.id)
         .maybeSingle();
 
-      // Fallback: match by email if auth_id lookup failed
-      if (!uRow && authUser.email) {
+      // Fallback: link by email only when the sign-in email is confirmed and the
+      // profile is not yet linked to another sign-in account.
+      if (!uRow && authUser.email && authUser.email_confirmed_at) {
         const { data: uRowByEmail, error: eErr } = await admin
           .from("app_users")
           .select("id, role, location, location_id, floor, floor_id, is_active, tenant_id, auth_id, email")
           .eq("email", authUser.email)
+          .is("auth_id", null)
           .maybeSingle();
-        uRow = uRowByEmail;
         if (eErr) console.error("[data-api] email fallback error:", eErr.message);
-        // Patch auth_id so future lookups work
-        if (uRow && !uRow.auth_id) {
-          await admin.from("app_users").update({ auth_id: authUser.id }).eq("id", uRow.id);
+        if (uRowByEmail) {
+          const { data: linked } = await admin.from("app_users").update({ auth_id: authUser.id })
+            .eq("id", uRowByEmail.id).is("auth_id", null).select("id").maybeSingle();
+          uRow = linked ? { ...uRowByEmail, auth_id: authUser.id } : null;
         }
       }
 
@@ -547,7 +552,7 @@ Deno.serve(async (req) => {
     assertSafeColumns(body.columns);
     if (body.op !== "select" && body.op !== "delete" && body.values !== undefined) {
       const rows = (Array.isArray(body.values) ? body.values : [body.values]) as Array<Record<string, unknown>>;
-      const err = sanitizeWriteRows(body.table, rows, role);
+      const err = sanitizeWriteRows(body.table, rows, role) ?? restrictToAllowlist(body.table, role, rows);
       if (err) {
         return new Response(JSON.stringify({ error: err }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
