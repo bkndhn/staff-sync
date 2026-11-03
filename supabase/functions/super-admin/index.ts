@@ -8,6 +8,7 @@
 // Body: { action: string, payload?: Record<string, unknown> }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { findAppUserForAuth } from "../_shared/caller.ts";
 import bcrypt from "npm:bcryptjs@2.4.3";
 
 const corsHeaders = {

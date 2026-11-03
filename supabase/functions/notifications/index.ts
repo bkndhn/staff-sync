@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { findAppUserForAuth } from "../_shared/caller.ts";
 import webPush from "npm:web-push@3.6.7";
 import { fcmSendTo, fcmConfigured, type MuteKind } from "../_shared/fcm.ts";
 import { runAlertSchedules } from "./scheduled.ts";

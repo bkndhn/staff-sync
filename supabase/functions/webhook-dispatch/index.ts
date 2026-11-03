@@ -1,5 +1,6 @@
 // Signs and delivers webhook events to a tenant's configured endpoints.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { findAppUserForAuth } from "../_shared/caller.ts";
 import { dispatchWebhook } from "../_shared/webhooks.ts";
 
 const corsHeaders = {
