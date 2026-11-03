@@ -22,6 +22,7 @@ export const WRITABLE_FIELDS: Record<string, readonly string[]> = {
   salary_disbursements: ["id", "staff_id", "month_year", "amount", "payment_mode", "transaction_ref", "notes", "disbursed_at"],
   payslip_links: ["id", "staff_id", "token_hash", "month", "year", "snapshot", "issued_by", "expires_at", "revoked_at", "view_count", "last_viewed_at"],
   face_embeddings: ["id", "staff_id", "staff_name", "angle_label", "descriptor", "descriptor_dim", "image_path", "quality_score", "is_approved", "captured_by", "notes", "model_version", "quality_metrics"],
+  staff_fingerprints: ["id", "staff_id", "staff_name", "credential_id", "device_label", "enrolled_by", "last_used_at"],
   face_registration_logs: ["id", "staff_id", "embedding_id", "action", "actor", "reason", "metadata"],
   old_staff_records: ["id", "original_staff_id", "name", "location", "type", "experience", "basic_salary", "incentive", "hra", "total_salary", "joined_date", "left_date", "reason", "total_advance_outstanding", "last_advance_data", "contact_number", "address", "photo_url"],
   part_time_advance_tracking: ["id", "staff_name", "location", "week_start_date", "year", "month", "week_number", "opening_balance", "advance_given", "earnings", "adjustment", "pending_salary", "closing_balance", "notes"],

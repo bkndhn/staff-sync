@@ -72,6 +72,7 @@ const ACL: Record<string, TableAcl> = {
   payslip_links:                     { read: ["admin","super_admin"],                                                 write: ["admin"] },
   // ── Face / Biometric ────────────────────────────────────────────────────────
   face_embeddings:                   { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager","staff"],   staffIdCol: "staff_id" },
+  staff_fingerprints:                { read: ["admin","manager","supervisor","floor_supervisor","super_admin"], write: ["admin","manager"], },
   face_registration_logs:            { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager","staff"],   staffIdCol: "staff_id" },
   // ── Archive ─────────────────────────────────────────────────────────────────
   old_staff_records:                 { read: ["admin","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                                         write: ["admin"],                     staffIdCol: "original_staff_id" },

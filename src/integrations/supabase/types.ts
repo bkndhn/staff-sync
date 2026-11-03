@@ -3169,6 +3169,63 @@ export type Database = {
           },
         ]
       }
+      staff_fingerprints: {
+        Row: {
+          created_at: string
+          credential_id: string
+          device_label: string | null
+          enrolled_at: string
+          enrolled_by: string | null
+          id: string
+          last_used_at: string | null
+          staff_id: string
+          staff_name: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credential_id: string
+          device_label?: string | null
+          enrolled_at?: string
+          enrolled_by?: string | null
+          id?: string
+          last_used_at?: string | null
+          staff_id: string
+          staff_name?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credential_id?: string
+          device_label?: string | null
+          enrolled_at?: string
+          enrolled_by?: string | null
+          id?: string
+          last_used_at?: string | null
+          staff_id?: string
+          staff_name?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_fingerprints_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_fingerprints_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_grievances: {
         Row: {
           approval_history: Json | null
