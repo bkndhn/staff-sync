@@ -153,7 +153,7 @@ export const payslipLinkService = {
     const url = `${window.location.origin}/payslip/${token}`;
 
     if (options.notify !== false) {
-      payslipLinkService.notify({ staffId: member.id, month, year, url }).catch(() => undefined);
+      payslipLinkService.notify({ staffId: member.id, month, year, linkToken: token }).catch(() => undefined);
     }
 
     apiAccessService.dispatch('payslip.issued', {
@@ -216,9 +216,9 @@ export const payslipLinkService = {
     staffId: string;
     month: number;
     year: number;
-    url?: string;
+    /** Raw link token; the server verifies it and builds the email link itself. */
+    linkToken?: string;
     kind?: 'payslip' | 'compliance';
-    documentName?: string;
   }): Promise<boolean> {
     const token = sessionToken();
     try {

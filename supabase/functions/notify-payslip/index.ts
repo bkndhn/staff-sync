@@ -15,6 +15,19 @@ const json = (body: unknown, status = 200) =>
   });
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+// Web addresses the app is served from. Extra addresses (for example a Vercel
+// domain) can be added with the APP_ORIGINS secret, comma separated.
+const DEFAULT_ORIGINS = [
+  "https://zenhrapp.lovable.app",
+  "https://staff-shine-sync.lovable.app",
+  "https://id-preview--9244e6fb-8168-4790-a4fe-a440a7ad817c.lovable.app",
+];
+function allowedOrigin(origin: string | null): string | null {
+  if (!origin) return null;
+  const extra = (Deno.env.get("APP_ORIGINS") || "").split(",").map((o) => o.trim().replace(/\/+$/, "")).filter(Boolean);
+  return [...DEFAULT_ORIGINS, ...extra].includes(origin) ? origin : null;
+}
+
 const esc = (s: string) => String(s).replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] as string));
 
 Deno.serve(async (req) => {
@@ -54,8 +67,8 @@ Deno.serve(async (req) => {
     const staffId = typeof body?.staffId === "string" ? body.staffId : "";
     const month = Number(body?.month);
     const year = Number(body?.year);
-    const url = typeof body?.url === "string" ? body.url : "";
-    const documentName = typeof body?.documentName === "string" ? body.documentName.slice(0, 120) : "";
+    const linkToken = typeof body?.linkToken === "string" && /^[A-Za-z0-9_-]{20,100}$/.test(body.linkToken)
+      ? body.linkToken : "";
 
     if (!staffId || !Number.isInteger(month) || month < 0 || month > 11 || !Number.isInteger(year)) {
       return json({ error: "staffId, month (0-11) and year are required" }, 400);
@@ -68,12 +81,30 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!recipient || recipient.tenant_id !== caller.tenant_id) return json({ error: "Recipient not found" }, 404);
 
+    // The email link is built here, never taken from the caller: it must be a
+    // live payslip link issued for this exact employee and period, served from
+    // one of the app's own web addresses.
+    let url = "";
+    if (kind === "payslip" && linkToken) {
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(linkToken));
+      const tokenHash = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+      const { data: link } = await admin.from("payslip_links")
+        .select("id, expires_at, revoked_at")
+        .eq("token_hash", tokenHash).eq("staff_id", recipient.id)
+        .eq("month", month).eq("year", year).eq("tenant_id", recipient.tenant_id)
+        .maybeSingle();
+      const origin = allowedOrigin(req.headers.get("origin"));
+      if (link && !link.revoked_at && new Date(link.expires_at).getTime() > Date.now() && origin) {
+        url = `${origin}/payslip/${linkToken}`;
+      }
+    }
+
     const period = `${MONTHS[month]} ${year}`;
     const title = kind === "compliance"
       ? `Compliance document ready — ${period}`
       : `Payslip available — ${period}`;
     const message = kind === "compliance"
-      ? `${documentName || "A statutory document"} for ${period} has been generated for you.`
+      ? `A statutory document for ${period} has been generated for you. Open your staff portal to view it.`
       : `Your payslip for ${period} is ready. Open the Payroll tab in your staff portal to download it.`;
 
     // --- in-app notification (best effort) ------------------------------------
@@ -85,7 +116,7 @@ Deno.serve(async (req) => {
         title,
         message,
         type: kind === "compliance" ? "compliance_ready" : "payslip_ready",
-        action_url: url || "payslips",
+        action_url: "payslips",
       });
       inApp = !error;
     } catch { /* table may not exist in every environment */ }
