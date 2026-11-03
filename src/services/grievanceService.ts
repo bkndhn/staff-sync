@@ -152,8 +152,8 @@ export const grievanceService = {
         await supabase.functions.invoke('send-notification', {
           body: {
             staffId: currentGrievance?.staffId,
-            title: `Issue ${nextStatus === 'resolved' ? 'Resolved' : 'Rejected'}`,
-            body: `Your issue regarding ${currentGrievance?.type} has been ${nextStatus}. ${resolutionNotes ? 'Note: ' + resolutionNotes : ''}`
+            template: 'grievance_update',
+            params: { status: nextStatus },
           }
         });
       } catch (e) {
