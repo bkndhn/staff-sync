@@ -34,11 +34,7 @@ Deno.serve(async (req) => {
   if (bearer) {
     const { data: { user } } = await admin.auth.getUser(bearer);
     if (user) {
-      let profile = await admin.from("app_users").select("id, role, tenant_id, is_active").eq("auth_id", user.id).maybeSingle();
-      if (!profile.data && user.email) {
-        profile = await admin.from("app_users").select("id, role, tenant_id, is_active").eq("email", user.email).maybeSingle();
-      }
-      caller = profile.data;
+      caller = await findAppUserForAuth(admin, user, "id, role, tenant_id, is_active");
     }
   } else if (legacyToken) {
     const { data: session } = await admin.from("app_sessions")

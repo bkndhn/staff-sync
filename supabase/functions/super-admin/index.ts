@@ -90,24 +90,7 @@ Deno.serve(async (req) => {
       }
 
       // Look up by auth_id first, then email fallback
-      let { data: uRow } = await admin
-        .from("app_users")
-        .select("id")
-        .eq("auth_id", authUser.id)
-        .maybeSingle();
-
-      if (!uRow && authUser.email) {
-        const { data: uByEmail } = await admin
-          .from("app_users")
-          .select("id")
-          .eq("email", authUser.email)
-          .maybeSingle();
-        uRow = uByEmail;
-        // Auto-patch auth_id for future lookups
-        if (uRow) {
-          await admin.from("app_users").update({ auth_id: authUser.id }).eq("id", uRow.id);
-        }
-      }
+      const uRow = await findAppUserForAuth(admin, authUser, "id");
 
       if (!uRow) {
         return json({ error: "User profile not found" }, 403);
