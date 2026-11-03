@@ -15,6 +15,62 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+// ── Fixed notification templates ─────────────────────────────────────────────
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MONTH_YEAR_RE = /^[A-Za-z]{3,9}[ -]?\d{4}$|^\d{4}-\d{2}$/;
+const ATTENDANCE_STATUSES = new Set(["Present", "Half Day", "Absent", "Pending Full Day", "Manual Override"]);
+const SHIFTS = new Set(["Morning", "Evening", "Both"]);
+const PAY_MODES = new Set(["cash", "bank", "upi", "cheque", "neft", "imps", "rtgs", "online"]);
+
+export function buildTemplate(template: unknown, params: any): { title: string; body: string; actionUrl: string } | null {
+  const p = params && typeof params === "object" ? params : {};
+  switch (template) {
+    case "salary_credited": {
+      const amount = Number(p.amount);
+      const monthYear = typeof p.monthYear === "string" && MONTH_YEAR_RE.test(p.monthYear) ? p.monthYear : null;
+      const mode = typeof p.paymentMode === "string" && PAY_MODES.has(p.paymentMode.toLowerCase()) ? p.paymentMode.toUpperCase() : null;
+      if (!Number.isFinite(amount) || amount <= 0 || amount > 10_000_000 || !monthYear) return null;
+      return {
+        title: "Payroll Credited",
+        body: `Your salary of Rs. ${Math.round(amount).toLocaleString("en-IN")} for ${monthYear} has been credited${mode ? ` via ${mode}` : ""}.`,
+        actionUrl: "/?tab=salary",
+      };
+    }
+    case "leave_decision": {
+      const status = p.status === "approved" || p.status === "rejected" ? p.status : null;
+      const date = typeof p.date === "string" && DATE_RE.test(p.date) ? p.date : null;
+      if (!status || !date) return null;
+      return {
+        title: `Leave ${status === "approved" ? "Approved" : "Rejected"}`,
+        body: `Your leave on ${date} has been ${status}. Open the app for details.`,
+        actionUrl: "/?tab=My%20Portal",
+      };
+    }
+    case "grievance_update": {
+      const status = p.status === "resolved" || p.status === "rejected" ? p.status : null;
+      if (!status) return null;
+      return {
+        title: `Issue ${status === "resolved" ? "Resolved" : "Rejected"}`,
+        body: `Your issue has been ${status}. Open the app for details.`,
+        actionUrl: "/?tab=My%20Portal",
+      };
+    }
+    case "attendance_updated": {
+      const date = typeof p.date === "string" && DATE_RE.test(p.date) ? p.date : null;
+      const status = typeof p.status === "string" && ATTENDANCE_STATUSES.has(p.status) ? p.status : null;
+      const shift = typeof p.shift === "string" && SHIFTS.has(p.shift) ? p.shift : null;
+      if (!date || !status) return null;
+      return {
+        title: "Attendance updated",
+        body: `${date}: ${status}${shift ? ` (${shift})` : ""}`,
+        actionUrl: "/?tab=My%20Portal",
+      };
+    }
+    default:
+      return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -53,13 +109,11 @@ Deno.serve(async (req) => {
 
     const raw = await req.json();
     const { staffId, userId } = raw ?? {};
-    const clean = (v: unknown, max: number) =>
-      typeof v === "string" ? v.replace(/[\u0000-\u001F\u007F<>]/g, " ").trim().slice(0, max) : "";
-    const title = clean(raw?.title, 80);
-    const body = clean(raw?.body, 300);
-    // Only same-app relative links; no external or protocol-relative URLs.
-    const actionUrl = typeof raw?.actionUrl === "string" && /^\/(?!\/)[A-Za-z0-9_\-/?=&.#%]*$/.test(raw.actionUrl) && raw.actionUrl.length <= 200
-      ? raw.actionUrl : "/";
+    // Message text is never taken from the caller: only fixed templates with
+    // strictly validated parameters can be sent.
+    const built = buildTemplate(raw?.template, raw?.params);
+    if (!built) return json({ error: "Unknown or invalid notification template" }, 400);
+    const { title, body, actionUrl } = built;
     const icon = "/image.png";
 
     if (!staffId && !userId) {
@@ -75,7 +129,7 @@ Deno.serve(async (req) => {
     }
 
     const fcmCount = await fcmSendTo(admin, caller.tenant_id, [{ staffId: staffId || null, appUserId: staffId ? null : userId }], {
-      title: title || "New Notification", body: body || "", actionUrl,
+      title, body, actionUrl,
     }).catch(() => 0);
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
       return json({ success: true, count: fcmCount, fcm: fcmCount });
@@ -101,10 +155,10 @@ Deno.serve(async (req) => {
     }
 
     const notificationPayload = JSON.stringify({
-      title: title || "New Notification",
-      body: body || "",
-      icon: icon || "/image.png",
-      actionUrl: actionUrl || "/"
+      title,
+      body,
+      icon,
+      actionUrl,
     });
 
     let successCount = 0;
