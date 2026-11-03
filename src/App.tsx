@@ -1762,6 +1762,26 @@ function App() {
     );
   }
 
+  // Dedicated full-screen fingerprint In/Out page for the shared master phone.
+  if (window.location.pathname === '/fingerprint' && ['admin', 'manager', 'supervisor', 'floor_supervisor'].includes(user.role)) {
+    return (
+      <>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+          <FingerprintStation
+            page
+            staff={filteredStaff}
+            attendance={filteredAttendance}
+            userLocation={user.role === 'admin' ? undefined : user.location}
+            onAttendanceUpdated={() => cacheService.invalidate(CACHE_KEYS.ATTENDANCE)}
+            onExit={() => { window.location.href = '/'; }}
+          />
+        </Suspense>
+        <CustomDialogProvider />
+      </>
+    );
+  }
+
+
 
 
 
