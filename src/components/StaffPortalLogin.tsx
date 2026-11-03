@@ -23,7 +23,9 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
   const [loading, setLoading] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [doj, setDoj] = useState('');
-  const [managerPin, setManagerPin] = useState('');
+  // Verified reset: secret token stays only in this phone's memory; the short
+  // code is shown to the manager, who approves in person.
+  const [resetRequest, setResetRequest] = useState<null | { token: string; code: string }>(null);
 
   // First-login / forced password change flow
   const [mustSetPassword, setMustSetPassword] = useState<null | {
@@ -238,23 +240,55 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
     setLoading(false);
   };
 
+  const callReset = async (payload: Record<string, unknown>) => {
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://nsmppwnpdxomjmgrtqka.supabase.co";
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/staff-password-reset`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+      },
+      body: JSON.stringify(payload),
+    });
+    const body = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, body };
+  };
+
+  const resetForgotState = () => {
+    setIsForgotPassword(false);
+    setResetRequest(null);
+    setDoj('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setError('');
+  };
+
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    const trimmedMobile = mobileNumber.replace(/[^0-9]/g, '').slice(0, 10);
-    if (trimmedMobile.length !== 10) {
-      setError('Please enter a valid 10-digit mobile number');
-      return;
-    }
-
-    if (!doj) {
-      setError('Please enter your date of joining');
-      return;
-    }
-
-    if (!managerPin || managerPin.length !== 6) {
-      setError('Please enter the 6-digit Manager Reset PIN');
+    if (!resetRequest) {
+      const trimmedMobile = mobileNumber.replace(/[^0-9]/g, '').slice(0, 10);
+      if (trimmedMobile.length !== 10) {
+        setError('Please enter a valid 10-digit mobile number');
+        return;
+      }
+      if (!doj || doj.length !== 8) {
+        setError('Please enter your date of joining (DDMMYYYY)');
+        return;
+      }
+      setLoading(true);
+      try {
+        const { ok, body } = await callReset({ action: 'request', contactNumber: trimmedMobile, doj, tenantSlug: slug });
+        if (!ok || !body?.requestToken) {
+          setError(body?.error || 'Could not start the reset. Please check your details.');
+        } else {
+          setResetRequest({ token: body.requestToken, code: body.code });
+        }
+      } catch {
+        setError('Unable to reach server. Please try again.');
+      }
+      setLoading(false);
       return;
     }
 
@@ -262,51 +296,24 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
       setError('New password must be at least 8 characters');
       return;
     }
-
     if (newPassword !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-
     setLoading(true);
     try {
-      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://nsmppwnpdxomjmgrtqka.supabase.co";
-      const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/staff-password-reset`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-          },
-          body: JSON.stringify({
-            contactNumber: trimmedMobile,
-            doj,
-            managerPin,
-            newPassword,
-            tenantSlug: slug
-          }),
-        },
-      );
-      const payload = await res.json();
-      if (!res.ok) {
-        setError(payload?.message || payload?.error || 'Could not reset password. Please check your details.');
-        setLoading(false);
-        return;
+      const { ok, status, body } = await callReset({ action: 'complete', requestToken: resetRequest.token, newPassword });
+      if (ok) {
+        resetForgotState();
+        setStaffPassword('');
+        alert('Password reset successful. Please sign in with your new password.');
+      } else if (status === 409 && body?.pending) {
+        setError('Your manager has not approved yet. Show them the code above, then tap again.');
+      } else {
+        if (status === 410) setResetRequest(null);
+        setError(body?.error || 'Could not reset password. Please start again.');
       }
-      
-      // Success
-      setIsForgotPassword(false);
-      setDoj('');
-      setManagerPin('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setStaffPassword('');
-      setError('');
-      alert('Password reset successful. Please sign in with your new password.');
-      
-    } catch (err) {
-      console.error('Forgot password error:', err);
+    } catch {
       setError('Unable to reach server. Please try again.');
     }
     setLoading(false);
@@ -421,67 +428,71 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
             </div>
           ) : isForgotPassword ? (
             <form onSubmit={handleForgotPassword} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Mobile Number</label>
-                <input
-                  type="tel"
-                  value={mobileNumber}
-                  onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  className="input-premium"
-                  placeholder="Enter your registered mobile number"
-                  maxLength={10}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Date of Joining (DDMMYYYY)</label>
-                <input
-                  type="text"
-                  value={doj}
-                  onChange={(e) => setDoj(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                  className="input-premium"
-                  placeholder="DDMMYYYY"
-                  maxLength={8}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Manager Reset PIN</label>
-                <input
-                  type="text"
-                  value={managerPin}
-                  onChange={(e) => setManagerPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="input-premium font-mono tracking-widest"
-                  placeholder="6-digit PIN from your manager"
-                  maxLength={6}
-                  inputMode="numeric"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">New Password</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="input-premium"
-                  placeholder="Enter new password"
-                  minLength={8}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Confirm Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="input-premium"
-                  placeholder="Confirm new password"
-                  minLength={8}
-                  required
-                />
-              </div>
+              {!resetRequest ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Mobile Number</label>
+                    <input
+                      type="tel"
+                      value={mobileNumber}
+                      onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      className="input-premium"
+                      placeholder="Enter your registered mobile number"
+                      maxLength={10}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Date of Joining (DDMMYYYY)</label>
+                    <input
+                      type="text"
+                      value={doj}
+                      onChange={(e) => setDoj(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                      className="input-premium"
+                      placeholder="DDMMYYYY"
+                      maxLength={8}
+                      required
+                    />
+                  </div>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    You will get a code on this phone. Show it to your manager in person so they can approve the reset.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 text-center">
+                    <p className="text-sm text-[var(--text-secondary)]">Show this code to your manager</p>
+                    <p className="text-3xl font-mono font-bold tracking-[0.3em] text-[var(--text-primary)] my-2">{resetRequest.code}</p>
+                    <p className="text-xs text-[var(--text-muted)]">Valid for 15 minutes. Keep this screen open until they approve.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">New Password</label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value.slice(0, 128))}
+                      className="input-premium"
+                      placeholder="Enter new password"
+                      minLength={8}
+                      maxLength={128}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Confirm Password</label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value.slice(0, 128))}
+                      className="input-premium"
+                      placeholder="Confirm new password"
+                      minLength={8}
+                      maxLength={128}
+                      required
+                    />
+                  </div>
+                </>
+              )}
               {error && (
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
                   <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
@@ -489,11 +500,11 @@ const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ slug, onLogin }) =>
                 </div>
               )}
               <button type="submit" disabled={loading} className="w-full py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg">
-                {loading ? 'Resetting...' : 'Reset Password'}
+                {loading ? 'Please wait...' : resetRequest ? 'Set New Password' : 'Get Reset Code'}
               </button>
               <button
                 type="button"
-                onClick={() => { setIsForgotPassword(false); setError(''); }}
+                onClick={resetForgotState}
                 className="w-full py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]"
               >
                 Back to Login
