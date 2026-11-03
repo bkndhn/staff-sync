@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { findAppUserForAuth } from "../_shared/caller.ts";
 import webPush from "npm:web-push@3.6.7";
 import { fcmSendTo, fcmConfigured, type MuteKind } from "../_shared/fcm.ts";
 import { runAlertSchedules } from "./scheduled.ts";
@@ -126,11 +127,8 @@ async function getCaller(req: Request) {
   if (bearer && bearer.startsWith("eyJ")) {
     const { data: { user } } = await admin.auth.getUser(bearer);
     if (user) {
-      let profile = await admin.from("app_users").select("id, role, tenant_id, is_active").eq("auth_id", user.id).maybeSingle();
-      if (!profile.data && user.email) {
-        profile = await admin.from("app_users").select("id, role, tenant_id, is_active").eq("email", user.email).maybeSingle();
-      }
-      if (profile.data) return profile.data;
+      const profile = await findAppUserForAuth(admin, user, "id, role, tenant_id, is_active");
+      if (profile) return profile;
     }
   }
   if (legacyToken) {

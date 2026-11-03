@@ -69,8 +69,8 @@ export const salaryDisbursementService = {
       await supabase.functions.invoke('send-notification', {
         body: {
           staffId,
-          title: 'Payroll Credited! 💸',
-          body: `Your salary of ₹${amount} for ${monthYear} has been credited via ${paymentMode.toUpperCase()}.`
+          template: 'salary_credited',
+          params: { amount, monthYear, paymentMode },
         }
       });
     } catch (err) {

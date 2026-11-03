@@ -20,6 +20,27 @@ export interface CallerResult {
 
 const USER_COLS = "id, role, is_active, tenant_id, auth_id, email";
 
+/**
+ * Find the app_users profile for a validated Supabase Auth user.
+ * Primary match is auth_id. The email fallback only applies when the sign-in
+ * email is confirmed AND the profile has never been linked, and it links the
+ * profile atomically so a second account can never inherit it.
+ */
+export async function findAppUserForAuth(admin: any, authUser: any, cols: string): Promise<any | null> {
+  if (!authUser?.id) return null;
+  const selectCols = cols.includes("auth_id") ? cols : `${cols}, auth_id`;
+  const { data: byAuthId } = await admin
+    .from("app_users").select(selectCols).eq("auth_id", authUser.id).maybeSingle();
+  if (byAuthId) return byAuthId;
+  if (!authUser.email || !authUser.email_confirmed_at) return null;
+  const { data: byEmail } = await admin
+    .from("app_users").select(selectCols).eq("email", authUser.email).is("auth_id", null).maybeSingle();
+  if (!byEmail) return null;
+  const { data: linked } = await admin.from("app_users").update({ auth_id: authUser.id })
+    .eq("id", byEmail.id).is("auth_id", null).select("id").maybeSingle();
+  return linked ? { ...byEmail, auth_id: authUser.id } : null;
+}
+
 export async function resolveCaller(admin: any, req: Request): Promise<CallerResult> {
   const authHeader = req.headers.get("authorization") ?? "";
   const bearer = authHeader.toLowerCase().startsWith("bearer ")
@@ -40,18 +61,7 @@ export async function resolveCaller(admin: any, req: Request): Promise<CallerRes
       return { ok: false, status: 401, error: "Invalid or expired authorization token" };
     }
 
-    const { data: byAuthId } = await admin
-      .from("app_users").select(USER_COLS).eq("auth_id", authUser.id).maybeSingle();
-    user = byAuthId;
-
-    if (!user && authUser.email) {
-      const { data: byEmail } = await admin
-        .from("app_users").select(USER_COLS).eq("email", authUser.email).maybeSingle();
-      user = byEmail;
-      if (user && !user.auth_id) {
-        await admin.from("app_users").update({ auth_id: authUser.id }).eq("id", user.id);
-      }
-    }
+    user = await findAppUserForAuth(admin, authUser, USER_COLS);
   } else if (legacyToken) {
     const { data: session } = await admin
       .from("app_sessions")

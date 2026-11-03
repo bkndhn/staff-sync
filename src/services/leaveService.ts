@@ -169,9 +169,8 @@ export const leaveService = {
       try {
         if (currentRequest?.staffId) await notificationService.sendToStaff({
           staffId: currentRequest.staffId,
-          title: `Leave ${nextStatus === 'approved' ? 'Approved' : 'Rejected'}`,
-          body: `Your leave on ${currentRequest.leaveDate} has been ${nextStatus}. ${comment ? 'Comment: ' + comment : ''}`,
-          actionUrl: '/?tab=My%20Portal',
+          template: 'leave_decision',
+          params: { status: nextStatus, date: currentRequest.leaveDate },
         });
       } catch (e) {
         console.error('Failed to send push notification', e);

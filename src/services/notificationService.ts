@@ -11,7 +11,12 @@ const getSessionToken = (): string | null => {
 };
 
 export const notificationService = {
-  async sendToStaff(input: { staffId: string; title: string; body: string; actionUrl?: string }): Promise<boolean> {
+  /** Send a fixed-template alert; the server builds the wording. */
+  async sendToStaff(input: {
+    staffId: string;
+    template: 'salary_credited' | 'leave_decision' | 'grievance_update' | 'attendance_updated';
+    params: Record<string, string | number | undefined | null>;
+  }): Promise<boolean> {
     const token = getSessionToken();
     if (!token) return false;
     try {

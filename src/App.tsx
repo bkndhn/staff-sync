@@ -847,9 +847,8 @@ function App() {
         import('./services/notificationService').then(({ notificationService }) =>
           notificationService.sendToStaff({
             staffId,
-            title: 'Attendance updated',
-            body: `${date}: ${status}${shift ? ` (${shift})` : ''}`,
-            actionUrl: '/?tab=My%20Portal',
+            template: 'attendance_updated',
+            params: { date, status, shift },
           })
         ).catch(() => {});
       }
