@@ -90,7 +90,7 @@ async function requestPerm(key: PermKey): Promise<PermStatus> {
       return await new Promise<PermStatus>((resolve) => {
         navigator.geolocation.getCurrentPosition(
           () => resolve('granted'),
-          (err) => resolve(err.code === err.PERMISSION_DENIED ? 'denied' : 'granted'),
+          (err) => { if (err.code === err.PERMISSION_DENIED) resolve('denied'); else queryPerm('location').then(resolve); },
           { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
         );
       });
