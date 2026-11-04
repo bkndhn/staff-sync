@@ -29,3 +29,6 @@
 - [ ] Real phone delivery test (needs a phone to tap "Turn on" alerts in the published app)
 - [ ] Employee tax declaration portal (Form 16 / 80C / 80D)
 - [ ] Direct bank salary payouts
+- [x] Install-app sheet (repeats with back-off) + permissions sheet (location, notifications, camera)
+- [x] Full-screen /fingerprint page, fingerprints saved to cloud, staff onboarding with double-touch check
+- [ ] Fingerprint page on a real phone (needs device)

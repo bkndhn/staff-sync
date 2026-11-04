@@ -1,6 +1,7 @@
 import { StrictMode, Component, ErrorInfo, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import InstallAndPermissions from './components/InstallAndPermissions';
 import './index.css';
 
 // Capgo live updates (Android app only): confirm this bundle booted fine so it isn't rolled back.
@@ -82,6 +83,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <App />
+      <InstallAndPermissions />
     </ErrorBoundary>
   </StrictMode>
 );
