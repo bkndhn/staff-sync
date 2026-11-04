@@ -6,3 +6,5 @@
 - Edge functions map a Supabase Auth user to app_users only via findAppUserForAuth in _shared/caller.ts (auth_id first; email fallback only for confirmed emails on unlinked profiles) so nobody inherits another account by email.
 - send-notification accepts only fixed templates with validated params (no caller-written title/body), and notify-payslip builds the email link itself from a verified payslip_links token and an allowed app origin (APP_ORIGINS secret adds more), to stop managers sending arbitrary text or links.
 - Staff password recovery is request → in-person manager approval with a 6-digit code → completion from the same phone holding a secret request token (staff-password-reset); manager-issued PINs are no longer accepted.
+- Install and permission prompts live only in src/components/InstallAndPermissions.tsx (mounted once in main.tsx); timing rules are pure in src/utils/installPromptTiming.ts so back-off stays unit-tested.
+- Fingerprint (WebAuthn passkey) credential IDs are stored per staff in server-only staff_fingerprints via data-api, so any manager phone can match them; localStorage is only a cache.
