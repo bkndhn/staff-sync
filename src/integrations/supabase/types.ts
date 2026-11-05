@@ -1331,6 +1331,39 @@ export type Database = {
         }
         Relationships: []
       }
+      fingerprint_challenges: {
+        Row: {
+          challenge: string
+          created_at: string
+          expires_at: string
+          id: string
+          purpose: string
+          staff_id: string
+          tenant_id: string
+          used_at: string | null
+        }
+        Insert: {
+          challenge: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          purpose: string
+          staff_id: string
+          tenant_id: string
+          used_at?: string | null
+        }
+        Update: {
+          challenge?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          purpose?: string
+          staff_id?: string
+          tenant_id?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       floors: {
         Row: {
           created_at: string | null
@@ -3178,10 +3211,14 @@ export type Database = {
           enrolled_by: string | null
           id: string
           last_used_at: string | null
+          public_key: string | null
+          sign_count: number
           staff_id: string
           staff_name: string | null
           tenant_id: string
+          transports: string[] | null
           updated_at: string
+          verified_at: string | null
         }
         Insert: {
           created_at?: string
@@ -3191,10 +3228,14 @@ export type Database = {
           enrolled_by?: string | null
           id?: string
           last_used_at?: string | null
+          public_key?: string | null
+          sign_count?: number
           staff_id: string
           staff_name?: string | null
           tenant_id?: string
+          transports?: string[] | null
           updated_at?: string
+          verified_at?: string | null
         }
         Update: {
           created_at?: string
@@ -3204,10 +3245,14 @@ export type Database = {
           enrolled_by?: string | null
           id?: string
           last_used_at?: string | null
+          public_key?: string | null
+          sign_count?: number
           staff_id?: string
           staff_name?: string | null
           tenant_id?: string
+          transports?: string[] | null
           updated_at?: string
+          verified_at?: string | null
         }
         Relationships: [
           {
