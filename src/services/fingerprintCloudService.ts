@@ -1,10 +1,20 @@
-import { dataApi } from '../lib/dataApi';
+import { dataApi, FUNCTIONS_BASE, functionAuthHeaders } from '../lib/dataApi';
+import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
+
+const call = async (body: unknown): Promise<any> => {
+  const headers = await functionAuthHeaders();
+  if (!headers) throw new Error('Please sign in again.');
+  const res = await fetch(`${FUNCTIONS_BASE}/fingerprint-auth`, { method: 'POST', headers, body: JSON.stringify(body) });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j?.error || 'Fingerprint server error');
+  return j;
+};
 
 /**
- * Cloud list of fingerprint passkeys per staff member.
- * Phones never expose fingerprint images; we store only the passkey ID so any
- * master phone signed into the same Google/Apple account (where passkeys sync)
- * can recognise staff without re-enrolling them.
+ * Server-verified fingerprint keys per staff member.
+ * The fingerprint itself never leaves the reader/security key; the server stores
+ * only the key's public key and checks every touch's signature. Shared stations
+ * accept only external fingerprint readers/security keys, never the phone's own lock.
  */
 export interface CloudFingerprint {
   id: string;
@@ -14,6 +24,8 @@ export interface CloudFingerprint {
   deviceLabel?: string;
   enrolledAt: string;
   lastUsedAt?: string;
+  /** Enrolled through the server check with a reader. Older phone-only entries are false and cannot punch. */
+  verified: boolean;
 }
 
 const CACHE_KEY = 'fp:cloud:v1';
@@ -22,6 +34,7 @@ const fromDb = (d: any): CloudFingerprint => ({
   id: d.id, staffId: d.staff_id, staffName: d.staff_name ?? undefined,
   credentialId: d.credential_id, deviceLabel: d.device_label ?? undefined,
   enrolledAt: d.enrolled_at, lastUsedAt: d.last_used_at ?? undefined,
+  verified: !!d.verified_at,
 });
 
 export const deviceLabel = () => {
@@ -48,24 +61,24 @@ export const fingerprintCloudService = {
     }
   },
 
-  async save(input: { staffId: string; staffName: string; credentialId: string; enrolledBy?: string }) {
-    // One active fingerprint per staff on each phone model; replace older ones from this phone.
-    const label = deviceLabel();
-    const { error } = await dataApi.from('staff_fingerprints').insert([{
-      staff_id: input.staffId, staff_name: input.staffName, credential_id: input.credentialId,
-      device_label: label, enrolled_by: input.enrolledBy,
-    }]);
-    if (error) throw error;
+  /** Enrol a staff member's finger on a fingerprint reader / security key (server verifies it). */
+  async enrol(staffId: string) {
+    const { options, challengeId } = await call({ action: 'register_options', staffId });
+    const response = await startRegistration({ optionsJSON: options });
+    await call({ action: 'register_verify', challengeId, response, deviceLabel: 'Fingerprint key' });
     return this.list();
+  },
+
+  /** One touch on the reader; the server checks the signature and says which staff it is. */
+  async identify(): Promise<{ staffId: string; staffName?: string; fingerprintId: string }> {
+    const { options, challengeId } = await call({ action: 'auth_options' });
+    const response = await startAuthentication({ optionsJSON: options });
+    return call({ action: 'auth_verify', challengeId, response });
   },
 
   async remove(id: string) {
     const { error } = await dataApi.from('staff_fingerprints').delete().eq('id', id);
     if (error) throw error;
     return this.list();
-  },
-
-  async touch(id: string) {
-    try { await dataApi.from('staff_fingerprints').update({ last_used_at: new Date().toISOString() }).eq('id', id); } catch { /* offline */ }
   },
 };
