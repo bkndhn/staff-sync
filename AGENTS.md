@@ -7,4 +7,5 @@
 - send-notification accepts only fixed templates with validated params (no caller-written title/body), and notify-payslip builds the email link itself from a verified payslip_links token and an allowed app origin (APP_ORIGINS secret adds more), to stop managers sending arbitrary text or links.
 - Staff password recovery is request → in-person manager approval with a 6-digit code → completion from the same phone holding a secret request token (staff-password-reset); manager-issued PINs are no longer accepted.
 - Install and permission prompts live only in src/components/InstallAndPermissions.tsx (mounted once in main.tsx); timing rules are pure in src/utils/installPromptTiming.ts so back-off stays unit-tested.
-- Fingerprint (WebAuthn passkey) credential IDs are stored per staff in server-only staff_fingerprints via data-api, so any manager phone can match them; localStorage is only a cache.
+
+- Shared fingerprint attendance accepts only external FIDO2 reader/security-key credentials, enrolled and verified (signature + counter) by the fingerprint-auth function, because a phone's own unlock cannot tell staff apart; data-api cannot create fingerprint rows.

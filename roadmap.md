@@ -31,4 +31,5 @@
 - [ ] Direct bank salary payouts
 - [x] Install-app sheet (repeats with back-off) + permissions sheet (location, notifications, camera)
 - [x] Full-screen /fingerprint page, fingerprints saved to cloud, staff onboarding with double-touch check
-- [ ] Fingerprint page on a real phone (needs device)
+- [x] Fingerprint: server-verified touches, external reader required (no phone-lock passkeys)
+- [ ] Fingerprint page with a real FIDO2 fingerprint key (needs device)
