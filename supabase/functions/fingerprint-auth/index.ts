@@ -1,0 +1,160 @@
+// Server-verified fingerprint attendance (WebAuthn).
+// Shared-station rule: only an external biometric security key/reader (cross-platform
+// authenticator with user verification) may be enrolled per staff member. A phone's own
+// screen-unlock passkey proves only "someone who can unlock this phone" — never which staff.
+// deno-lint-ignore-file no-explicit-any
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  generateAuthenticationOptions, generateRegistrationOptions,
+  verifyAuthenticationResponse, verifyRegistrationResponse,
+} from "npm:@simplewebauthn/server@13";
+import { resolveCaller } from "../_shared/caller.ts";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-session-token",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
+const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+const ENROLLERS = ["admin", "manager", "super_admin"];
+const STATIONS = ["admin", "manager", "supervisor", "floor_supervisor", "super_admin"];
+const UUID = /^[0-9a-f-]{36}$/i;
+const CHALLENGE_MS = 2 * 60 * 1000;
+const DEFAULT_ORIGINS = [
+  "https://zenhrapp.lovable.app",
+  "https://staff-shine-sync.lovable.app",
+  "https://id-preview--9244e6fb-8168-4790-a4fe-a440a7ad817c.lovable.app",
+  "http://localhost:8080",
+];
+function originOf(req: Request): string | null {
+  const o = (req.headers.get("origin") || "").replace(/\/+$/, "");
+  const extra = (Deno.env.get("APP_ORIGINS") || "").split(",").map((x) => x.trim().replace(/\/+$/, "")).filter(Boolean);
+  return [...DEFAULT_ORIGINS, ...extra].includes(o) ? o : null;
+}
+const b64u = (u: Uint8Array) => btoa(String.fromCharCode(...u)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const fromB64u = (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
+
+async function saveChallenge(tenant: string, staffId: string, purpose: string, challenge: string) {
+  await admin.from("fingerprint_challenges").delete().lt("expires_at", new Date(Date.now() - 3600_000).toISOString());
+  const { data } = await admin.from("fingerprint_challenges").insert({
+    tenant_id: tenant, staff_id: staffId, purpose, challenge, expires_at: new Date(Date.now() + CHALLENGE_MS).toISOString(),
+  }).select("id").single();
+  return data?.id as string;
+}
+/** Single-use: marks the challenge used atomically; returns it only if still valid. */
+async function takeChallenge(id: string, tenant: string, purpose: string) {
+  if (!UUID.test(id || "")) return null;
+  const { data } = await admin.from("fingerprint_challenges").update({ used_at: new Date().toISOString() })
+    .eq("id", id).eq("tenant_id", tenant).eq("purpose", purpose).is("used_at", null)
+    .gt("expires_at", new Date().toISOString()).select("staff_id, challenge").maybeSingle();
+  return data;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  let body: any;
+  try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+
+  const r = await resolveCaller(admin, req);
+  if (!r.ok || !r.caller) return json({ error: r.error }, r.status || 401);
+  const caller = r.caller;
+  const tenant = caller.tenant_id;
+  if (!tenant) return json({ error: "No company on this account" }, 403);
+  const origin = originOf(req);
+  if (!origin) return json({ error: "This web address is not allowed for fingerprints" }, 403);
+  const rpID = new URL(origin).hostname;
+
+  try {
+    switch (body?.action) {
+      case "register_options": {
+        if (!ENROLLERS.includes(caller.role)) return json({ error: "Only admins/managers can enrol" }, 403);
+        const staffId = String(body.staffId || "");
+        if (!UUID.test(staffId)) return json({ error: "Invalid staff" }, 400);
+        const { data: s } = await admin.from("staff").select("id, name, employee_code, is_active").eq("id", staffId).eq("tenant_id", tenant).maybeSingle();
+        if (!s || s.is_active === false) return json({ error: "Staff not found or inactive" }, 404);
+        const { data: existing } = await admin.from("staff_fingerprints").select("credential_id, transports").eq("tenant_id", tenant).eq("staff_id", staffId);
+        const options = await generateRegistrationOptions({
+          rpName: "ZenHR Attendance", rpID,
+          userName: `${s.employee_code || s.name} · ZenHR`, userDisplayName: s.name,
+          userID: new TextEncoder().encode(staffId),
+          attestationType: "none",
+          authenticatorSelection: { authenticatorAttachment: "cross-platform", userVerification: "required", residentKey: "preferred" },
+          excludeCredentials: (existing || []).map((e: any) => ({ id: e.credential_id, transports: e.transports || undefined })),
+          timeout: 60000,
+        });
+        const challengeId = await saveChallenge(tenant, staffId, "register", options.challenge);
+        return json({ options, challengeId });
+      }
+
+      case "register_verify": {
+        if (!ENROLLERS.includes(caller.role)) return json({ error: "Only admins/managers can enrol" }, 403);
+        const ch = await takeChallenge(body.challengeId, tenant, "register");
+        if (!ch) return json({ error: "Enrolment timed out. Try again." }, 400);
+        const resp = body.response;
+        // Shared stations must not accept the phone's own screen lock.
+        if (resp?.authenticatorAttachment === "platform") {
+          return json({ error: "This is the phone's own screen lock. Use a fingerprint security key / reader for shared attendance." }, 422);
+        }
+        const v = await verifyRegistrationResponse({
+          response: resp, expectedChallenge: ch.challenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: true,
+        });
+        if (!v.verified || !v.registrationInfo) return json({ error: "Fingerprint could not be verified" }, 400);
+        const transports: string[] = resp?.response?.transports || [];
+        if (transports.length && transports.every((t) => t === "internal" || t === "hybrid")) {
+          return json({ error: "Only a phone passkey was offered. Plug in / tap a fingerprint security key or reader." }, 422);
+        }
+        const cred = v.registrationInfo.credential;
+        const { data: s } = await admin.from("staff").select("name").eq("id", ch.staff_id).eq("tenant_id", tenant).maybeSingle();
+        const { error } = await admin.from("staff_fingerprints").insert({
+          tenant_id: tenant, staff_id: ch.staff_id, staff_name: s?.name ?? null,
+          credential_id: cred.id, public_key: b64u(cred.publicKey), sign_count: cred.counter,
+          transports, device_label: String(body.deviceLabel || "Security key").slice(0, 60),
+          enrolled_by: caller.id, verified_at: new Date().toISOString(),
+        });
+        if (error) return json({ error: error.code === "23505" ? "Already enrolled" : "Could not save" }, 400);
+        return json({ ok: true, staffId: ch.staff_id });
+      }
+
+      case "auth_options": {
+        if (!STATIONS.includes(caller.role)) return json({ error: "Not allowed" }, 403);
+        const { data: creds } = await admin.from("staff_fingerprints").select("credential_id, transports")
+          .eq("tenant_id", tenant).not("public_key", "is", null).limit(500);
+        if (!creds?.length) return json({ error: "No verified fingerprints enrolled yet" }, 404);
+        const options = await generateAuthenticationOptions({
+          rpID, userVerification: "required", timeout: 30000,
+          allowCredentials: creds.map((c: any) => ({ id: c.credential_id, transports: c.transports || undefined })),
+        });
+        const challengeId = await saveChallenge(tenant, caller.id, "auth", options.challenge);
+        return json({ options, challengeId });
+      }
+
+      case "auth_verify": {
+        if (!STATIONS.includes(caller.role)) return json({ error: "Not allowed" }, 403);
+        const ch = await takeChallenge(body.challengeId, tenant, "auth");
+        if (!ch) return json({ error: "Touch timed out. Try again." }, 400);
+        const resp = body.response;
+        const { data: fp } = await admin.from("staff_fingerprints").select("id, staff_id, staff_name, credential_id, public_key, sign_count, transports")
+          .eq("tenant_id", tenant).eq("credential_id", String(resp?.id || "")).not("public_key", "is", null).maybeSingle();
+        if (!fp) return json({ error: "Fingerprint not registered for any staff" }, 404);
+        const v = await verifyAuthenticationResponse({
+          response: resp, expectedChallenge: ch.challenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: true,
+          credential: { id: fp.credential_id, publicKey: fromB64u(fp.public_key), counter: Number(fp.sign_count || 0), transports: fp.transports || undefined },
+        });
+        if (!v.verified) return json({ error: "Fingerprint not recognised" }, 401);
+        const newCount = v.authenticationInfo.newCounter;
+        if (fp.sign_count > 0 && newCount <= fp.sign_count) return json({ error: "Possible cloned key — blocked. Ask a manager." }, 409);
+        const { data: s } = await admin.from("staff").select("id, is_active").eq("id", fp.staff_id).eq("tenant_id", tenant).maybeSingle();
+        if (!s || s.is_active === false) return json({ error: "Not an active staff member" }, 403);
+        await admin.from("staff_fingerprints").update({ sign_count: newCount, last_used_at: new Date().toISOString() }).eq("id", fp.id);
+        return json({ ok: true, staffId: fp.staff_id, staffName: fp.staff_name, fingerprintId: fp.id });
+      }
+      default:
+        return json({ error: "Unknown action" }, 400);
+    }
+  } catch (e: any) {
+    return json({ error: e?.message || "Fingerprint check failed" }, 400);
+  }
+});

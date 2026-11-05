@@ -12,23 +12,15 @@ import {
 } from '../utils/fingerprintPunch';
 
 /**
- * Fingerprint station (shared master phone).
- * Fingerprints are phone passkeys: the finger image never leaves the sensor. The
- * passkey ID ↔ staff link is saved in the cloud, so a replacement phone signed in
- * to the same Google / Apple account (passkeys sync there) recognises everyone
- * without re-enrolling. Anti-abuse: GPS + mock-location check, lockout after wrong
- * touches, kiosk PIN for enrolment, server time only, cooldown between punches.
+ * Fingerprint station (shared master phone + external fingerprint reader / security key).
+ * A phone's own fingerprint unlock only proves "someone enrolled on this phone", so it is
+ * never accepted for shared attendance. Each staff member gets a FIDO2 fingerprint key/reader
+ * credential; the server stores its public key and verifies every touch's signature and
+ * identifies the staff member itself. Works on any station phone (keys live on the reader).
  */
-const LEGACY_KEY = 'fp:enrolled:v1';
 const LAST_KEY = 'fp:lastPunch:v1';
 const FAIL_KEY = 'fp:fails:v1';
 
-const b64u = (buf: ArrayBuffer) =>
-  btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const fromB64u = (s: string) => {
-  const b = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
-  return Uint8Array.from(b, c => c.charCodeAt(0));
-};
 const load = <T,>(k: string, d: T): T => { try { return (JSON.parse(localStorage.getItem(k) || 'null') as T) ?? d; } catch { return d; } };
 const hashPin = async (pin: string) => {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`kiosk:${pin}`));
@@ -92,33 +84,15 @@ const FingerprintStation: React.FC<Props> = ({ staff, attendance, userLocation, 
     return rows;
   }, []);
 
-  // Load from cloud; move any fingerprints saved only on this phone (older version) up to the cloud.
-  useEffect(() => {
-    if (!open) return;
-    (async () => {
-      const rows = await refresh();
-      const legacy = load<Record<string, { staffId: string; name: string }>>(LEGACY_KEY, {});
-      const have = new Set(rows.map(r => r.credentialId));
-      const missing = Object.entries(legacy).filter(([id]) => !have.has(id));
-      if (!missing.length || !navigator.onLine) return;
-      try {
-        for (const [credentialId, v] of missing) {
-          await fingerprintCloudService.save({ staffId: v.staffId, staffName: v.name, credentialId, enrolledBy: 'moved from phone' });
-        }
-        localStorage.removeItem(LEGACY_KEY);
-        await refresh();
-      } catch { /* keep legacy copy for next try */ }
-    })();
-  }, [open, refresh]);
+  useEffect(() => { if (open) void refresh(); }, [open, refresh]);
 
   const activeStaff = useMemo(
     () => staff.filter(s => s.isActive && (!userLocation || s.location === userLocation)).sort((a, b) => a.name.localeCompare(b.name)),
     [staff, userLocation],
   );
-  const byCred = useMemo(() => new Map(prints.map(p => [p.credentialId, p])), [prints]);
-  const byStaff = useMemo(() => {
+    const byStaff = useMemo(() => {
     const m = new Map<string, CloudFingerprint[]>();
-    for (const p of prints) { if (!m.has(p.staffId)) m.set(p.staffId, []); m.get(p.staffId)!.push(p); }
+    for (const p of prints.filter(x => x.verified)) { if (!m.has(p.staffId)) m.set(p.staffId, []); m.get(p.staffId)!.push(p); }
     return m;
   }, [prints]);
   const enrolledCount = activeStaff.filter(s => byStaff.has(s.id)).length;
@@ -143,50 +117,20 @@ const FingerprintStation: React.FC<Props> = ({ staff, attendance, userLocation, 
     setPin('');
   };
 
-  /** Ask for the finger once; returns the passkey ID that matched. */
-  const verifyTouch = async (ids?: string[]) => {
-    const a = (await navigator.credentials.get({
-      publicKey: {
-        challenge: crypto.getRandomValues(new Uint8Array(32)),
-        allowCredentials: ids?.map(id => ({ type: 'public-key' as const, id: fromB64u(id) })) ?? [],
-        userVerification: 'required',
-        timeout: 30000,
-      },
-    })) as PublicKeyCredential | null;
-    if (!a) throw Object.assign(new Error('Cancelled'), { name: 'NotAllowedError' });
-    const flags = new Uint8Array((a.response as AuthenticatorAssertionResponse).authenticatorData)[32];
-    if (!(flags & 0x04)) throw new Error('Fingerprint check was skipped.');
-    return b64u(a.rawId);
-  };
+  const errText = (e: any, fallback: string) =>
+    e?.name === 'NotAllowedError' ? 'Cancelled or fingerprint not recognised.' : e?.name === 'InvalidStateError' ? 'This key is already enrolled.' : e?.message || fallback;
 
   const enrol = async (s: Staff) => {
-    if (!navigator.onLine) { setMsg({ ok: false, text: 'Connect to the internet to save fingerprints to the cloud.' }); return; }
-    if (byStaff.has(s.id) && !window.confirm(`${s.name} already has a fingerprint. Add another finger / phone for them?`)) return;
-    setBusy(s.id); setMsg(null);
+    if (!navigator.onLine) { setMsg({ ok: false, text: 'Connect to the internet to enrol fingerprints.' }); return; }
+    if (byStaff.has(s.id) && !window.confirm(`${s.name} already has a fingerprint key. Add another?`)) return;
+    setBusy(s.id); setMsg({ ok: true, text: `Plug in / tap the fingerprint reader, then ${s.name} touches it…` });
     try {
-      const cred = (await navigator.credentials.create({
-        publicKey: {
-          challenge: crypto.getRandomValues(new Uint8Array(32)),
-          rp: { name: 'ZenHR Attendance' },
-          user: { id: new TextEncoder().encode(s.id), name: `${s.employeeCode || s.name} · ZenHR`, displayName: s.name },
-          pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
-          authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'required' },
-          excludeCredentials: (byStaff.get(s.id) || []).map(p => ({ type: 'public-key' as const, id: fromB64u(p.credentialId) })),
-          timeout: 60000,
-        },
-      })) as PublicKeyCredential | null;
-      if (!cred) throw new Error('Cancelled');
-      const credentialId = b64u(cred.rawId);
-      // Accuracy check: the same finger must match once more before we save it.
-      setMsg({ ok: true, text: `Touch again to confirm ${s.name}'s finger…` });
-      const again = await verifyTouch([credentialId]);
-      if (again !== credentialId) throw new Error('Second touch did not match. Try again.');
-      await fingerprintCloudService.save({ staffId: s.id, staffName: s.name, credentialId, enrolledBy: 'master phone' });
+      await fingerprintCloudService.enrol(s.id);
       await refresh();
       if (navigator.vibrate) navigator.vibrate(60);
-      setMsg({ ok: true, text: `✓ ${s.name}'s fingerprint saved to the cloud.` });
+      setMsg({ ok: true, text: `✓ ${s.name}'s fingerprint key verified by the server and saved.` });
     } catch (e: any) {
-      setMsg({ ok: false, text: e?.name === 'InvalidStateError' ? `${s.name} is already saved on this phone.` : e?.name === 'NotAllowedError' ? 'Cancelled or fingerprint not recognised.' : e?.message || 'Could not save fingerprint.' });
+      setMsg({ ok: false, text: errText(e, 'Could not save fingerprint.') });
     } finally { setBusy(false); }
   };
 
@@ -199,14 +143,10 @@ const FingerprintStation: React.FC<Props> = ({ staff, attendance, userLocation, 
     if (lockSecondsLeft(fails, Date.now())) return;
     setBusy('punch'); setMsg(null);
     try {
-      if (!prints.length) throw new Error('No fingerprints saved yet. Ask a manager to add staff first.');
-      let credId: string;
-      // Empty list = phone picks the matching saved finger itself (fastest, no list sent).
-      try { credId = await verifyTouch(); }
-      catch (e: any) { fail(e?.name === 'NotAllowedError' ? 'Cancelled or fingerprint not recognised.' : e?.message || 'Fingerprint failed.'); return; }
-      let entry = byCred.get(credId);
-      if (!entry && navigator.onLine) entry = (await refresh()).find(p => p.credentialId === credId);
-      if (!entry) { fail('Fingerprint not registered for any staff.'); return; }
+      if (!navigator.onLine) throw new Error('Fingerprint punches need internet so the server can verify the touch.');
+      let entry: { staffId: string; staffName?: string; fingerprintId: string };
+      try { entry = await fingerprintCloudService.identify(); }
+      catch (e: any) { fail(errText(e, 'Fingerprint failed.')); return; }
       saveFails({ count: 0, lockedUntil: 0 });
 
       const s = staff.find(x => x.id === entry!.staffId);
@@ -240,7 +180,6 @@ const FingerprintStation: React.FC<Props> = ({ staff, attendance, userLocation, 
         kind: d.kind, source: 'master_fingerprint',
         deviceLabel: `Master Phone Fingerprint${geo.distance != null ? ` · ${Math.round(geo.distance)}m` : ''}`,
       });
-      void fingerprintCloudService.touch(entry.id);
       last[s.id] = nowD.getTime();
       localStorage.setItem(LAST_KEY, JSON.stringify(last));
       const t12 = nowD.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
@@ -271,7 +210,7 @@ const FingerprintStation: React.FC<Props> = ({ staff, attendance, userLocation, 
         <div>
           <h3 className="font-bold text-lg">Fingerprint In / Out</h3>
           <p className="text-xs text-muted-foreground">
-            {cloudOk === false ? 'Offline · using saved copy' : 'Cloud synced'} · {enrolledCount}/{activeStaff.length} staff enrolled
+            {cloudOk === false ? 'Offline · punches need internet' : 'Server verified'} · {enrolledCount}/{activeStaff.length} staff enrolled
           </p>
         </div>
         <button onClick={close} className="text-sm opacity-70 px-2">{page ? 'Exit' : 'Close'}</button>
@@ -317,7 +256,7 @@ const FingerprintStation: React.FC<Props> = ({ staff, attendance, userLocation, 
                         <div className="min-w-0">
                           <p className="font-semibold truncate">{s.name}</p>
                           <p className="text-[11px] text-muted-foreground truncate">
-                            {s.employeeCode || '—'} · {s.location}{mine.length ? ` · ✓ ${mine.length} saved` : ' · Not enrolled'}
+                            {s.employeeCode || '—'} · {s.location}{mine.length ? ` · ✓ ${mine.length} verified` : (prints.some(p => p.staffId === s.id) ? ' · Old phone-lock entry — re-enrol' : ' · Not enrolled')}
                           </p>
                         </div>
                         <button onClick={() => enrol(s)} disabled={!!busy}
@@ -325,9 +264,9 @@ const FingerprintStation: React.FC<Props> = ({ staff, attendance, userLocation, 
                           {busy === s.id ? 'Touch…' : mine.length ? 'Add finger' : 'Enrol'}
                         </button>
                       </div>
-                      {mine.map(p => (
+                      {prints.filter(p => p.staffId === s.id).map(p => (
                         <div key={p.id} className="flex items-center justify-between text-[11px] text-muted-foreground pl-2">
-                          <span className="truncate">📱 {p.deviceLabel || 'Phone'} · {new Date(p.enrolledAt).toLocaleDateString('en-IN')}{p.lastUsedAt ? ` · used ${new Date(p.lastUsedAt).toLocaleDateString('en-IN')}` : ''}</span>
+                          <span className="truncate">{p.verified ? '🔑' : '⚠️ old'} {p.deviceLabel || 'Phone'} · {new Date(p.enrolledAt).toLocaleDateString('en-IN')}{p.lastUsedAt ? ` · used ${new Date(p.lastUsedAt).toLocaleDateString('en-IN')}` : ''}</span>
                           <button onClick={() => removePrint(p)} className="text-destructive ml-2">Remove</button>
                         </div>
                       ))}
@@ -336,8 +275,8 @@ const FingerprintStation: React.FC<Props> = ({ staff, attendance, userLocation, 
                 })}
               </ul>
               <p className="text-xs text-muted-foreground">
-                Steps: 1) add the staff member's finger in this phone's Settings → Security → Fingerprint, 2) tap Enrol, 3) touch twice to confirm.
-                Saved to the cloud — a replacement phone signed in to the same Google account recognises everyone without re-enrolling.
+                Needs a FIDO2 fingerprint reader / security key (USB-C or NFC) — the phone's own fingerprint is not accepted because it cannot tell staff apart.
+                Steps: 1) set up the staff member's finger on the key, 2) tap Enrol, 3) they touch the key. The fingerprint stays on the key; the server keeps only its public key, so any station phone works with the same key.
               </p>
             </div>
           )}
@@ -346,7 +285,7 @@ const FingerprintStation: React.FC<Props> = ({ staff, attendance, userLocation, 
           )}
           <p className="text-[11px] text-muted-foreground">
             Rules: inside the branch (no fake GPS), {Math.round(FP_COOLDOWN_MS / 60000)}-min gap between punches, OUT only 30 min after IN,
-            one IN/OUT per day, {FP_MAX_FAILS} wrong touches lock for 1 min, server time only. Works offline and syncs later.
+            one IN/OUT per day, {FP_MAX_FAILS} wrong touches lock for 1 min, server time only, every touch verified by the server.
           </p>
         </>
       )}
