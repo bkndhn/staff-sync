@@ -3,7 +3,7 @@ import { Staff, Attendance } from '../types';
 import { speakName } from '../lib/fingerprintSpeak';
 import { fingerprintCloudService, CloudFingerprint } from '../services/fingerprintCloudService';
 import {
-  FP_COOLDOWN_MS, FP_MAX_FAILS, registerFail, lockSecondsLeft, FailState,
+  FP_COOLDOWN_MS, FP_MAX_FAILS,
 } from '../utils/fingerprintPunch';
 
 /**
@@ -13,9 +13,6 @@ import {
  * credential; the server stores its public key and verifies every touch's signature and
  * identifies the staff member itself. Works on any station phone (keys live on the reader).
  */
-const FAIL_KEY = 'fp:fails:v1';
-
-const load = <T,>(k: string, d: T): T => { try { return (JSON.parse(localStorage.getItem(k) || 'null') as T) ?? d; } catch { return d; } };
 const hashPin = async (pin: string) => {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`kiosk:${pin}`));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -37,14 +34,15 @@ const FingerprintStation: React.FC<Props> = ({ staff, userLocation, onAttendance
   const [cloudOk, setCloudOk] = useState<boolean | null>(null);
   const [busy, setBusy] = useState<string | false>(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string; kind?: 'in' | 'out' } | null>(null);
-  const [fails, setFails] = useState<FailState>(() => load(FAIL_KEY, { count: 0, lockedUntil: 0 }));
+  // Lock comes only from the server, so every phone shows the same lock (no per-phone counter).
+  const [lockedUntil, setLockedUntil] = useState(0);
   const [now, setNow] = useState(Date.now());
   const [enrolUnlocked, setEnrolUnlocked] = useState(false);
   const [pin, setPin] = useState('');
   const [search, setSearch] = useState('');
   const [clock, setClock] = useState(new Date());
   const supported = typeof window !== 'undefined' && !!window.PublicKeyCredential && window.isSecureContext;
-  const lockLeft = lockSecondsLeft(fails, now);
+  const lockLeft = lockedUntil > now ? Math.ceil((lockedUntil - now) / 1000) : 0;
 
   useEffect(() => { if (!page) return; const t = setInterval(() => setClock(new Date()), 1000); return () => clearInterval(t); }, [page]);
   useEffect(() => {
@@ -73,13 +71,10 @@ const FingerprintStation: React.FC<Props> = ({ staff, userLocation, onAttendance
   }, [prints]);
   const enrolledCount = activeStaff.filter(s => byStaff.has(s.id)).length;
 
-  const saveFails = (f: FailState) => { setFails(f); setNow(Date.now()); localStorage.setItem(FAIL_KEY, JSON.stringify(f)); };
-  const fail = (text: string) => {
-    const next = registerFail(fails, Date.now());
-    saveFails(next);
-    const left = lockSecondsLeft(next, Date.now());
+  const fail = (e: any, text: string) => {
     if (navigator.vibrate) navigator.vibrate([80, 60, 80]);
-    setMsg({ ok: false, text: left ? `Too many wrong touches. Station locked for ${left}s.` : `${text} (${FP_MAX_FAILS - next.count} tries left)` });
+    if (e?.lockedFor) { setLockedUntil(Date.now() + e.lockedFor * 1000); setNow(Date.now()); }
+    setMsg({ ok: false, text });
   };
 
   const openEnrol = () => {
@@ -116,7 +111,7 @@ const FingerprintStation: React.FC<Props> = ({ staff, userLocation, onAttendance
   };
 
   const punch = async () => {
-    if (lockSecondsLeft(fails, Date.now())) return;
+    if (lockLeft) return;
     setBusy('punch'); setMsg(null);
     try {
       if (!navigator.onLine) throw new Error('Fingerprint punches need internet so the server can verify the touch.');
@@ -131,11 +126,9 @@ const FingerprintStation: React.FC<Props> = ({ staff, userLocation, onAttendance
       try { r = await fingerprintCloudService.punch(pos); }
       catch (e: any) {
         // Only an unrecognised/cancelled touch counts toward the lock; rule refusals don't.
-        if (e?.name === 'NotAllowedError' || /not recognised|not registered|cloned/i.test(e?.message || '')) fail(errText(e, 'Fingerprint failed.'));
-        else setMsg({ ok: false, text: errText(e, 'Punch failed.') });
+        fail(e, errText(e, 'Punch failed.'));
         return;
       }
-      saveFails({ count: 0, lockedUntil: 0 });
       const [hh, mm] = r.time.split(':').map(Number);
       const t12 = `${((hh + 11) % 12) + 1}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'am' : 'pm'}`;
       const name = r.staffName || 'Staff';
