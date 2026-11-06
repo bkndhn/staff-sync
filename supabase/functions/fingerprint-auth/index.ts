@@ -9,7 +9,7 @@ import {
   verifyAuthenticationResponse, verifyRegistrationResponse,
 } from "npm:@simplewebauthn/server@13";
 import { resolveCaller } from "../_shared/caller.ts";
-import { decideFingerPunch, distanceMeters, localStamp } from "../_shared/fingerprintPunch.ts";
+import { decideFingerPunch, distanceMeters, localStamp, FP_MAX_FAILS, FP_LOCK_MS } from "../_shared/fingerprintPunch.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -51,6 +51,23 @@ async function takeChallenge(id: string, tenant: string, purpose: string) {
     .eq("id", id).eq("tenant_id", tenant).eq("purpose", purpose).is("used_at", null)
     .gt("expires_at", new Date().toISOString()).select("staff_id, challenge").maybeSingle();
   return data;
+}
+
+/** Record a refused/suspicious touch so managers see it and the lock is enforced server-side. */
+async function logMisuse(tenant: string, stationId: string, reason: string, staffId?: string | null, staffName?: string | null) {
+  await admin.from("audit_logs").insert({
+    tenant_id: tenant, action: "fingerprint_misuse", actor_id: stationId, performed_by: stationId,
+    staff_id: staffId ?? null, staff_name: staffName ?? null, details: reason.slice(0, 300), metadata: { reason },
+  });
+}
+/** Seconds the station is still locked (server count of failed touches in the lock window). */
+async function stationLockLeft(tenant: string, stationId: string): Promise<number> {
+  const since = new Date(Date.now() - FP_LOCK_MS).toISOString();
+  const { data } = await admin.from("audit_logs").select("timestamp").eq("tenant_id", tenant)
+    .eq("action", "fingerprint_misuse").eq("actor_id", stationId).gte("timestamp", since)
+    .order("timestamp", { ascending: false }).limit(FP_MAX_FAILS);
+  if (!data || data.length < FP_MAX_FAILS) return 0;
+  return Math.max(1, Math.ceil((Date.parse(data[0].timestamp) + FP_LOCK_MS - Date.now()) / 1000));
 }
 
 Deno.serve(async (req) => {
@@ -121,6 +138,8 @@ Deno.serve(async (req) => {
 
       case "auth_options": {
         if (!STATIONS.includes(caller.role)) return json({ error: "Not allowed" }, 403);
+        const lockA = await stationLockLeft(tenant, caller.id);
+        if (lockA) return json({ error: `Too many wrong touches. Station locked for ${lockA}s.`, lockedFor: lockA }, 429);
         const { data: creds } = await admin.from("staff_fingerprints").select("credential_id, transports")
           .eq("tenant_id", tenant).not("public_key", "is", null).limit(500);
         if (!creds?.length) return json({ error: "No verified fingerprints enrolled yet" }, 404);
@@ -134,6 +153,8 @@ Deno.serve(async (req) => {
 
       case "auth_verify": {
         if (!STATIONS.includes(caller.role)) return json({ error: "Not allowed" }, 403);
+        const lockV = await stationLockLeft(tenant, caller.id);
+        if (lockV) return json({ error: `Too many wrong touches. Station locked for ${lockV}s.`, lockedFor: lockV }, 429);
         const ch = await takeChallenge(body.challengeId, tenant, "auth");
         if (!ch) return json({ error: "Touch timed out. Try again." }, 400);
         // A challenge is only good for the station account that asked for it.
@@ -141,21 +162,22 @@ Deno.serve(async (req) => {
         const resp = body.response;
         const { data: fp } = await admin.from("staff_fingerprints").select("id, staff_id, staff_name, credential_id, public_key, sign_count, transports")
           .eq("tenant_id", tenant).eq("credential_id", String(resp?.id || "")).not("public_key", "is", null).maybeSingle();
-        if (!fp) return json({ error: "Fingerprint not registered for any staff" }, 404);
-        const v = await verifyAuthenticationResponse({
+        if (!fp) { await logMisuse(tenant, caller.id, "Unregistered key touched"); return json({ error: "Fingerprint not registered for any staff" }, 404); }
+        let v: any;
+        try { v = await verifyAuthenticationResponse({
           response: resp, expectedChallenge: ch.challenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: true,
           credential: { id: fp.credential_id, publicKey: fromB64u(fp.public_key), counter: Number(fp.sign_count || 0), transports: fp.transports || undefined },
-        });
-        if (!v.verified) return json({ error: "Fingerprint not recognised" }, 401);
+        }); } catch { v = { verified: false }; }
+        if (!v.verified) { await logMisuse(tenant, caller.id, "Signature not verified", fp.staff_id, fp.staff_name); return json({ error: "Fingerprint not recognised" }, 401); }
         const newCount = v.authenticationInfo.newCounter;
-        if (fp.sign_count > 0 && newCount <= fp.sign_count) return json({ error: "Possible cloned key — blocked. Ask a manager." }, 409);
+        if (fp.sign_count > 0 && newCount <= fp.sign_count) { await logMisuse(tenant, caller.id, "Counter did not advance (cloned or replayed key)", fp.staff_id, fp.staff_name); return json({ error: "Possible cloned key — blocked. Ask a manager." }, 409); }
         const { data: s } = await admin.from("staff").select("id, is_active").eq("id", fp.staff_id).eq("tenant_id", tenant).maybeSingle();
         if (!s || s.is_active === false) return json({ error: "Not an active staff member" }, 403);
         // Counter advance is conditional on the old value, so two racing replays cannot both pass.
         const { data: bumped } = await admin.from("staff_fingerprints")
           .update({ sign_count: newCount, last_used_at: new Date().toISOString() })
           .eq("id", fp.id).eq("sign_count", fp.sign_count).select("id").maybeSingle();
-        if (!bumped) return json({ error: "This touch was already used. Touch again." }, 409);
+        if (!bumped) { await logMisuse(tenant, caller.id, "Replayed touch", fp.staff_id, fp.staff_name); return json({ error: "This touch was already used. Touch again." }, 409); }
 
         // ---- Record the punch on the server, bound to the verified staff member ----
         const { data: st } = await admin.from("staff").select("id, name, location").eq("id", fp.staff_id).eq("tenant_id", tenant).maybeSingle();
@@ -172,7 +194,7 @@ Deno.serve(async (req) => {
           if (!Number.isFinite(lat) || !Number.isFinite(lng)) return json({ error: "Turn on location on the station phone." }, 422);
           dist = distanceMeters({ lat, lng }, { lat: loc.latitude, lng: loc.longitude });
           const acc = Math.min(Math.max(Number(body.accuracy) || 0, 0), 100);
-          if (dist - acc > (loc.radius_meters || 100)) return json({ error: `${st?.name}: station is ${Math.round(dist)} m from ${st?.location}.` }, 403);
+          if (dist - acc > (loc.radius_meters || 100)) { await logMisuse(tenant, caller.id, `Outside branch fence (${Math.round(dist)} m)`, fp.staff_id, st?.name); return json({ error: `${st?.name}: station is ${Math.round(dist)} m from ${st?.location}.` }, 403); }
         }
 
         const { data: rec } = await admin.from("attendance").select("id, arrival_time, leaving_time, status")
