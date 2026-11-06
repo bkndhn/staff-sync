@@ -9,3 +9,4 @@
 - Install and permission prompts live only in src/components/InstallAndPermissions.tsx (mounted once in main.tsx); timing rules are pure in src/utils/installPromptTiming.ts so back-off stays unit-tested.
 
 - Shared fingerprint attendance accepts only external FIDO2 reader/security-key credentials, enrolled and verified (signature + counter) by the fingerprint-auth function, because a phone's own unlock cannot tell staff apart; data-api cannot create fingerprint rows.
+- Fingerprint punches are decided and written only by fingerprint-auth (auth_verify) after signature verification, using the shared rules in supabase/functions/_shared/fingerprintPunch.ts, so the browser can never choose the staff member, time or IN/OUT.

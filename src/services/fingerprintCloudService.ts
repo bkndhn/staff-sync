@@ -69,11 +69,14 @@ export const fingerprintCloudService = {
     return this.list();
   },
 
-  /** One touch on the reader; the server checks the signature and says which staff it is. */
-  async identify(): Promise<{ staffId: string; staffName?: string; fingerprintId: string }> {
+  /**
+   * One touch: the server checks the signature, works out who it is, decides IN/OUT and
+   * saves the punch itself. The app never writes fingerprint attendance directly.
+   */
+  async punch(pos?: { lat: number; lng: number; accuracy?: number }): Promise<{ staffId: string; staffName?: string; kind: 'in' | 'out'; time: string; date: string }> {
     const { options, challengeId } = await call({ action: 'auth_options' });
     const response = await startAuthentication({ optionsJSON: options });
-    return call({ action: 'auth_verify', challengeId, response });
+    return call({ action: 'auth_verify', challengeId, response, ...(pos || {}) });
   },
 
   async remove(id: string) {
