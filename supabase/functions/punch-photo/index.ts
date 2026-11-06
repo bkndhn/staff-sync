@@ -3,6 +3,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveCaller } from "../_shared/caller.ts";
+import { PUNCH_PHOTO_ROLES } from "../_shared/punchPhotoRoles.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -16,7 +17,7 @@ const BUCKET = "punch-photos";
 const RETENTION_DAYS = 30;
 const LINK_SECONDS = 15 * 60;
 const MAX_BYTES = 200_000;
-const MANAGERS = ["super_admin", "admin", "manager", "supervisor", "floor_supervisor"];
+const MANAGERS = PUNCH_PHOTO_ROLES;
 const UUID = /^[0-9a-f-]{36}$/i;
 
 async function prune(tenantId?: string | null) {
