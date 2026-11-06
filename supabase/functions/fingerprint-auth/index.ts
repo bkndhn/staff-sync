@@ -208,13 +208,28 @@ Deno.serve(async (req) => {
         if (!d.ok) return json({ ok: false, staffName: st?.name, error: `${st?.name}: ${d.reason}` }, 409);
 
         const isSun = new Date(`${date}T00:00:00Z`).getUTCDay() === 0;
-        const w = d.kind === "in"
-          ? await admin.from("attendance").upsert({
-              tenant_id: tenant, staff_id: fp.staff_id, staff_name: st?.name, location: st?.location, date,
-              status: "Present", attendance_value: 1, is_sunday: isSun, is_part_time: false, arrival_time: time.slice(0, 5),
-            }, { onConflict: "staff_id,date,is_part_time" })
-          : await admin.from("attendance").update({ leaving_time: time.slice(0, 5) }).eq("id", rec!.id).is("leaving_time", null);
-        if (w.error) return json({ error: "Could not save the punch. Try again." }, 500);
+        // Each write only succeeds if nobody else punched first (two phones / two keys at once),
+        // so a race never creates a duplicate IN/OUT or a second punch event.
+        let won = false;
+        if (d.kind === "in" && !rec) {
+          const w = await admin.from("attendance").upsert({
+            tenant_id: tenant, staff_id: fp.staff_id, staff_name: st?.name, location: st?.location, date,
+            status: "Present", attendance_value: 1, is_sunday: isSun, is_part_time: false, arrival_time: time.slice(0, 5),
+          }, { onConflict: "staff_id,date,is_part_time", ignoreDuplicates: true }).select("id");
+          if (w.error) return json({ error: "Could not save the punch. Try again." }, 500);
+          won = (w.data?.length ?? 0) > 0;
+        } else if (d.kind === "in") {
+          const w = await admin.from("attendance").update({ arrival_time: time.slice(0, 5), status: "Present" })
+            .eq("id", rec!.id).is("arrival_time", null).select("id");
+          if (w.error) return json({ error: "Could not save the punch. Try again." }, 500);
+          won = (w.data?.length ?? 0) > 0;
+        } else {
+          const w = await admin.from("attendance").update({ leaving_time: time.slice(0, 5) })
+            .eq("id", rec!.id).is("leaving_time", null).select("id");
+          if (w.error) return json({ error: "Could not save the punch. Try again." }, 500);
+          won = (w.data?.length ?? 0) > 0;
+        }
+        if (!won) return json({ ok: false, staffName: st?.name, error: `${st?.name}: Already punched just now on another phone.` }, 409);
         await admin.from("punch_events").insert({
           tenant_id: tenant, staff_id: fp.staff_id, staff_name: st?.name, location: st?.location, date,
           event_time: time.slice(0, 5), kind: d.kind, source: "master_fingerprint",
