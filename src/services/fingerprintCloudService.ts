@@ -6,7 +6,7 @@ const call = async (body: unknown): Promise<any> => {
   if (!headers) throw new Error('Please sign in again.');
   const res = await fetch(`${FUNCTIONS_BASE}/fingerprint-auth`, { method: 'POST', headers, body: JSON.stringify(body) });
   const j = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(j?.error || 'Fingerprint server error');
+  if (!res.ok) throw Object.assign(new Error(j?.error || 'Fingerprint server error'), { lockedFor: j?.lockedFor, status: res.status });
   return j;
 };
 
