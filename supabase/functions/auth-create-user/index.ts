@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { findAppUserForAuth } from "../_shared/caller.ts";
 import bcrypt from "npm:bcryptjs@2.4.3";
 
 const corsHeaders = {
@@ -42,20 +43,7 @@ async function validateAdminSession(
         return { valid: false, error: 'JWT verification failed' };
       }
 
-      // Fetch the app_user profile using the service role (no RLS)
-      const { data: profile } = await supabase
-        .from('app_users')
-        .select('id, role, is_active, tenant_id')
-        .eq('auth_id', user.id)
-        .maybeSingle();
-
-      // Fallback: match by email if auth_id not set yet
-      const appUser = profile || (await supabase
-        .from('app_users')
-        .select('id, role, is_active, tenant_id')
-        .eq('email', user.email!)
-        .maybeSingle()
-      ).data;
+      const appUser = await findAppUserForAuth(supabase, user, 'id, role, is_active, tenant_id');
 
       if (!appUser) return { valid: false, error: 'User profile not found' };
       if (!appUser.is_active) return { valid: false, error: 'User account is inactive' };

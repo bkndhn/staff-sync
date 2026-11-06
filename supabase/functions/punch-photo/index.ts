@@ -1,4 +1,4 @@
-// Private kiosk punch photos: upload (any signed-in tenant user), view links (managers only),
+// Private kiosk punch photos: upload (punch-recording roles only), view links (managers only),
 // and retention pruning. Files live in the private "punch-photos" bucket, reachable only via this function.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -51,6 +51,8 @@ Deno.serve(async (req) => {
   if (!caller.tenant_id) return json({ error: "No client on account" }, 403);
 
   if (action === "upload") {
+    // Only roles that can record punches (kiosk operators / managers) may attach evidence.
+    if (!MANAGERS.includes(caller.role)) return json({ error: "Not authorized" }, 403);
     const { eventId, image } = body;
     if (typeof eventId !== "string" || !UUID.test(eventId)) return json({ error: "Bad eventId" }, 400);
     if (typeof image !== "string" || !image.startsWith("data:image/jpeg;base64,")) return json({ error: "JPEG data URL required" }, 400);
