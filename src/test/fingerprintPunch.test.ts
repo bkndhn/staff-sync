@@ -26,3 +26,14 @@ describe('fingerprint punch rules', () => {
     expect(lockSecondsLeft(s, 61_000)).toBe(0);
   });
 });
+
+import { localStamp, distanceMeters } from '../utils/fingerprintPunch';
+describe('server punch helpers', () => {
+  it('stamps punches in India time', () => {
+    expect(localStamp(Date.parse('2026-11-05T20:00:00Z'), 'Asia/Kolkata')).toEqual({ date: '2026-11-06', time: '01:30:00' });
+  });
+  it('measures distance from the branch', () => {
+    const d = distanceMeters({ lat: 13.0827, lng: 80.2707 }, { lat: 13.0836, lng: 80.2707 });
+    expect(Math.round(d)).toBe(100);
+  });
+});

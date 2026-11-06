@@ -22,7 +22,7 @@ const hashPin = async (pin: string) => {
 };
 interface Props {
   staff: Staff[];
-  attendance: Attendance[];
+  attendance?: Attendance[];
   userLocation?: string;
   onAttendanceUpdated?: () => void;
   /** Full-screen page mode (/fingerprint) instead of the floating button. */
