@@ -163,10 +163,11 @@ Deno.serve(async (req) => {
         const { data: fp } = await admin.from("staff_fingerprints").select("id, staff_id, staff_name, credential_id, public_key, sign_count, transports")
           .eq("tenant_id", tenant).eq("credential_id", String(resp?.id || "")).not("public_key", "is", null).maybeSingle();
         if (!fp) { await logMisuse(tenant, caller.id, "Unregistered key touched"); return json({ error: "Fingerprint not registered for any staff" }, 404); }
-        const v = await verifyAuthenticationResponse({
+        let v: any;
+        try { v = await verifyAuthenticationResponse({
           response: resp, expectedChallenge: ch.challenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: true,
           credential: { id: fp.credential_id, publicKey: fromB64u(fp.public_key), counter: Number(fp.sign_count || 0), transports: fp.transports || undefined },
-        });
+        }); } catch { v = { verified: false }; }
         if (!v.verified) { await logMisuse(tenant, caller.id, "Signature not verified", fp.staff_id, fp.staff_name); return json({ error: "Fingerprint not recognised" }, 401); }
         const newCount = v.authenticationInfo.newCounter;
         if (fp.sign_count > 0 && newCount <= fp.sign_count) { await logMisuse(tenant, caller.id, "Counter did not advance (cloned or replayed key)", fp.staff_id, fp.staff_name); return json({ error: "Possible cloned key — blocked. Ask a manager." }, 409); }
