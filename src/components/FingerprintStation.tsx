@@ -1,14 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Staff, Attendance } from '../types';
-import { attendanceService } from '../services/attendanceService';
-import { punchEventService } from '../services/punchEventService';
-import { syncServerTime, serverNow } from '../lib/serverTime';
-import { localDateKey, localTimeKey } from '../lib/localDate';
-import { isSunday } from '../utils/salaryCalculations';
 import { speakName } from '../lib/fingerprintSpeak';
 import { fingerprintCloudService, CloudFingerprint } from '../services/fingerprintCloudService';
 import {
-  decideFingerPunch, FP_COOLDOWN_MS, FP_MAX_FAILS, registerFail, lockSecondsLeft, FailState,
+  FP_COOLDOWN_MS, FP_MAX_FAILS, registerFail, lockSecondsLeft, FailState,
 } from '../utils/fingerprintPunch';
 
 /**
@@ -18,7 +13,6 @@ import {
  * credential; the server stores its public key and verifies every touch's signature and
  * identifies the staff member itself. Works on any station phone (keys live on the reader).
  */
-const LAST_KEY = 'fp:lastPunch:v1';
 const FAIL_KEY = 'fp:fails:v1';
 
 const load = <T,>(k: string, d: T): T => { try { return (JSON.parse(localStorage.getItem(k) || 'null') as T) ?? d; } catch { return d; } };
@@ -26,24 +20,6 @@ const hashPin = async (pin: string) => {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`kiosk:${pin}`));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 };
-const fenceCache = new Map<string, any>();
-
-async function branchFence(branch?: string) {
-  const key = `branch_fence_${branch || ''}`;
-  if (fenceCache.has(key)) return fenceCache.get(key);
-  try {
-    const { locationService } = await import('../services/locationService');
-    const cfg: any = (await locationService.getLocations()).find(l => l.name === branch) || null;
-    if (cfg) localStorage.setItem(key, JSON.stringify(cfg));
-    const r = cfg ? { latitude: cfg.latitude, longitude: cfg.longitude, radius_meters: cfg.radius_meters, name: branch } : null;
-    fenceCache.set(key, r);
-    return r;
-  } catch {
-    const cfg: any = load(key, null);
-    return cfg ? { latitude: cfg.latitude, longitude: cfg.longitude, radius_meters: cfg.radius_meters, name: branch } : null;
-  }
-}
-
 interface Props {
   staff: Staff[];
   attendance: Attendance[];
@@ -54,7 +30,7 @@ interface Props {
   onExit?: () => void;
 }
 
-const FingerprintStation: React.FC<Props> = ({ staff, attendance, userLocation, onAttendanceUpdated, page, onExit }) => {
+const FingerprintStation: React.FC<Props> = ({ staff, userLocation, onAttendanceUpdated, page, onExit }) => {
   const [open, setOpen] = useState(!!page);
   const [tab, setTab] = useState<'punch' | 'enrol'>('punch');
   const [prints, setPrints] = useState<CloudFingerprint[]>(() => fingerprintCloudService.cached());
@@ -254,7 +230,7 @@ const FingerprintStation: React.FC<Props> = ({ staff, attendance, userLocation, 
                 })}
               </ul>
               <p className="text-xs text-muted-foreground">
-                Needs a FIDO2 fingerprint reader / security key (USB-C or NFC) — the phone's own fingerprint is not accepted because it cannot tell staff apart.
+                Two supported setups. <b>Personal fingerprint keys</b> (e.g. YubiKey Bio, Feitian BioPass): each staff member owns one key, enrolled to them here; at punch time they plug in / tap their own key and touch it. <b>Shared reader</b>: only a FIDO2 multi-user biometric key/reader that stores several fingerprints and gives each person a separate credential (enrol each staff member on it one by one). An ordinary USB fingerprint scanner, a ZKTeco-style terminal or the phone's own fingerprint will not work here — ZKTeco devices use the Biometric Devices page instead. Keys live on the reader, so any phone can be the station if this one is lost.
                 Steps: 1) set up the staff member's finger on the key, 2) tap Enrol, 3) they touch the key. The fingerprint stays on the key; the server keeps only its public key, so any station phone works with the same key.
               </p>
             </div>
