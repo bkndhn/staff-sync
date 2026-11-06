@@ -9,6 +9,7 @@ import {
   verifyAuthenticationResponse, verifyRegistrationResponse,
 } from "npm:@simplewebauthn/server@13";
 import { resolveCaller } from "../_shared/caller.ts";
+import { decideFingerPunch, distanceMeters, localStamp } from "../_shared/fingerprintPunch.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -135,6 +136,8 @@ Deno.serve(async (req) => {
         if (!STATIONS.includes(caller.role)) return json({ error: "Not allowed" }, 403);
         const ch = await takeChallenge(body.challengeId, tenant, "auth");
         if (!ch) return json({ error: "Touch timed out. Try again." }, 400);
+        // A challenge is only good for the station account that asked for it.
+        if (ch.staff_id !== caller.id) return json({ error: "Touch timed out. Try again." }, 400);
         const resp = body.response;
         const { data: fp } = await admin.from("staff_fingerprints").select("id, staff_id, staff_name, credential_id, public_key, sign_count, transports")
           .eq("tenant_id", tenant).eq("credential_id", String(resp?.id || "")).not("public_key", "is", null).maybeSingle();
@@ -148,8 +151,54 @@ Deno.serve(async (req) => {
         if (fp.sign_count > 0 && newCount <= fp.sign_count) return json({ error: "Possible cloned key — blocked. Ask a manager." }, 409);
         const { data: s } = await admin.from("staff").select("id, is_active").eq("id", fp.staff_id).eq("tenant_id", tenant).maybeSingle();
         if (!s || s.is_active === false) return json({ error: "Not an active staff member" }, 403);
-        await admin.from("staff_fingerprints").update({ sign_count: newCount, last_used_at: new Date().toISOString() }).eq("id", fp.id);
-        return json({ ok: true, staffId: fp.staff_id, staffName: fp.staff_name, fingerprintId: fp.id });
+        // Counter advance is conditional on the old value, so two racing replays cannot both pass.
+        const { data: bumped } = await admin.from("staff_fingerprints")
+          .update({ sign_count: newCount, last_used_at: new Date().toISOString() })
+          .eq("id", fp.id).eq("sign_count", fp.sign_count).select("id").maybeSingle();
+        if (!bumped) return json({ error: "This touch was already used. Touch again." }, 409);
+
+        // ---- Record the punch on the server, bound to the verified staff member ----
+        const { data: st } = await admin.from("staff").select("id, name, location").eq("id", fp.staff_id).eq("tenant_id", tenant).maybeSingle();
+        const { data: pref } = await admin.from("notification_preferences").select("timezone").eq("tenant_id", tenant).maybeSingle();
+        const nowMs = Date.now();
+        const { date, time } = localStamp(nowMs, pref?.timezone || "Asia/Kolkata");
+
+        // Server-side geofence (station location is required when the branch has a fence).
+        const { data: loc } = await admin.from("locations").select("latitude, longitude, radius_meters")
+          .eq("tenant_id", tenant).eq("name", st?.location || "").maybeSingle();
+        let dist: number | null = null;
+        if (loc?.latitude != null && loc?.longitude != null) {
+          const lat = Number(body.lat), lng = Number(body.lng);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return json({ error: "Turn on location on the station phone." }, 422);
+          dist = distanceMeters({ lat, lng }, { lat: loc.latitude, lng: loc.longitude });
+          const acc = Math.min(Math.max(Number(body.accuracy) || 0, 0), 100);
+          if (dist - acc > (loc.radius_meters || 100)) return json({ error: `${st?.name}: station is ${Math.round(dist)} m from ${st?.location}.` }, 403);
+        }
+
+        const { data: rec } = await admin.from("attendance").select("id, arrival_time, leaving_time, status")
+          .eq("tenant_id", tenant).eq("staff_id", fp.staff_id).eq("date", date).eq("is_part_time", false).maybeSingle();
+        const { data: lastEv } = await admin.from("punch_events").select("created_at")
+          .eq("tenant_id", tenant).eq("staff_id", fp.staff_id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+        const d = decideFingerPunch({
+          rec: rec ? { arrivalTime: rec.arrival_time, leavingTime: rec.leaving_time, status: rec.status } : null,
+          nowMs, lastPunchMs: lastEv ? Date.parse(lastEv.created_at) : undefined, nowTime: time,
+        });
+        if (!d.ok) return json({ ok: false, staffName: st?.name, error: `${st?.name}: ${d.reason}` }, 409);
+
+        const isSun = new Date(`${date}T00:00:00Z`).getUTCDay() === 0;
+        const w = d.kind === "in"
+          ? await admin.from("attendance").upsert({
+              tenant_id: tenant, staff_id: fp.staff_id, staff_name: st?.name, location: st?.location, date,
+              status: "Present", attendance_value: 1, is_sunday: isSun, is_part_time: false, arrival_time: time.slice(0, 5),
+            }, { onConflict: "staff_id,date,is_part_time" })
+          : await admin.from("attendance").update({ leaving_time: time.slice(0, 5) }).eq("id", rec!.id).is("leaving_time", null);
+        if (w.error) return json({ error: "Could not save the punch. Try again." }, 500);
+        await admin.from("punch_events").insert({
+          tenant_id: tenant, staff_id: fp.staff_id, staff_name: st?.name, location: st?.location, date,
+          event_time: time.slice(0, 5), kind: d.kind, source: "master_fingerprint",
+          device_label: `Fingerprint key · verified${dist != null ? ` · ${Math.round(dist)}m` : ""} · by ${caller.id}`.slice(0, 120),
+        });
+        return json({ ok: true, staffId: fp.staff_id, staffName: st?.name, kind: d.kind, time: time.slice(0, 5), date });
       }
       default:
         return json({ error: "Unknown action" }, 400);
