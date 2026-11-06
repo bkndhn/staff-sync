@@ -70,7 +70,7 @@ export const STAFF_WRITABLE_FIELDS: Record<string, readonly string[]> = {
   break_events: ["id", "staff_id", "staff_name", "location", "date", "break_type_id", "break_type_code", "start_time", "end_time", "duration_minutes", "source", "device_label", "is_violation", "violation_reason", "notes", "created_by"],
   leave_requests: ["id", "staff_id", "staff_name", "location", "leave_date", "leave_end_date", "leave_type", "reason", "status", "required_approval_levels"],
   loan_requests: ["id", "staff_id", "staff_name", "location", "floor", "amount", "reason", "emi_months", "start_month", "start_year", "status", "current_approval_level", "required_approval_levels", "approval_history"],
-  face_embeddings: ["id", "staff_id", "staff_name", "angle_label", "descriptor", "descriptor_dim", "image_path", "quality_score", "is_approved", "captured_by", "notes", "model_version", "quality_metrics"],
+  face_embeddings: ["id", "staff_id", "staff_name", "angle_label", "descriptor", "descriptor_dim", "image_path", "quality_score", "captured_by", "notes", "model_version", "quality_metrics"],
   face_registration_logs: ["id", "staff_id", "embedding_id", "action", "actor", "reason", "metadata"],
   profile_change_requests: ["id", "staff_id", "requested_changes", "status"],
   attendance_regularizations: ["id", "staff_id", "location", "target_date", "request_type", "current_status", "requested_status", "punch_in_time", "punch_out_time", "reason", "status"],
