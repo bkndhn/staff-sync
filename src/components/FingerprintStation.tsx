@@ -144,49 +144,28 @@ const FingerprintStation: React.FC<Props> = ({ staff, attendance, userLocation, 
     setBusy('punch'); setMsg(null);
     try {
       if (!navigator.onLine) throw new Error('Fingerprint punches need internet so the server can verify the touch.');
-      let entry: { staffId: string; staffName?: string; fingerprintId: string };
-      try { entry = await fingerprintCloudService.identify(); }
-      catch (e: any) { fail(errText(e, 'Fingerprint failed.')); return; }
-      saveFails({ count: 0, lockedUntil: 0 });
-
-      const s = staff.find(x => x.id === entry!.staffId);
-      if (!s || !s.isActive) throw new Error(`${entry.staffName || 'This person'} is not an active staff member.`);
-
-      const { enforcePunchLocation } = await import('../lib/geofence');
-      const [geo] = await Promise.all([
-        branchFence(s.location).then(f => enforcePunchLocation(f)),
-        syncServerTime(true).catch(() => { /* offline: last known offset */ }),
-      ]);
-      if (!geo.ok) { setMsg({ ok: false, text: `${s.name}: ${geo.title}. ${geo.subtitle}` }); return; }
-
-      const nowD = serverNow();
-      const today = localDateKey(nowD);
-      const time = localTimeKey(nowD);
-      const rec = attendance.find(a => a.date === today && a.staffId === s.id && !a.isPartTime);
-      const last = load<Record<string, number>>(LAST_KEY, {});
-      const d = decideFingerPunch({ rec, nowMs: nowD.getTime(), lastPunchMs: last[s.id], nowTime: time });
-      if (!d.ok) { setMsg({ ok: false, text: `${s.name}: ${d.reason}` }); return; }
-
-      if (d.kind === 'in') {
-        await attendanceService.upsert({
-          staffId: s.id, staffName: s.name, location: s.location, date: today,
-          status: 'Present' as any, attendanceValue: 1, isSunday: isSunday(today), isPartTime: false, arrivalTime: time,
-        } as any);
-      } else {
-        await attendanceService.upsert({ ...rec!, leavingTime: time } as any);
-      }
-      void punchEventService.insert({
-        staffId: s.id, staffName: s.name, location: s.location, date: today, eventTime: time,
-        kind: d.kind, source: 'master_fingerprint',
-        deviceLabel: `Master Phone Fingerprint${geo.distance != null ? ` · ${Math.round(geo.distance)}m` : ''}`,
+      // Station position goes to the server, which does the fence check itself.
+      const pos = await new Promise<{ lat: number; lng: number; accuracy?: number } | undefined>(res => {
+        if (!navigator.geolocation) return res(undefined);
+        navigator.geolocation.getCurrentPosition(
+          p => res({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
+          () => res(undefined), { enableHighAccuracy: true, timeout: 6000, maximumAge: 30000 });
       });
-      last[s.id] = nowD.getTime();
-      localStorage.setItem(LAST_KEY, JSON.stringify(last));
-      const t12 = nowD.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
-      const offline = !navigator.onLine;
+      let r: Awaited<ReturnType<typeof fingerprintCloudService.punch>>;
+      try { r = await fingerprintCloudService.punch(pos); }
+      catch (e: any) {
+        // Only an unrecognised/cancelled touch counts toward the lock; rule refusals don't.
+        if (e?.name === 'NotAllowedError' || /not recognised|not registered|cloned/i.test(e?.message || '')) fail(errText(e, 'Fingerprint failed.'));
+        else setMsg({ ok: false, text: errText(e, 'Punch failed.') });
+        return;
+      }
+      saveFails({ count: 0, lockedUntil: 0 });
+      const [hh, mm] = r.time.split(':').map(Number);
+      const t12 = `${((hh + 11) % 12) + 1}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'am' : 'pm'}`;
+      const name = r.staffName || 'Staff';
       if (navigator.vibrate) navigator.vibrate(40);
-      setMsg({ ok: true, kind: d.kind, text: `${s.name} — ${d.kind === 'in' ? 'IN' : 'OUT'} at ${t12}${offline ? ' (saved offline, will sync)' : ''}` });
-      speakName(`${d.kind === 'in' ? 'Welcome' : 'Goodbye'} ${s.name}`);
+      setMsg({ ok: true, kind: r.kind, text: `${name} — ${r.kind === 'in' ? 'IN' : 'OUT'} at ${t12} · saved by server` });
+      speakName(`${r.kind === 'in' ? 'Welcome' : 'Goodbye'} ${name}`);
       onAttendanceUpdated?.();
     } catch (e: any) {
       setMsg({ ok: false, text: e?.message || 'Punch failed.' });
