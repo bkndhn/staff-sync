@@ -141,9 +141,7 @@ const slabMonthlyTds = (
   const month = ctx?.month ?? now.getMonth();
   const year = ctx?.year ?? now.getFullYear();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const profile = ((staff as any).taxProfile || {}) as {
-    regime?: string; declaredInvestments?: number; tdsPaidTillDate?: number;
-  };
+  const profile = taxProfileOf(staff);
   return computeTds({
     monthlyGross: bases.gross,
     month,
@@ -152,6 +150,8 @@ const slabMonthlyTds = (
     declaredInvestments: Number(profile.declaredInvestments) || 0,
     annualPf: pfAmount * 12,
     tdsPaidTillDate: Number(profile.tdsPaidTillDate) || 0,
+    otherDeductions: Number(profile.otherDeductions) || 0,
+    hraExemption: Number(profile.hraExemption) || 0,
   }).monthlyTds;
 };
 
