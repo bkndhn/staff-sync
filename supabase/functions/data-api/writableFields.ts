@@ -50,6 +50,7 @@ export const WRITABLE_FIELDS: Record<string, readonly string[]> = {
   attendance_regularizations: ["id", "staff_id", "location", "target_date", "request_type", "current_status", "requested_status", "punch_in_time", "punch_out_time", "reason", "status", "resolution_notes", "resolved_by", "resolved_at"],
   letter_requests: ["id", "staff_id", "letter_type", "purpose", "status", "resolution_notes", "resolved_by", "resolved_at", "document_url"],
   staff_notifications: ["id", "staff_id", "app_user_id", "type", "title", "message", "action_url", "tab_id", "is_read"],
+  tax_declarations: ["id", "staff_id", "fy", "regime", "items", "status", "review_notes", "reviewed_by", "reviewed_at"],
   expense_claims: ["id", "staff_id", "staff_name", "location", "claim_date", "category", "amount", "description", "receipt_url", "status", "reviewed_by", "review_notes", "reviewed_at", "paid_month", "paid_year"],
   petty_cash_sheets: ["id", "location", "date", "template_type", "received_amount", "full_time_meal_total", "part_time_meal_total", "meal_total", "expenses_total", "transport_total", "total_expense", "balance", "status", "verified_by", "verified_at", "notes", "created_by"],
   petty_cash_staff_meals: ["id", "sheet_id", "staff_id", "staff_name", "designation", "staff_type", "attendance_status", "amount", "display_order"],
@@ -77,6 +78,8 @@ export const STAFF_WRITABLE_FIELDS: Record<string, readonly string[]> = {
   letter_requests: ["id", "staff_id", "letter_type", "purpose", "status"],
   staff_notifications: ["id", "staff_id", "type", "title", "message", "action_url", "tab_id", "is_read"],
   expense_claims: ["id", "staff_id", "staff_name", "location", "claim_date", "category", "amount", "description", "receipt_url", "status"],
+  // Staff may declare but never approve; editing resets status to Submitted (DB trigger).
+  tax_declarations: ["id", "staff_id", "fy", "regime", "items"],
 };
 
 /** Reduce each row to the fixed allowlist for this table and role. */
