@@ -101,6 +101,16 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
     return () => { cancelled = true; };
   }, []);
 
+  // Approved employee tax declarations (Old/New regime, 80C, HRA…) drive slab TDS.
+  useEffect(() => {
+    let cancelled = false;
+    import('../services/taxDeclarationService')
+      .then(m => m.taxDeclarationService.primeForPayroll(staff))
+      .then(() => { if (!cancelled) setTdsPolicyVersion(v => v + 1); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [staff]);
+
 
   useEffect(() => {
     const loadData = async () => {
