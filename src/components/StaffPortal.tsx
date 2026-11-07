@@ -38,7 +38,7 @@ import { resolveActiveRule, calculateAttendanceStatus } from '../utils/attendanc
 import BreakControls from './BreakControls';
 import { breakEventService } from '../services/breakService';
 import { BreakEvent } from '../types';
-import { Coffee, X, Megaphone, Receipt, Grid3x3 } from 'lucide-react';
+import { Coffee, X, Megaphone, Receipt, Grid3x3, Calculator } from 'lucide-react';
 import TenantStatusBanner from './TenantStatusBanner';
 import { announcementService, Announcement } from '../services/announcementService';
 import StaffLoanSection from './StaffLoanSection';
