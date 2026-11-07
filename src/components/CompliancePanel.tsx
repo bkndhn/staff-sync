@@ -14,6 +14,7 @@ import { computeRunTds } from '../utils/tdsCalculations';
 import { validateComplianceExports, type CheckStatus } from '../utils/complianceValidation';
 import { payslipLinkService } from '../services/payslipLinkService';
 import { customAlert } from './CustomDialog';
+import { TaxDeclarationReview } from './TaxDeclarationReview';
 
 interface Props {
   details: PayrollDetail[];
@@ -74,12 +75,13 @@ export const CompliancePanel: React.FC<Props> = ({ details, staff, month, year, 
   const [links, setLinks] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [declVersion, setDeclVersion] = useState(0);
 
   const epfo = useMemo(() => buildEpfoEcr(details, staff, month, year), [details, staff, month, year]);
   const esic = useMemo(() => buildEsicReturn(details, staff, month, year), [details, staff, month, year]);
   const form24q = useMemo(() => buildForm24Q(details, staff, month, year), [details, staff, month, year]);
   const register = useMemo(() => buildTdsRegister(details, staff, month, year), [details, staff, month, year]);
-  const tdsRows = useMemo(() => computeRunTds(details, staff, month, year), [details, staff, month, year]);
+  const tdsRows = useMemo(() => computeRunTds(details, staff, month, year), [details, staff, month, year, declVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const validation = useMemo(
     () => validateComplianceExports({ details, staff, month, year, files: { epfo, esic, form24q, register } }),
@@ -125,6 +127,8 @@ export const CompliancePanel: React.FC<Props> = ({ details, staff, month, year, 
         <Card icon={<Receipt size={16} className="text-emerald-600" />} title="Form 24Q" subtitle="Quarterly TDS statement, Annexure I" file={form24q} />
         <Card icon={<FileText size={16} className="text-blue-600" />} title="TDS register" subtitle="Internal computation audit copy" file={register} />
       </div>
+
+      <TaxDeclarationReview staff={staff} reviewer={issuedBy} onChanged={() => setDeclVersion(v => v + 1)} />
 
       <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
