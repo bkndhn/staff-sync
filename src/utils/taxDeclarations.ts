@@ -77,7 +77,3 @@ export const compareRegimes = (
   return { old: o, new: nw, better, saving: Math.abs(o.annualTax - nw.annualTax) };
 };
 
-// ── Runtime registry of approved declarations (current FY), used by payroll ──
-let approved = new Map<string, TaxProfile>();
-export const setApprovedTaxProfiles = (m: Map<string, TaxProfile>) => { approved = m; };
-export const approvedTaxProfile = (staffId: string): TaxProfile | undefined => approved.get(staffId);
