@@ -33,3 +33,5 @@
 - [x] Full-screen /fingerprint page, fingerprints saved to cloud, staff onboarding with double-touch check
 - [x] Fingerprint: server-verified touches, external reader required (no phone-lock passkeys)
 - [ ] Fingerprint page with a real FIDO2 fingerprint key (needs device)
+
+- Tax declaration portal: staff declare (Old/New, 80C/80D/NPS/24b/80E/80G/HRA) → manager approves in Compliance → payroll TDS uses it (src/utils/taxDeclarations.ts, tested).

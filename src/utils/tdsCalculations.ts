@@ -82,6 +82,10 @@ export interface TdsInput {
   annualPf?: number;
   /** TDS already deducted earlier in this financial year. */
   tdsPaidTillDate?: number;
+  /** Old regime: 80D, 80CCD(1B), 24(b), 80E, 80G already capped (added on top of 80C). */
+  otherDeductions?: number;
+  /** Old regime: annual HRA exemption u/s 10(13A). */
+  hraExemption?: number;
 }
 
 export interface TdsResult {
@@ -119,9 +123,11 @@ export const computeTds = (input: TdsInput): TdsResult => {
   const chapterVIA =
     regime === 'old'
       ? Math.min(150000, (Number(input.declaredInvestments) || 0) + (Number(input.annualPf) || 0))
+        + Math.max(0, Number(input.otherDeductions) || 0)
       : 0;
+  const hraExempt = regime === 'old' ? Math.max(0, Number(input.hraExemption) || 0) : 0;
 
-  const taxableIncome = Math.max(0, annualGross - standardDeduction - chapterVIA);
+  const taxableIncome = Math.max(0, annualGross - standardDeduction - chapterVIA - hraExempt);
   const base = slabTax(taxableIncome, regime);
   const rebateCfg = REBATE_87A[regime];
   const rebate = taxableIncome <= rebateCfg.limit ? Math.min(base, rebateCfg.max) : 0;
@@ -172,7 +178,7 @@ export const computeRunTds = (
   details.forEach(detail => {
     const member = byId.get(detail.staffId);
     if (!member) return;
-    const cfg = (member as any).taxProfile || {};
+    const cfg = taxProfileOf(member);
     const pfLine = (detail.statutoryBreakdown || []).find(b => b.key === 'pf');
     rows.push({
       staff: member,
@@ -185,8 +191,20 @@ export const computeRunTds = (
         declaredInvestments: Number(cfg.declaredInvestments) || 0,
         annualPf: (pfLine?.amount || 0) * 12,
         tdsPaidTillDate: Number(cfg.tdsPaidTillDate) || 0,
+        otherDeductions: Number(cfg.otherDeductions) || 0,
+        hraExemption: Number(cfg.hraExemption) || 0,
       }),
     });
   });
   return rows;
 };
+
+// ── Approved employee tax declarations (current FY), loaded by taxDeclarationService ──
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type RuntimeTaxProfile = { regime?: string; declaredInvestments?: number; otherDeductions?: number; hraExemption?: number; tdsPaidTillDate?: number };
+let approvedProfiles = new Map<string, RuntimeTaxProfile>();
+export const setApprovedTaxProfiles = (m: Map<string, RuntimeTaxProfile>) => { approvedProfiles = m; };
+/** Approved declaration wins; falls back to any legacy taxProfile on the staff record. */
+export const taxProfileOf = (member: Staff): RuntimeTaxProfile =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  approvedProfiles.get(member.id) || (member as any).taxProfile || {};

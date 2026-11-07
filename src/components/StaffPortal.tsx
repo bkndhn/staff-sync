@@ -38,7 +38,7 @@ import { resolveActiveRule, calculateAttendanceStatus } from '../utils/attendanc
 import BreakControls from './BreakControls';
 import { breakEventService } from '../services/breakService';
 import { BreakEvent } from '../types';
-import { Coffee, X, Megaphone, Receipt, Grid3x3 } from 'lucide-react';
+import { Coffee, X, Megaphone, Receipt, Grid3x3, Calculator } from 'lucide-react';
 import TenantStatusBanner from './TenantStatusBanner';
 import { announcementService, Announcement } from '../services/announcementService';
 import StaffLoanSection from './StaffLoanSection';
@@ -47,6 +47,7 @@ import { AttendanceRegularizationModal } from './portal/AttendanceRegularization
 import { DocumentsTab } from './portal/DocumentsTab';
 import { PayslipsTab } from './portal/PayslipsTab';
 import { ExpensesTab } from './portal/ExpensesTab';
+import { TaxDeclarationTab } from './portal/TaxDeclarationTab';
 import { NotificationPanel } from './portal/NotificationPanel';
 import { localDateKey, localTimeKey } from '../lib/localDate';
 import { serverNow, syncServerTime } from '../lib/serverTime';
@@ -61,7 +62,7 @@ interface StaffPortalProps {
 }
 
 const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHikes, advances, allStaff }) => {
-  const [activeSection, setActiveSection] = useState<'overview' | 'attendance' | 'yearly' | 'salary' | 'hikes' | 'leave' | 'face' | 'grievances' | 'disbursements' | 'loans' | 'documents' | 'payslips' | 'expenses'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'attendance' | 'yearly' | 'salary' | 'hikes' | 'leave' | 'face' | 'grievances' | 'disbursements' | 'loans' | 'documents' | 'payslips' | 'expenses' | 'tax'>('overview');
   const [showMoreSections, setShowMoreSections] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [showRegularization, setShowRegularization] = useState(false);
@@ -720,6 +721,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
     { id: 'disbursements', label: 'Payroll Inbox', icon: CreditCard },
     { id: 'payslips', label: 'Payslips', icon: Receipt },
     { id: 'expenses', label: 'Expenses', icon: Receipt },
+    { id: 'tax', label: 'Tax Declaration', icon: Calculator },
     { id: 'documents', label: 'Documents', icon: FileText },
     { id: 'face', label: 'Face Registration', icon: Camera }
   ];
@@ -2275,6 +2277,9 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       {activeSection === 'expenses' && (
         <ExpensesTab staffId={staff.id || ''} staffName={staff.name} location={staff.location} />
       )}
+
+      {/* TAX DECLARATION */}
+      {activeSection === 'tax' && <TaxDeclarationTab staff={staff} />}
 
       {/* PAYSLIPS */}
       {activeSection === 'payslips' && (
