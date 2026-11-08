@@ -28,6 +28,7 @@ import { canSeeEmployeeCode, hideStatutoryExtras, type AppRole } from '../lib/ro
 import { useUserPreference } from '../hooks/useUserPreference';
 import { shiftService, DEFAULT_SHIFT_WINDOWS } from '../services/shiftService';
 import PayrollInsightsPanel from './PayrollInsightsPanel';
+import PayoutBatchPanel from './PayoutBatchPanel';
 import { findTamperedSnapshots } from '../utils/salaryTamperProof';
 import CompliancePanel from './CompliancePanel';
 import { currentActor } from '../lib/currentActor';
@@ -1262,6 +1263,10 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
         year={selectedYear}
         onReport={setAnomalyReport}
       />
+
+      {(userRole === 'admin' || userRole === 'super_admin') && (
+        <PayoutBatchPanel details={salaryDetails} staff={getBaseStaffList()} month={selectedMonth} year={selectedYear} />
+      )}
 
       {(userRole === 'admin' || userRole === 'super_admin' || userRole === 'statutory_admin') && (
         <div className="border border-gray-200 rounded-xl bg-white">
