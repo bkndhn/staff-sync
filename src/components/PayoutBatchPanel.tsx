@@ -92,7 +92,7 @@ export const PayoutBatchPanel: React.FC<Props> = ({ details, staff, month, year 
                   <span className="block text-xs text-muted-foreground">Created by {b.createdBy || '—'}{b.approvedBy ? ` · approved by ${b.approvedBy}` : ''}</span>
                 </button>
                 <div className="flex gap-2">
-                  {b.status === 'Draft' && (canApprove(b.status, b.createdBy, me)
+                  {b.status === 'Draft' && ((me ? canApprove(b.status, b.createdBy, me) : true)
                     ? <button disabled={busy} onClick={() => approve(b)} className="px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground">Approve</button>
                     : <span className="text-xs text-muted-foreground self-center">Needs another admin to approve</span>)}
                   {(b.status === 'Approved' || b.status === 'Exported') && <button disabled={busy} onClick={() => exportFile(b)} className="px-3 py-1.5 text-xs rounded-lg border border-primary text-primary">{b.status === 'Exported' ? 'Download again' : 'Download bank file'}</button>}
