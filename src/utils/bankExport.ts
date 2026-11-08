@@ -17,7 +17,7 @@ export interface BankExportResult {
   csv: string;
   rowCount: number;
   totalAmount: number;
-  payees: { code: string; name: string; account: string; ifsc: string; amount: number; mode: string }[];
+  payees: { staffId: string; code: string; name: string; account: string; ifsc: string; amount: number; mode: string }[];
   skipped: { staffId: string; name: string; reason: string }[];
 }
 
@@ -117,7 +117,7 @@ export const buildBankPaymentFile = (
   }
 
   return {
-    payees: payable.map(({ member, amount }) => ({ code: member.employeeCode || '', name: member.name, account: acc(member.bankAccountNumber), ifsc: acc(member.ifscCode), amount, mode: mode(amount) })),
+    payees: payable.map(({ member, amount }) => ({ staffId: member.id, code: member.employeeCode || '', name: member.name, account: acc(member.bankAccountNumber), ifsc: acc(member.ifscCode), amount, mode: mode(amount) })),
     filename: `bank-payment-${format}-${year}-${String(month).padStart(2, '0')}.csv`,
     csv: toCsv(rows),
     rowCount: payable.length,
