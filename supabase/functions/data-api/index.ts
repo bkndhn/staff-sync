@@ -70,6 +70,8 @@ const ACL: Record<string, TableAcl> = {
   salary_manual_overrides:           { read: ["admin","super_admin"],                                                 write: ["admin"] },
   salary_disbursements:              { read: ["admin","staff","super_admin"],                                         write: ["admin"], staffIdCol: "staff_id" },
   payslip_links:                     { read: ["admin","super_admin"],                                                 write: ["admin"] },
+  payout_batches:                    { read: ["admin","super_admin"],                                                 write: ["admin"] },
+  payout_batch_items:                { read: ["admin","super_admin"],                                                 write: ["admin"] },
   // ── Face / Biometric ────────────────────────────────────────────────────────
   face_embeddings:                   { read: ["admin","manager","staff","statutory_admin","supervisor","floor_supervisor","super_admin"],                               write: ["admin","manager","staff"],   staffIdCol: "staff_id" },
   staff_fingerprints:                { read: ["admin","manager","supervisor","floor_supervisor","super_admin"], write: ["admin","manager"], },
@@ -555,6 +557,18 @@ Deno.serve(async (req) => {
     if (body.op !== "select" && body.op !== "delete" && body.values !== undefined) {
       const rows = (Array.isArray(body.values) ? body.values : [body.values]) as Array<Record<string, unknown>>;
       const err = sanitizeWriteRows(body.table, rows, role) ?? restrictToAllowlist(body.table, role, rows);
+      // Payout batches: who created/approved/exported/completed is always the signed-in
+      // person (never client-supplied), so the "approver ≠ creator" DB rule can't be faked.
+      if (!err && body.table === "payout_batches") {
+        const who = String(user.email || user.id || "unknown");
+        for (const r of rows) {
+          delete r.created_by; delete r.approved_by; delete r.exported_by; delete r.completed_by;
+          if (body.op === "insert") r.created_by = who;
+          if (r.status === "Approved") r.approved_by = who;
+          if (r.status === "Exported") r.exported_by = who;
+          if (r.status === "Completed") r.completed_by = who;
+        }
+      }
       if (err) {
         return new Response(JSON.stringify({ error: err }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });

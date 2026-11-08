@@ -2116,6 +2116,162 @@ export type Database = {
           },
         ]
       }
+      payout_batch_items: {
+        Row: {
+          active: boolean
+          bank_account_number: string
+          batch_id: string
+          created_at: string
+          failure_reason: string | null
+          id: string
+          ifsc_code: string
+          month: number
+          net_amount: number
+          payment_mode: string
+          staff_id: string
+          staff_name: string | null
+          status: string
+          tenant_id: string | null
+          updated_at: string
+          utr_ref: string | null
+          year: number
+        }
+        Insert: {
+          active?: boolean
+          bank_account_number: string
+          batch_id: string
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          ifsc_code: string
+          month: number
+          net_amount: number
+          payment_mode?: string
+          staff_id: string
+          staff_name?: string | null
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+          utr_ref?: string | null
+          year: number
+        }
+        Update: {
+          active?: boolean
+          bank_account_number?: string
+          batch_id?: string
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          ifsc_code?: string
+          month?: number
+          net_amount?: number
+          payment_mode?: string
+          staff_id?: string
+          staff_name?: string | null
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+          utr_ref?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_batch_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "payout_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_batch_items_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_batch_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payout_batches: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          bank_format: string
+          cancelled_reason: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          debit_account: string | null
+          exported_at: string | null
+          exported_by: string | null
+          id: string
+          month: number
+          payee_count: number
+          status: string
+          tenant_id: string | null
+          total_amount: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bank_format?: string
+          cancelled_reason?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          debit_account?: string | null
+          exported_at?: string | null
+          exported_by?: string | null
+          id?: string
+          month: number
+          payee_count?: number
+          status?: string
+          tenant_id?: string | null
+          total_amount?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bank_format?: string
+          cancelled_reason?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          debit_account?: string | null
+          exported_at?: string | null
+          exported_by?: string | null
+          id?: string
+          month?: number
+          payee_count?: number
+          status?: string
+          tenant_id?: string | null
+          total_amount?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_batches_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payroll_runs: {
         Row: {
           approved_at: string | null
