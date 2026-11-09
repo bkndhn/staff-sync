@@ -35,8 +35,8 @@ const corsHeaders = {
 //                    (using the column name supplied — usually 'location' or
 //                    'location_id')
 // ---------------------------------------------------------------------------
-type Role = "admin" | "manager" | "staff" | "statutory_admin" | "supervisor" | "floor_supervisor" | "super_admin";
-type Op = "select" | "insert" | "update" | "upsert" | "delete" | "qr_sign" | "qr_verify";
+type Role = "admin" | "manager" | "staff" | "statutory_admin" | "supervisor" | "floor_supervisor" | "super_admin" | "petty_cash_manager";
+type Op = "select" | "insert" | "update" | "upsert" | "delete" | "qr_sign" | "qr_verify" | "server_time";
 
 interface TableAcl {
   read: Role[];
@@ -560,7 +560,7 @@ Deno.serve(async (req) => {
       // Payout batches: who created/approved/exported/completed is always the signed-in
       // person (never client-supplied), so the "approver ≠ creator" DB rule can't be faked.
       if (!err && body.table === "payout_batches") {
-        const who = String(user.email || user.id || "unknown");
+        const who = String(user.id); // same key for app-session and Supabase sign-ins, so self-approval cannot slip through
         for (const r of rows) {
           delete r.created_by; delete r.approved_by; delete r.exported_by; delete r.completed_by;
           if (body.op === "insert") r.created_by = who;

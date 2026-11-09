@@ -3,6 +3,7 @@
 // inside the frontend test suite (src/test/loanPolicy.test.ts).
 
 export type LoanRole =
+  | "petty_cash_manager"
   | "admin"
   | "manager"
   | "staff"
