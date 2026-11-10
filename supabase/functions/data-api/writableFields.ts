@@ -20,7 +20,7 @@ export const WRITABLE_FIELDS: Record<string, readonly string[]> = {
   salary_hikes: ["id", "staff_id", "old_salary", "new_salary", "hike_date", "reason", "breakdown"],
   salary_manual_overrides: ["id", "staff_id", "month", "year", "basic_override", "incentive_override", "hra_override", "meal_allowance_override", "sunday_penalty_override", "salary_supplements_override", "late_coming_deduction_override", "early_leave_deduction_override"],
   salary_disbursements: ["id", "staff_id", "month_year", "amount", "payment_mode", "transaction_ref", "notes", "disbursed_at"],
-  payout_batches: ["id", "month", "year", "status", "bank_format", "debit_account", "total_amount", "payee_count", "cancelled_reason", "created_by", "approved_by", "exported_by", "completed_by"],
+  payout_batches: ["id", "month", "year", "status", "bank_format", "debit_account", "total_amount", "payee_count", "cancelled_reason", "created_by", "approved_by", "exported_by", "completed_by", "is_test"],
   payout_batch_items: ["id", "batch_id", "staff_id", "month", "year", "staff_name", "net_amount", "bank_account_number", "ifsc_code", "payment_mode", "status", "utr_ref", "failure_reason"],
   payslip_links: ["id", "staff_id", "token_hash", "month", "year", "snapshot", "issued_by", "expires_at", "revoked_at", "view_count", "last_viewed_at"],
   face_embeddings: ["id", "staff_id", "staff_name", "angle_label", "descriptor", "descriptor_dim", "image_path", "quality_score", "is_approved", "captured_by", "notes", "model_version", "quality_metrics"],

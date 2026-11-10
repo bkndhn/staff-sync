@@ -68,3 +68,14 @@ export const canMarkPaid = (batch: BatchStatus, line: LineStatus, utr: string) =
 
 export const canComplete = (batch: BatchStatus, lines: PayoutLine[]) =>
   batch === 'Exported' && lines.every(l => l.status === 'Paid' || l.status === 'Failed');
+
+/** Test batches never write salary-paid records or send staff alerts; real batches always do. */
+export const shouldNotifyOnPaid = (batch: { isTest?: boolean }) => !batch.isTest;
+
+/** Test lines never block real payouts (and vice versa); only same-mode lines count as already queued. */
+export const queuedFor = (rows: { staff_id: string; active: boolean; is_test?: boolean }[], isTest: boolean) =>
+  new Set(rows.filter(r => r.active && !!r.is_test === isTest).map(r => r.staff_id));
+
+/** Test bank files are visibly marked so nobody uploads them to the bank. */
+export const markTestFile = <T extends { filename: string; csv: string }>(file: T): T =>
+  ({ ...file, filename: `TEST_${file.filename}`, csv: `TEST - DO NOT UPLOAD\n${file.csv}` });
