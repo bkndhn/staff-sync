@@ -33,3 +33,25 @@ describe('salary payout batches', () => {
     expect(canComplete('Exported', [{ status: 'Paid' } as any, { status: 'Failed' } as any])).toBe(true);
   });
 });
+
+import { shouldNotifyOnPaid, queuedFor, markTestFile, canMarkPaid as canPay } from '../utils/payoutBatch';
+describe('payout test mode', () => {
+  it('test batches never mark salary paid or alert staff; real ones do', () => {
+    expect(shouldNotifyOnPaid({ isTest: true })).toBe(false);
+    expect(shouldNotifyOnPaid({ isTest: false })).toBe(true);
+  });
+  it('still needs a UTR to mark Paid in test mode', () => {
+    expect(canPay('Exported', 'Exported', '')).toBe(false);
+    expect(canPay('Exported', 'Exported', 'TESTUTR123')).toBe(true);
+  });
+  it('test lines do not block real payouts, real lines still do', () => {
+    const rows = [{ staff_id: 'a', active: true, is_test: true }, { staff_id: 'b', active: true, is_test: false }];
+    expect([...queuedFor(rows, false)]).toEqual(['b']);
+    expect([...queuedFor(rows, true)]).toEqual(['a']);
+  });
+  it('marks test bank files', () => {
+    const f = markTestFile({ filename: 'x.csv', csv: 'a' });
+    expect(f.filename).toBe('TEST_x.csv');
+    expect(f.csv.startsWith('TEST - DO NOT UPLOAD')).toBe(true);
+  });
+});
