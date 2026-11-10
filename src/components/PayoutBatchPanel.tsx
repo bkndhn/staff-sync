@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Banknote, CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import type { PayrollDetail, Staff } from '../types';
 import { downloadBankPaymentFile, type BankFormat } from '../utils/bankExport';
-import { planPayoutBatch, exportApprovedBatch, canApprove, canMarkPaid, canComplete, type PayoutLine } from '../utils/payoutBatch';
+import { planPayoutBatch, exportApprovedBatch, canApprove, canMarkPaid, canComplete, markTestFile, type PayoutLine } from '../utils/payoutBatch';
 import { payoutBatchService, type PayoutBatch } from '../services/payoutBatchService';
 import { supabase } from '../lib/supabase';
 import { customAlert, customConfirm } from './CustomDialog';
@@ -28,6 +28,7 @@ export const PayoutBatchPanel: React.FC<Props> = ({ details, staff, month, year 
   const [debit, setDebit] = useState('');
   const [busy, setBusy] = useState(false);
   const [me, setMe] = useState('');
+  const [testMode, setTestMode] = useState(false);
   const [refs, setRefs] = useState<Record<string, string>>({});
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setMe(data.user?.email || '')).catch(() => {}); }, []);
@@ -43,10 +44,10 @@ export const PayoutBatchPanel: React.FC<Props> = ({ details, staff, month, year 
   };
 
   const create = () => run(async () => {
-    const plan = planPayoutBatch(details, staff, m, year, await payoutBatchService.queuedStaff(m, year));
+    const plan = planPayoutBatch(details, staff, m, year, await payoutBatchService.queuedStaff(m, year, testMode));
     if (!plan.lines.length) throw new Error(`Nobody can be added. ${plan.skipped.slice(0, 5).map(s => `${s.name}: ${s.reason}`).join('; ')}`);
-    const ok = await customConfirm(`Create a draft payout batch for ${plan.lines.length} people, total ${rs(plan.total)}?${plan.skipped.length ? `\n\n${plan.skipped.length} left out (cash, bad bank details, or already queued).` : ''}\n\nNo money moves until another admin approves and you upload the file to your bank.`);
-    if (ok) await payoutBatchService.create(m, year, format, debit, plan.lines);
+    const ok = await customConfirm(`${testMode ? 'TEST batch: no salary is marked paid and no staff alerts are sent.\n\n' : ''}Create a draft payout batch for ${plan.lines.length} people, total ${rs(plan.total)}?${plan.skipped.length ? `\n\n${plan.skipped.length} left out (cash, bad bank details, or already queued).` : ''}\n\nNo money moves until another admin approves and you upload the file to your bank.`);
+    if (ok) await payoutBatchService.create(m, year, format, debit, plan.lines, testMode);
   });
 
   const approve = (b: PayoutBatch) => run(async () => {
@@ -56,13 +57,13 @@ export const PayoutBatchPanel: React.FC<Props> = ({ details, staff, month, year 
 
   const exportFile = (b: PayoutBatch) => run(async () => {
     const file = exportApprovedBatch(b.status, await payoutBatchService.lines(b.id), m, year, b.bankFormat, b.debitAccount);
-    downloadBankPaymentFile(file);
+    downloadBankPaymentFile(b.isTest ? markTestFile(file) : file);
     await payoutBatchService.markExported(b.id);
     customAlert('Bank file downloaded. Salaries are NOT marked paid yet — enter the bank reference (UTR) for each person once the bank confirms.');
   });
 
   const confirm = (b: PayoutBatch, l: PayoutLine, outcome: 'Paid' | 'Failed') => run(async () => {
-    await payoutBatchService.confirmLine(l, m, year, outcome, refs[l.id!] || '');
+    await payoutBatchService.confirmLine(b, l, m, year, outcome, refs[l.id!] || '');
   });
 
   const active = batches.find(b => b.id === open);
@@ -76,6 +77,9 @@ export const PayoutBatchPanel: React.FC<Props> = ({ details, staff, month, year 
           {FORMATS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
         </select>
         <input value={debit} onChange={e => setDebit(e.target.value)} placeholder="Company debit account no." className="flex-1 px-3 py-2 text-sm rounded-lg border border-input bg-background text-foreground" />
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap self-center">
+          <input type="checkbox" checked={testMode} onChange={e => setTestMode(e.target.checked)} /> Test batch
+        </label>
         <button disabled={busy} onClick={create} className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground disabled:opacity-50">
           {busy ? <Loader2 size={14} className="animate-spin inline" /> : 'New payout batch'}
         </button>
@@ -87,6 +91,7 @@ export const PayoutBatchPanel: React.FC<Props> = ({ details, staff, month, year 
             <li key={b.id} className="border border-border rounded-lg p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <button className="text-left" onClick={() => setOpen(open === b.id ? null : b.id)}>
+                  {b.isTest && <span className="text-xs px-2 py-0.5 rounded-full mr-2 bg-destructive text-destructive-foreground font-semibold">TEST</span>}
                   <span className={`text-xs px-2 py-0.5 rounded-full mr-2 ${STATUS_STYLE[b.status]}`}>{b.status}</span>
                   <span className="text-sm font-medium text-foreground">{b.payeeCount} people · {rs(b.totalAmount)}</span>
                   <span className="block text-xs text-muted-foreground">Created by {b.createdBy || '—'}{b.approvedBy ? ` · approved by ${b.approvedBy}` : ''}</span>
@@ -97,6 +102,7 @@ export const PayoutBatchPanel: React.FC<Props> = ({ details, staff, month, year 
                     : <span className="text-xs text-muted-foreground self-center">Needs another admin to approve</span>)}
                   {(b.status === 'Approved' || b.status === 'Exported') && <button disabled={busy} onClick={() => exportFile(b)} className="px-3 py-1.5 text-xs rounded-lg border border-primary text-primary">{b.status === 'Exported' ? 'Download again' : 'Download bank file'}</button>}
                   {['Draft', 'Approved', 'Exported'].includes(b.status) && <button disabled={busy} onClick={async () => { if (await customConfirm('Cancel this batch? People in it can be added to a new batch.')) run(() => payoutBatchService.setStatus(b.id, 'Cancelled', 'Cancelled by admin')); }} className="px-3 py-1.5 text-xs rounded-lg border border-border text-muted-foreground">Cancel</button>}
+                  {b.isTest && <button disabled={busy} onClick={async () => { if (await customConfirm('Delete this test batch?')) run(() => payoutBatchService.deleteTestBatch(b)); }} className="px-3 py-1.5 text-xs rounded-lg border border-destructive text-destructive">Delete test</button>}
                   {b.id === open && canComplete(b.status, lines) && <button disabled={busy} onClick={() => run(() => payoutBatchService.setStatus(b.id, 'Completed'))} className="px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground">Close batch</button>}
                 </div>
               </div>
@@ -106,7 +112,7 @@ export const PayoutBatchPanel: React.FC<Props> = ({ details, staff, month, year 
                     <li key={l.id} className="py-2 flex flex-wrap items-center gap-2">
                       <span className="flex-1 min-w-[140px] text-foreground">{l.staffName}<span className="block text-xs text-muted-foreground">{l.ifscCode} · ••••{l.bankAccountNumber.slice(-4)} · {l.paymentMode}</span></span>
                       <span className="font-medium text-foreground">{rs(l.netAmount)}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLE[l.status]}`}>{l.status}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLE[l.status]}`}>{l.status}{b.isTest && l.status === 'Paid' ? ' (test)' : ''}</span>
                       {l.utrRef && <span className="text-xs text-muted-foreground">UTR {l.utrRef}</span>}
                       {b.status === 'Exported' && (l.status === 'Exported' || l.status === 'Pending') && (
                         <>
