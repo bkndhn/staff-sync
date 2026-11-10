@@ -2125,6 +2125,7 @@ export type Database = {
           failure_reason: string | null
           id: string
           ifsc_code: string
+          is_test: boolean
           month: number
           net_amount: number
           payment_mode: string
@@ -2144,6 +2145,7 @@ export type Database = {
           failure_reason?: string | null
           id?: string
           ifsc_code: string
+          is_test?: boolean
           month: number
           net_amount: number
           payment_mode?: string
@@ -2163,6 +2165,7 @@ export type Database = {
           failure_reason?: string | null
           id?: string
           ifsc_code?: string
+          is_test?: boolean
           month?: number
           net_amount?: number
           payment_mode?: string
@@ -2212,6 +2215,7 @@ export type Database = {
           exported_at: string | null
           exported_by: string | null
           id: string
+          is_test: boolean
           month: number
           payee_count: number
           status: string
@@ -2233,6 +2237,7 @@ export type Database = {
           exported_at?: string | null
           exported_by?: string | null
           id?: string
+          is_test?: boolean
           month: number
           payee_count?: number
           status?: string
@@ -2254,6 +2259,7 @@ export type Database = {
           exported_at?: string | null
           exported_by?: string | null
           id?: string
+          is_test?: boolean
           month?: number
           payee_count?: number
           status?: string
