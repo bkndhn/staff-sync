@@ -27,11 +27,22 @@
 - [x] Timed phone alerts: attendance reports / check-attendance / leave waiting / salary prep to chosen roles at many custom times; staff punch IN/OUT reminders before shift
 - [x] Punch IN/OUT alert on/off (company switch + per-person phone switches)
 - [ ] Real phone delivery test (needs a phone to tap "Turn on" alerts in the published app)
-- [ ] Employee tax declaration portal (Form 16 / 80C / 80D)
-- [ ] Direct bank salary payouts
+- [x] Employee tax declaration portal (Form 16 / 80C / 80D)
+- [x] Direct bank salary payouts
 - [x] Install-app sheet (repeats with back-off) + permissions sheet (location, notifications, camera)
 - [x] Full-screen /fingerprint page, fingerprints saved to cloud, staff onboarding with double-touch check
 - [x] Fingerprint: server-verified touches, external reader required (no phone-lock passkeys)
 - [ ] Fingerprint page with a real FIDO2 fingerprint key (needs device)
 
 - Tax declaration portal: staff declare (Old/New, 80C/80D/NPS/24b/80E/80G/HRA) → manager approves in Compliance → payroll TDS uses it (src/utils/taxDeclarations.ts, tested).
+
+- [x] Vercel install fix (safe model copy, Node 20+)
+- [x] 404, Privacy, Terms pages + sitemap/robots (business details are placeholders)
+- [x] Flex: Add Staff jumps to the form
+- [x] Admin theme color switcher (6 colors)
+- [x] 3 mobile UI design mockups for user to choose
+- [ ] Apply chosen UI design app-wide + more animations (waiting on user's pick)
+- [ ] Leave requests: per-company balance rules, approval audit trail, payroll apply
+- [ ] Payroll period close/lock, admin-only reopen with reason + audit
+- [ ] Flex variable pay rates (date-range daily/weekly/monthly overrides)
+- [ ] Wider competitive feature pass

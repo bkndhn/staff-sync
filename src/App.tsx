@@ -6,6 +6,7 @@ import Login from './components/Login';
 import StaffPortalLogin from './components/StaffPortalLogin';
 import ResetPassword from './components/ResetPassword';
 import PayslipView from './components/PayslipView';
+import { PrivacyPolicy, TermsOfService, NotFound } from './components/public/LegalPages';
 
 import Dashboard from './components/Dashboard';
 import AttendanceTracker from './components/AttendanceTracker';
@@ -39,6 +40,7 @@ import { resolveActiveRule } from './utils/attendanceRules';
 import { appSettingsService } from './services/appSettingsService';
 import { CustomDialogProvider, customAlert } from './components/CustomDialog';
 import TenantStatusBanner from './components/TenantStatusBanner';
+import { applyBrandTheme, THEME_SETTING_KEY } from './utils/brandTheme';
 import { errorTracker } from './services/errorTrackingService';
 
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
@@ -117,6 +119,11 @@ function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const [user, setUser] = useState<User | null>(null);
+  // Company theme colour (set by admin in Settings).
+  useEffect(() => {
+    if (!user) return;
+    appSettingsService.getSetting(THEME_SETTING_KEY).then(v => { if (v) applyBrandTheme(v); }).catch(() => {});
+  }, [user]);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -1699,6 +1706,13 @@ function App() {
     );
   }
 
+  // Public legal pages and 404 — resolved before auth and staff-portal slugs.
+  {
+    const p = window.location.pathname.replace(/\/+$/, '');
+    if (p === '/privacy') return <PrivacyPolicy />;
+    if (p === '/terms') return <TermsOfService />;
+    if (p === '/404' || p.split('/').filter(Boolean).length > 1 && !p.startsWith('/payslip/')) return <NotFound />;
+  }
   // Public payslip magic link — resolved before any auth gate.
   if (window.location.pathname.startsWith('/payslip/')) {
     const payslipToken = window.location.pathname.split('/payslip/')[1]?.split(/[/?#]/)[0] || '';

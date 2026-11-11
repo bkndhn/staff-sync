@@ -1625,7 +1625,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
                             </button>
                         )}
                         <button
-                            onClick={() => setShowAddForm(true)}
+                            onClick={() => { setShowAddForm(true); setTimeout(() => { const el = document.getElementById('flex-add-form'); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); (el?.querySelector('input, select, textarea') as HTMLElement | null)?.focus({ preventScroll: true }); }, 60); }}
                             className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm"
                         >
                             <Plus size={16} />
@@ -1647,7 +1647,7 @@ const PartTimeStaff: React.FC<PartTimeStaffProps> = ({
 
             {/* Add flex staff Form (Bulk) */}
             {showAddForm && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6">
+                <div id="flex-add-form" className="scroll-mt-20 animate-slide-up bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6">
                     <div className="flex justify-between items-center mb-3">
                         <h2 className="text-lg md:text-xl font-bold text-gray-800">Add flex staff for Today</h2>
                         <button onClick={() => setShowAddForm(false)} className="bg-gray-100 text-gray-500 hover:text-red-600 hover:bg-red-100 p-1.5 rounded-full transition-all shadow-sm">

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /payslip/
+Sitemap: https://zenhrapp.lovable.app/sitemap.xml

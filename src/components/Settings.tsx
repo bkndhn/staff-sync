@@ -1,3 +1,5 @@
+import BrandThemePicker from './BrandThemePicker';
+import { Palette } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Users, Plus, Edit2, Trash2, Eye, EyeOff, Shield, MapPin, Save, X, AlertCircle, Check, Copy, Clock, TrendingUp, QrCode, ChevronDown, Cpu, Globe, Layers, Receipt, Plug, Bell } from 'lucide-react';
 import { userService, AppUser, CreateUserInput, UpdateUserInput } from '../services/userService';
@@ -465,6 +467,11 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                     <p className="text-white/50 text-sm">Manage user accounts and access</p>
                 </div>
             </div>
+            {userRole === 'admin' && (
+                <SettingsSection title="App Theme Color" subtitle="Pick the main color of the app for everyone." icon={Palette} defaultOpen={false}>
+                    <BrandThemePicker />
+                </SettingsSection>
+            )}
             {(userRole as string) === 'super_admin' && (
                 <SettingsSection
                     title="Feature Toggles"

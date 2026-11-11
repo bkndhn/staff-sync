@@ -1,3 +1,5 @@
+import { applyBrandTheme, cachedBrandTheme } from './utils/brandTheme';
+applyBrandTheme(cachedBrandTheme());
 import { StrictMode, Component, ErrorInfo, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';

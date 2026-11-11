@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "test:a11y": "eslint .",
     "preview": "vite preview",
-    "copy-models": "node -e \"const fs=require('fs');const src='node_modules/@vladmandic/face-api/model';const dst='public/models';if(!fs.existsSync(dst))fs.mkdirSync(dst,{recursive:true});fs.readdirSync(src).forEach(f=>fs.copyFileSync(src+'/'+f,dst+'/'+f));console.log('Models copied.');\"",
+    "copy-models": "node -e \"const fs=require('fs');const src='node_modules/@vladmandic/face-api/model';const dst='public/models';try{if(!fs.existsSync(src)){console.log('Models source missing, skipped.');process.exit(0)}if(!fs.existsSync(dst))fs.mkdirSync(dst,{recursive:true});fs.readdirSync(src).forEach(f=>fs.copyFileSync(src+'/'+f,dst+'/'+f));console.log('Models copied.')}catch(e){console.log('Model copy skipped:',e.message)}\"",
     "postinstall": "npm run copy-models"
   },
   "dependencies": {
@@ -65,5 +65,8 @@
     "typescript-eslint": "^8.3.0",
     "vite": "^4.5.3",
     "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
