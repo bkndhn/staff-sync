@@ -3529,3 +3529,55 @@ input[type="date"]::-webkit-datetime-edit { padding: 0; overflow: visible; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* ============ COMPANY STYLES (admin-selected; body.style-*) ============ */
+body.style-bold_violet:not(.light-theme) {
+  --bg-primary:#0d0718; --bg-secondary:#150c26; --bg-tertiary:#1d1233; --bg-card:#170e2b; --bg-card-hover:#21143d;
+  --glass-bg:#170e2b; --glass-bg-strong:#21143d; --glass-border:#2e1d52; --glass-border-strong:#3f2870;
+  --primary-gradient:linear-gradient(135deg,#8b5cf6,#d946ef); --purple-gradient:linear-gradient(135deg,#7c3aed,#c026d3);
+  --shadow-glow-primary:0 6px 24px rgba(139,92,246,.35);
+  background:radial-gradient(1200px 600px at 100% -10%,rgba(217,70,239,.14),transparent 60%),radial-gradient(900px 500px at -10% 0%,rgba(139,92,246,.18),transparent 60%),#0d0718 !important;
+  background-attachment:fixed !important;
+}
+body.style-bold_violet:not(.light-theme) .glass-card,
+body.style-bold_violet:not(.light-theme) .glass-card-static,
+body.style-bold_violet:not(.light-theme) .stat-card { border-color:#2e1d52 !important; box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 10px 30px -12px rgba(124,58,237,.35); }
+body.style-bold_violet:not(.light-theme) .btn-premium { background:linear-gradient(135deg,#8b5cf6,#d946ef) !important; box-shadow:0 6px 20px -6px rgba(217,70,239,.55); }
+
+body.style-dark_glass:not(.light-theme) {
+  --bg-primary:#060a12; --bg-secondary:#0b1220; --bg-tertiary:#111a2b; --bg-card:rgba(255,255,255,.04); --bg-card-hover:rgba(255,255,255,.07);
+  --glass-bg:rgba(255,255,255,.04); --glass-bg-strong:rgba(255,255,255,.08); --glass-border:rgba(255,255,255,.10); --glass-border-strong:rgba(255,255,255,.18);
+  background:radial-gradient(1000px 600px at 80% -10%,rgba(56,189,248,.12),transparent 60%),radial-gradient(800px 500px at 0% 100%,rgba(99,102,241,.10),transparent 60%),#060a12 !important;
+  background-attachment:fixed !important;
+}
+body.style-dark_glass:not(.light-theme) .glass-card,
+body.style-dark_glass:not(.light-theme) .glass-card-static,
+body.style-dark_glass:not(.light-theme) .stat-card {
+  background:rgba(255,255,255,.045) !important; border:1px solid rgba(255,255,255,.10) !important;
+  -webkit-backdrop-filter:blur(14px) saturate(140%); backdrop-filter:blur(14px) saturate(140%);
+  box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 12px 32px -14px rgba(0,0,0,.6);
+}
+body.style-dark_glass:not(.light-theme) .mobile-nav { background:rgba(6,10,18,.72) !important; -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); }
+
+body.style-light_minimal.light-theme { --bg-primary:#f8fafc; --bg-secondary:#ffffff; background:#f8fafc !important; }
+body.style-light_minimal.light-theme .glass-card,
+body.style-light_minimal.light-theme .glass-card-static,
+body.style-light_minimal.light-theme .stat-card { background:#fff !important; border:1px solid #e2e8f0 !important; box-shadow:0 1px 2px rgba(15,23,42,.04) !important; }
+
+/* Mobile-friendly controls */
+@media (pointer:coarse) {
+  button, [role="button"], select, .nav-item, .mobile-nav-item { min-height:44px; }
+  input, select, textarea { font-size:16px; }
+}
+button, [role="button"], .glass-card, .stat-card { -webkit-tap-highlight-color:transparent; }
+button:not(:disabled):active, [role="button"]:active { transform:scale(.97); }
+button, .glass-card, .stat-card, .mobile-nav-item { transition:transform .16s cubic-bezier(.2,0,0,1), background-color .2s, border-color .2s, box-shadow .2s, opacity .2s; }
+
+/* Lightweight entrance animation (transform/opacity only) */
+@keyframes zen-rise { from { opacity:0; transform:translate3d(0,8px,0); } to { opacity:1; transform:none; } }
+.glass-card, .glass-card-static, .stat-card { animation:zen-rise .32s cubic-bezier(.2,0,0,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
+  button:active, [role="button"]:active { transform:none !important; }
+}

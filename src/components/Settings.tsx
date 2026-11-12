@@ -1,3 +1,4 @@
+import ThemeStylePicker from './ThemeStylePicker';
 import BrandThemePicker from './BrandThemePicker';
 import { Palette } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
@@ -467,6 +468,11 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                     <p className="text-white/50 text-sm">Manage user accounts and access</p>
                 </div>
             </div>
+            {userRole === 'admin' && (
+                <SettingsSection title="App Style" subtitle="Bold Violet, Dark Glass or Light Minimal for everyone." icon={Palette} defaultOpen={false}>
+                    <ThemeStylePicker />
+                </SettingsSection>
+            )}
             {userRole === 'admin' && (
                 <SettingsSection title="App Theme Color" subtitle="Pick the main color of the app for everyone." icon={Palette} defaultOpen={false}>
                     <BrandThemePicker />

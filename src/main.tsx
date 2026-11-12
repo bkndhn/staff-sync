@@ -1,3 +1,5 @@
+import { applyThemeStyle, cachedThemeStyle } from './utils/themeStyle';
+applyThemeStyle(cachedThemeStyle());
 import { applyBrandTheme, cachedBrandTheme } from './utils/brandTheme';
 applyBrandTheme(cachedBrandTheme());
 import { StrictMode, Component, ErrorInfo, ReactNode } from 'react';

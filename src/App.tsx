@@ -41,6 +41,7 @@ import { appSettingsService } from './services/appSettingsService';
 import { CustomDialogProvider, customAlert } from './components/CustomDialog';
 import TenantStatusBanner from './components/TenantStatusBanner';
 import { applyBrandTheme, THEME_SETTING_KEY } from './utils/brandTheme';
+import { applyThemeStyle, cachedThemeStyle, STYLE_SETTING_KEY, THEME_STYLES, ThemeStyleId } from './utils/themeStyle';
 import { errorTracker } from './services/errorTrackingService';
 
 const StaffManagement = React.lazy(() => import('./components/StaffManagement'));
@@ -123,6 +124,7 @@ function App() {
   useEffect(() => {
     if (!user) return;
     appSettingsService.getSetting(THEME_SETTING_KEY).then(v => { if (v) applyBrandTheme(v); }).catch(() => {});
+    appSettingsService.getSetting(STYLE_SETTING_KEY).then(v => { applyThemeStyle(v); }).catch(() => {});
   }, [user]);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -327,12 +329,12 @@ function App() {
 
   // Theme state - Lifted from Dashboard.
   // Default = LIGHT (pure white background + blue accents). Users can still opt into dark.
-  const [isDarkTheme, setIsDarkTheme] = useState(() => {
-    const userSet = localStorage.getItem('themeUserSet') === '1';
-    const savedTheme = localStorage.getItem('theme');
-    if (userSet && savedTheme === 'dark') return true;
-    return false;
-  });
+  const [isDarkTheme, setIsDarkTheme] = useState(() => THEME_STYLES[cachedThemeStyle()].dark);
+  useEffect(() => {
+    const on = (e: Event) => setIsDarkTheme(THEME_STYLES[(e as CustomEvent<ThemeStyleId>).detail].dark);
+    window.addEventListener('zenhr-style', on);
+    return () => window.removeEventListener('zenhr-style', on);
+  }, []);
 
   useEffect(() => {
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
