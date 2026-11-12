@@ -573,6 +573,72 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: err }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+      const denyW = (msg: string) => new Response(JSON.stringify({ error: msg }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const who = String(user.id);
+      const selfIds = new Set([who, String((user as any).staff_id ?? who)]);
+      // Review tables: decisions are server-stamped, only reviewers may decide, and nobody reviews their own row.
+      const REVIEW: Record<string, { initial: string; decided: string[]; reviewers: string[]; locked: string[] }> = {
+        expense_claims: { initial: "pending", decided: ["approved", "rejected", "paid"], reviewers: ["admin", "manager", "super_admin"], locked: ["amount", "staff_id", "claim_date", "category"] },
+        leave_requests: { initial: "pending", decided: ["approved", "rejected", "postponed"], reviewers: ["admin", "manager", "statutory_admin", "supervisor", "floor_supervisor", "super_admin"], locked: ["staff_id", "leave_date", "leave_end_date", "leave_type"] },
+        tax_declarations: { initial: "Submitted", decided: ["Approved", "Rejected"], reviewers: ["admin", "manager", "super_admin"], locked: ["staff_id", "fy"] },
+      };
+      const rv = REVIEW[body.table];
+      if (rv && role !== "staff") {
+        for (const r of rows) { delete r.reviewed_by; delete r.reviewed_at; }
+        if (body.op === "insert" || body.op === "upsert") {
+          for (const r of rows) {
+            if ("status" in r && r.status !== rv.initial) r.status = rv.initial;
+            if (r.staff_id != null && selfIds.has(String(r.staff_id))) return denyW("You cannot file this on your own record");
+          }
+        } else if (body.op === "update") {
+          const r = rows[0] ?? {};
+          const deciding = "status" in r && rv.decided.includes(String(r.status));
+          let tq: any = admin.from(body.table).select("id, staff_id, status");
+          tq = applyFilters(tq, [...scopeFilters, ...(body.filters ?? [])]);
+          if (tenantId) tq = tq.eq(tenantCol, tenantId);
+          const { data: targets } = await tq;
+          for (const t of (targets ?? []) as any[]) {
+            if (selfIds.has(String(t.staff_id))) return denyW("You cannot change your own request");
+            if (String(t.status) !== rv.initial && rv.locked.some((f) => f in r)) return denyW("Reviewed requests cannot be edited");
+          }
+          if (deciding) {
+            if (!rv.reviewers.includes(role)) return denyW("Your role cannot approve or reject this");
+            if (!(body.table === "expense_claims" && r.status === "paid")) {
+              for (const x of rows) { x.reviewed_by = who; x.reviewed_at = new Date().toISOString(); }
+            }
+          }
+        }
+      }
+      // Face records: non-admins may only register/approve faces for staff in their own location.
+      if (body.table === "face_embeddings" && role !== "staff" && role !== "admin" && !isSuper) {
+        const ids = new Set<string>();
+        if (body.op === "update") {
+          let fq: any = admin.from("face_embeddings").select("staff_id");
+          fq = applyFilters(fq, body.filters ?? []);
+          if (tenantId) fq = fq.eq(tenantCol, tenantId);
+          const { data: fr } = await fq;
+          for (const x of (fr ?? []) as any[]) ids.add(String(x.staff_id));
+        }
+        for (const r of rows) if (r.staff_id != null) ids.add(String(r.staff_id));
+        if (ids.size) {
+          if (!user.location) return denyW("You are not assigned to a location");
+          let sq: any = admin.from("staff").select("id").in("id", [...ids]).eq("location", user.location);
+          if (tenantId) sq = sq.eq("tenant_id", tenantId);
+          const { data: ok } = await sq;
+          if ((ok?.length ?? 0) !== ids.size) return denyW("Staff member is outside your location");
+        }
+      }
+      // Petty cash: totals are recomputed on the server after every write; who verified is server-stamped.
+      if (body.table === "petty_cash_sheets") {
+        for (const r of rows) {
+          delete r.verified_by; delete r.verified_at;
+          if (r.status === "verified") {
+            if (!["admin", "super_admin"].includes(role)) return denyW("Only administrators can verify petty cash");
+            r.verified_by = who; r.verified_at = new Date().toISOString();
+          }
+        }
+      }
     }
     if (!isSuper && body.table === "app_users" && (body.op === "upsert")) {
       return new Response(JSON.stringify({ error: "Upsert is not permitted on users" }),
@@ -915,6 +981,43 @@ Deno.serve(async (req) => {
     if (error) {
       return new Response(JSON.stringify({ error: error.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    // Recompute petty cash totals from the itemised rows so nobody can inflate a balance.
+    const PC_TABLES = ["petty_cash_sheets", "petty_cash_staff_meals", "petty_cash_expenses", "petty_cash_transports"];
+    if (body.op !== "select" && PC_TABLES.includes(body.table)) {
+      const sheetIds = new Set<string>();
+      const rowsOut = (Array.isArray(data) ? data : data ? [data] : []) as any[];
+      const prev = (Array.isArray(beforeData) ? beforeData : []) as any[];
+      for (const x of [...rowsOut, ...prev]) {
+        const sid = body.table === "petty_cash_sheets" ? x?.id : x?.sheet_id;
+        if (sid) sheetIds.add(String(sid));
+      }
+      if (body.table !== "petty_cash_sheets") {
+        const vals = (Array.isArray(body.values) ? body.values : body.values ? [body.values] : []) as any[];
+        for (const v of vals) if (v?.sheet_id) sheetIds.add(String(v.sheet_id));
+        const f = body.filters?.find((x) => x.col === "sheet_id" && x.op === "eq")?.val;
+        if (f) sheetIds.add(String(f));
+      }
+      for (const sid of sheetIds) {
+        try {
+          const n = (v: unknown) => Number(v) || 0;
+          const [{ data: sh }, { data: meals }, { data: exps }, { data: trs }] = await Promise.all([
+            admin.from("petty_cash_sheets").select("received_amount").eq("id", sid).maybeSingle(),
+            admin.from("petty_cash_staff_meals").select("staff_type, amount").eq("sheet_id", sid),
+            admin.from("petty_cash_expenses").select("amount").eq("sheet_id", sid),
+            admin.from("petty_cash_transports").select("total").eq("sheet_id", sid),
+          ]);
+          if (!sh) continue;
+          const ft = (meals ?? []).filter((m: any) => m.staff_type === "full-time").reduce((a: number, m: any) => a + n(m.amount), 0);
+          const pt = (meals ?? []).filter((m: any) => m.staff_type === "part-time").reduce((a: number, m: any) => a + n(m.amount), 0);
+          const ex = (exps ?? []).reduce((a: number, m: any) => a + n(m.amount), 0);
+          const tr = (trs ?? []).reduce((a: number, m: any) => a + n(m.total), 0);
+          const total = ex + tr;
+          const fix = { full_time_meal_total: ft, part_time_meal_total: pt, meal_total: ft + pt, expenses_total: ex, transport_total: tr, total_expense: total, balance: n((sh as any).received_amount) - total };
+          await admin.from("petty_cash_sheets").update(fix).eq("id", sid);
+          for (const x of rowsOut) if (body.table === "petty_cash_sheets" && String(x?.id) === sid) Object.assign(x, fix);
+        } catch (e) { console.error("petty cash recompute failed", e); }
+      }
     }
     let payloadData = stripSecrets(wantSingle
       ? (Array.isArray(data) ? (data[0] ?? null) : (data ?? null))
