@@ -60,6 +60,7 @@ const ExpenseClaims = React.lazy(() => import('./components/ExpenseClaims'));
 const PettyCashManagement = React.lazy(() => import('./components/PettyCashManagement').then(m => ({ default: m.PettyCashManagement })));
 const FaceAttendance = React.lazy(() => import('./components/FaceAttendance'));
 const FingerprintStation = React.lazy(() => import('./components/FingerprintStation'));
+const FingerprintHub = React.lazy(() => import('./components/biometrics/FingerprintHub'));
 const BreakManagement = React.lazy(() => import('./components/BreakManagement'));
 const WorkforceInsights = React.lazy(() => import('./components/WorkforceInsights'));
 const ActionCenter = React.lazy(() => import('./components/ActionCenter'));
@@ -381,7 +382,7 @@ function App() {
     if (!user) return;
     const saved = localStorage.getItem('activeTab') as NavigationTab | null;
     const statutoryAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Payroll Management', 'Leave Management', 'Settings'];
-    const supervisorAllowed: NavigationTab[] = ['Dashboard', 'Attendance', 'Break Management', 'Flex Staff', 'Leave Management'];
+    const supervisorAllowed: NavigationTab[] = ['Dashboard', 'Attendance', 'Break Management', 'Flex Staff', 'Leave Management', 'Fingerprint'];
     const validForRole = (tab: NavigationTab | null): boolean => {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
@@ -389,7 +390,7 @@ function App() {
       if (user.role === 'supervisor') return supervisorAllowed.includes(tab);
       // floor_supervisor: same pages as Navigation shows them — no Staff/Roster
       if (user.role === 'floor_supervisor') {
-        const floorSupervisorAllowed: NavigationTab[] = ['Dashboard', 'Attendance', 'Break Management', 'Leave Management', 'Profile'];
+        const floorSupervisorAllowed: NavigationTab[] = ['Dashboard', 'Attendance', 'Break Management', 'Leave Management', 'Profile', 'Fingerprint'];
         return floorSupervisorAllowed.includes(tab);
       }
       if (user.role === 'petty_cash_manager') {
@@ -1629,10 +1630,18 @@ function App() {
                 userRole={user?.role as 'admin' | 'manager'}
                 userLocation={user?.location}
               />
-              <FingerprintStation
+            </Suspense>
+          </ErrorBoundary>
+        );
+      case 'Fingerprint':
+        if (!['admin', 'manager', 'supervisor', 'floor_supervisor'].includes(user?.role || '')) return null;
+        return (
+          <ErrorBoundary moduleName="Fingerprint">
+            <Suspense fallback={<ComponentLoader />}>
+              <FingerprintHub
                 staff={filteredStaffData}
                 attendance={filteredAttendanceData}
-                userLocation={user?.role === 'manager' ? user?.location : undefined}
+                userLocation={user?.role === 'admin' ? undefined : user?.location}
                 onAttendanceUpdated={() => cacheService.invalidate(CACHE_KEYS.ATTENDANCE)}
               />
             </Suspense>

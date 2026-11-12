@@ -328,7 +328,7 @@ export interface PayrollOverride {
   salarySupplementsOverride?: Record<string, number>;
 }
 
-export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Payroll Management' | 'Flex Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Audit Log' | 'Workforce Insights' | 'Break Management' | 'Security' | 'AI Insights' | 'Profile' | 'Permissions Matrix' | 'Shift Roster' | 'Action Center' | 'Loan Requests' | 'Announcements' | 'Expense Claims' | 'Petty Cash';
+export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Payroll Management' | 'Flex Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Fingerprint' | 'Audit Log' | 'Workforce Insights' | 'Break Management' | 'Security' | 'AI Insights' | 'Profile' | 'Permissions Matrix' | 'Shift Roster' | 'Action Center' | 'Loan Requests' | 'Announcements' | 'Expense Claims' | 'Petty Cash';
 
 export interface BreakType {
   id: string;

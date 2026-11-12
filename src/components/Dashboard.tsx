@@ -25,6 +25,7 @@ import DashboardQuickActions from './dashboard/DashboardQuickActions';
 import DashboardWidgetConfigModal, { DashboardWidgetConfig, DEFAULT_WIDGET_CONFIG } from './dashboard/DashboardWidgetConfigModal';
 import { useUserPreference } from '../hooks/useUserPreference';
 import LivePunchFeed from './dashboard/LivePunchFeed';
+import DailyHoursWidget from './dashboard/DailyHoursWidget';
 
 interface DashboardProps {
   staff: Staff[];
@@ -443,6 +444,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       <LivePunchFeed attendance={attendance} staff={filteredStaff} date={selectedDate} />
+      <DailyHoursWidget staff={filteredStaff} attendance={attendance} date={selectedDate} />
       {/* AI Workforce Insights moved to Workforce Insights page */}
 
       {/* Stats Cards - Admin Only */}

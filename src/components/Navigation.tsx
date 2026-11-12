@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavigationTab, User } from '../types';
 import {
   BarChart3, Users, Calendar, DollarSign, Clock, Archive, LogOut,
-  AlertTriangle, Settings as SettingsIcon, FileText, ScanFace,
+  AlertTriangle, Settings as SettingsIcon, FileText, ScanFace, Fingerprint,
   ShieldAlert, Shield, TrendingUp, Coffee, Sun, Moon,
   PanelLeftClose, PanelLeftOpen, UserCircle, RefreshCw, Zap, IndianRupee, Megaphone, Receipt,
   LayoutGrid, X } from 'lucide-react';
@@ -84,6 +84,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Expense Claims' as NavigationTab, label: 'Expenses', icon: Receipt },
         { id: 'Petty Cash' as NavigationTab, label: 'Petty Cash', icon: IndianRupee },
         { id: 'Face Attendance' as NavigationTab, label: 'Face Punch', icon: ScanFace },
+        { id: 'Fingerprint' as NavigationTab, label: 'Fingerprint', icon: Fingerprint },
         { id: 'Old Staff Records' as NavigationTab, label: 'Archive', icon: Archive },
         { id: 'Action Center' as NavigationTab, label: 'Action Center', icon: AlertTriangle },
         { id: 'Audit Log' as NavigationTab, label: 'Audit Log', icon: ShieldAlert },
@@ -100,6 +101,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
         { id: 'Flex Staff' as NavigationTab, label: 'Flex', icon: Clock },
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
+        { id: 'Fingerprint' as NavigationTab, label: 'Fingerprint', icon: Fingerprint },
         { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
       ];
     }
@@ -110,6 +112,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Break Management' as NavigationTab, label: 'Breaks', icon: Coffee },
         { id: 'Flex Staff' as NavigationTab, label: 'Flex', icon: Clock },
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
+        { id: 'Fingerprint' as NavigationTab, label: 'Fingerprint', icon: Fingerprint },
         { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
       ];
     }
@@ -130,6 +133,7 @@ const Navigation: React.FC<NavigationProps> = ({
       { id: 'Loan Requests' as NavigationTab, label: 'Loans', icon: IndianRupee },
       { id: 'Petty Cash' as NavigationTab, label: 'Petty Cash', icon: IndianRupee },
       { id: 'Face Attendance' as NavigationTab, label: 'Face Punch', icon: ScanFace },
+        { id: 'Fingerprint' as NavigationTab, label: 'Fingerprint', icon: Fingerprint },
       { id: 'Announcements' as NavigationTab, label: 'Announcements', icon: Megaphone },
       { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
     ];

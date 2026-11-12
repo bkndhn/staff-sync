@@ -9,3 +9,6 @@
 /*.md
 !/README.md
 /.lovable/
+
+bun.lock
+bun.lockb
