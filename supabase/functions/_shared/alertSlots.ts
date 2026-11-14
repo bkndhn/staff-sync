@@ -119,3 +119,24 @@ export const to12h = (hhmm: string): string => {
   const h = Math.floor(m / 60), mm = m % 60;
   return `${((h + 11) % 12) + 1}:${String(mm).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 };
+
+/** Built-in daily alerts that run for every company without setup. */
+export type BuiltinKind = "pending_phase1" | "pending_phase2" | "daily_digest" | "flex_morning" | "flex_evening";
+
+/**
+ * Built-in alerts due at this tick (15-minute timer, reports arrive 0-14 min after the time):
+ * - every half hour 10:00-14:30 → phase 1, 15:00-20:00 → phase 2 attendance reminder to supervisors/managers
+ * - 19:00 daily working-hours digest to managers
+ * - 11:00 and 18:00 flex staff reminders
+ */
+export function builtinDue(now: LocalNow): Array<{ kind: BuiltinKind; target: string; slotKey: string }> {
+  const out: Array<{ kind: BuiltinKind; target: string; slotKey: string }> = [];
+  const add = (kind: BuiltinKind, t: number) => {
+    if (now.minutes >= t && now.minutes <= t + WINDOW_MIN) out.push({ kind, target: toHHMM(t), slotKey: `${now.date}T${toHHMM(t)}#${kind}` });
+  };
+  for (let t = 600; t <= 1200; t += 30) add(t < 900 ? "pending_phase1" : "pending_phase2", t);
+  add("daily_digest", 1140);
+  add("flex_morning", 660);
+  add("flex_evening", 1080);
+  return out;
+}

@@ -58,3 +58,28 @@ describe('timed phone alerts', () => {
     expect(n.weekday).toBe(6);
   });
 });
+
+import { builtinDue } from '../../supabase/functions/_shared/alertSlots';
+describe('built-in attendance alerts', () => {
+  const kinds = (hhmm: string) => builtinDue(at(hhmm)).map((d) => d.kind).sort();
+  it('reminds supervisors every half hour: phase 1 from 10 AM, phase 2 from 3 PM to 8 PM', () => {
+    expect(kinds('09:30')).toEqual([]);
+    expect(kinds('10:00')).toEqual(['pending_phase1']);
+    expect(kinds('14:30')).toEqual(['pending_phase1']);
+    expect(kinds('15:00')).toEqual(['pending_phase2']);
+    expect(kinds('20:00')).toEqual(['pending_phase2']);
+    expect(kinds('20:30')).toEqual([]);
+    expect(kinds('10:15')).toEqual([]);
+  });
+  it('sends the 7 PM digest and flex reminders at 11 AM and 6 PM', () => {
+    expect(kinds('19:00')).toEqual(['daily_digest', 'pending_phase2']);
+    expect(kinds('11:00')).toEqual(['flex_morning', 'pending_phase1']);
+    expect(kinds('18:00')).toEqual(['flex_evening', 'pending_phase2']);
+  });
+  it('fires each slot once across a whole day of 15-minute ticks', () => {
+    const keys: string[] = [];
+    for (let m = 0; m < 1440; m += 15) keys.push(...builtinDue(at(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`)).map((d) => d.slotKey));
+    expect(keys.length).toBe(new Set(keys).size);
+    expect(keys.length).toBe(21 + 3);
+  });
+});
