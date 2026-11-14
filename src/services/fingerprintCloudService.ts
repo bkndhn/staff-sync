@@ -79,6 +79,13 @@ export const fingerprintCloudService = {
     return call({ action: 'auth_verify', challengeId, response, ...(pos || {}) });
   },
 
+  /** Test touch: the server verifies the key and names its owner, but never records attendance. */
+  async testTouch(): Promise<{ staffId: string; staffName?: string; keyId: string; counter: number }> {
+    const { options, challengeId } = await call({ action: 'auth_options' });
+    const response = await startAuthentication({ optionsJSON: options });
+    return call({ action: 'auth_verify', challengeId, response, test: true });
+  },
+
   async remove(id: string) {
     const { error } = await dataApi.from('staff_fingerprints').delete().eq('id', id);
     if (error) throw error;

@@ -179,6 +179,12 @@ Deno.serve(async (req) => {
           .eq("id", fp.id).eq("sign_count", fp.sign_count).select("id").maybeSingle();
         if (!bumped) { await logMisuse(tenant, caller.id, "Replayed touch", fp.staff_id, fp.staff_name); return json({ error: "This touch was already used. Touch again." }, 409); }
 
+        // Test touch: identity proven, but nothing is written to attendance or punch events.
+        if (body.test === true) {
+          if (!ENROLLERS.includes(caller.role)) return json({ error: "Only admins/managers can run test touches" }, 403);
+          const { data: tst } = await admin.from("staff").select("name").eq("id", fp.staff_id).eq("tenant_id", tenant).maybeSingle();
+          return json({ ok: true, test: true, staffId: fp.staff_id, staffName: tst?.name ?? fp.staff_name, keyId: fp.id, counter: newCount });
+        }
         // ---- Record the punch on the server, bound to the verified staff member ----
         const { data: st } = await admin.from("staff").select("id, name, location").eq("id", fp.staff_id).eq("tenant_id", tenant).maybeSingle();
         const { data: pref } = await admin.from("notification_preferences").select("timezone").eq("tenant_id", tenant).maybeSingle();
