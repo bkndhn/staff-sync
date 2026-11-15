@@ -2,12 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Fingerprint, ShieldCheck, Users, Usb, Maximize2, AlertTriangle } from 'lucide-react';
 import { Staff, Attendance } from '../../types';
 import FingerprintStation from '../FingerprintStation';
+import FingerprintTools from './FingerprintTools';
 import { fingerprintCloudService, CloudFingerprint } from '../../services/fingerprintCloudService';
 
-interface Props { staff: Staff[]; attendance: Attendance[]; userLocation?: string; onAttendanceUpdated?: () => void }
+interface Props { staff: Staff[]; attendance: Attendance[]; userLocation?: string; onAttendanceUpdated?: () => void; canManage?: boolean }
 
 /** Fingerprint onboarding and punching, kept separate from face punch. */
-const FingerprintHub: React.FC<Props> = ({ staff, attendance, userLocation, onAttendanceUpdated }) => {
+const FingerprintHub: React.FC<Props> = ({ staff, attendance, userLocation, onAttendanceUpdated, canManage = false }) => {
   const [prints, setPrints] = useState<CloudFingerprint[]>(() => fingerprintCloudService.cached());
   useEffect(() => { fingerprintCloudService.list().then(setPrints).catch(() => {}); }, []);
   const supported = typeof window !== 'undefined' && !!window.PublicKeyCredential && window.isSecureContext;
@@ -48,6 +49,7 @@ const FingerprintHub: React.FC<Props> = ({ staff, attendance, userLocation, onAt
           <div className="flex flex-wrap gap-1.5">{missing.map(s => <span key={s.id} className="text-xs px-2 py-1 rounded-full bg-muted">{s.name}</span>)}</div>
         </div>
       )}
+      <FingerprintTools staff={active} prints={prints} canManage={canManage} onChange={setPrints} />
       <div className="glass-card rounded-2xl overflow-hidden">
         <FingerprintStation page staff={staff} attendance={attendance} userLocation={userLocation}
           onAttendanceUpdated={() => { onAttendanceUpdated?.(); fingerprintCloudService.list().then(setPrints).catch(() => {}); }} />

@@ -942,6 +942,35 @@ export type Database = {
           },
         ]
       }
+      builtin_alert_sends: {
+        Row: {
+          created_at: string
+          recipient: string
+          slot_key: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          recipient: string
+          slot_key: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          recipient?: string
+          slot_key?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builtin_alert_sends_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       designations: {
         Row: {
           created_at: string | null

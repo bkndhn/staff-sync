@@ -1642,6 +1642,7 @@ function App() {
                 staff={filteredStaffData}
                 attendance={filteredAttendanceData}
                 userLocation={user?.role === 'admin' ? undefined : user?.location}
+                canManage={['admin','manager','super_admin'].includes(String(user?.role))}
                 onAttendanceUpdated={() => cacheService.invalidate(CACHE_KEYS.ATTENDANCE)}
               />
             </Suspense>

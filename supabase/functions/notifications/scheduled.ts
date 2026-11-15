@@ -74,7 +74,7 @@ async function sendManagerAlert(ctx: Ctx, s: AlertSchedule & { audience_roles: s
     pendingLeaves = data || [];
   }
 
-  for (const [scope, ids] of groups) {
+  for (let [scope, ids] of groups) {
     let title = "", message = "", tab = "attendance";
     if (state) {
       const list = state.staff.filter((st) => scope === "*" || st.location === scope);
@@ -179,11 +179,23 @@ export async function runAlertSchedules(admin: any, push: Push, record: RecordFn
   results.push(...(await runBuiltinAlerts(admin, push, record)));
   // Keep the run log small: drop entries older than 14 days.
   await admin.from("alert_runs").delete().lt("created_at", new Date(Date.now() - 14 * 86400_000).toISOString());
+  await admin.from("builtin_alert_sends").delete().lt("created_at", new Date(Date.now() - 14 * 86400_000).toISOString());
   return results;
 }
 
 const hm = (iso: string, tz: string) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
 const fmtH = (m: number) => `${Math.floor(m / 60)}h ${String(Math.round(m % 60)).padStart(2, "0")}m`;
+
+/** Claims (tenant, slot, recipient) before sending; returns only recipients not already sent this slot. */
+async function claimRecipients(admin: any, tenantId: string, slotKey: string, keys: string[]): Promise<Set<string>> {
+  if (!keys.length) return new Set();
+  const { data, error } = await admin.from("builtin_alert_sends")
+    .upsert(keys.map((recipient) => ({ tenant_id: tenantId, slot_key: slotKey, recipient })),
+      { onConflict: "tenant_id,slot_key,recipient", ignoreDuplicates: true })
+    .select("recipient");
+  if (error) { console.error("alert claim failed", error.message); return new Set(); } // fail closed: never double-send
+  return new Set((data || []).map((r: any) => r.recipient));
+}
 
 /** Built-in alerts for every company: half-hourly pending attendance (two phases), 7 PM digest, flex reminders. */
 export async function runBuiltinAlerts(admin: any, push: Push, record: RecordFn) {
@@ -222,7 +234,9 @@ export async function runBuiltinAlerts(admin: any, push: Push, record: RecordFn)
         let recipients = 0, pushed = 0;
         if (d.kind === "flex_morning" || d.kind === "flex_evening") {
           const morning = d.kind === "flex_morning";
-          const targets = flex.filter((s) => morning ? !first.has(s.id) && !marked.has(s.id) : lastKind.get(s.id) === "in");
+          const wanted = flex.filter((s) => morning ? !first.has(s.id) && !marked.has(s.id) : lastKind.get(s.id) === "in");
+          const got = await claimRecipients(admin, tenantId, d.slotKey, wanted.map((s) => `staff:${s.id}`));
+          const targets = wanted.filter((s) => got.has(`staff:${s.id}`));
           if (targets.length) {
             const title = morning ? "Good morning! Punch IN ⏰" : "Finishing up? Punch OUT 👋";
             const body = morning ? "If you are working today, please punch in." : "You are still punched in. Please punch out when you finish.";
@@ -231,7 +245,7 @@ export async function runBuiltinAlerts(admin: any, push: Push, record: RecordFn)
             recipients = targets.length;
           }
         } else {
-          for (const [scope, ids] of groups) {
+          for (let [scope, ids] of groups) {
             const list = full.filter((s) => scope === "*" || s.location === scope);
             if (!list.length) continue;
             const where = scope === "*" ? "" : ` at ${scope}`;
@@ -261,6 +275,9 @@ export async function runBuiltinAlerts(admin: any, push: Push, record: RecordFn)
               title = d.kind === "pending_phase1" ? "Attendance pending (morning) ✅" : "Attendance still pending (evening) ⚠️";
               body = `${missing.length} of ${list.length} staff${where} have no attendance yet: ${names}.`;
             }
+            const got = await claimRecipients(admin, tenantId, d.slotKey, ids.map((id) => `user:${id}`));
+            ids = ids.filter((id) => got.has(`user:${id}`));
+            if (!ids.length) continue;
             const p = await push(ids.map((id) => ({ appUserId: id })), { title, body, actionUrl: `/?tab=${tab}` }, "report");
             await record(tenantId, `builtin_${d.kind}`, "managers", ids.map((id) => ({ appUserId: id, title, message: body, type: d.kind, tabId: tab })), p);
             recipients += ids.length; pushed += p;
@@ -272,5 +289,6 @@ export async function runBuiltinAlerts(admin: any, push: Push, record: RecordFn)
       console.error("built-in alerts failed for tenant", tenantId, (e as Error).message);
     }
   }
+  await admin.from("builtin_alert_sends").delete().lt("created_at", new Date(Date.now() - 14 * 86400_000).toISOString());
   return results;
 }
