@@ -187,7 +187,7 @@ const hm = (iso: string, tz: string) => new Intl.DateTimeFormat("en-GB", { timeZ
 const fmtH = (m: number) => `${Math.floor(m / 60)}h ${String(Math.round(m % 60)).padStart(2, "0")}m`;
 
 /** Claims (tenant, slot, recipient) before sending; returns only recipients not already sent this slot. */
-async function claimRecipients(admin: any, tenantId: string, slotKey: string, keys: string[]): Promise<Set<string>> {
+export async function claimRecipients(admin: any, tenantId: string, slotKey: string, keys: string[]): Promise<Set<string>> {
   if (!keys.length) return new Set();
   const { data, error } = await admin.from("builtin_alert_sends")
     .upsert(keys.map((recipient) => ({ tenant_id: tenantId, slot_key: slotKey, recipient })),

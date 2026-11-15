@@ -9,6 +9,7 @@ import {
   verifyAuthenticationResponse, verifyRegistrationResponse,
 } from "npm:@simplewebauthn/server@13";
 import { resolveCaller } from "../_shared/caller.ts";
+import { canManageKeyFor } from "../_shared/fingerprintAccess.ts";
 import { decideFingerPunch, distanceMeters, localStamp, FP_MAX_FAILS, FP_LOCK_MS } from "../_shared/fingerprintPunch.ts";
 
 const cors = {
@@ -84,6 +85,8 @@ Deno.serve(async (req) => {
   const origin = originOf(req);
   if (!origin) return json({ error: "This web address is not allowed for fingerprints" }, 403);
   const rpID = new URL(origin).hostname;
+  const { data: me } = await admin.from("app_users").select("location").eq("id", caller.id).maybeSingle();
+  const fpCaller = { role: caller.role, tenantId: tenant, location: (me?.location as string) || null };
 
   try {
     switch (body?.action) {
@@ -91,8 +94,10 @@ Deno.serve(async (req) => {
         if (!ENROLLERS.includes(caller.role)) return json({ error: "Only admins/managers can enrol" }, 403);
         const staffId = String(body.staffId || "");
         if (!UUID.test(staffId)) return json({ error: "Invalid staff" }, 400);
-        const { data: s } = await admin.from("staff").select("id, name, employee_code, is_active").eq("id", staffId).eq("tenant_id", tenant).maybeSingle();
+        const { data: s } = await admin.from("staff").select("id, name, employee_code, is_active, location, tenant_id").eq("id", staffId).eq("tenant_id", tenant).maybeSingle();
         if (!s || s.is_active === false) return json({ error: "Staff not found or inactive" }, 404);
+        const acc = canManageKeyFor(fpCaller, { tenantId: s.tenant_id, location: s.location });
+        if (!acc.ok) return json({ error: acc.reason }, 403);
         const { data: existing } = await admin.from("staff_fingerprints").select("credential_id, transports").eq("tenant_id", tenant).eq("staff_id", staffId);
         const options = await generateRegistrationOptions({
           rpName: "ZenHR Attendance", rpID,
@@ -182,7 +187,9 @@ Deno.serve(async (req) => {
         // Test touch: identity proven, but nothing is written to attendance or punch events.
         if (body.test === true) {
           if (!ENROLLERS.includes(caller.role)) return json({ error: "Only admins/managers can run test touches" }, 403);
-          const { data: tst } = await admin.from("staff").select("name").eq("id", fp.staff_id).eq("tenant_id", tenant).maybeSingle();
+          const { data: tst } = await admin.from("staff").select("name, location, tenant_id").eq("id", fp.staff_id).eq("tenant_id", tenant).maybeSingle();
+          const accT = canManageKeyFor(fpCaller, tst ? { tenantId: tst.tenant_id, location: tst.location } : null);
+          if (!accT.ok) return json({ error: accT.reason }, 403);
           return json({ ok: true, test: true, staffId: fp.staff_id, staffName: tst?.name ?? fp.staff_name, keyId: fp.id, counter: newCount });
         }
         // ---- Record the punch on the server, bound to the verified staff member ----

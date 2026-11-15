@@ -629,6 +629,10 @@ Deno.serve(async (req) => {
           if ((ok?.length ?? 0) !== ids.size) return denyW("Staff member is outside your location");
         }
       }
+      // Fingerprint keys: branch managers may only relabel keys of staff in their own location.
+      if (body.table === "staff_fingerprints" && role !== "admin" && !isSuper) {
+        if (body.op !== "update") return denyW("Fingerprint keys are enrolled by the fingerprint station");
+      }
       // Petty cash: totals are recomputed on the server after every write; who verified is server-stamped.
       if (body.table === "petty_cash_sheets") {
         for (const r of rows) {
@@ -951,6 +955,15 @@ Deno.serve(async (req) => {
         break;
       }
       case "delete": {
+        if (body.table === "staff_fingerprints" && role !== "admin" && !isSuper) {
+          const keys = (Array.isArray(beforeData) ? beforeData : [beforeData].filter(Boolean)) as any[];
+          const sids = [...new Set(keys.map((k) => String(k.staff_id)))];
+          if (sids.length) {
+            if (!user.location) return new Response(JSON.stringify({ error: "You are not assigned to a location" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            const { data: okS } = await admin.from("staff").select("id").in("id", sids).eq("tenant_id", tenantId).eq("location", user.location);
+            if ((okS?.length ?? 0) !== sids.length) return new Response(JSON.stringify({ error: "Staff member is outside your location" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        }
         // Protect admin users from deletion
         if (body.table === "app_users" && !isSuper) {
           const targets = Array.isArray(beforeData) ? beforeData : [beforeData].filter(Boolean);
