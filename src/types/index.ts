@@ -190,6 +190,9 @@ export interface PayrollRun {
   rejectedAt?: string | null;
   rejectionReason?: string | null;
   lockedAt?: string | null;
+  reopenReason?: string | null;
+  reopenedAt?: string | null;
+  reopenCount?: number;
   totalNet?: number | null;
   headcount?: number | null;
 }

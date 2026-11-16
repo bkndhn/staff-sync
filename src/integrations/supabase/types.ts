@@ -2320,6 +2320,10 @@ export type Database = {
           rejected_at: string | null
           rejected_by: string | null
           rejection_reason: string | null
+          reopen_count: number
+          reopen_reason: string | null
+          reopened_at: string | null
+          reopened_by: string | null
           status: string
           submitted_at: string | null
           submitted_by: string | null
@@ -2339,6 +2343,10 @@ export type Database = {
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
+          reopen_count?: number
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
           status: string
           submitted_at?: string | null
           submitted_by?: string | null
@@ -2358,6 +2366,10 @@ export type Database = {
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
+          reopen_count?: number
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
           status?: string
           submitted_at?: string | null
           submitted_by?: string | null

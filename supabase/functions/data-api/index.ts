@@ -726,7 +726,7 @@ Deno.serve(async (req) => {
     if (body.table === "payroll_runs" && body.op !== "select") {
       const stampFields = [
         "submitted_by", "submitted_at", "approved_by", "approved_at",
-        "rejected_by", "rejected_at", "locked_at",
+        "rejected_by", "rejected_at", "locked_at", "reopened_by", "reopened_at", "reopen_count",
       ];
       const values = (body.values && !Array.isArray(body.values) ? body.values : {}) as Record<string, unknown>;
 
@@ -774,7 +774,7 @@ Deno.serve(async (req) => {
             values.submitted_by = actor;
             values.submitted_at = nowIso;
             values.rejection_reason = null;
-          } else if (next === "Approved" || next === "Rejected") {
+          } else if (next === "Approved" || (next === "Rejected" && runRow.status !== "Locked")) {
             if (role !== "admin") {
               return new Response(JSON.stringify({ error: "Only an admin can approve or reject payroll" }),
                 { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -804,6 +804,20 @@ Deno.serve(async (req) => {
                 { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
             }
             values.locked_at = nowIso;
+          } else if (next === "Rejected" && runRow.status === "Locked") {
+            // Authorised reopening of a closed period (admin only, reason required).
+            if (role !== "admin" && role !== "super_admin") {
+              return new Response(JSON.stringify({ error: "Only an admin can reopen a locked payroll" }),
+                { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+            const reason = String(values.reopen_reason ?? "").trim();
+            if (reason.length < 10) {
+              return new Response(JSON.stringify({ error: "Give a reason of at least 10 characters to reopen payroll" }),
+                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+            for (const k of Object.keys(values)) if (!["status", "reopen_reason"].includes(k)) delete values[k];
+            values.reopen_reason = reason.slice(0, 480);
+            values.reopened_by = actor;
           } else if (runRow.status === "Approved" || runRow.status === "Locked") {
             return new Response(JSON.stringify({ error: "An approved or locked payroll run is read-only" }),
               { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });

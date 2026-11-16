@@ -15,7 +15,7 @@ export const WRITABLE_FIELDS: Record<string, readonly string[]> = {
   loan_requests: ["id", "staff_id", "staff_name", "location", "floor", "amount", "reason", "emi_months", "start_month", "start_year", "status", "current_approval_level", "required_approval_levels", "approval_history", "rejection_reason", "advance_entry_id", "approved_at"],
   advances: ["id", "staff_id", "month", "year", "old_advance", "current_advance", "deduction", "new_advance", "notes", "basic_override", "incentive_override", "hra_override", "sunday_penalty_override"],
   advance_entries: ["id", "staff_id", "entry_date", "amount", "purpose", "month", "year", "deduct_periods", "start_deduct_month", "start_deduct_year", "total_deducted"],
-  payroll_runs: ["id", "month", "year", "status", "generated_at", "generated_by", "submitted_by", "submitted_at", "approved_by", "approved_at", "rejected_by", "rejected_at", "rejection_reason", "locked_at", "total_net", "headcount"],
+  payroll_runs: ["id", "month", "year", "status", "generated_at", "generated_by", "submitted_by", "submitted_at", "approved_by", "approved_at", "rejected_by", "rejected_at", "rejection_reason", "locked_at", "total_net", "headcount", "reopen_reason", "reopened_by"],
   payroll_snapshots: ["id", "run_id", "staff_id", "staff_snapshot", "salary_detail", "seal", "current_hash"],
   salary_hikes: ["id", "staff_id", "old_salary", "new_salary", "hike_date", "reason", "breakdown"],
   salary_manual_overrides: ["id", "staff_id", "month", "year", "basic_override", "incentive_override", "hra_override", "meal_allowance_override", "sunday_penalty_override", "salary_supplements_override", "late_coming_deduction_override", "early_leave_deduction_override"],

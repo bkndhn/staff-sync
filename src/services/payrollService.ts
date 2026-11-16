@@ -20,6 +20,9 @@ const mapRun = (row: any): PayrollRun => ({
   lockedAt: row.locked_at ?? null,
   totalNet: row.total_net ?? null,
   headcount: row.headcount ?? null,
+  reopenReason: row.reopen_reason ?? null,
+  reopenedAt: row.reopened_at ?? null,
+  reopenCount: row.reopen_count ?? 0,
 });
 
 /** A run in these states is frozen: no regeneration, no override edits. */
@@ -224,5 +227,10 @@ export const payrollService = {
   /** Final lock — payroll is released for disbursement and becomes immutable. */
   lockRun(runId: string) {
     return this.updateRunStatus(runId, 'Locked');
+  },
+
+  /** Authorised reopening of a locked period (admin, reason ≥ 10 chars, audited server-side). */
+  reopenRun(runId: string, reason: string) {
+    return this.updateRunStatus(runId, 'Rejected', { reopen_reason: reason });
   },
 };

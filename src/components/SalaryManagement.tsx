@@ -939,6 +939,14 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
     runWorkflow(() => payrollService.lockRun(payrollRun.id), 'Payroll locked for disbursement.');
   };
 
+  const handleReopenRun = async () => {
+    if (!payrollRun) return;
+    const reason = window.prompt('Why must this closed payroll be reopened? (at least 10 characters, saved to the audit trail)');
+    if (!reason) return;
+    if (reason.trim().length < 10) return customAlert('Please give a reason of at least 10 characters.');
+    runWorkflow(() => payrollService.reopenRun(payrollRun.id, reason.trim()), 'Payroll reopened. Regenerate, then send it for approval again.');
+  };
+
   const runBadge = (() => {
     switch (payrollRun?.status) {
       case 'PendingApproval':
@@ -1248,6 +1256,15 @@ const PayrollManagement: React.FC<SalaryManagementProps> = ({
                   className="px-4 py-1.5 bg-slate-800 text-white hover:bg-slate-900 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                 >
                   Lock &amp; Disburse
+                </button>
+              )}
+              {payrollRun.status === 'Locked' && (userRole === 'admin' || userRole === 'super_admin') && (
+                <button
+                  onClick={handleReopenRun}
+                  disabled={workflowBusy}
+                  className="px-4 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  Reopen period
                 </button>
               )}
             </>
