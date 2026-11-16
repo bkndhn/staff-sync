@@ -1,6 +1,7 @@
 // Firebase Cloud Messaging (FCM) sender via the Lovable connector gateway.
 // Device tokens live in public.fcm_tokens (server-only table).
 // deno-lint-ignore-file no-explicit-any
+declare const Deno: { env: { get(name: string): string | undefined } };
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/firebase_messaging";
 
