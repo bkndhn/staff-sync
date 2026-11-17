@@ -10,6 +10,7 @@ import {
 } from "npm:@simplewebauthn/server@13";
 import { resolveCaller } from "../_shared/caller.ts";
 import { canManageKeyFor } from "../_shared/fingerprintAccess.ts";
+import { fingerprintOrigin } from "../_shared/fingerprintOrigins.ts";
 import { decideFingerPunch, distanceMeters, localStamp, FP_MAX_FAILS, FP_LOCK_MS } from "../_shared/fingerprintPunch.ts";
 
 const cors = {
@@ -24,16 +25,8 @@ const ENROLLERS = ["admin", "manager", "super_admin"];
 const STATIONS = ["admin", "manager", "supervisor", "floor_supervisor", "super_admin"];
 const UUID = /^[0-9a-f-]{36}$/i;
 const CHALLENGE_MS = 2 * 60 * 1000;
-const DEFAULT_ORIGINS = [
-  "https://zenhrapp.lovable.app",
-  "https://staff-shine-sync.lovable.app",
-  "https://id-preview--9244e6fb-8168-4790-a4fe-a440a7ad817c.lovable.app",
-  "http://localhost:8080",
-];
 function originOf(req: Request): string | null {
-  const o = (req.headers.get("origin") || "").replace(/\/+$/, "");
-  const extra = (Deno.env.get("APP_ORIGINS") || "").split(",").map((x) => x.trim().replace(/\/+$/, "")).filter(Boolean);
-  return [...DEFAULT_ORIGINS, ...extra].includes(o) ? o : null;
+  return fingerprintOrigin(req.headers.get("origin"), Deno.env.get("APP_ORIGINS") || "");
 }
 const b64u = (u: Uint8Array) => btoa(String.fromCharCode(...u)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const fromB64u = (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));

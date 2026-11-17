@@ -16,3 +16,4 @@
 - Brand colour is admin-selectable: Tailwind `blue-*` maps to --brand-* CSS vars, set by applyBrandTheme in src/utils/brandTheme.ts from the app_settings key brand_theme, so one switch recolours the whole app.
 - Public /privacy, /terms and 404 are resolved in App.tsx before auth and staff-portal slug routing so they never fall into the slug login.
 - App code under src/ must never import from supabase/ (Vercel deploy strips it via .vercelignore history and builds frontend only); duplicate shared pure rules and guard them with a sync test.
+- Fingerprint origin validation lives in the server-only fingerprintOrigins helper and permits exact project addresses plus explicitly configured HTTPS origins, never wildcard preview domains, so live editor access does not trust other projects.
