@@ -48,6 +48,7 @@ import { DocumentsTab } from './portal/DocumentsTab';
 import { PayslipsTab } from './portal/PayslipsTab';
 import { ExpensesTab } from './portal/ExpensesTab';
 import { TaxDeclarationTab } from './portal/TaxDeclarationTab';
+import StaffHomeHero from './portal/StaffHomeHero';
 import { NotificationPanel } from './portal/NotificationPanel';
 import { localDateKey, localTimeKey } from '../lib/localDate';
 import { serverNow, syncServerTime } from '../lib/serverTime';
@@ -874,6 +875,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       {/* OVERVIEW */}
       {activeSection === 'overview' && (
         <div className="space-y-4">
+          {!isLeftStaff && <StaffHomeHero staff={staff} attendance={attendance} today={serverNow()} onOpen={(id) => setActiveSection(id)} />}
           {/* Profile Card */}
           <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] p-6 rounded-2xl shadow-[var(--shadow-soft)]">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">

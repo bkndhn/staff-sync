@@ -10,6 +10,8 @@ import {
   localNow,
   STAFF_KINDS,
   to12h,
+  isAttendancePut,
+  staffDaySummary,
 } from "../_shared/alertSlots.ts";
 import type { MuteKind } from "../_shared/fcm.ts";
 
@@ -223,7 +225,8 @@ export async function runBuiltinAlerts(admin: any, push: Push, record: RecordFn)
         else if (isOut(p.kind)) { last.set(p.staff_id, ts); lastKind.set(p.staff_id, "out"); }
       }
       // Any attendance row (present, absent, leave) counts as "attendance put" for that person.
-      const marked = new Set<string>((att || []).map((a: any) => a.staff_id));
+      const marked = new Set<string>((att || []).filter((a: any) => isAttendancePut(a)).map((a: any) => a.staff_id));
+      const statusOf = new Map<string, string>((att || []).filter((a: any) => isAttendancePut(a)).map((a: any) => [a.staff_id, String(a.status || (Number(a.attendance_value) > 0 ? "present" : "absent"))]));
       const all = (staff || []) as Array<{ id: string; name: string; location: string | null; type: string | null }>;
       const full = all.filter((s) => s.type !== "part-time");
       const flex = all.filter((s) => s.type === "part-time");
@@ -281,6 +284,19 @@ export async function runBuiltinAlerts(admin: any, push: Push, record: RecordFn)
             const p = await push(ids.map((id) => ({ appUserId: id })), { title, body, actionUrl: `/?tab=${tab}` }, "report");
             await record(tenantId, `builtin_${d.kind}`, "managers", ids.map((id) => ({ appUserId: id, title, message: body, type: d.kind, tabId: tab })), p);
             recipients += ids.length; pushed += p;
+          }
+        }
+        if (d.kind === "daily_digest") {
+          // Personal 7 PM summary to every active staff member (present, absent or not marked).
+          const got = await claimRecipients(admin, tenantId, d.slotKey, all.map((s) => `staff:${s.id}`));
+          for (const s of all.filter((x) => got.has(`staff:${x.id}`))) {
+            const a = first.get(s.id);
+            const b = a && lastKind.get(s.id) === "out" ? last.get(s.id)! : null;
+            const minutes = a ? Math.max(0, ((b ? new Date(b).getTime() : Date.now()) - new Date(a).getTime()) / 60000) : 0;
+            const msg = staffDaySummary({ status: statusOf.get(s.id) || null, inTime: a ? hm(a, tz) : null, outTime: b ? hm(b, tz) : null, minutes });
+            const p = await push([{ staffId: s.id }], { ...msg, actionUrl: "/?tab=attendance" }, "report");
+            await record(tenantId, "builtin_staff_daily", "staff", [{ staffId: s.id, title: msg.title, message: msg.body, type: "staff_daily", tabId: "attendance" }], p);
+            recipients++; pushed += p;
           }
         }
         results.push({ tenant_id: tenantId, kind: d.kind, slot: d.slotKey, recipients, pushed });

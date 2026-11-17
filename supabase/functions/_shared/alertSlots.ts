@@ -140,3 +140,27 @@ export function builtinDue(now: LocalNow): Array<{ kind: BuiltinKind; target: st
   add("flex_evening", 1080);
   return out;
 }
+
+/** An attendance row counts as "put" only when it carries a real status or value (present, absent, leave, half day...). */
+export function isAttendancePut(row: { status?: unknown; attendance_value?: unknown } | null | undefined): boolean {
+  if (!row) return false;
+  const s = typeof row.status === "string" ? row.status.trim() : "";
+  const v = row.attendance_value;
+  const hasValue = v !== null && v !== undefined && String(v).trim() !== "";
+  return s !== "" || hasValue;
+}
+
+const fmtHM = (m: number) => `${Math.floor(m / 60)}h ${String(Math.round(m % 60)).padStart(2, "0")}m`;
+
+/** 7 PM personal summary for one staff member. */
+export function staffDaySummary(i: { status?: string | null; inTime?: string | null; outTime?: string | null; minutes: number }) {
+  const st = (i.status || "").trim().toLowerCase();
+  if (i.inTime) {
+    return { title: "Today's attendance: Present ✅", body: `Worked ${fmtHM(i.minutes)} · In ${i.inTime} · Out ${i.outTime || "not punched yet"}` };
+  }
+  if (st) {
+    const label = st.charAt(0).toUpperCase() + st.slice(1);
+    return { title: `Today's attendance: ${label}`, body: `Worked 0h 00m today. Status marked as ${label}.` };
+  }
+  return { title: "Today's attendance: Not marked ⚠️", body: "No attendance was put for you today, so you are counted absent (0h worked). Contact your supervisor if this is wrong." };
+}
