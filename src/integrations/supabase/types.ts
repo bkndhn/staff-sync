@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      accommodation_meals: {
+        Row: {
+          created_at: string
+          date: string
+          food: string
+          id: string
+          in_room: string
+          location: string | null
+          meal: string
+          note: string | null
+          recorded_by: string | null
+          staff_id: string
+          staff_name: string | null
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          food?: string
+          id?: string
+          in_room?: string
+          location?: string | null
+          meal: string
+          note?: string | null
+          recorded_by?: string | null
+          staff_id: string
+          staff_name?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          food?: string
+          id?: string
+          in_room?: string
+          location?: string | null
+          meal?: string
+          note?: string | null
+          recorded_by?: string | null
+          staff_id?: string
+          staff_name?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accommodation_meals_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accommodation_meals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       advance_entries: {
         Row: {
           amount: number

@@ -54,6 +54,7 @@ export const WRITABLE_FIELDS: Record<string, readonly string[]> = {
   staff_notifications: ["id", "staff_id", "app_user_id", "type", "title", "message", "action_url", "tab_id", "is_read"],
   tax_declarations: ["id", "staff_id", "fy", "regime", "items", "status", "review_notes", "reviewed_by", "reviewed_at"],
   expense_claims: ["id", "staff_id", "staff_name", "location", "claim_date", "category", "amount", "description", "receipt_url", "status", "reviewed_by", "review_notes", "reviewed_at", "paid_month", "paid_year"],
+  accommodation_meals: ["id", "staff_id", "staff_name", "location", "date", "meal", "in_room", "food", "note", "recorded_by"],
   petty_cash_sheets: ["id", "location", "date", "template_type", "received_amount", "full_time_meal_total", "part_time_meal_total", "meal_total", "expenses_total", "transport_total", "total_expense", "balance", "status", "verified_by", "verified_at", "notes", "created_by"],
   petty_cash_staff_meals: ["id", "sheet_id", "staff_id", "staff_name", "designation", "staff_type", "attendance_status", "amount", "display_order"],
   petty_cash_expenses: ["id", "sheet_id", "category", "label", "amount", "notes", "display_order", "voucher_image"],

@@ -4,6 +4,7 @@
 
 export type LoanRole =
   | "petty_cash_manager"
+  | "kitchen_incharge"
   | "admin"
   | "manager"
   | "staff"
