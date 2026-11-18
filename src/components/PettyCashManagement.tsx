@@ -699,13 +699,13 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
               <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
                 <label className="text-sm font-bold text-slate-700 shrink-0">Total Received (Cashier):</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-700 font-bold">₹</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-700 dark:text-indigo-300 font-bold">₹</span>
                   <input
                     type="number"
                     inputMode="decimal"
                     value={sheet.received_amount || ''}
                     onChange={e => setSheet({ ...sheet, received_amount: Number(e.target.value) })}
-                    className="pl-7 pr-3 py-2 w-36 bg-indigo-50/70 border border-indigo-200 rounded-lg font-extrabold text-indigo-900 focus:ring-2 focus:ring-indigo-500 text-base"
+                    className="pl-7 pr-3 py-2 w-36 bg-indigo-50/70 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-700 rounded-lg font-extrabold text-indigo-900 dark:text-indigo-100 focus:ring-2 focus:ring-indigo-500 text-base"
                     placeholder="0"
                     disabled={!canEdit}
                   />
@@ -725,7 +725,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                       inputMode="decimal"
                       value={ftMealRate}
                       onChange={e => updateMealRates(Number(e.target.value), ptMealRate)}
-                      className="w-20 pl-5 pr-1.5 py-1.5 border border-slate-200 rounded text-sm font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="w-20 pl-5 pr-1.5 py-1.5 border border-slate-200 rounded text-sm font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800 focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                       title="Default Full-Time Meal Rate (₹)"
                       disabled={!canEdit}
                     />
@@ -740,7 +740,7 @@ export const PettyCashManagement: React.FC<Props> = ({ userRole, userLocation, l
                       inputMode="decimal"
                       value={ptMealRate}
                       onChange={e => updateMealRates(ftMealRate, Number(e.target.value))}
-                      className="w-20 pl-5 pr-1.5 py-1.5 border border-slate-200 rounded text-sm font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="w-20 pl-5 pr-1.5 py-1.5 border border-slate-200 rounded text-sm font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800 focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                       title="Default Part-Time / Flex Meal Rate (₹)"
                       disabled={!canEdit}
                     />

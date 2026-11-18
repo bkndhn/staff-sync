@@ -3597,3 +3597,16 @@ button, .glass-card, .stat-card, .mobile-nav-item { transition:transform .16s cu
 .zh-day-none { border: 2px solid var(--glass-border); }
 .zh-day-future { background: var(--glass-border); color: var(--text-muted); }
 @media (prefers-reduced-motion: reduce) { .zh-hero-orb { animation: none; } }
+
+/* Dark mode: row hover must stay dark so white text stays readable */
+body:not(.light-theme) table tbody tr:hover,
+body:not(.light-theme) table tbody tr:hover td { background-color: rgba(255,255,255,.07) !important; color: var(--text-primary) !important; }
+body:not(.light-theme) .hover\:bg-slate-50:hover, body:not(.light-theme) .hover\:bg-gray-50:hover,
+body:not(.light-theme) .hover\:bg-slate-100:hover, body:not(.light-theme) .hover\:bg-gray-100:hover { background-color: rgba(255,255,255,.07) !important; }
+body:not(.light-theme) .text-slate-700, body:not(.light-theme) .text-slate-800, body:not(.light-theme) .text-slate-900,
+body:not(.light-theme) .text-indigo-900, body:not(.light-theme) .text-indigo-800 { color: var(--text-primary) !important; }
+body:not(.light-theme) .text-indigo-700, body:not(.light-theme) .text-indigo-600 { color: rgb(165 180 252) !important; }
+body:not(.light-theme) .bg-emerald-100 { background-color: rgba(16,185,129,.2) !important; }
+body:not(.light-theme) .text-emerald-800 { color: rgb(110 231 183) !important; }
+body:not(.light-theme) .bg-amber-100 { background-color: rgba(245,158,11,.2) !important; }
+body:not(.light-theme) .text-amber-800 { color: rgb(252 211 77) !important; }
