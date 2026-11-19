@@ -49,6 +49,7 @@ const OnboardingWizard = React.lazy(() => import('./components/OnboardingWizard'
 const PayrollManagement = React.lazy(() => import('./components/SalaryManagement'));
 const SalaryManagement = PayrollManagement;
 const PartTimeStaff = React.lazy(() => import('./components/PartTimeStaff'));
+const KitchenMealTracker = React.lazy(() => import('./components/KitchenMealTracker'));
 const FlexPoolHub = React.lazy(() => import('./components/FlexPoolHub'));
 const OldStaffRecords = React.lazy(() => import('./components/OldStaffRecords'));
 const AnnouncementsManagement = React.lazy(() => import('./components/AnnouncementsManagement').then(m => ({ default: m.AnnouncementsManagement })));
@@ -382,7 +383,7 @@ function App() {
     if (!user) return;
     const saved = localStorage.getItem('activeTab') as NavigationTab | null;
     const statutoryAllowed: NavigationTab[] = ['Dashboard', 'Staff Management', 'Attendance', 'Payroll Management', 'Leave Management', 'Settings'];
-    const supervisorAllowed: NavigationTab[] = ['Dashboard', 'Attendance', 'Break Management', 'Flex Staff', 'Leave Management', 'Fingerprint'];
+    const supervisorAllowed: NavigationTab[] = ['Dashboard', 'Attendance', 'Break Management', 'Flex Staff', 'Leave Management', 'Fingerprint', 'Kitchen Meals'];
     const validForRole = (tab: NavigationTab | null): boolean => {
       if (!tab) return false;
       if (user.role === 'staff') return tab === 'My Portal';
@@ -390,9 +391,10 @@ function App() {
       if (user.role === 'supervisor') return supervisorAllowed.includes(tab);
       // floor_supervisor: same pages as Navigation shows them — no Staff/Roster
       if (user.role === 'floor_supervisor') {
-        const floorSupervisorAllowed: NavigationTab[] = ['Dashboard', 'Attendance', 'Break Management', 'Leave Management', 'Profile', 'Fingerprint'];
+        const floorSupervisorAllowed: NavigationTab[] = ['Dashboard', 'Attendance', 'Break Management', 'Leave Management', 'Profile', 'Fingerprint', 'Kitchen Meals'];
         return floorSupervisorAllowed.includes(tab);
       }
+      if (user.role === 'kitchen_incharge') return tab === 'Kitchen Meals' || tab === 'Profile';
       if (user.role === 'petty_cash_manager') {
         const allowed: NavigationTab[] = ['Petty Cash', 'Dashboard', 'Profile'];
         return allowed.includes(tab);
@@ -412,6 +414,8 @@ function App() {
       setActiveTab('Face Attendance');
     } else if (user.role === 'petty_cash_manager') {
       setActiveTab('Petty Cash');
+    } else if (user.role === 'kitchen_incharge') {
+      setActiveTab('Kitchen Meals');
     } else {
       setActiveTab('Dashboard');
     }
@@ -1613,6 +1617,12 @@ function App() {
               userRole={user?.role}
               userLocation={user?.role === 'admin' || user?.role === 'super_admin' ? undefined : user?.location}
             />
+          </Suspense>
+        );
+      case 'Kitchen Meals':
+        return (
+          <Suspense fallback={<ComponentLoader />}>
+            <KitchenMealTracker staff={filteredStaffData} attendance={filteredAttendanceData} date={new Date().toLocaleDateString('en-CA')} recordedBy={user?.email} />
           </Suspense>
         );
       case 'Face Attendance':

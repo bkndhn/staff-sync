@@ -173,7 +173,7 @@ const UserCard: React.FC<{
                 </div>
                 <div className="flex flex-col items-end gap-1">
                     <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'statutory_admin' ? 'badge-success' : user.role === 'petty_cash_manager' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
-                        {user.role === 'admin' ? 'Admin' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'petty_cash_manager' ? 'Petty Cash Handler' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
+                        {user.role === 'admin' ? 'Admin' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'petty_cash_manager' ? 'Petty Cash Handler' : user.role === 'kitchen_incharge' ? 'Kitchen In-charge' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
                     </span>
                     {user.role === 'petty_cash_manager' && user.location && (
                         <span className="text-[11px] font-semibold text-amber-300/90 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
@@ -243,7 +243,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
         email: '',
         password: '',
         full_name: '',
-        role: 'manager' as 'admin' | 'manager' | 'floor_supervisor' | 'supervisor' | 'statutory_admin' | 'petty_cash_manager',
+        role: 'manager' as 'admin' | 'manager' | 'floor_supervisor' | 'supervisor' | 'statutory_admin' | 'petty_cash_manager' | 'kitchen_incharge',
         location: '',
         floor: ''
     });
@@ -314,7 +314,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
             email: user.email,
             password: '',
             full_name: user.full_name,
-            role: (['admin','manager','floor_supervisor','supervisor','statutory_admin','petty_cash_manager'].includes(user.role) ? user.role : 'manager') as any,
+            role: (['admin','manager','floor_supervisor','supervisor','statutory_admin','petty_cash_manager','kitchen_incharge'].includes(user.role) ? user.role : 'manager') as any,
             location: user.location || '',
             floor: user.floor || ''
         });
@@ -333,7 +333,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                     email: formData.email,
                     full_name: formData.full_name,
                     role: formData.role,
-                    location: (formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor' || formData.role === 'petty_cash_manager') ? formData.location : null,
+                    location: (formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor' || formData.role === 'petty_cash_manager' || formData.role === 'kitchen_incharge') ? formData.location : null,
                     floor: (formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.floor : null
                 };
 
@@ -361,7 +361,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                     password: formData.password,
                     full_name: formData.full_name,
                     role: formData.role,
-                    location: (formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor' || formData.role === 'petty_cash_manager') ? formData.location : null,
+                    location: (formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor' || formData.role === 'petty_cash_manager' || formData.role === 'kitchen_incharge') ? formData.location : null,
                     floor: (formData.role === 'supervisor' || formData.role === 'floor_supervisor') ? formData.floor : null
                 };
 
@@ -822,7 +822,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                                         <td className="!text-center">
                                             <div className="flex flex-col items-center gap-1">
                                                 <span className={`badge-premium ${user.role === 'admin' ? 'badge-purple' : user.role === 'statutory_admin' ? 'badge-success' : user.role === 'petty_cash_manager' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold' : user.role === 'floor_supervisor' ? 'badge-warning' : 'badge-info'}`}>
-                                                    {user.role === 'admin' ? 'Admin' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'petty_cash_manager' ? 'Petty Cash Handler' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
+                                                    {user.role === 'admin' ? 'Admin' : user.role === 'statutory_admin' ? 'Statutory Admin' : user.role === 'petty_cash_manager' ? 'Petty Cash Handler' : user.role === 'kitchen_incharge' ? 'Kitchen In-charge' : user.role === 'floor_supervisor' ? 'Zone Sup' : 'Manager'}
                                                 </span>
                                                 {user.role === 'petty_cash_manager' && user.location && (
                                                     <span className="text-[11px] font-semibold text-amber-300/90 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
@@ -934,7 +934,7 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                                 <select
                                     value={formData.role}
                                     onChange={(e) => {
-                                        const newRole = e.target.value as 'admin' | 'manager' | 'floor_supervisor' | 'supervisor' | 'statutory_admin' | 'petty_cash_manager';
+                                        const newRole = e.target.value as 'admin' | 'manager' | 'floor_supervisor' | 'supervisor' | 'statutory_admin' | 'petty_cash_manager' | 'kitchen_incharge';
                                         setFormData(prev => ({ 
                                             ...prev, 
                                             role: newRole,
@@ -950,9 +950,10 @@ const Settings: React.FC<SettingsProps> = ({ userRole, currentUserEmail, tenantI
                                     <option value="floor_supervisor">Zone Supervisor</option>
                                     <option value="statutory_admin">Statutory Admin</option>
                                     <option value="petty_cash_manager">Petty Cash Handler</option>
+                                    <option value="kitchen_incharge">Kitchen In-charge</option>
                                 </select>
                             </div>
-                            {(formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor' || formData.role === 'petty_cash_manager') && (
+                            {(formData.role === 'manager' || formData.role === 'supervisor' || formData.role === 'floor_supervisor' || formData.role === 'petty_cash_manager' || formData.role === 'kitchen_incharge') && (
                                 <div>
                                     <label className="block text-sm font-medium text-white/70 mb-1">Branch *</label>
                                     <select

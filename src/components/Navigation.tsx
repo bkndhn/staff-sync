@@ -83,6 +83,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Loan Requests' as NavigationTab, label: 'Loans', icon: IndianRupee },
         { id: 'Expense Claims' as NavigationTab, label: 'Expenses', icon: Receipt },
         { id: 'Petty Cash' as NavigationTab, label: 'Petty Cash', icon: IndianRupee },
+        { id: 'Kitchen Meals' as NavigationTab, label: 'Kitchen', icon: Coffee },
         { id: 'Face Attendance' as NavigationTab, label: 'Face Punch', icon: ScanFace },
         { id: 'Fingerprint' as NavigationTab, label: 'Fingerprint', icon: Fingerprint },
         { id: 'Old Staff Records' as NavigationTab, label: 'Archive', icon: Archive },
@@ -102,6 +103,7 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Flex Staff' as NavigationTab, label: 'Flex', icon: Clock },
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
         { id: 'Fingerprint' as NavigationTab, label: 'Fingerprint', icon: Fingerprint },
+        { id: 'Kitchen Meals' as NavigationTab, label: 'Kitchen', icon: Coffee },
         { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
       ];
     }
@@ -113,6 +115,13 @@ const Navigation: React.FC<NavigationProps> = ({
         { id: 'Flex Staff' as NavigationTab, label: 'Flex', icon: Clock },
         { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
         { id: 'Fingerprint' as NavigationTab, label: 'Fingerprint', icon: Fingerprint },
+        { id: 'Kitchen Meals' as NavigationTab, label: 'Kitchen', icon: Coffee },
+        { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
+      ];
+    }
+    if (user.role === 'kitchen_incharge') {
+      return [
+        { id: 'Kitchen Meals' as NavigationTab, label: 'Kitchen', icon: Coffee },
         { id: 'Profile' as NavigationTab, label: 'Profile', icon: UserCircle },
       ];
     }
@@ -132,6 +141,7 @@ const Navigation: React.FC<NavigationProps> = ({
       { id: 'Leave Management' as NavigationTab, label: 'Leave', icon: FileText },
       { id: 'Loan Requests' as NavigationTab, label: 'Loans', icon: IndianRupee },
       { id: 'Petty Cash' as NavigationTab, label: 'Petty Cash', icon: IndianRupee },
+      { id: 'Kitchen Meals' as NavigationTab, label: 'Kitchen', icon: Coffee },
       { id: 'Face Attendance' as NavigationTab, label: 'Face Punch', icon: ScanFace },
         { id: 'Fingerprint' as NavigationTab, label: 'Fingerprint', icon: Fingerprint },
       { id: 'Announcements' as NavigationTab, label: 'Announcements', icon: Megaphone },

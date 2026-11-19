@@ -294,7 +294,7 @@ export interface PayrollHike {
 export interface User {
   id?: string;
   email: string;
-  role: 'admin' | 'manager' | 'staff' | 'statutory_admin' | 'floor_supervisor' | 'supervisor' | 'super_admin' | 'petty_cash_manager';
+  role: 'admin' | 'manager' | 'staff' | 'statutory_admin' | 'floor_supervisor' | 'supervisor' | 'super_admin' | 'petty_cash_manager' | 'kitchen_incharge';
   location?: string;
   /** For supervisor role: the single floor they can manage. */
   floor?: string;
@@ -331,7 +331,7 @@ export interface PayrollOverride {
   salarySupplementsOverride?: Record<string, number>;
 }
 
-export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Payroll Management' | 'Flex Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Fingerprint' | 'Audit Log' | 'Workforce Insights' | 'Break Management' | 'Security' | 'AI Insights' | 'Profile' | 'Permissions Matrix' | 'Shift Roster' | 'Action Center' | 'Loan Requests' | 'Announcements' | 'Expense Claims' | 'Petty Cash';
+export type NavigationTab = 'Dashboard' | 'Staff Management' | 'Attendance' | 'Payroll Management' | 'Flex Staff' | 'Old Staff Records' | 'Settings' | 'My Portal' | 'Leave Management' | 'Face Attendance' | 'Fingerprint' | 'Audit Log' | 'Workforce Insights' | 'Break Management' | 'Security' | 'AI Insights' | 'Profile' | 'Permissions Matrix' | 'Shift Roster' | 'Action Center' | 'Loan Requests' | 'Announcements' | 'Expense Claims' | 'Petty Cash' | 'Kitchen Meals';
 
 export interface BreakType {
   id: string;
