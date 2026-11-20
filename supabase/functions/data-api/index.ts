@@ -1063,7 +1063,7 @@ Deno.serve(async (req) => {
 
     // Petty Cash Handler sees only name/designation/type of staff — never pay or ID details.
     if ((role === "petty_cash_manager" || role === "kitchen_incharge") && body.table === "staff" && body.op === "select") {
-      const keep = ["id","name","staff_accommodation","designation","location","floor","type","staff_type","is_active","display_order","employee_code","tenant_id"];
+      const keep = ["id","name","staff_accommodation","room_number","designation","location","floor","type","staff_type","is_active","display_order","employee_code","tenant_id"];
       const pick = (r: any) => (!r || typeof r !== "object") ? r : Object.fromEntries(Object.entries(r).filter(([k]) => keep.includes(k)));
       payloadData = Array.isArray(payloadData) ? payloadData.map(pick) : pick(payloadData);
     }

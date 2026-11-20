@@ -3610,3 +3610,22 @@ body:not(.light-theme) .bg-emerald-100 { background-color: rgba(16,185,129,.2) !
 body:not(.light-theme) .text-emerald-800 { color: rgb(110 231 183) !important; }
 body:not(.light-theme) .bg-amber-100 { background-color: rgba(245,158,11,.2) !important; }
 body:not(.light-theme) .text-amber-800 { color: rgb(252 211 77) !important; }
+
+/* Dark mode contrast, round 2: attendance, staff portal, dialogs */
+body:not(.light-theme) .zh-ink, body:not(.light-theme) .zh-hero .zh-ink { color: rgb(15 23 42) !important; }
+body:not(.light-theme) .text-gray-500, body:not(.light-theme) .text-gray-400, body:not(.light-theme) .text-slate-500 { color: var(--text-muted) !important; }
+body:not(.light-theme) .text-gray-600, body:not(.light-theme) .text-gray-700, body:not(.light-theme) .text-gray-800, body:not(.light-theme) .text-gray-900, body:not(.light-theme) .text-slate-600 { color: var(--text-primary) !important; }
+body:not(.light-theme) .bg-gray-50, body:not(.light-theme) .bg-slate-50, body:not(.light-theme) .bg-gray-100, body:not(.light-theme) .bg-slate-100 { background-color: rgba(255,255,255,.06) !important; }
+body:not(.light-theme) .border-gray-100, body:not(.light-theme) .border-gray-200, body:not(.light-theme) .border-slate-200 { border-color: rgba(255,255,255,.12) !important; }
+body:not(.light-theme) .bg-green-100 { background-color: rgba(34,197,94,.2) !important; }
+body:not(.light-theme) .text-green-700, body:not(.light-theme) .text-green-800 { color: rgb(134 239 172) !important; }
+body:not(.light-theme) .bg-red-100, body:not(.light-theme) .bg-rose-50, body:not(.light-theme) .bg-red-50 { background-color: rgba(239,68,68,.2) !important; }
+body:not(.light-theme) .text-red-700, body:not(.light-theme) .text-red-800, body:not(.light-theme) .text-rose-800 { color: rgb(252 165 165) !important; }
+body:not(.light-theme) .bg-yellow-100 { background-color: rgba(234,179,8,.2) !important; }
+body:not(.light-theme) .text-yellow-700, body:not(.light-theme) .text-yellow-800, body:not(.light-theme) .text-amber-900 { color: rgb(253 224 71) !important; }
+body:not(.light-theme) .bg-blue-100, body:not(.light-theme) .bg-blue-50 { background-color: rgba(59,130,246,.2) !important; }
+body:not(.light-theme) .text-blue-700, body:not(.light-theme) .text-blue-800 { color: rgb(147 197 253) !important; }
+body:not(.light-theme) .bg-purple-100 { background-color: rgba(168,85,247,.2) !important; }
+body:not(.light-theme) .text-purple-700 { color: rgb(216 180 254) !important; }
+body:not(.light-theme) input[type="time"], body:not(.light-theme) input[type="date"] { color: var(--text-primary); color-scheme: dark; }
+body:not(.light-theme) [role="dialog"] .bg-white, body:not(.light-theme) .modal-content .bg-white { background-color: var(--glass-bg, rgb(15 23 42)) !important; color: var(--text-primary) !important; }

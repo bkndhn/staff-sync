@@ -26,6 +26,7 @@ export interface Staff {
   mealAllowance?: number;
   mealAllowanceThreshold?: number;
   staffAccommodation?: 'day_scholar' | 'accommodation' | '';
+  roomNumber?: string;
   allowanceCalcModes?: Record<string, 'fixed' | 'per_day'>;
   displayOrder?: number;
   contactNumber?: string;

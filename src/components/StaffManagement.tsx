@@ -263,6 +263,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
     mealAllowance: 0,
     mealAllowanceThreshold: 0,
     staffAccommodation: '' as '' | 'day_scholar' | 'accommodation',
+    roomNumber: '',
     joinedDate: new Date().toISOString().split('T')[0],
     salarySupplements: {} as Record<string, number>,
     allowanceCalcModes: {} as Record<string, 'fixed' | 'per_day'>,
@@ -725,6 +726,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       mealAllowance: 0,
       mealAllowanceThreshold: 0,
       staffAccommodation: '',
+      roomNumber: '',
       joinedDate: new Date().toISOString().split('T')[0],
       salarySupplements: {},
       allowanceCalcModes: {},
@@ -796,6 +798,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
         allowanceCalcModes: formData.allowanceCalcModes,
         mealAllowanceThreshold: formData.mealAllowanceThreshold,
         staffAccommodation: formData.staffAccommodation,
+        roomNumber: formData.staffAccommodation === 'accommodation' ? formData.roomNumber.trim() : '',
         bankAccountNumber: formData.bankAccountNumber,
         ifscCode: formData.ifscCode,
         bankName: formData.bankName,
@@ -841,6 +844,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
       mealAllowance: member.mealAllowance || 0,
       mealAllowanceThreshold: member.mealAllowanceThreshold || 0,
       staffAccommodation: member.staffAccommodation || '',
+      roomNumber: member.roomNumber || '',
       joinedDate: member.joinedDate,
       salarySupplements: supplements,
       allowanceCalcModes: member.allowanceCalcModes || {},
@@ -1559,6 +1563,18 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                 <option value="accommodation">Accommodation Provided</option>
               </select>
             </div>
+            {formData.staffAccommodation === 'accommodation' && (
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1">Room Number</label>
+                <input
+                  value={formData.roomNumber}
+                  onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
+                  className="input-premium"
+                  placeholder="e.g. Block A - 12"
+                  maxLength={40}
+                />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1">Payroll Calculation Days</label>
               <input type="number" value={formData.salaryCalculationDays} onChange={(e) => setFormData({ ...formData, salaryCalculationDays: Number(e.target.value) })} className="input-premium" min="0" max="31" />
@@ -2244,7 +2260,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({
                     {visibleColumns.staffType !== false && <td className="px-3 py-4 text-sm text-center">
                       {member.staffAccommodation ? (
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${member.staffAccommodation === 'day_scholar' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                          {member.staffAccommodation === 'day_scholar' ? 'Day Scholar' : 'Accommodation'}
+                          {member.staffAccommodation === 'day_scholar' ? 'Day Scholar' : `Accommodation${member.roomNumber ? ' · Rm ' + member.roomNumber : ''}`}
                         </span>
                       ) : <span className="text-gray-400 italic">-</span>}
                     </td>}

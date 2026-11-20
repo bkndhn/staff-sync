@@ -87,6 +87,7 @@ export const staffService = {
     if (updates.mealAllowance !== undefined) (dbUpdates as any).meal_allowance = updates.mealAllowance;
     if (updates.mealAllowanceThreshold !== undefined) (dbUpdates as any).meal_allowance_threshold = updates.mealAllowanceThreshold;
     if (updates.staffAccommodation !== undefined) (dbUpdates as any).staff_accommodation = updates.staffAccommodation;
+    if (updates.roomNumber !== undefined) (dbUpdates as any).room_number = updates.roomNumber;
     if (updates.allowanceCalcModes !== undefined) (dbUpdates as any).allowance_calc_modes = updates.allowanceCalcModes;
     if (updates.contactNumber !== undefined) (dbUpdates as any).contact_number = updates.contactNumber || null;
     if (updates.address !== undefined) (dbUpdates as any).address = updates.address;
@@ -203,6 +204,7 @@ export const staffService = {
       mealAllowance: dbStaff.meal_allowance || 0,
       mealAllowanceThreshold: dbStaff.meal_allowance_threshold || 0,
       staffAccommodation: dbStaff.staff_accommodation || '',
+      roomNumber: dbStaff.room_number || '',
       allowanceCalcModes: dbStaff.allowance_calc_modes || {},
       displayOrder: dbStaff.display_order,
       contactNumber: dbStaff.contact_number ?? undefined,
@@ -244,6 +246,7 @@ export const staffService = {
       meal_allowance: staff.mealAllowance || 0,
       meal_allowance_threshold: staff.mealAllowanceThreshold || 0,
       staff_accommodation: staff.staffAccommodation || '',
+      room_number: staff.roomNumber || '',
       allowance_calc_modes: staff.allowanceCalcModes || {},
       display_order: staff.displayOrder || 0,
       contact_number: staff.contactNumber || null,

@@ -976,21 +976,18 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                     if (reload) window.location.reload();
                   }}
                 />
-                <div className={`mb-4 p-4 rounded-xl flex flex-col sm:flex-row items-center gap-4 border ${
-                  hasIn && hasOut ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600' :
-                  hasIn ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400' :
-                  'bg-white/5 border-white/10 text-[var(--text-muted)]'
-                }`}>
+                <div className="zh-hero mb-4 p-5 rounded-2xl flex flex-col sm:flex-row items-center gap-4 text-white shadow-lg">
                   <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <span className="text-2xl">{hasIn && hasOut ? '✅' : hasIn ? '🟢' : '⚪'}</span>
+                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 text-2xl">{hasIn && hasOut ? '✅' : hasIn ? '🟢' : '⏰'}</span>
                     <div className="flex-1">
-                      <p className="font-semibold">
+                      <p className="text-xs uppercase tracking-wide opacity-80">Today's punch</p>
+                      <p className="text-lg font-bold">
                         {hasIn && hasOut ? 'All punched for today!' :
                          hasIn ? `Clocked IN at ${todayRec!.arrivalTime?.substring(0,5)}` :
                          'Not clocked in yet'}
                       </p>
                       {hasIn && (
-                        <p className="text-xs opacity-70 mt-0.5">
+                        <p className="text-xs opacity-90 mt-0.5">
                           IN {todayRec!.arrivalTime?.substring(0,5)}
                           {hasBreakOut && ` → BRK OUT ${todayRec!.breakTimeOut?.substring(0,5)}`}
                           {hasBreakIn && ` → BRK IN ${todayRec!.breakTimeIn?.substring(0,5)}`}
@@ -1003,29 +1000,29 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                   {/* Punch Action Buttons */}
                   <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
                      {todayRec?.status === 'Absent' ? (
-                        <div className="px-4 py-2 text-sm text-red-500 font-semibold border border-red-500/20 bg-red-500/10 rounded-xl flex items-center justify-center">
+                        <div className="px-4 py-2 text-sm text-white font-semibold border border-white/30 bg-red-600/80 rounded-xl flex items-center justify-center">
                           Marked Absent by Management
                         </div>
                      ) : (
                         <>
                            {!hasIn && (
-                              <button onClick={() => handleWebPunch('in')} disabled={!!punchingStatus} className="btn-premium px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap">
+                              <button onClick={() => handleWebPunch('in')} disabled={!!punchingStatus} className="rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-slate-900 zh-ink shadow w-full sm:w-auto whitespace-nowrap active:scale-95 transition disabled:opacity-60">
                                  {punchingStatus || 'Clock In'}
                               </button>
                            )}
                            {hasIn && !hasOut && (
                               <>
                                  {!hasBreakOut && (
-                                    <button onClick={() => handleWebPunch('break_out')} disabled={!!punchingStatus} className="btn-secondary px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap text-amber-500 border-amber-500/30 hover:bg-amber-500/10">
+                                    <button onClick={() => handleWebPunch('break_out')} disabled={!!punchingStatus} className="rounded-xl border border-white/40 bg-white/15 px-4 py-2.5 text-sm font-semibold text-white w-full sm:w-auto whitespace-nowrap active:scale-95 transition">
                                        Take Break
                                     </button>
                                  )}
                                  {hasBreakOut && !hasBreakIn && (
-                                    <button onClick={() => handleWebPunch('break_in')} disabled={!!punchingStatus} className="btn-secondary px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10">
+                                    <button onClick={() => handleWebPunch('break_in')} disabled={!!punchingStatus} className="rounded-xl border border-white/40 bg-white/15 px-4 py-2.5 text-sm font-semibold text-white w-full sm:w-auto whitespace-nowrap active:scale-95 transition">
                                        End Break
                                     </button>
                                  )}
-                                 <button onClick={() => handleWebPunch('out')} disabled={!!punchingStatus || (hasBreakOut && !hasBreakIn)} className="btn-premium bg-red-500 hover:bg-red-600 px-4 py-2 text-sm w-full sm:w-auto whitespace-nowrap">
+                                 <button onClick={() => handleWebPunch('out')} disabled={!!punchingStatus || (hasBreakOut && !hasBreakIn)} className="rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-bold text-white shadow w-full sm:w-auto whitespace-nowrap active:scale-95 transition disabled:opacity-60">
                                     {punchingStatus || 'Clock Out'}
                                  </button>
                               </>
