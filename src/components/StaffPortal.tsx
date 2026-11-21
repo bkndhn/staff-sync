@@ -65,6 +65,7 @@ interface StaffPortalProps {
 const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHikes, advances, allStaff }) => {
   const [activeSection, setActiveSection] = useState<'overview' | 'attendance' | 'yearly' | 'salary' | 'hikes' | 'leave' | 'face' | 'grievances' | 'disbursements' | 'loans' | 'documents' | 'payslips' | 'expenses' | 'tax'>('overview');
   const [showMoreSections, setShowMoreSections] = useState(false);
+  const [localPunchRec, setLocalPunchRec] = useState<Attendance | null>(null);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [showRegularization, setShowRegularization] = useState(false);
   const [regularizationDate, setRegularizationDate] = useState('');
@@ -298,7 +299,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
       const nowTime = localTimeKey(now);
 
 
-      const todayRecord = attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
+      const todayRecord = (localPunchRec && localPunchRec.date === today ? localPunchRec : null)
+        || attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
 
       const hasIn  = !!(todayRecord?.arrivalTime);
       const hasBreakOut = !!(todayRecord?.breakTimeOut);
@@ -324,6 +326,11 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
 
       // Payload.kind will tell us what button the user clicked
       const kind: 'in' | 'break_out' | 'break_in' | 'out' = payload.kind || (hasIn ? 'out' : 'in');
+      // Order guard: never write OUT/break without an IN, or a second IN on the same day.
+      if (kind !== 'in' && !hasIn) return { ok: false, title: 'Clock In first', subtitle: 'You have no Clock In for today yet.' };
+      if (kind === 'in' && hasIn) return { ok: false, title: 'Already clocked in', subtitle: `You clocked in at ${todayRecord!.arrivalTime?.substring(0,5)}.` };
+      if (kind === 'break_in' && !hasBreakOut) return { ok: false, title: 'No break started', subtitle: 'Tap Take Break first.' };
+      if (kind === 'out' && hasBreakOut && !hasBreakIn) return { ok: false, title: 'End your break first', subtitle: 'Tap End Break before clocking out.' };
       const arrivalTime = kind === 'in' ? nowTime : todayRecord?.arrivalTime;
       const leavingTime = kind === 'out' ? nowTime : todayRecord?.leavingTime;
       const breakTimeOut = kind === 'break_out' ? nowTime : todayRecord?.breakTimeOut;
@@ -355,8 +362,9 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         console.error('Error resolving rules in StaffPortal self-punch:', err);
       }
 
+      let saved: Attendance;
       if (kind === 'in') {
-        await attendanceService.upsert({
+        saved = await attendanceService.upsert({
           staffId: staff.id,
           staffName: staff.name,
           location: staff.location,
@@ -370,7 +378,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
           appliedRuleDetails,
         } as any);
       } else {
-        await attendanceService.upsert({
+        saved = await attendanceService.upsert({
           ...todayRecord!,
           leavingTime,
           breakTimeOut,
@@ -382,6 +390,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
         } as any);
       }
 
+      setLocalPunchRec({ ...(todayRecord || {}), ...saved, date: today, staffId: staff.id } as Attendance);
       await punchEventService.insert({
         staffId: staff.id,
         staffName: staff.name,
@@ -928,7 +937,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
             {/* Today's Punch Status Banner & Actions */}
             {!isLeftStaff && (() => {
               const today = localDateKey(serverNow());
-              const todayRec = attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
+              const todayRec = (localPunchRec && localPunchRec.date === today ? localPunchRec : null)
+                || attendance.find(a => a.date === today && a.staffId === staff.id && !a.isPartTime);
               const hasIn = !!(todayRec?.arrivalTime);
               const hasOut = !!(todayRec?.leavingTime);
               const hasBreakOut = !!(todayRec?.breakTimeOut);
@@ -970,11 +980,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ staff, attendance, salaryHike
                 <>
                 <PunchResultDialog
                   state={punchDialog}
-                  onClose={() => {
-                    const reload = punchDialog?.ok && navigator.onLine;
-                    setPunchDialog(null);
-                    if (reload) window.location.reload();
-                  }}
+                  onClose={() => setPunchDialog(null)}
                 />
                 <div className="zh-hero mb-4 p-5 rounded-2xl flex flex-col sm:flex-row items-center gap-4 text-white shadow-lg">
                   <div className="flex items-center gap-3 w-full sm:w-auto">

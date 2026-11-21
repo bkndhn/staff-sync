@@ -3,7 +3,7 @@ import { Calendar, Check, X, Clock, MessageSquare, FileText, Search, Filter } fr
 import { leaveService, LeaveRequest } from '../services/leaveService';
 import { staffService } from '../services/staffService';
 import LeaveTimeline from './LeaveTimeline';
-import { PageHeader, StatTile, EmptyState, ErrorState } from './ui/PageShell';
+import { StatTile, EmptyState, ErrorState } from './ui/PageShell';
 import { SkeletonList } from './ui/Skeleton';
 
 
@@ -181,16 +181,20 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userRole, userLocatio
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto">
-      <PageHeader
-        title="Leave Management"
-        icon={<FileText size={20} />}
-        subtitle={`${userRole === 'admin' ? 'All branches' : userLocation || 'Your branch'} • ${stats.pending} pending approval`}
-        actions={
-          <button onClick={loadLeaves} className="px-3 py-2 rounded-xl border border-[var(--glass-border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--glass-bg)]">
-            Refresh
-          </button>
-        }
-      />
+      <section className="zh-hero rounded-3xl p-6 sm:p-8 relative overflow-hidden">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs tracking-[0.2em] uppercase opacity-80">Leave requests</p>
+            <h1 className="text-2xl sm:text-3xl font-extrabold mt-1 flex items-center gap-2"><FileText size={24} /> Leave Management</h1>
+            <p className="mt-2 opacity-90">{userRole === 'admin' ? 'All branches' : userLocation || 'Your branch'}</p>
+          </div>
+          <button onClick={loadLeaves} className="zh-hero-chip rounded-2xl px-4 py-2 text-sm font-semibold active:scale-95 transition">Refresh</button>
+        </div>
+        <div className="mt-4 inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm zh-hero-chip">
+          <Clock size={16} /> {stats.pending} waiting for your approval
+        </div>
+        <div className="zh-hero-orb" aria-hidden />
+      </section>
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">

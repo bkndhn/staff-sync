@@ -179,6 +179,7 @@ export async function runAlertSchedules(admin: any, push: Push, record: RecordFn
     }
   }
   results.push(...(await runBuiltinAlerts(admin, push, record)));
+  results.push(...(await runKitchenSummaries(admin, push, record)));
   // Keep the run log small: drop entries older than 14 days.
   await admin.from("alert_runs").delete().lt("created_at", new Date(Date.now() - 14 * 86400_000).toISOString());
   await admin.from("builtin_alert_sends").delete().lt("created_at", new Date(Date.now() - 14 * 86400_000).toISOString());
@@ -306,5 +307,70 @@ export async function runBuiltinAlerts(admin: any, push: Push, record: RecordFn)
     }
   }
   await admin.from("builtin_alert_sends").delete().lt("created_at", new Date(Date.now() - 14 * 86400_000).toISOString());
+  return results;
+}
+
+/** Meal headcount summaries for kitchen in-charge (and managers) before each meal: who is coming and who has not confirmed. */
+export const KITCHEN_SLOTS = [
+  { meal: "breakfast", at: "07:30", label: "Breakfast" },
+  { meal: "lunch", at: "11:30", label: "Lunch" },
+  { meal: "dinner", at: "19:00", label: "Dinner" },
+] as const;
+
+export async function runKitchenSummaries(admin: any, push: Push, record: RecordFn) {
+  const results: any[] = [];
+  const { data: tenants } = await admin.from("tenants").select("id").limit(1000);
+  for (const t of tenants || []) {
+    const tenantId = t.id;
+    try {
+      const { data: pref } = await admin.from("notification_preferences").select("timezone").eq("tenant_id", tenantId).maybeSingle();
+      const tz = pref?.timezone || "Asia/Kolkata";
+      const now = localNow(tz);
+      const slot = KITCHEN_SLOTS.find((k) => { const m = Number(k.at.slice(0, 2)) * 60 + Number(k.at.slice(3)); return now.minutes >= m && now.minutes <= m + 14; });
+      if (!slot) continue;
+      const users = await managersFor(admin, tenantId, ["kitchen_incharge", "admin", "manager"]);
+      if (!users.length) continue;
+      const [{ data: staff }, { data: att }, { data: meals }] = await Promise.all([
+        admin.from("staff").select("id, name, location, room_number").eq("tenant_id", tenantId).eq("is_active", true).eq("staff_accommodation", "accommodation").limit(5000),
+        admin.from("attendance").select("staff_id, status").eq("tenant_id", tenantId).eq("date", now.date).eq("is_part_time", false).limit(5000),
+        admin.from("accommodation_meals").select("staff_id, in_room, food").eq("tenant_id", tenantId).eq("date", now.date).eq("meal", slot.meal).limit(5000),
+      ]);
+      const residents = (staff || []) as Array<{ id: string; name: string; location: string | null; room_number: string | null }>;
+      if (!residents.length) continue;
+      const status = new Map<string, string>((att || []).map((a: any) => [a.staff_id, a.status]));
+      const entry = new Map<string, any>((meals || []).map((m: any) => [m.staff_id, m]));
+      const verdict = (id: string) => {
+        const e = entry.get(id), w = status.get(id);
+        if (e) {
+          if (e.food === "eating" || e.food === "parcel") return "coming";
+          if (e.food === "skip" || e.in_room === "away") return "not";
+          if (e.in_room === "in_room") return "coming";
+        }
+        if (w === "Present" || w === "Half Day") return "coming";
+        return "missing"; // absent without an answer, or nothing marked yet
+      };
+      const slotKey = `${now.date}T${slot.at}@kitchen`;
+      for (let [scope, ids] of byScope(users)) {
+        const list = residents.filter((s) => scope === "*" || s.location === scope);
+        if (!list.length) continue;
+        const v = list.map((s) => ({ s, v: verdict(s.id) }));
+        const coming = v.filter((x) => x.v === "coming").length;
+        const parcel = list.filter((s) => entry.get(s.id)?.food === "parcel").length;
+        const not = v.filter((x) => x.v === "not").length;
+        const missing = v.filter((x) => x.v === "missing").map((x) => x.s.room_number ? `${x.s.name} (R${x.s.room_number})` : x.s.name);
+        const title = `${slot.label} headcount 🍽️${scope === "*" ? "" : ` · ${scope}`}`;
+        const body = `${coming} coming${parcel ? ` (${parcel} parcel)` : ""} · ${not} not coming · ${missing.length} not confirmed` +
+          (missing.length ? `\nAsk: ${missing.slice(0, 6).join(", ")}${missing.length > 6 ? ` +${missing.length - 6} more` : ""}` : "");
+        const got = await claimRecipients(admin, tenantId, slotKey, ids.map((id) => `user:${id}`));
+        ids = ids.filter((id) => got.has(`user:${id}`));
+        if (!ids.length) continue;
+        const p = await push(ids.map((id) => ({ appUserId: id })), { title, body, actionUrl: "/?tab=kitchen" }, "report");
+        await record(tenantId, "builtin_kitchen_meal", "managers", ids.map((id) => ({ appUserId: id, title, message: body, type: "kitchen_meal", tabId: "kitchen" })), p);
+        results.push({ tenant_id: tenantId, kind: `kitchen_${slot.meal}`, recipients: ids.length, pushed: p });
+      }
+    } catch (e) {
+      console.error("kitchen summary failed for tenant", tenantId, (e as Error).message);
+    }
+  }
   return results;
 }
